@@ -69,7 +69,7 @@ def defineReversal_Multi(data_Store, stepBacks): # uses entire file
             
             probe_LR = probe_LR_list[j]
             human_LR = human_LR_list[j]
-            probePos = probe_pos_list[j]
+            #probePos = probe_pos_list[j]
             admID    = int(admID_List[j])
             
             if (probe_LR != human_LR) and (admID == admIDNow):
