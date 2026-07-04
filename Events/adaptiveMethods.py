@@ -5,10 +5,267 @@ import sys
 
 import numpy as np
 
+
+
 """
 ||$|| 
 """
+def rate_dw(rateDW, reversals, reversePOINT):
+    value = 0.3
+    if reversals < reversePOINT:
+        value = 0.3
+    elif reversals >= reversePOINT:
+        value = rateDW # 0.5
+    return value
+"""
+||$|| 
+"""
+def conditionRateUPDW(nowLUM, prevLUM, rate, stepDWUP, logUNIT, condRule):
+    if int(condRule) == 0:
+        value = (nowLUM+prevLUM)*rate
+    elif int(condRule) == 1:
+        value = nowLUM+stepDWUP
+    elif int(condRule) == 2:
+        value = nowLUM*pow(10, logUNIT)
+    elif int(condRule) == 3:
+        value = nowLUM*pow(10, np.log10(1+logUNIT))
+    return value
+"""
+||$|| 
+"""
+def defineReversal_Multi(data_Store, stepBacks): # uses entire file
+    starT       = len(data_Store[0])-2 # len(data_Store)-2
+    enD         = 0
+    ranGE       = list(range(starT,enD, -1))
+    storeData   = data_Store
+    
+    probe_pos_list  = storeData[0]
+    probe_LR_list   = storeData[1]
+    human_LR_list   = storeData[2]
+    admID_List      = storeData[4]
+    
+    correctTick_list= storeData[10]
+    
+    admIDNow        = int(admID_List[len(admID_List)-1])
+    posItionNow     = storeData[0][len(storeData[0])-1]
+    lumNow          = storeData[6][len(storeData[6])-1] # <-- new line
+    
+    stop  = False
+    index = 0
+    count = 0  
+    INDEXcorrect    = 0
+    INDEXwrong      = 0
+    
+    foundIndex      = False
+    j               = len(probe_pos_list)-1 # len(correctTick_list)-1
+    while foundIndex == False: 
+        #
+        """
+            Here we find the last incorrect with respect to positiona and admID was used.
+        """
+        #
+        if j > 0:
+            j += -1
+            
+            probe_LR = probe_LR_list[j]
+            human_LR = human_LR_list[j]
+            probePos = probe_pos_list[j]
+            admID    = int(admID_List[j])
+            
+            if (probe_LR != human_LR) and (admID == admIDNow):
 
+                INDEXwrong = j # -1
+                
+                if storeData[6][INDEXcorrect] > lumNow: # <-- new line
+                    foundIndex = True
+                    break
+                elif storeData[6][INDEXcorrect] <= lumNow: # <-- new line
+                    pass
+            elif (probe_LR == human_LR) and (admID == admIDNow):
+                INDEXcorrect = j # -1
+                
+            elif (admID != admIDNow):
+                pass
+        elif j == 0:
+            INDEXcorrect = 1
+            foundIndex   = True
+            break
+    return INDEXcorrect, INDEXwrong
+"""
+|$|
+"""
+def count_reversals_HighLow(contrastList):
+    averageList = []
+    TrialNumber = []
+    countR      = 0
+    checkSign   = 0
+    signValue   = -1
+    
+    j           = 0
+    
+    if len(contrastList) > 1:
+        if contrastList[j+1]-contrastList[j] < 0: # i.e. N12 - N10, then get  j-1
+            signValue = -1
+        elif contrastList[j+1]-contrastList[j] > 0: 
+            signValue = 1
+        elif contrastList[j+1]-contrastList[j] == 0: 
+            pass
+            
+        checkSign = signValue
+        j         = 0
+        while j < len(contrastList)-2:
+            j+=1
+            if contrastList[j+1]-contrastList[j] < 0: # i.e. N12 - N10, then get  j-1
+                signValue = -1
+            elif contrastList[j+1]-contrastList[j] > 0: 
+                signValue = 1
+            elif contrastList[j+1]-contrastList[j] == 0: 
+                pass
+            
+            if checkSign != signValue:
+                checkSign = signValue 
+                countR   += 1
+                averageList.append(contrastList[j])
+                TrialNumber.append(j)
+            elif checkSign == signValue:
+                pass
+    elif len(contrastList) <= 1:
+        TrialNumber=[1]
+        TrialNumber=[0]
+        averageList=[0] 
+        
+    return len(TrialNumber), TrialNumber, averageList 
+"""
+|$|
+"""       
+def weberContrast(contrast_cpu: list, background_crt, max_crt, logFunction, logStatment: bool):
+    maxC        = max_crt # max(contrast_cpu)
+    contrast_W  = []
+    if logStatment == False:
+        for i in range(len(contrast_cpu)):
+            contrast_W.append((contrast_cpu[i]-background_crt)/(maxC-background_crt))
+    elif logStatment == True:
+        for i in range(len(contrast_cpu)):
+            contrast_W.append(logFunction((contrast_cpu[i]-background_crt)/(maxC-background_crt)))
+    return contrast_W
+"""
+||$|| 
+"""      
+def admID_staircase(adm_list, contrast_list, admIDNow):
+    contrastComb = []
+    """
+    for n in range(0, len(adm_list), 1):
+        probePos = pos_list[n] 
+        admID    = int(adm_list[n])
+        if (abs(probePos) == abs(posItionNow)) and (admID == admIDNow):
+                
+            contrastComb.append(contrast_list[n])
+        elif (abs(probePos) != abs(posItionNow)) or  (admID != admIDNow):
+            continue   
+    """
+    for n in range(0, len(adm_list), 1):
+        admID    = int(adm_list[n])
+        if (admID == admIDNow):   
+            contrastComb.append(contrast_list[n])
+        elif (admID != admIDNow):
+            continue 
+    return contrastComb
+"""
+||$|| 
+"""
+def findIndex(arrayList, indexNow):
+    indexPOSfound = 0
+    for i in range(len(arrayList)):
+        if int(indexNow) == int(arrayList[i]):
+            indexPOSfound = i
+            break
+        elif int(indexNow) != int(arrayList[i]):
+            pass
+    return indexPOSfound
+"""
+||$|| 
+"""
+def findIndexFloat(arrayList, indexNow):
+    indexPOSfound = 0
+    for i in range(len(arrayList)):
+        if (indexNow) == (arrayList[i]):
+            indexPOSfound = i
+            break
+        elif (indexNow) != (arrayList[i]):
+            pass
+    return indexPOSfound
+"""
+|$|
+"""   
+def returnOnce(lisT):
+    newList = []
+    for i in range(len(lisT)):
+        value = abs(lisT[i])
+        if value not in newList:
+            newList.append(value)
+        elif value in newList:
+            continue
+    return newList
+"""
+||$||
+"""
+def count_Abs_type(count_type_array):
+    checkedValues = []
+    checkekCounts = []
+    for i in range(len(count_type_array)):
+        if abs(count_type_array[i][0]) not in checkedValues:
+            checkedValues.append(abs(count_type_array[i][0]))
+            checkekCounts.append(count_type_array[i][1])
+        elif abs(count_type_array[i][0]) in checkedValues:
+            indexfound                = findIndexFloat(checkedValues, abs(count_type_array[i][0])) 
+            checkekCounts[indexfound] = checkekCounts[indexfound] + count_type_array[i][1]
+    
+    returnType = []
+    for i in range(len(checkedValues)):
+        e1 = checkedValues[i]
+        e2 = checkekCounts[i]
+        returnType.append([e1, e2])
+    return returnType
+"""
+||$||
+"""
+def appendTrials(trails):
+    arrayT = []
+    for i in range(0, len(trails), 1):
+        arrayT.append(trails[i][0])
+    return arrayT  
+"""
+||$||
+"""
+def count_values_type(list_of_values, value_array, startIndex):
+    count_type_array = []
+    total            = 0
+    for z in range(len(value_array)):
+        count = 0.0
+        for i in range(startIndex, len(list_of_values), 1):
+            if list_of_values[i] == value_array[z]:
+                count += 1
+            elif list_of_values[i] != value_array[z]:
+                continue
+        count_type_array.append([value_array[z], count])
+    for index in range(len(count_type_array)):
+        total += count_type_array[index][1]
+    return count_type_array, total
+"""
+||$||
+""" 
+def check_values(value_array):
+    new_array = []
+
+    for i in range(len(value_array)):
+        if  value_array[i] not in new_array:
+            new_array.append(value_array[i])
+        elif value_array[i] in new_array:
+            continue
+    return new_array
+"""
+||$|| 
+"""
 
 def conditions(storeData, dataParams, conditionS):
     probeStart = dataParams[4]
@@ -299,3 +556,9 @@ def conditions(storeData, dataParams, conditionS):
 
     reversalTick = reversalN
     return cL_param_new, reversalTick, correctTick, paramStart, rDW, count, count_Reversals_total, rateUP
+"""
+||$||
+"""
+def findCPU_fromWeberContrast(maxCPU, bkgCPU, weberCRT):
+    value = ((maxCPU-bkgCPU)*weberCRT)+bkgCPU
+    return value
