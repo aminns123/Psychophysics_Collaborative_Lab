@@ -1,19 +1,5 @@
 
-class Trial_small:
-    def __init__(self,name,stimuli,T,keys=[],mouse=False):
-        self.stimuli    = stimuli
-        self.T          = T
-        self.name       = name
-        self.keys       = keys
-        self.mouse      = mouse
-    def draw(self,win):
-        win.clear()    
-        for stim in self.stimuli:
-            stim.draw()
-    def __str__(self):
-        return self.name
-    def default(self):
-        return {'type':'Trial','name':self.name,'keys':self.keys,'mouse':self.mouse,'stimuli':self.stimuli}
+import numpy as np
 
 
 def findCorrespondingIndex(valueList, findValue):
@@ -132,38 +118,77 @@ def optionPrompt(keyWords):
 """
 ||$||
 """
-def record_event(event,time,trial,args):
-    """
-        Here I am recording data values. The pos-cx gives the relative distance from fixation point.
-        In the 'Trials' for loop, the actuall position in pixel from botton left is given to set stimuli
-        in the centre of screen and shift accordingly.
-        Need if and elif statmemts otherwise logger fo events does not call print function.
-    """
-    
-    """
-        @ Below: Probe condition is stored - using "print_Value" function.
-    """
-
-    stimuli_names = ['staircase', 'fixateDELAY', 'dot', 'flanker_selectivity_LR']
-    
-    if trial.name in stimuli_names:
-        trial.print_Value()
-    else:
-        print('============== trial stimuli found none ===============')
-    
-    """
-        @ Below: Details the point in the experiment the participent gives a response.
-    """
-    response_names = ['dot_stairCase', 'flank_selectivity_Response', 'dot_constant']    
-
-    if event != 'MOUSE' and trial.name in response_names:
-        trial.print_Value()
-    else:
-        print('============== trial response found none ===============') 
-"""
-||$||
-"""
 def ratio_PIXEL_Meter(win_WIDTH_pixel, win_WIDTH_meter):
     # 1 pixel = 
     pixel_to_meter = win_WIDTH_meter/win_WIDTH_pixel
     return pixel_to_meter
+"""
+||$||
+"""
+def from_Text(path):
+    file            = open(path, "r")
+    content         = file.read()
+    res2            = list(map(float, content[1:-1].split(',')))
+    file.close()
+    return res2
+"""
+||$||
+"""
+def to_Text(path, response: []): # allows all other fucntion to access response
+    file = open(path, "w")
+    file.write(str(response))
+    file.close()
+"""
+||$||
+"""
+def write_toText(path, data):
+    file = open(path, "w")
+    
+    colS = 0
+    rowS = 0
+    
+    data =  list(map(list, zip(*data))) # Transpose list (must be a complete matrix/list, no gaps)
+    
+    for y in range(len(data)): # new rows 
+        if (y > 0) and (y < len(data)):
+            file.write('\n')
+            
+        for x in range(len(data[y])): # new columns
+        
+            if x < len(data[y])-1:
+                file.write(str(data[y][x])+'\t') # want to swap col with row thus [y][x]->[x][y]
+            elif x == len(data[y])-1:
+                file.write(str(data[y][x]))          
+    file.close()
+"""
+||$||
+""" 
+
+def convertArcangleTOPixel(arcAngle, distanceToMonitor, pixel_metre_ratio):
+    """
+    x=tan((pi/180})*deg)*d
+    x=tan(phi)*d
+    x=2*tan(phi/2)*d
+    phi=2arctan((x/2)*d)
+    1 pixel (width) = pixel_metre_ratio
+    """
+    #posRatioPixel = (np.tan(np.radians(arcAngle))*distanceToMonitor) 
+    posRatioPixel = 2*(np.tan(np.radians(arcAngle)/2)*distanceToMonitor)
+    return posRatioPixel/pixel_metre_ratio
+"""
+||$||
+"""
+def Meter_convertToArcangle(Meter_distanceM, distanceToMonitor, pixel_metre_ratio):
+    """
+    In pixels: Pixel_distanceM
+    In metres: distanceToMonitor
+    + Covert pixel to metre, then to arc visual angle.
+    + 1 Pixel = metre: pixel_metre_ratio
+    x/2=tan(2*phi)*d
+    """
+    radians_to_degree   = 180/np.pi
+    meterDist           = Meter_distanceM # *pixel_metre_ratio
+    
+    #arcAngle = radians_to_degree*np.arctan(meterDist/distanceToMonitor)
+    arcAngle  = 2*np.arctan((meterDist/2)/distanceToMonitor)
+    return arcAngle*radians_to_degree # <- added here -> radians_to_degree.
