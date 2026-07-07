@@ -1,7 +1,19 @@
 
 from __future__ import division
-from Events.libC import *
 
+from Events.libC import (
+    stim, Params, copy_params, make_dot, from_Text, Shader, glUseProgram,
+    glUniform1f, glPushMatrix, glLoadIdentity, glTranslatef, glBegin, glTexCoord2f, glVertex2f, glEnd, glPopMatrix, GL_QUADS,
+    GL_BLEND, GL_TEXTURE_2D, glEnable, glColor4f
+)
+from Functions.functionUSE import (
+    adMethod_luminance_ID, 
+    weberContrast, 
+    readText_toList_keyValue
+)
+import numpy as np
+from pyglet import text
+import pyglet
 
 ### =========
 class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,bg=0.5,
@@ -78,7 +90,7 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         self.t0         = self.clock.time()
         self.shader     = Shader(self.frag_source)
         self.program    = self.shader.program
-        self.uniforms = dict(map(self.shader.uniform,
+        self.uniforms   = dict(map(self.shader.uniform,
                                  ['fs','phase','contr','theta','bg','box','Lbg',
                                   'Lmin','Lmax','gamma','BTRR'
                                   ,'SdeX', 'SdeY'])) # <- added
@@ -105,11 +117,11 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         glUseProgram(0)
         
     def draw(self):
-        import Functions.functionUSE as funcs
+        
         self.px             = self.pos[0]
         self.py             = self.pos[1]
-        dataParamsMain      = funcs.from_Text(self.fileParamsMain)
-        condition_dictionary= funcs.readText_toList_keyValue(self.fileADM_cond )
+        dataParamsMain      = from_Text(self.fileParamsMain)
+        condition_dictionary= readText_toList_keyValue(self.fileADM_cond )
         admTEXT             = dataParamsMain[0]
         dataParams          = from_Text(self.fileParams)
 
@@ -122,11 +134,11 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         self.px             = float(kwargs['position'])
         fs                  = float(kwargs['frequency'])
         
-        cL                  = funcs.adMethod_luminance_ID(admTEXT, self.fileParams, self.filesDataMain) 
+        cL                  = adMethod_luminance_ID(admTEXT, self.fileParams, self.filesDataMain) 
         self.params.fs      = fs
         
         bkg_Lum_intensity, max_Lum_intensity = bkg_contrast, max_contrast
-        cL                  = funcs.weberContrast([cL], bkg_Lum_intensity, max_Lum_intensity , np.log10,False)[0]
+        cL                  = weberContrast([cL], bkg_Lum_intensity, max_Lum_intensity , np.log10,False)[0]
         self.params.contr   = cL # <-- actually give contrast value
         
         glUseProgram(self.program)
