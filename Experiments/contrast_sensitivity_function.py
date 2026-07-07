@@ -25,9 +25,32 @@ from Events.adaptiveMethods import (
     Trial_small,
     record_event,
 )
+from Interface.main import (
+    data_save_repository,
+    NAME
+)
 
+with open(data_save_repository+"/"+"user_experiment_config.json", "r") as f:
+    dict_all_dicts = json.load(f)
 
+with open(data_save_repository+"/"+NAME+"/"+"experiment_defined.json", "r") as f:
+    setupDict = json.load(f)
 
+monitor_screen_params   = dict_all_dicts['monitor_screen_params']
+experiment_params       = dict_all_dicts['experiment_params']
+staircase_params        = dict_all_dicts['staircase_params']
+kwargs_fixate           = dict_all_dicts['kwargs_fixate']
+kwargs_fakeFIX          = dict_all_dicts['kwargs_fakeFIX']
+
+# ------------------------------ Experiment setup ------------------------------
+
+cx, cy                      = monitor_screen_params['cx'], monitor_screen_params['cy']
+monitor_refresh_rate        = monitor_screen_params['monitor_refresh_rate']
+pyglet_wakeup_rate_check    = monitor_screen_params['pyglet_wakeup_rate_check']
+timeFixate                  = monitor_screen_params['timeFixate']
+timeInterval                = monitor_screen_params['timeInterval']
+timeAB                      = monitor_screen_params['timeAB']
+timeT                       = monitor_screen_params['timeT']
 # ------------------------------ Experiment setup ------------------------------
 
 pyglet.options['vsync'] = True
@@ -60,7 +83,7 @@ def make_adm_trial(name, stimuli, duration_ms, position, keys_for_trial=None):
         stimuli,
         duration_ms,
         position,
-        file_paramsStimulus,
+        file_params_Stimulus,
         file_response_record,
         keys_for_trial or [],
         mouse=False,
@@ -74,7 +97,6 @@ alternative_forced_choice = {
     'nan_row__': [0.0]
 }
 
-path_main       = filename_ADM_main
 posCentre       = [cx, cy]
 response_keys   = [key.RIGHT, key.LEFT]
 keys_none       = []
@@ -95,7 +117,7 @@ win.set_logger(record_event)
 
 # ------------------------------ Stimuli ------------------------------
 
-experiment_title    = [make_text_label(f'{experiment_type}\n', (cx, cy))]
+experiment_title    = [make_text_label(f'{setupDict["Experiment_Type"]}\n', (cx, cy))]
 welcome_line        = [make_text_label('Press SPACE when ready.', (cx, cy - 50))]
 farewell_line       = [make_text_label('Experiment over!', (cx, cy - 50))]
 
@@ -106,24 +128,22 @@ trials = [
 
 fakeProbe = Dot_stairCase_centre(
     experiment_params['bkg_intensity'],
-    filename_params,
-    path_main,
+    file_params_Stimulus,
+    file_response_record,
     (cx, cy),
     Params(**kwargs_fakeFIX),
 )
 centreDOT = Dot_stairCase_centre(
     experiment_params['bkg_intensity'],
-    filename_params,
-    path_main,
+    file_params_Stimulus,
+    file_response_record,
     (cx, cy),
     Params(**kwargs_fixate),
 )
 probeStimulus = Grating_ADM(
     posCentre,
-    fileParamsMain,
-    filename_params,
-    fileADM_condition,
-    path_main,
+    file_params_Stimulus,
+    file_response_record,
     Params(**experiment_params),
 )
 

@@ -6,6 +6,8 @@ from ctypes import byref, c_char_p, c_char, cast, POINTER, create_string_buffer
 from pyglet import clock, clock, font, graphics, window, text
 from pyglet.window import key
 from pyglet.gl import *
+import pyglet
+
 from numpy.random import rand, randn
 import numpy as np
 from numpy import *

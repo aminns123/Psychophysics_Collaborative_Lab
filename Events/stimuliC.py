@@ -3,7 +3,8 @@ from __future__ import division
 
 from Events.libC import (
     stim, Params, copy_params, make_dot, from_Text, Shader, glUseProgram,
-    glUniform1f, glPushMatrix, glLoadIdentity, glTranslatef, glBegin, glTexCoord2f, glVertex2f, glEnd, glPopMatrix, GL_QUADS,
+    glUniform1f, glPushMatrix, glLoadIdentity, glTranslatef, glBegin,
+    glTexCoord2f, glVertex2f, glEnd, glPopMatrix, GL_QUADS,
     GL_BLEND, GL_TEXTURE_2D, glEnable, glColor4f
 )
 from Functions.functionUSE import (
@@ -82,9 +83,8 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
     ##  float Sde = 0.1;
     ##  double pi = 2 * acos(0.0);
     ### m = (1/(2*pi*pow(Sde,2)))*exp(-(pow(x,2)+pow(y,2))/(2*pow(Sde,2)))
-    def __init__(self,posCentre,pos, fileParamsMain, fileParams, fileADM_condition, filesDataMain,params=Params()):
+    def __init__(self,pos, file_params_Stimulus,file_response_record,params=Params()):
         self.pos        = pos
-        self.posCentre  = posCentre
         self.params     = copy_params(self._defaults,params)
         self.clock      = pyglet.clock.Clock()
         self.t0         = self.clock.time()
@@ -95,11 +95,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
                                   'Lmin','Lmax','gamma','BTRR'
                                   ,'SdeX', 'SdeY'])) # <- added
         
-        self.fileParams     = fileParams
-        self.filesDataMain  = filesDataMain
-        self.fileADM_cond   = fileADM_condition
-        self.fileParamsMain = fileParamsMain
-        
+        self.fileParams     = file_params_Stimulus
+        self.filesDataMain  = file_response_record
+
         glUseProgram(self.program)
         glUniform1f(self.uniforms['phase'],0.0)
         glUniform1f(self.uniforms['fs'],self.params.fs)
@@ -178,16 +176,16 @@ class Dot_stairCase_centre(stim(c=1.0,sigma=0.17,fs=0.0,phi=0.0,edge=2.0,res=64,
     
     :param c: contrast [0.0,1.0]
     """
-    def __init__(self, bkg,filename_params, filesData, posCentre,params=Params()):
+    def __init__(self, pos, bkg,filename_params, filesData,params=Params()):
         self.params     = copy_params(self._defaults,params)
         self.filesData  = filesData
         self.fileParams = filename_params
         self.params.bkg = bkg
         
         self.params = copy_params(self._defaults,params)
-        self.pos    = posCentre
+        self.pos    = pos
         p           = self.params
-        self.label = text.Label(p.msg,
+        self.label  = text.Label(p.msg,
                           font_name='Times New Roman',
                           font_size=p.size,
                           anchor_x='center',
@@ -207,7 +205,7 @@ class Dot_stairCase_centre(stim(c=1.0,sigma=0.17,fs=0.0,phi=0.0,edge=2.0,res=64,
         im.anchor_y     = h//2
 
         self.image0     = im
-        self.posCentre  = posCentre
+        self.posCentre  = pos
         
     def draw(self):
         FILEparams      = from_Text(self.fileParams)

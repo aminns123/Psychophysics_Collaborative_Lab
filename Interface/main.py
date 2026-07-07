@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import datetime
 import json
+import subprocess
 
 
 WORKING_DIR     = str(Path(__file__).resolve().parent.parent)+'/'
@@ -21,8 +22,6 @@ os.chdir(       working_Directory)
 sys.path.append(working_Directory)
 cwd = os.getcwd()
 
-
-
 print('============== CWD ===============================')
 print('cwd:', cwd)
 print('============== FILES ===============================')
@@ -30,6 +29,8 @@ print(os.listdir('.'))
 print('============== FILES ===============================')
 
 import Functions.functionsForUse as funcs
+from Interface.config import run_configure_experiment
+
 
 
 # ==================================================
@@ -60,19 +61,19 @@ if boolDict['NEW_or_OLD'] =='OLD':
     keyValue = funcs.readText_toList_keyValue(fileExperimentLast)
     keyList   =keyValue[0]
     valueList =keyValue[1]
-    newDict = {}
+    setupDict = {}
     for j in range(len(keyList)):
-        newDict.update({keyList[j]:valueList[j]})
+        setupDict.update({keyList[j]:valueList[j]})
 
 elif boolDict['NEW_or_OLD']=='NEW':
     checkDict = {'Experiment_Type':listExps , 
                  'Luminance': listLum, 
                  'Screen_intensity': listCPULum
     }
-    newDict   = funcs.optionPrompt(checkDict)
+    setupDict   = funcs.optionPrompt(checkDict)
 
-    newDict.update({'Name':boolDict['Name'],
-                    'trialPOINT':9, # 8 , # 5
+    setupDict.update({'Name':boolDict['Name'],
+                      'trialPOINT':9, # 8 , # 5
                     'start_Cw':1.0,
                     'stimulus_SF': 1.0,
                     'date_created':today,
@@ -82,12 +83,21 @@ elif boolDict['NEW_or_OLD']=='NEW':
                     'positionFind':1})
 
 print('--------------------------------')
-print('newDict:\n', newDict)   
+print('setupDict:\n', setupDict)   
 
 fileExperimentLast  = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
 filePosition        = data_save_repository+"/"+boolDict["Name"]+"/"+"ExpLast_positionPixel.txt"
 
 with open(data_save_repository+"/"+boolDict["Name"]+"/"+"experiment_defined.json", "w") as f:
-    json.dump(newDict, f, indent=4)
+    json.dump(setupDict, f, indent=4)
 
 NAME = boolDict['Name']
+
+setupDict = run_configure_experiment(NAME, data_save_repository, setupDict)
+
+print('============== CWD ===============================')
+print('cwd:', os.getcwd())
+print('============== FILES ===============================')
+print(os.listdir('.'))
+print('============== sys ===============================')
+print(sys.path[0])
