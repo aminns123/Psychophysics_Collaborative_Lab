@@ -17,22 +17,12 @@ from Events.libC import (
 from Events.adaptiveMethods import (
     findCPU_fromWeberContrast,
 )
-from Interface.user_Machine_params import (
+from Interface.user_parameters import (
     NAME,
     data_save_repository,
     working_Directory,
 )
 
-os.path.abspath(working_Directory)
-os.chdir(       working_Directory)
-sys.path.append(working_Directory)
-cwd = os.getcwd()
-
-print('============== CWD ===============================')
-print('cwd:', cwd)
-print('============== FILES ===============================')
-print(os.listdir('.'))
-print('============== FILES ===============================')
 
 
 # ------------------------------ Experiment setup ------------------------------
@@ -285,7 +275,10 @@ columnsSet = [
     'grating sf',
 ]
 
-value_params = [float(x) for x in value_params]
+value_params    = [float(x) for x in value_params]
+valueMain       = [value_params['text']]
+valuePosition   = [0.0]
+condition_list  = [2,4,6,8,10]
 
 funcs.create_Text_academic(filename_ADM_main, columnsSet)
 funcs.create_Text(filename_params, value_params)
@@ -295,9 +288,12 @@ funcs.create_Text_academic(fileADM_indexing, columnADM)
 funcs.create_Text(fileArrayCondition, condition_list)
 funcs.create_Text_academic(fileADM_condition, columnADM_condition)
 
-condition_names = ['frequency', 'position_', 'general__', 'nan_row__']
-condition_values = [omegaf, 0.0, 0.0, 0.0]
-condition_enabled = [bool_fs, bool_x, bool_general, 0.0]
+bool_general, bool_fs, bool_x, omegaf = 0, 1, 0, 1.0
+
+
+condition_names     = ['frequency', 'position_', 'general__', 'nan_row__']
+condition_values    = [omegaf, 0.0, 0.0, 0.0]
+condition_enabled   = [bool_fs, bool_x, bool_general, 0.0]
 
 adm_condition_table = funcs.readText_toList(fileADM_condition)
 adm_condition_table[0].extend(condition_names)

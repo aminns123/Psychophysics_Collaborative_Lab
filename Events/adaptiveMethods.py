@@ -864,13 +864,8 @@ class Trial_ADMs:
         duration_ms,
         pos,
         n_up,
-        file_array_position,
-        file_params_main,
-        file_params,
-        file_params_position,
-        files_adm_index,
-        file_adm_condition,
-        files_data_main,
+        file_paramsStimulus,
+        file_response_record,
         keys=None,
         mouse=False,
     ):
@@ -881,13 +876,8 @@ class Trial_ADMs:
         self.mouse          = mouse
         self.pos            = pos
         self.nUP            = n_up
-        self.fileParamsMain = file_params_main
-        self.fileParams1    = file_params
-        self.filesDataMain  = files_data_main
-        self.filesADM_INDEX = files_adm_index
-        self.fileArrayPos   = file_array_position
-        self.filePosition   = file_params_position
-        self.fileADM_cond   = file_adm_condition
+        self.fileParamsStimulus = file_paramsStimulus
+        self.fileResponseRecord = file_response_record
 
     def print_Value(self):
         """Select the next ADM condition and persist probe parameters to disk."""
@@ -898,15 +888,15 @@ class Trial_ADMs:
 
         import random
 
-        data_position       = funcs.from_Text(self.filePosition)
-        data_params_main    = funcs.from_Text(self.fileParamsMain)
-        data_params         = funcs.from_Text(self.fileParams1)
+        data_params         = funcs.from_Text(self.fileParamsStimulus)
         params              = _parse_data_params(data_params)
-        data_main           = funcs.readText_toList(self.filesDataMain)
+        data_main           = funcs.readText_toList(self.fileResponseRecord)
         trials              = _parse_store_data(data_main)
-        condition_list      = funcs.from_Text(self.fileArrayPos)
-        condition_dictionary= funcs.readText_toList_keyValue(self.fileADM_cond)
-        data_adm_index      = funcs.readText_toList(self.filesADM_INDEX)
+
+        condition_list      = params['condition_list']
+        condition_dictionary= params['condition_dictionary']
+        data_adm_index      = params['data_adm_index']
+        data_position       = params['data_position']
 
         contrast_list       = trials["contrast"]
         adm_id_list         = trials["adm_ids"]
@@ -977,8 +967,8 @@ class Trial_ADMs:
 
         funcs.write_toText(self.filesADM_INDEX, data_adm_index)
         funcs.write_toText(self.fileADM_cond, condition_dictionary)
-        funcs.write_toText(self.fileParams1, [float(x) for x in data_params])
-        funcs.write_toText(self.fileParamsMain, [float(x) for x in data_params_main])
+        funcs.write_toText(self.fileParamsStimulus, [float(x) for x in data_params])
+        funcs.write_toText(self.fileParamsStimulus, [float(x) for x in data_params_main])
         funcs.write_toText(self.filePosition, [float(x) for x in data_position])
         funcs.write_toText(self.fileArrayPos, condition_list)
 

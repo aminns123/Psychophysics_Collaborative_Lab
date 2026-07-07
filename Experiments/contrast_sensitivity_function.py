@@ -26,20 +26,6 @@ from Events.adaptiveMethods import (
     record_event,
 )
 
-PROJECT_PARENT = Path(__file__).resolve().parents[3]
-WORKING_DIR = PROJECT_PARENT / 'psychophysics_experiments_git'
-DATA_SAVE_DIR = PROJECT_PARENT / 'Psychophysics_DATA_2024'
-
-print('WORKING_DIR', WORKING_DIR)
-
-os.chdir(WORKING_DIR)
-sys.path.append(str(WORKING_DIR))
-
-print('============== CWD ===============================')
-print('cwd:', os.getcwd())
-print('============== FILES ===============================')
-print(os.listdir('.'))
-print('============== FILES ===============================')
 
 
 # ------------------------------ Experiment setup ------------------------------
@@ -74,14 +60,8 @@ def make_adm_trial(name, stimuli, duration_ms, position, keys_for_trial=None):
         stimuli,
         duration_ms,
         position,
-        experiment_params['nUP'],
-        fileArrayCondition,
-        fileParamsMain,
-        filename_params,
-        fileParamsPosition,
-        fileADM_indexing,
-        fileADM_condition,
-        path_main,
+        file_paramsStimulus,
+        file_response_record,
         keys_for_trial or [],
         mouse=False,
     )
