@@ -1,9 +1,48 @@
 
+import os
 import numpy as np
 
 
+def CheckFileName(folderName, fileName):
+    """
+    Check if file name exist, if it does, add a number to the end of the file name to make it unique.
+    """
+    i = 0
+    nameFile = False
+    while nameFile == False:
+        lengthDir       = len(os.listdir(folderName))
+        filename_everytg= folderName+"/"+str(lengthDir+1+i)+fileName
+        
+        filename = filename_everytg
+        if os.path.isfile(filename) == True:
+            print(filename)
+            i+=1
+        elif os.path.isfile(filename) == False:
+            nameFile = True
+    
+    index = lengthDir+1+i
+    return filename_everytg, index
+"""
+||$|| 
+"""
+def check_folder_exist(folderName=[]):
+    """
+    Check if folder exist, if it does not, create it.
+    """
+    for index in range(len(folderName)):
+        folderNAME = folderName[index]
+        
+        if not os.path.exists(folderNAME): 
+            os.makedirs(folderNAME) 
+        else:
+            pass
+"""
+||$||
+"""
 def findCorrespondingIndex(valueList, findValue):
-    # return index
+    """
+    Find the index of the value in the list, if it does not exist, return False.
+    """
     xfit_max = 0
     found = False
     for i in range(len(valueList)):
@@ -23,6 +62,10 @@ def findCorrespondingIndex(valueList, findValue):
 ||$||
 """
 def ProbabilitySimilarWord(lettersList1, lettersList2):
+    """
+    Check the probability of two words being similar by comparing the letters in the two lists.
+    If the two lists are of different lengths, return False.
+    """
     issueFound = True
     percentCorrect = 0.0
     if len(lettersList1) == len(lettersList2):
@@ -44,6 +87,11 @@ def ProbabilitySimilarWord(lettersList1, lettersList2):
 ||$||
 """
 def checkWordForWord(listStings, wordSting):
+    """
+    Check if the word is in the list of strings, if it is not, check for similar words.
+    If a similar word is found, return the similar word and the percentage of similarity.
+    If no similar word is found, return False.
+    """
     percentList = []
     issueList = []
 
@@ -81,6 +129,12 @@ def checkWordForWord(listStings, wordSting):
 ||$||
 """
 def optionPrompt(keyWords):
+    """
+    Option prompt for user to input values for the keys in the dictionary. 
+    If the value is a list, the user can choose from the list or append a new value. 
+    If the value is not a list, the user can input a new value. 
+    The function will return a new dictionary with the updated values.  
+    """
     NewDict = keyWords.copy()
     index = 0
     indexKey = 'nan'
@@ -119,13 +173,20 @@ def optionPrompt(keyWords):
 ||$||
 """
 def ratio_PIXEL_Meter(win_WIDTH_pixel, win_WIDTH_meter):
-    # 1 pixel = 
+    """
+    Calculate the ratio of pixels to meters for a given window width in pixels and meters.
+    This ratio is useful for converting between pixel and meter measurements in visual experiments.
+    """
     pixel_to_meter = win_WIDTH_meter/win_WIDTH_pixel
     return pixel_to_meter
 """
 ||$||
 """
 def from_Text(path):
+    """
+    Read a list of floats from a text file and return it as a list.
+    The text file should contain a list in the format: [value1, value2, ..., valueN]
+    """
     file            = open(path, "r")
     content         = file.read()
     res2            = list(map(float, content[1:-1].split(',')))
@@ -134,7 +195,11 @@ def from_Text(path):
 """
 ||$||
 """
-def to_Text(path, response: []): # allows all other fucntion to access response
+def to_Text(path, response: list):
+    """
+    Write a list of floats to a text file.
+    The list will be written in the format: [value1, value2, ..., valueN]
+    """
     file = open(path, "w")
     file.write(str(response))
     file.close()
@@ -142,10 +207,12 @@ def to_Text(path, response: []): # allows all other fucntion to access response
 ||$||
 """
 def write_toText(path, data):
+    """
+    Write a x-Dimensional list (matrix) to a text file, transposing it in the process.
+    Each row of the matrix will be written as a line in the text file, with values separated by tabs.
+    """
     file = open(path, "w")
     
-    colS = 0
-    rowS = 0
     
     data =  list(map(list, zip(*data))) # Transpose list (must be a complete matrix/list, no gaps)
     
@@ -166,11 +233,20 @@ def write_toText(path, data):
 
 def convertArcangleTOPixel(arcAngle, distanceToMonitor, pixel_metre_ratio):
     """
-    x=tan((pi/180})*deg)*d
-    x=tan(phi)*d
-    x=2*tan(phi/2)*d
-    phi=2arctan((x/2)*d)
-    1 pixel (width) = pixel_metre_ratio
+    Convert visual angle in degrees to pixel distance on the screen.
+    arcAngle: visual angle in degrees
+    distanceToMonitor: distance from the observer to the monitor in meters
+    pixel_metre_ratio: ratio of pixels to meters for the monitor
+        - The formula used is based on the geometry of a right triangle formed by the observer's eye, 
+        the center of the screen, and the point on the screen corresponding to the visual angle.
+        The relationship is given by:
+        ____________________________________
+        x=tan((pi/180})*deg)*d
+        x=tan(phi)*d
+        x=2*tan(phi/2)*d
+        phi=2arctan((x/2)*d)
+        1 pixel (width) = pixel_metre_ratio
+        ------------------------------------
     """
     #posRatioPixel = (np.tan(np.radians(arcAngle))*distanceToMonitor) 
     posRatioPixel = 2*(np.tan(np.radians(arcAngle)/2)*distanceToMonitor)
@@ -180,11 +256,19 @@ def convertArcangleTOPixel(arcAngle, distanceToMonitor, pixel_metre_ratio):
 """
 def Meter_convertToArcangle(Meter_distanceM, distanceToMonitor, pixel_metre_ratio):
     """
-    In pixels: Pixel_distanceM
-    In metres: distanceToMonitor
-    + Covert pixel to metre, then to arc visual angle.
-    + 1 Pixel = metre: pixel_metre_ratio
-    x/2=tan(2*phi)*d
+    Convert a distance in meters to visual angle in degrees.
+    The function takes into account the distance from the observer to the monitor and the pixel-to-meter ratio of the monitor.
+        - The formula used is based on the geometry of a right triangle formed by the observer's eye, 
+        the center of the screen, and the point on the screen corresponding to the visual angle.
+        The relationship is given by:
+        _______________________________________
+        In pixels: Pixel_distanceM
+        In metres: distanceToMonitor
+        + Covert pixel to metre, then to arc visual angle.
+        + 1 Pixel = metre: pixel_metre_ratio
+        x/2=tan(2*phi)*d
+        phi=2arctan((x/2)*d)
+        ---------------------------------------
     """
     radians_to_degree   = 180/np.pi
     meterDist           = Meter_distanceM # *pixel_metre_ratio

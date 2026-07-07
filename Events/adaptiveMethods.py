@@ -22,17 +22,31 @@ import Functions.functionsForUse as funcs
 # these constants.
 
 DATA_PARAM_INDEX = {
+    "probe_lr": 1,
+    "probe_pos_x": 3,
     "probe_start": 4,
+    # Legacy note: index 5 is written as ``self.nUP`` before a stimulus trial
+    # and as ``reversal_tick`` after a response. Keep the storage behavior for
+    # now, but split this field when moving to a dict/dataclass config.
+    "reversal_tick": 5,
     "rate_down": 6,
+    "total_reversals": 9,
     "rate_up": 10,
+    "probe_pos_y": 11,
     "background_contrast": 12,
     "max_contrast": 13,
     "reversal_point": 14,
     "n_up": 15,
+    "distance_to_monitor": 17,
+    "pixel_metre_ratio": 18,
+    "terminate_criteria": 19,
+    "terminate_bool": 20,
     "step_down_up": 21,
     "condition_rule": 22,
     "log_unit_up": 23,
     "log_unit_down": 24,
+    "trial_limit": 25,
+    "wait_count": 26,
     "pre_reversal_step": 28,
     "condition_mode": 29,
     "trial_point": 30,
@@ -46,9 +60,15 @@ STORE_DATA_INDEX = {
     "adm_ids": 4,
     "rate_down": 5,
     "contrast": 6,
+    "rate_up": 7,
     "reversal_count": 8,
     "param_start": 9,
     "correct_tick": 10,
+    "next_contrast": 11,
+    "probe_y_positions": 12,
+    "n_up_values": 13,
+    "weber_contrast": 14,
+    "spatial_frequency": 15,
 }
 
 CONDITION_MODE = {
@@ -65,6 +85,8 @@ CONDITION_RULE = {
 }
 
 DEFAULT_PRE_REVERSAL_RATE = 0.3
+LEFT_RESPONSE = 0
+RIGHT_RESPONSE = 1
 
 
 # -----------------------------------------------------------------------------
@@ -90,6 +112,9 @@ def weberContrast(contrast_cpu, background_crt, max_crt, log_function=math.log10
         When True, return log-transformed Weber contrast.
     """
     span = max_crt - background_crt
+    if span == 0:
+        raise ValueError("max_crt and background_crt must be different")
+
     weber_values = []
     for value in contrast_cpu:
         weber = (value - background_crt) / span
@@ -168,6 +193,10 @@ def count_reversals_HighLow(contrast_list):
         elif delta > 0:
             new_direction = 1
         else:
+            continue
+
+        if direction == 0:
+            direction = new_direction
             continue
 
         if new_direction != direction:
@@ -330,6 +359,27 @@ def _parse_data_params(data_params):
 def _parse_store_data(store_data):
     """Map legacy trial-store list indices to named trial arrays."""
     return {name: store_data[index] for name, index in STORE_DATA_INDEX.items()}
+
+
+def _append_store_value(store_data, field_name, value):
+    """Append ``value`` to a named field in the legacy trial store."""
+    store_data[STORE_DATA_INDEX[field_name]].append(value)
+
+
+def _beep(frequency, duration_ms):
+    """
+    Play an optional feedback tone.
+
+    The experiment was written on Windows, where ``winsound`` is available.
+    Public/shared use may happen on other systems, so missing audio support
+    should not crash the staircase logic.
+    """
+    try:
+        import winsound
+    except ImportError:
+        return
+
+    winsound.Beep(int(frequency), int(duration_ms))
 
 
 def _to_weber(value, background_cpu, max_cpu):
@@ -606,20 +656,20 @@ def conditions(storeData, dataParams, conditionS):
             previous_state,
             counts_by_id[adm_index][1],
         )
-        contrast_weber = updated["contrast_weber"]
-        correct_tick = updated["correct_tick"]
-        param_start = updated["param_start"]
-        reversal_n = updated["reversal_n"]
-        rate_down = updated["rate_down"]
-        count_reversals_total = updated["count_reversals_total"]
-        response_count = updated["response_count"]
+        contrast_weber          = updated["contrast_weber"]
+        correct_tick            = updated["correct_tick"]
+        param_start             = updated["param_start"]
+        reversal_n              = updated["reversal_n"]
+        rate_down               = updated["rate_down"]
+        count_reversals_total   = updated["count_reversals_total"]
+        response_count          = updated["response_count"]
     else:
-        correct_tick = previous_state["correct_tick"]
-        param_start = previous_state["param_start"]
-        reversal_n = previous_state["reversal_n"]
-        rate_down = previous_state["rate_down"]
-        count_reversals_total = previous_state["count_reversals_total"]
-        response_count = response["response_count"]
+        correct_tick            = previous_state["correct_tick"]
+        param_start             = previous_state["param_start"]
+        reversal_n              = previous_state["reversal_n"]
+        rate_down               = previous_state["rate_down"]
+        count_reversals_total   = previous_state["count_reversals_total"]
+        response_count          = response["response_count"]
 
     contrast_cpu = _weber_to_cpu_luminance(contrast_weber, params)
 
@@ -648,32 +698,33 @@ def record_event(event, time, trial, args):
     """
     if trial.name == "stimuli":
         trial.print_Value()
-    elif event != "MOUSE" and trial.name == "responses":
+    elif event != "MOUSE" and trial.name == "response":
         subject_response(trial, args)
 
 
 def _key_to_response(key):
     """Map keyboard input to a binary 2AFC response (0 = left/down, 1 = right/up)."""
-    key = str(key)
+    key = str(key).upper()
     if key in ("LSHIFT", "LEFT", "DOWN"):
-        return 0
+        return LEFT_RESPONSE
     if key in ("RSHIFT", "RIGHT", "UP"):
-        return 1
+        return RIGHT_RESPONSE
     raise ValueError(f"Unrecognised response key: {key}")
 
 
 def _find_baseline_contrast(store_data, adm_id, probe_start):
     """Find the contrast baseline for the current ADM before recording a response."""
-    contrast_history = store_data[11]
-    adm_ids = store_data[4]
-    param_starts = store_data[9]
-    min_trials = 1
-    start_index = 1
+    trials              = _parse_store_data(store_data)
+    contrast_history    = trials["next_contrast"]
+    adm_ids             = trials["adm_ids"]
+    param_starts        = trials["param_start"]
+    min_trials          = 1
+    start_index         = 1
 
-    unique_ids = check_values(adm_ids)
+    unique_ids      = check_values(adm_ids)
     counts_by_id, _ = count_values_type(adm_ids, unique_ids, start_index)
-    adm_id_list = appendTrials(counts_by_id)
-    adm_index = findIndex(adm_id_list, adm_id)
+    adm_id_list     = appendTrials(counts_by_id)
+    adm_index       = findIndex(adm_id_list, adm_id)
 
     if counts_by_id[adm_index][1] < min_trials:
         return probe_start
@@ -698,26 +749,25 @@ def subject_response(trial, args):
     if not args:
         return
 
-    import winsound
+    duration            = 500
+    data_params_main    = funcs.from_Text(trial.fileParamsMain)
+    store_data          = funcs.readText_toList(trial.filesDataMain)
+    data_params         = funcs.from_Text(trial.fileParams1)
+    params              = _parse_data_params(data_params)
+    condition_dictionary= funcs.readText_toList_keyValue(trial.fileADM_cond)
+    spatial_frequency   = condition_dictionary[1][0]
 
-    duration = 500
-    data_params_main = funcs.from_Text(trial.fileParamsMain)
-    store_data = funcs.readText_toList(trial.filesDataMain)
-    data_params = funcs.from_Text(trial.fileParams1)
-    condition_dictionary = funcs.readText_toList_keyValue(trial.fileADM_cond)
-    spatial_frequency = condition_dictionary[1][0]
-
-    adm_id = data_params_main[0]
-    distance_to_monitor = data_params[17]
-    pixel_metre_ratio = data_params[18]
-    probe_pos_y = data_params[11]
-    n_up = data_params[15]
-    probe_start = data_params[4]
-    probe_pos_x = data_params[3]
-    probe_lr = int(data_params[1])
-    rate_up = data_params[10]
-    background_cpu = data_params[12]
-    max_cpu = data_params[13]
+    adm_id              = data_params_main[0]
+    distance_to_monitor = params["distance_to_monitor"]
+    pixel_metre_ratio   = params["pixel_metre_ratio"]
+    probe_pos_y         = params["probe_pos_y"]
+    n_up                = params["n_up"]
+    probe_start         = params["probe_start"]
+    probe_pos_x         = params["probe_pos_x"]
+    probe_lr            = int(params["probe_lr"])
+    rate_up             = params["rate_up"]
+    background_cpu      = params["background_contrast"]
+    max_cpu             = params["max_contrast"]
 
     probe_pos_deg = funcs.Meter_convertToArcangle(
         probe_pos_x, distance_to_monitor, pixel_metre_ratio
@@ -726,22 +776,22 @@ def subject_response(trial, args):
         probe_pos_y, distance_to_monitor, pixel_metre_ratio
     )
 
-    cL_param = _find_baseline_contrast(store_data, adm_id, probe_start)
+    baseline_contrast = _find_baseline_contrast(store_data, adm_id, probe_start)
     value_response = _key_to_response(args[0])
 
     if probe_lr == value_response:
-        winsound.Beep(1000, duration)
+        _beep(1000, duration)
     else:
-        winsound.Beep(300, duration)
+        _beep(300, duration)
 
-    store_data[0].append(round(probe_pos_deg, 4))
-    store_data[1].append(round(probe_lr, 4))
-    store_data[2].append(round(value_response, 4))
-    store_data[4].append(round(adm_id, 4))
-    store_data[6].append(round(cL_param, 8))
-    store_data[7].append(round(rate_up, 4))
-    store_data[12].append(round(probe_pos_y_deg, 4))
-    store_data[13].append(round(n_up + 1, 4))
+    _append_store_value(store_data, "probe_positions", round(probe_pos_deg, 4))
+    _append_store_value(store_data, "probe_lr", round(probe_lr, 4))
+    _append_store_value(store_data, "human_lr", round(value_response, 4))
+    _append_store_value(store_data, "adm_ids", round(adm_id, 4))
+    _append_store_value(store_data, "contrast", round(baseline_contrast, 8))
+    _append_store_value(store_data, "rate_up", round(rate_up, 4))
+    _append_store_value(store_data, "probe_y_positions", round(probe_pos_y_deg, 4))
+    _append_store_value(store_data, "n_up_values", round(n_up + 1, 4))
 
     (
         new_contrast,
@@ -754,21 +804,21 @@ def subject_response(trial, args):
         rate_up,
     ) = conditions(store_data, data_params, True)
 
-    store_data[5].append(round(rate_down, 4))
-    store_data[3].append(round(total_reversals, 4))
-    store_data[8].append(round(reversal_tick, 4))
-    store_data[9].append(param_start)
-    store_data[10].append(correct_tick)
-    store_data[11].append(round(new_contrast, 8))
+    _append_store_value(store_data, "rate_down", round(rate_down, 4))
+    _append_store_value(store_data, "reversals", round(total_reversals, 4))
+    _append_store_value(store_data, "reversal_count", round(reversal_tick, 4))
+    _append_store_value(store_data, "param_start", param_start)
+    _append_store_value(store_data, "correct_tick", correct_tick)
+    _append_store_value(store_data, "next_contrast", round(new_contrast, 8))
 
-    weber_value = weberContrast([cL_param], background_cpu, max_cpu)[0]
-    store_data[14].append(round(weber_value, 8))
-    store_data[15].append(spatial_frequency)
+    weber_value = weberContrast([baseline_contrast], background_cpu, max_cpu)[0]
+    _append_store_value(store_data, "weber_contrast", round(weber_value, 8))
+    _append_store_value(store_data, "spatial_frequency", spatial_frequency)
 
     funcs.write_toText(trial.filesDataMain, store_data)
-    data_params[5] = reversal_tick
-    data_params[9] = total_reversals
-    data_params[10] = rate_up
+    data_params[DATA_PARAM_INDEX["reversal_tick"]] = reversal_tick
+    data_params[DATA_PARAM_INDEX["total_reversals"]] = total_reversals
+    data_params[DATA_PARAM_INDEX["rate_up"]] = rate_up
     funcs.to_Text(trial.fileParams1, data_params)
 
 
@@ -813,8 +863,6 @@ class Trial_ADMs:
         stimuli,
         duration_ms,
         pos,
-        contrast,
-        number_trials,
         n_up,
         file_array_position,
         file_params_main,
@@ -822,62 +870,58 @@ class Trial_ADMs:
         file_params_position,
         files_adm_index,
         file_adm_condition,
-        file_adm_ab,
         files_data_main,
-        text,
         keys=None,
         mouse=False,
     ):
-        self.stimuli = stimuli
-        self.T = duration_ms
-        self.name = name
-        self.keys = keys or []
-        self.mouse = mouse
-        self.pos = pos
-        self.contrast = contrast
-        self.numberTrials = number_trials
-        self.nUP = n_up
+        self.stimuli        = stimuli
+        self.T              = duration_ms
+        self.name           = name
+        self.keys           = keys or []
+        self.mouse          = mouse
+        self.pos            = pos
+        self.nUP            = n_up
         self.fileParamsMain = file_params_main
-        self.fileParams1 = file_params
-        self.filesDataMain = files_data_main
-        self.text = text
+        self.fileParams1    = file_params
+        self.filesDataMain  = files_data_main
         self.filesADM_INDEX = files_adm_index
-        self.fileArrayPos = file_array_position
-        self.filePosition = file_params_position
-        self.fileADM_cond = file_adm_condition
-        self.fileADM_AB = file_adm_ab
+        self.fileArrayPos   = file_array_position
+        self.filePosition   = file_params_position
+        self.fileADM_cond   = file_adm_condition
 
     def print_Value(self):
         """Select the next ADM condition and persist probe parameters to disk."""
-        if self.name != "flanker_selectivity_LR":
+
+        if self.name != "stimuli":
             print("No trial handler found for:", self.name)
             return
 
         import random
-        import winsound
 
-        data_position = funcs.from_Text(self.filePosition)
-        data_params_main = funcs.from_Text(self.fileParamsMain)
-        data_params = funcs.from_Text(self.fileParams1)
-        data_main = funcs.readText_toList(self.filesDataMain)
-        condition_list = funcs.from_Text(self.fileArrayPos)
-        condition_dictionary = funcs.readText_toList_keyValue(self.fileADM_cond)
-        data_adm_index = funcs.readText_toList(self.filesADM_INDEX)
+        data_position       = funcs.from_Text(self.filePosition)
+        data_params_main    = funcs.from_Text(self.fileParamsMain)
+        data_params         = funcs.from_Text(self.fileParams1)
+        params              = _parse_data_params(data_params)
+        data_main           = funcs.readText_toList(self.filesDataMain)
+        trials              = _parse_store_data(data_main)
+        condition_list      = funcs.from_Text(self.fileArrayPos)
+        condition_dictionary= funcs.readText_toList_keyValue(self.fileADM_cond)
+        data_adm_index      = funcs.readText_toList(self.filesADM_INDEX)
 
-        contrast_list = data_main[6]
-        adm_id_list = data_main[4]
-        distance_to_monitor = data_params[17]
-        pixel_metre_ratio = data_params[18]
-        terminate_criteria = data_params[19]
-        terminate_bool = int(data_params[20])
-        trial_limit = int(data_params[25])
-        wait_count = int(data_params[26])
-        background_contrast = data_params[12]
-        max_contrast = data_params[13]
+        contrast_list       = trials["contrast"]
+        adm_id_list         = trials["adm_ids"]
+        distance_to_monitor = params["distance_to_monitor"]
+        pixel_metre_ratio   = params["pixel_metre_ratio"]
+        terminate_criteria  = params["terminate_criteria"]
+        terminate_bool      = int(params["terminate_bool"])
+        trial_limit         = int(params["trial_limit"])
+        wait_count          = int(params["wait_count"])
+        background_contrast = params["background_contrast"]
+        max_contrast        = params["max_contrast"]
 
         px, py = self.pos[0], self.pos[1]
-        condition_value = condition_list[random.randrange(len(condition_list))]
-        adm_cond, adm_index, out_text = condition_ADM(data_adm_index, condition_value)
+        condition_value                 = condition_list[random.randrange(len(condition_list))]
+        adm_cond, adm_index, out_text   = condition_ADM(data_adm_index, condition_value)
 
         kwargs = {"position": px, "frequency": 40}
         condition_dictionary, kwargs = condition_Dictionary(
@@ -891,10 +935,10 @@ class Trial_ADMs:
             distance_to_monitor,
             pixel_metre_ratio,
         )
-        current_adm_id = int(adm_id_list[-1])
-        adm_contrasts = admID_staircase(adm_id_list, contrast_list, current_adm_id)
-        weber_list = weberContrast(adm_contrasts, background_contrast, max_contrast)
-        reversal_count, _, _ = count_reversals_HighLow(weber_list)
+        current_adm_id          = int(adm_id_list[-1])
+        adm_contrasts           = admID_staircase(adm_id_list, contrast_list, current_adm_id)
+        weber_list              = weberContrast(adm_contrasts, background_contrast, max_contrast)
+        reversal_count, _, _    = count_reversals_HighLow(weber_list)
 
         if reversal_count > terminate_criteria or len(weber_list) > trial_limit:
             for index, adm_j in enumerate(adm_index):
@@ -912,28 +956,27 @@ class Trial_ADMs:
 
         px_metres = round(px * pixel_metre_ratio, 4)
         if px_metres >= 0:
-            value_response = 1
+            value_response = RIGHT_RESPONSE
         else:
-            value_response = 0
+            value_response = LEFT_RESPONSE
 
-        winsound.Beep(550, self.T)
+        _beep(550, self.T)
 
-        data_params[26] = wait_count
-        data_params[5] = self.nUP
-        data_params[11] = round(py * pixel_metre_ratio, 4)
-        data_params[3] = px_metres
-        data_params[1] = value_response
+        data_params[DATA_PARAM_INDEX["wait_count"]] = wait_count
+        data_params[DATA_PARAM_INDEX["reversal_tick"]] = self.nUP
+        data_params[DATA_PARAM_INDEX["probe_pos_y"]] = round(py * pixel_metre_ratio, 4)
+        data_params[DATA_PARAM_INDEX["probe_pos_x"]] = px_metres
+        data_params[DATA_PARAM_INDEX["probe_lr"]] = value_response
         data_params_main[0] = out_text
-        data_params[20] = terminate_bool
+        data_params[DATA_PARAM_INDEX["terminate_bool"]] = terminate_bool
 
-        data_adm_index[0] = adm_cond
-        data_adm_index[1] = adm_index
-        data_position[0] = px
-        data_position[1] = py
+        data_adm_index[0]   = adm_cond
+        data_adm_index[1]   = adm_index
+        data_position[0]    = px
+        data_position[1]    = py
 
         funcs.write_toText(self.filesADM_INDEX, data_adm_index)
         funcs.write_toText(self.fileADM_cond, condition_dictionary)
-        funcs.write_toText(self.fileADM_AB, funcs.from_Text(self.fileADM_AB))
         funcs.write_toText(self.fileParams1, [float(x) for x in data_params])
         funcs.write_toText(self.fileParamsMain, [float(x) for x in data_params_main])
         funcs.write_toText(self.filePosition, [float(x) for x in data_position])
@@ -955,8 +998,6 @@ class Trial_ADMs:
             "mouse": self.mouse,
             "stimuli": self.stimuli,
             "pos": self.pos,
-            "contrast": self.contrast,
-            "text": self.text,
             "nUP": self.nUP,
         }
 
