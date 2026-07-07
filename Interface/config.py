@@ -164,6 +164,9 @@ kwargs_fakeFIX= {
 }
 
 
+with open(data_save_repository+"/"+"user_experiment_config.json", "w") as f:
+    json.dump(experiment_params, f, indent=4)
+
 timeFixate          = 250
 timeInterval        = 250
 timeT               = 0

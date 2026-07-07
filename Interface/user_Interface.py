@@ -13,7 +13,7 @@ LOCAL_DATA_DIR  = str(Path(__file__).resolve().parent.parent.parent)+'/'
 print('LOCAL_DATA_DIR', LOCAL_DATA_DIR)
 
 working_Directory       = WORKING_DIR
-data_save_repository    = LOCAL_DATA_DIR+"test_save_data"
+data_save_repository    = LOCAL_DATA_DIR+"local_psychophysics_data"
 
 
 os.path.abspath(working_Directory)
@@ -53,6 +53,8 @@ checkDict = {'NEW_or_OLD':listBool, 'Name':listName}
 boolDict  = funcs.optionPrompt(checkDict)
 
 fileExperimentLast = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
+
+
 print(fileExperimentLast)
 if boolDict['NEW_or_OLD'] =='OLD':
     keyValue = funcs.readText_toList_keyValue(fileExperimentLast)
@@ -61,9 +63,14 @@ if boolDict['NEW_or_OLD'] =='OLD':
     newDict = {}
     for j in range(len(keyList)):
         newDict.update({keyList[j]:valueList[j]})
+
 elif boolDict['NEW_or_OLD']=='NEW':
-    checkDict = {'Experiment_Type':listExps , 'Luminance': listLum, 'Screen_intensity': listCPULum}
+    checkDict = {'Experiment_Type':listExps , 
+                 'Luminance': listLum, 
+                 'Screen_intensity': listCPULum
+    }
     newDict   = funcs.optionPrompt(checkDict)
+
     newDict.update({'Name':boolDict['Name'],
                     'trialPOINT':9, # 8 , # 5
                     'start_Cw':1.0,
