@@ -1,5 +1,6 @@
 
 import os
+import json
 import numpy as np
 
 
@@ -203,6 +204,25 @@ def to_Text(path, response: list):
     file = open(path, "w")
     file.write(str(response))
     file.close()
+"""
+    ||$||
+"""
+def create_Text(filename, subtitles: list):
+    path = filename
+    file = open(path, "w")
+    
+    for j in range(len(subtitles)):
+        if j < len(subtitles)-1:
+            file.write(subtitles[j]+':'+str([0]) + "\n" )
+        elif j == len(subtitles)-1:
+            file.write(subtitles[j]+':'+str([0]))
+    file.close()
+"""
+    ||$||
+"""
+def create_JSON(filename, dictionary: dict):
+    with open(filename, "w") as f:
+        json.dump(dictionary, f, indent=4)
 """
 ||$||
 """

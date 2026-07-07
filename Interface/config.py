@@ -11,9 +11,7 @@ import time
 import Functions.functionsForUse as funcs
 
 
-from Events.libC import (
-    ExpWindow, 
-)
+
 from Events.adaptiveMethods import (
     findCPU_fromWeberContrast,
 )
@@ -21,9 +19,6 @@ from Events.adaptiveMethods import (
 
 # ------------------------------ Experiment setup ------------------------------
 
-pyglet.options['vsync'] = True
-pyglet.options['double_buffer'] = True
-win = ExpWindow(fullscreen=True)
 
 
 current_time = datetime.datetime.now()
@@ -67,78 +62,41 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     print("Window vsync is on, target refresh:", pyglet.options['vsync'])
     print('monitor_refresh_rate:', monitor_refresh_rate)
 
-    pixel_width             = win.width
-    pixel_height            = win.height
-    screen_width_pixel      = pixel_width
-    screen_height_pixel     = pixel_height
-    aspect_ratio            = screen_width_pixel/screen_height_pixel
+    
 
-    metre_width             = 596.2e-3 # 610e-3
-    metre_height            = 335.3e-3 # 350e-3
-    screen_width_m          = metre_width
-    screen_height_m         = metre_height
 
-    cx, cy                  = win.width // 2, win.height // 2
+    # ------------------------------ Initialize dictionary parameters ------------------------------
 
-    print('win.width (pixel)', win.width, 'win.height (pixel)', win.height)
-    pixel_metre_ratio   = funcs.ratio_PIXEL_Meter(win.width, metre_width) # <- seems to give correct answer.
-
-    viewing_distance_m = 1.0
-
-    fov_x_deg = 2 * np.degrees(np.arctan((screen_width_m / 2) / viewing_distance_m))
-    fov_y_deg = 2 * np.degrees(np.arctan((screen_height_m / 2) / viewing_distance_m))
-
-    ppd_x     = screen_width_pixel / fov_x_deg
-    ppd_y     = screen_height_pixel / fov_y_deg
 
 
     ratio4dw1up = 0.8415
     ratio3dw1up = 0.7393
     ratio2dw1up = 0.5488
 
-
-    # ------------------------------ Initialize dictionary parameters ------------------------------
-
     timeFixate          = 250
     timeInterval        = 250
     timeT               = 0
     timeAB              = 200
     startFlicker_index  = 0
+    viewing_distance_m  = 1.0
 
-
-    monitor_screen_params = {
-        'monitor_refresh_rate': monitor_refresh_rate,
-        'screen_width_pixel': screen_width_pixel,
-        'screen_height_pixel': screen_height_pixel,
-        'screen_width_m': screen_width_m,
-        'screen_height_m': screen_height_m,
-        'aspect_ratio': aspect_ratio,
-        'pixel_metre_ratio': pixel_metre_ratio,
-        'viewing_distance_m': viewing_distance_m,
-        'fov_x_deg': fov_x_deg,
-        'fov_y_deg': fov_y_deg,
-        'ppd_x': ppd_x,
-        'ppd_y': ppd_y,
-        'center_x_pixel': cx,
-        'center_y_pixel': cy,
-        'window_width_pixel': win.width,
-        'window_height_pixel': win.height,
-    }
 
     experiment_params = {
         'background_intensity': float(setupDict['Screen_intensity']),
         'max_intensity': 1.0,
+        'max_monitor_cdm2': float(setupDict['Luminance']),
+        'start_weber_Contrast': float(setupDict['start_Cw']),
         'timeFixate':   timeFixate,
         'timeInterval': timeInterval,
         'timeAB':       timeAB,
         'timeT':        timeT,
+        'viewing_distance_m': viewing_distance_m,
     }
 
     staircase_params = {
         'trialPOINT':           int(setupDict['trialPOINT']),
         'nDW':                  4,
         'nUP':                  1,
-        'start_weber_Contrast': float(setupDict['start_Cw']),
         'number_trials':        10,
         'terminationINDEX':     9,
         'logUNIT_UP':           0.19,
@@ -149,7 +107,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     }
 
     kwargs_fixate= {
-        'c':                    experiment_params['bkg_intensity']+0.09,  # should be 0.33 or less not 0.45 +0.08
+        'c':                    experiment_params['background_intensity']+0.09,  # should be 0.33 or less not 0.45 +0.08
         'sigma':   	            0.035,  # 0.035 || should be 0.01 or less not 0.02
         'fs':                   0.0,
         'phi':                  0.0,
@@ -159,7 +117,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     }
 
     kwargs_fakeFIX= {
-        'c':                    experiment_params['bkg_intensity'],  # should be 0.33 or less not 0.45
+        'c':                    experiment_params['background_intensity'],  # should be 0.33 or less not 0.45
         'sigma':   	            0.00001,  # should be 0.01 or less not 0.02
         'fs':                   0.0,
         'phi':                  0.0,
@@ -169,7 +127,6 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     }
 
     dict_all_dicts = {
-        'monitor_screen_params': monitor_screen_params,
         'experiment_params': experiment_params,
         'staircase_params': staircase_params,
         'kwargs_fixate': kwargs_fixate,
@@ -183,9 +140,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     # ------------------------------ Files and timing ------------------------------
 
 
-    UPDW_Rule           = 'DW'+str(int(experiment_params['nDW']+1))+'_UP'+str(int(experiment_params['nUP']))
+    UPDW_Rule           = 'DW'+str(int(staircase_params['nDW']+1))+'_UP'+str(int(staircase_params['nUP']))
     experimentNAME      = setupDict['Experiment_Type']
-    bkg_intensityFolder = 'Background_Intensity_'+str(experiment_params['bkg_intensity'])
+    bkg_intensityFolder = 'Background_Intensity_'+str(experiment_params['background_intensity'])
 
     experiment_type = (
         f"{UPDW_Rule}/{experimentNAME}/"
@@ -198,8 +155,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     funcs.check_folder_exist([folderName, folderParams])
 
     filename_everything = '_experiment.txt'
-    filename_params     = folderParams+"/Records_Params"+".txt"
-    fileParamsMain      = folderParams+"/Records_ParamsMain"+".txt"
+    filename_params     = folderParams+"/Records_Params"+".json"
     fileParamsPosition  = folderParams+"/Records_position"+".txt"
     fileADM_indexing    = folderParams+"/Records_ADMINDEX"+".txt"
     fileArrayCondition  = folderParams+"/Records_conditionArray"+".txt"
@@ -208,53 +164,19 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
 
     filename_everything, indexEXP = funcs.CheckFileName(folderName,filename_everything)
     file_paramsStimulus           = folderParams+'/'+str(indexEXP)+'_file_Stimulus_' +'.txt'
-    filename_ADM_main             = filename_everything
+    filename_response_main        = filename_everything
 
     cStart = findCPU_fromWeberContrast(
         experiment_params['max_intensity'],
-        experiment_params['bkg_intensity'],
+        experiment_params['background_intensity'],
         experiment_params['start_weber_Contrast'],
     )
     probeStart      = cStart
     terminateBOOL   = 0
 
-    value_params = [
-        cStart,
-        experiment_params['probe_LR'],
-        experiment_params['human_LR'],
-        experiment_params['probe_pos (m)'],
-        probeStart,
-        experiment_params['reversalN'],
-        experiment_params['rateDW'],
-        experiment_params['correctTick'],
-        experiment_params['text'],
-        experiment_params['count_Reversals'],
-        experiment_params['rateUP'],
-        experiment_params['posY'],
-        experiment_params['bkg_intensity'],
-        experiment_params['max_intensity'],
-        experiment_params['reversePOINT'],
-        experiment_params['nDW'],
-        experiment_params['nUP'],
-        experiment_params['distance_To_Monitor'],
-        pixel_metre_ratio,
-        experiment_params['terminationINDEX'],
-        terminateBOOL,
-        experiment_params['stepDWUP'],
-        experiment_params['condRule'],
-        experiment_params['logUNIT_UP'],
-        experiment_params['logUNIT_DW'],
-        experiment_params['limit_Trial_Run'],
-        0,
-        0,
-        experiment_params['preReversalStepDW'],
-        experiment_params['Reversal_or_Trial'],
-        experiment_params['trialPOINT'],
-        monitor_refresh_rate,
-        1.0,
-        time.perf_counter(),
-        startFlicker_index,
-    ]
+    value_params = dict_all_dicts.copy()    
+
+
 
     columnADM = [
         'condition', 
@@ -266,33 +188,32 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'BOOL condition', 
         'adm ID'
     ]
-    columnsSet = [
-        'condition',
-        'probe_Alternative_Choice',
-        'human_Alternative_Choice',
-        'count_Reversals',
-        'stairID',
-        'rateDW',
-        'COMP_intensity',
-        'rateUP',
-        'countReverseTick',
-        'startValue',
-        'correctTicks',
-        'newContrast',
-        'probe position Y',
-        'nDW',
-        'weber contrast',
-        'grating sf',
-    ]
+    columnsSet = {
+        'condition': [],
+        'probe_Alternative_Choice': [],
+        'human_Alternative_Choice': [],
+        'count_Reversals': [],
+        'stairID': [],
+        'rateDW': [],
+        'COMP_intensity': [],
+        'rateUP': [],
+        'countReverseTick': [],
+        'startValue': [],
+        'correctTicks': [],
+        'newContrast': [],
+        'probe position Y': [],
+        'nDW': [],
+        'weber contrast': [],
+        'grating sf': [],
+    }
 
-    value_params    = [float(x) for x in value_params]
-    valueMain       = [value_params['text']]
     valuePosition   = [0.0]
     condition_list  = [2,4,6,8,10]
 
-    funcs.create_Text_academic(filename_ADM_main, columnsSet)
-    funcs.create_Text(filename_params, value_params)
-    funcs.create_Text(fileParamsMain, valueMain)
+    funcs.create_JSON(filename_response_main, columnsSet)
+    funcs.create_JSON(filename_params, value_params)
+    
+    """
     funcs.create_Text(fileParamsPosition, valuePosition)
     funcs.create_Text_academic(fileADM_indexing, columnADM)
     funcs.create_Text(fileArrayCondition, condition_list)
@@ -315,3 +236,4 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     for column in adm_condition_table:
         column.pop(0)
     funcs.write_toText(fileADM_condition, adm_condition_table)
+    """

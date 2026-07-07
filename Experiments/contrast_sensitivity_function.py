@@ -1,7 +1,6 @@
 
-import os
 import random
-import sys
+import numpy as np
 import datetime
 from pathlib import Path
 import json
@@ -36,13 +35,60 @@ with open(data_save_repository+"/"+"user_experiment_config.json", "r") as f:
 with open(data_save_repository+"/"+NAME+"/"+"experiment_defined.json", "r") as f:
     setupDict = json.load(f)
 
-monitor_screen_params   = dict_all_dicts['monitor_screen_params']
 experiment_params       = dict_all_dicts['experiment_params']
 staircase_params        = dict_all_dicts['staircase_params']
 kwargs_fixate           = dict_all_dicts['kwargs_fixate']
 kwargs_fakeFIX          = dict_all_dicts['kwargs_fakeFIX']
 
 # ------------------------------ Experiment setup ------------------------------
+pyglet.options['vsync'] = True
+pyglet.options['double_buffer'] = True
+win = ExpWindow(fullscreen=True)
+
+
+pixel_width             = win.width
+pixel_height            = win.height
+screen_width_pixel      = pixel_width
+screen_height_pixel     = pixel_height
+aspect_ratio            = screen_width_pixel/screen_height_pixel
+monitor_refresh_rate    = 60
+
+metre_width             = 596.2e-3 # 610e-3
+metre_height            = 335.3e-3 # 350e-3
+screen_width_m          = metre_width
+screen_height_m         = metre_height
+
+cx, cy                  = win.width // 2, win.height // 2
+
+pixel_metre_ratio   = funcs.ratio_PIXEL_Meter(win.width, metre_width) # <- seems to give correct answer.
+viewing_distance_m  = experiment_params['viewing_distance_m']
+
+fov_x_deg = 2 * np.degrees(np.arctan((screen_width_m / 2) / viewing_distance_m))
+fov_y_deg = 2 * np.degrees(np.arctan((screen_height_m / 2) / viewing_distance_m))
+
+ppd_x     = screen_width_pixel / fov_x_deg
+ppd_y     = screen_height_pixel / fov_y_deg
+
+
+
+
+monitor_screen_params = {
+    'monitor_refresh_rate': monitor_refresh_rate,
+    'screen_width_pixel': screen_width_pixel,
+    'screen_height_pixel': screen_height_pixel,
+    'screen_width_m': screen_width_m,
+    'screen_height_m': screen_height_m,
+    'aspect_ratio': aspect_ratio,
+    'pixel_metre_ratio': pixel_metre_ratio,
+    'fov_x_deg': fov_x_deg,
+    'fov_y_deg': fov_y_deg,
+    'ppd_x': ppd_x,
+    'ppd_y': ppd_y,
+    'center_x_pixel': cx,
+    'center_y_pixel': cy,
+    'window_width_pixel': win.width,
+    'window_height_pixel': win.height,
+}
 
 cx, cy                      = monitor_screen_params['cx'], monitor_screen_params['cy']
 monitor_refresh_rate        = monitor_screen_params['monitor_refresh_rate']
@@ -52,10 +98,6 @@ timeInterval                = monitor_screen_params['timeInterval']
 timeAB                      = monitor_screen_params['timeAB']
 timeT                       = monitor_screen_params['timeT']
 # ------------------------------ Experiment setup ------------------------------
-
-pyglet.options['vsync'] = True
-pyglet.options['double_buffer'] = True
-win = ExpWindow(fullscreen=True)
 
 
 current_time = datetime.datetime.now()

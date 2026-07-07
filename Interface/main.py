@@ -31,18 +31,15 @@ print('============== FILES ===============================')
 import Functions.functionsForUse as funcs
 from Interface.config import run_configure_experiment
 
+# ------------------------------ Experiment setup ------------------------------
 
-
-# ==================================================
-# ==================================================
-# ==================================================
 current_time    	    = datetime.datetime.now()
 today           	    = str(current_time.year)+'_'+str(current_time.month)+'_'+str(current_time.day)
 print("Today date is: ", today)
 
 
 "At max 500 cdm2"
-listLum   = [19.0, 29,     41 , 49,    204,   255, 300,    322, 370, 403,   415]
+listLum   = [19.0, 29,     41 , 49,    204,   255, 300,    322, 370, 403,   415, 500]
 listCPULum= [0.24,0.294, 0.34, 0.374, 0.72,  0.8, 0.86, 0.89,  0.95, 0.98, 0.99]
 
 listName  = os.listdir(data_save_repository)
@@ -54,9 +51,8 @@ checkDict = {'NEW_or_OLD':listBool, 'Name':listName}
 boolDict  = funcs.optionPrompt(checkDict)
 
 fileExperimentLast = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
-
-
 print(fileExperimentLast)
+
 if boolDict['NEW_or_OLD'] =='OLD':
     keyValue = funcs.readText_toList_keyValue(fileExperimentLast)
     keyList   =keyValue[0]
@@ -66,14 +62,15 @@ if boolDict['NEW_or_OLD'] =='OLD':
         setupDict.update({keyList[j]:valueList[j]})
 
 elif boolDict['NEW_or_OLD']=='NEW':
-    checkDict = {'Experiment_Type':listExps , 
+    checkDict = {'Experiment_Type':listExps ,
+                 'Max_monitor_Luminance': listLum, 
                  'Luminance': listLum, 
                  'Screen_intensity': listCPULum
     }
     setupDict   = funcs.optionPrompt(checkDict)
 
     setupDict.update({'Name':boolDict['Name'],
-                      'trialPOINT':9, # 8 , # 5
+                    'trialPOINT':9, # 8 , # 5
                     'start_Cw':1.0,
                     'stimulus_SF': 1.0,
                     'date_created':today,
