@@ -752,15 +752,25 @@ def subject_response(trial, args):
     if not args:
         return
 
+    data_responses      = funcs.readText_toList(trial.file_response_record)
+
+    stimulus_condition_history       = data_responses[0]
+    probe_Alternative_Choice_history = data_responses[1]
+    human_Alternative_Choice_history = data_responses[2]
+    staircase_Identity_history       = data_responses[3]
+    probe_weber_contrast_history     = data_responses[4]
+    probe_screen_intensity_history   = data_responses[5]
 
     duration            = 500
+
     conditions_data     = funcs.read_JSON(trial.fileParamsfilename_Conditionsain)
+    staircase_id        = conditions_data['staircase_Identity_now']  
+    stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
+    probe_weber_contrast= conditions_data['now_weber_contrast'][staircase_id]  
+
     params              = funcs.read_JSON(trial.file_params_Stimulus)
-    store_data          = funcs.readText_toList(trial.file_response_record)
 
-    spatial_frequency   = 
 
-    adm_id              = data_params_main[0]
     distance_to_monitor = params["distance_to_monitor"]
     pixel_metre_ratio   = params["pixel_metre_ratio"]
     probe_pos_y         = params["probe_pos_y"]
@@ -779,7 +789,7 @@ def subject_response(trial, args):
         probe_pos_y, distance_to_monitor, pixel_metre_ratio
     )
 
-    baseline_contrast = _find_baseline_contrast(store_data, adm_id, probe_start)
+    baseline_contrast = _find_baseline_contrast(store_data, staircase_id, probe_start)
     value_response    = _key_to_response(args[0])
 
     if probe_lr == value_response:
@@ -787,14 +797,6 @@ def subject_response(trial, args):
     else:
         _beep(300, duration)
 
-    _append_store_value(store_data, "probe_positions", round(probe_pos_deg, 4))
-    _append_store_value(store_data, "probe_lr", round(probe_lr, 4))
-    _append_store_value(store_data, "human_lr", round(value_response, 4))
-    _append_store_value(store_data, "adm_ids", round(adm_id, 4))
-    _append_store_value(store_data, "contrast", round(baseline_contrast, 8))
-    _append_store_value(store_data, "rate_up", round(rate_up, 4))
-    _append_store_value(store_data, "probe_y_positions", round(probe_pos_y_deg, 4))
-    _append_store_value(store_data, "n_up_values", round(n_up + 1, 4))
 
     (
         new_weber_contrast,
@@ -807,22 +809,10 @@ def subject_response(trial, args):
         rate_up,
     ) = update_staircase_probe_screen_intensity(store_data, data_params, True)
 
-    _append_store_value(store_data, "rate_down", round(rate_down, 4))
-    _append_store_value(store_data, "reversals", round(total_reversals, 4))
-    _append_store_value(store_data, "reversal_count", round(reversal_tick, 4))
-    _append_store_value(store_data, "param_start", param_start)
-    _append_store_value(store_data, "correct_tick", correct_tick)
-    _append_store_value(store_data, "next_contrast", round(new_contrast, 8))
-
     weber_value = convert_screen_intensity_history_to_weber_contrast_list([baseline_contrast], background_cpu, max_cpu)[0]
-    _append_store_value(store_data, "weber_contrast", round(weber_value, 8))
-    _append_store_value(store_data, "spatial_frequency", spatial_frequency)
 
     funcs.write_toText(trial.filesDataMain, store_data)
-    data_params[DATA_PARAM_INDEX["reversal_tick"]] = reversal_tick
-    data_params[DATA_PARAM_INDEX["total_reversals"]] = total_reversals
-    data_params[DATA_PARAM_INDEX["rate_up"]] = rate_up
-    funcs.to_Text(trial.fileParams1, data_params)
+
 
 
 # -----------------------------------------------------------------------------
@@ -894,8 +884,6 @@ class Trials_read_write_staircase_conditions:
 
 
         data_responses      = funcs.readText_toList(self.fileResponseRecord)
-
-
         staircase_Identity_history          = data_responses[3]
         probe_screen_intensity_history      = data_responses[5]
 
