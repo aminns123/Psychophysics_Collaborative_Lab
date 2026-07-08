@@ -1,16 +1,13 @@
 
 from __future__ import division
 
-from Events.libC import (
-    stim, Params, copy_params, make_dot, from_Text, Shader, glUseProgram,
-    glUniform1f, glPushMatrix, glLoadIdentity, glTranslatef, glBegin,
-    glTexCoord2f, glVertex2f, glEnd, glPopMatrix, GL_QUADS,
-    GL_BLEND, GL_TEXTURE_2D, glEnable, glColor4f
-)
+from libC import *
+
 from Functions.functionUSE import (
     adMethod_luminance_ID, 
     weberContrast, 
-    readText_toList_keyValue
+    readText_toList_keyValue,
+    from_Text,
 )
 import numpy as np
 from pyglet import text

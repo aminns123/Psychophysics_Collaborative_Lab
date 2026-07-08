@@ -226,6 +226,26 @@ def create_JSON(filename, dictionary: dict):
 """
 ||$||
 """
+def read_JSON(filename):
+    with open(filename, "r") as f:
+        dictionary = json.load(f)
+    return dictionary
+"""
+||$||
+"""
+def create_Text_columns(filename, subtitles: list):
+    path = filename
+    file = open(path, "w")
+    
+    for j in range(len(subtitles)):
+        if j < len(subtitles)-1:
+            file.write(str(0.0) +'\t' )
+        elif j == len(subtitles)-1:
+            file.write(str(0.0))
+    file.close()  
+"""
+||$||
+"""
 def write_toText(path, data):
     """
     Write a x-Dimensional list (matrix) to a text file, transposing it in the process.
@@ -248,9 +268,80 @@ def write_toText(path, data):
                 file.write(str(data[y][x]))          
     file.close()
 """
+    ||$||
+"""
+def readText_toList(path):
+    file        = open(path, "r")
+    contents    = file.read()
+    file.close()
+    contents = contents.replace("\t",",")
+    contLists= contents.split('\n')
+
+
+    ListRows  = []
+    for j in range(len(contLists)):
+        contLists_j = contLists[j].replace("]","")
+        contLists_j = contLists_j.split(",")
+        ListRows.append([float(elements) for elements in contLists_j])
+    
+    outColumns = [[] for i in range(len(ListRows[0]))]
+    
+    for j in range(len(ListRows)):
+        for i in range(len(ListRows[0])):
+            outColumns[i].append(ListRows[j][i]) 
+    
+    return outColumns
+"""
+||$||
+"""
+def removeZeroRow(filesData):
+    listOut = readText_toList(filesData)  
+    count   = 0
+    """
+    for i in range(len(listOut)):
+        if int(listOut[i][0]) == int(0):
+            count += 0
+        elif int(listOut[i][0]) != int(0):
+            count += 1
+    """
+    if count == 0:
+        for i in range(len(listOut)):
+            listOut[i].pop(0)
+    elif count != 0:
+        pass # print('== no zeros here ==')
+        
+    write_toText(filesData, listOut)
+"""
+||$||
+"""    
+def correctFileSpacings(filesData):
+    listOut = readText_toList(filesData)  
+    write_toText_Spacing(filesData, listOut)
+"""
+||$||
+"""    
+def write_toText_Spacing(path, data):
+    file = open(path, "w")
+    
+    colS = 0
+    rowS = 0
+    
+    data =  list(map(list, zip(*data))) # Transpose list (must be a complete matrix/list, no gaps)
+    
+    for y in range(len(data)): # new rows 
+        if (y > 0) and (y < len(data)):
+            file.write('\n')
+            
+        for x in range(len(data[y])): # new columns
+            ## <,>,^ : aligns left, right, centre.
+            if x < len(data[y])-1:
+                file.write("{: <18}".format(str(data[y][x]))+'\t') # want to swap col with row thus [y][x]->[x][y]
+            elif x == len(data[y])-1:
+                file.write("{: <18}".format(str(data[y][x]))     )     
+    file.close()
+"""
 ||$||
 """ 
-
 def convertArcangleTOPixel(arcAngle, distanceToMonitor, pixel_metre_ratio):
     """
     Convert visual angle in degrees to pixel distance on the screen.

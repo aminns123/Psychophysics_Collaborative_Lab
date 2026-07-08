@@ -93,7 +93,7 @@ RIGHT_RESPONSE = 1
 # Contrast conversion
 # -----------------------------------------------------------------------------
 
-def weberContrast(contrast_cpu, background_crt, max_crt, log_function=math.log10,
+def convert_screen_intensity_to_weber_contrast(contrast_cpu, background_crt, max_crt, log_function=math.log10,
                   apply_log=False):
     """
     Convert CPU luminance values to Weber contrast.
@@ -124,9 +124,9 @@ def weberContrast(contrast_cpu, background_crt, max_crt, log_function=math.log10
     return weber_values
 
 
-def findCPU_fromWeberContrast(max_cpu, background_cpu, weber_contrast):
+def convert_screenIntensity_to_weber_contrast(max_Intensity, background_Intensity, screen_Intensity):
     """Convert Weber contrast back to CPU luminance."""
-    return ((max_cpu - background_cpu) * weber_contrast) + background_cpu
+    return ((max_Intensity - background_Intensity) * screen_Intensity) + background_Intensity
 
 
 # -----------------------------------------------------------------------------
@@ -258,7 +258,7 @@ def defineReversal_Multi(store_data, step_backs):
     return correct_index, wrong_index
 
 
-def admID_staircase(adm_list, contrast_list, adm_id_now):
+def retrieve_staircase_weber_contrasts(adm_list, contrast_list, adm_id_now):
     """Return contrast values for all trials belonging to ``adm_id_now``."""
     return [
         contrast_list[index]
@@ -384,7 +384,7 @@ def _beep(frequency, duration_ms):
 
 def _to_weber(value, background_cpu, max_cpu):
     """Convert a single CPU contrast value to Weber contrast."""
-    return weberContrast([value], background_cpu, max_cpu)[0]
+    return convert_screen_intensity_to_weber_contrast([value], background_cpu, max_cpu)[0]
 
 
 def _adm_trial_counts(store_data, start_index=1):
@@ -403,8 +403,8 @@ def _adm_trial_counts(store_data, start_index=1):
 
 def _count_adm_reversals(adm_ids, contrast_values, current_adm_id, background, maximum):
     """Count staircase reversals for trials belonging to the current ADM."""
-    adm_contrasts = admID_staircase(adm_ids, contrast_values, current_adm_id)
-    weber_contrasts = weberContrast(adm_contrasts, background, maximum)
+    adm_contrasts  = retrieve_staircase_weber_contrasts(adm_ids, contrast_values, current_adm_id)
+    weber_contrasts = convert_screen_intensity_to_weber_contrast(adm_contrasts, background, maximum)
     return count_reversals_HighLow(weber_contrasts)[0]
 
 
@@ -594,13 +594,13 @@ def _update_staircase_weber(response, references, params, previous_state, adm_tr
     return state
 
 
-def _weber_to_cpu_luminance(weber_contrast, params):
+def _cpu_intensity_to_weber_contrast(probe_intensity, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
     background = params["background_contrast"]
-    cpu_luminance = findCPU_fromWeberContrast(
-        params["max_contrast"], background, weber_contrast
+    weber_contrast = convert_screenIntensity_to_weber_contrast(
+        params["max_contrast"], background, probe_intensity
     )
-    return max(cpu_luminance, background)
+    return max(weber_contrast, background)
 
 
 def conditions(storeData, dataParams, conditionS):
@@ -671,7 +671,7 @@ def conditions(storeData, dataParams, conditionS):
         count_reversals_total   = previous_state["count_reversals_total"]
         response_count          = response["response_count"]
 
-    contrast_cpu = _weber_to_cpu_luminance(contrast_weber, params)
+    contrast_cpu = _cpu_intensity_to_weber_contrast(contrast_weber, params)
 
     return (
         contrast_cpu,
@@ -811,7 +811,7 @@ def subject_response(trial, args):
     _append_store_value(store_data, "correct_tick", correct_tick)
     _append_store_value(store_data, "next_contrast", round(new_contrast, 8))
 
-    weber_value = weberContrast([baseline_contrast], background_cpu, max_cpu)[0]
+    weber_value = convert_screen_intensity_to_weber_contrast([baseline_contrast], background_cpu, max_cpu)[0]
     _append_store_value(store_data, "weber_contrast", round(weber_value, 8))
     _append_store_value(store_data, "spatial_frequency", spatial_frequency)
 
@@ -864,6 +864,7 @@ class Trial_ADMs:
         duration_ms,
         pos,
         n_up,
+        filename_Conditions,
         file_paramsStimulus,
         file_response_record,
         keys=None,
@@ -876,6 +877,7 @@ class Trial_ADMs:
         self.mouse          = mouse
         self.pos            = pos
         self.nUP            = n_up
+        self.fileCondition      = filename_Conditions
         self.fileParamsStimulus = file_paramsStimulus
         self.fileResponseRecord = file_response_record
 
@@ -888,89 +890,56 @@ class Trial_ADMs:
 
         import random
 
-        data_params         = funcs.from_Text(self.fileParamsStimulus)
-        params              = _parse_data_params(data_params)
-        data_main           = funcs.readText_toList(self.fileResponseRecord)
-        trials              = _parse_store_data(data_main)
+        data_params         = funcs.read_JSON(self.fileParamsStimulus)
+        background_contrast = data_params["background_contrast"]
+        max_contrast        = data_params["max_contrast"]
 
-        condition_list      = params['condition_list']
-        condition_dictionary= params['condition_dictionary']
-        data_adm_index      = params['data_adm_index']
-        data_position       = params['data_position']
+        data_conditions     = funcs.read_JSON(self.fileCondition)
+        data_responses      = funcs.readText_toList(self.fileResponseRecord)
 
-        contrast_list       = trials["contrast"]
-        adm_id_list         = trials["adm_ids"]
-        distance_to_monitor = params["distance_to_monitor"]
-        pixel_metre_ratio   = params["pixel_metre_ratio"]
-        terminate_criteria  = params["terminate_criteria"]
-        terminate_bool      = int(params["terminate_bool"])
-        trial_limit         = int(params["trial_limit"])
-        wait_count          = int(params["wait_count"])
-        background_contrast = params["background_contrast"]
-        max_contrast        = params["max_contrast"]
+        stimulus_condition          = data_responses[0]
+        probe_Alternative_Choice    = data_responses[1]
+        human_Alternative_Choice    = data_responses[2]
+        staircase_Identity          = data_responses[3]
+        probe_weber_contrast        = data_responses[4]
+        probe_screen_intensity      = data_responses[5]
 
-        px, py = self.pos[0], self.pos[1]
-        condition_value                 = condition_list[random.randrange(len(condition_list))]
-        adm_cond, adm_index, out_text   = condition_ADM(data_adm_index, condition_value)
+        condition_list       = data_conditions['condition_list']
+        staircase_Identities = data_conditions['staircase_Identities']
+        current_staircase_id = data_conditions['staircase_Identity']   
 
-        kwargs = {"position": px, "frequency": 40}
-        condition_dictionary, kwargs = condition_Dictionary(
-            condition_value, out_text, condition_dictionary, **kwargs
-        )
-        px = kwargs["position"]
-        spatial_frequency = kwargs["frequency"]
+        condition_value               = condition_list[random.randrange(len(condition_list))]
+        adm_cond, adm_index, new_id   = condition_ADM(staircase_Identities, condition_value)
 
-        probe_pos_deg = funcs.Meter_convertToArcangle(
-            round(px * pixel_metre_ratio, 4),
-            distance_to_monitor,
-            pixel_metre_ratio,
-        )
-        current_adm_id          = int(adm_id_list[-1])
-        adm_contrasts           = admID_staircase(adm_id_list, contrast_list, current_adm_id)
-        weber_list              = weberContrast(adm_contrasts, background_contrast, max_contrast)
-        reversal_count, _, _    = count_reversals_HighLow(weber_list)
+        correct_responses   = data_conditions["correct_responses"][adm_index]
+        terminate_criteria  = data_conditions["terminate_criteria"][adm_index]
 
-        if reversal_count > terminate_criteria or len(weber_list) > trial_limit:
+
+        reversal_count      = _count_adm_reversals(staircase_Identity, probe_weber_contrast, current_staircase_id, background_contrast, max_contrast)
+
+        if reversal_count > terminate_criteria:
             for index, adm_j in enumerate(adm_index):
-                if int(adm_j) != current_adm_id:
+                if int(adm_j) != current_staircase_id:
                     continue
                 if len(condition_list) > 1:
                     remove_value = adm_cond[index]
                     if remove_value in condition_list:
                         condition_list.remove(remove_value)
                 elif len(condition_list) == 1:
-                    wait_count += 1
-                    if wait_count > 3:
+                    correct_responses += 1
+                    if correct_responses > 3:
                         terminate_bool = 1
                 break
-
-        px_metres = round(px * pixel_metre_ratio, 4)
-        if px_metres >= 0:
+        
+        px = self.pos  
+        if px >= 0:
             value_response = RIGHT_RESPONSE
         else:
             value_response = LEFT_RESPONSE
 
         _beep(550, self.T)
 
-        data_params[DATA_PARAM_INDEX["wait_count"]] = wait_count
-        data_params[DATA_PARAM_INDEX["reversal_tick"]] = self.nUP
-        data_params[DATA_PARAM_INDEX["probe_pos_y"]] = round(py * pixel_metre_ratio, 4)
-        data_params[DATA_PARAM_INDEX["probe_pos_x"]] = px_metres
-        data_params[DATA_PARAM_INDEX["probe_lr"]] = value_response
-        data_params_main[0] = out_text
-        data_params[DATA_PARAM_INDEX["terminate_bool"]] = terminate_bool
-
-        data_adm_index[0]   = adm_cond
-        data_adm_index[1]   = adm_index
-        data_position[0]    = px
-        data_position[1]    = py
-
-        funcs.write_toText(self.filesADM_INDEX, data_adm_index)
-        funcs.write_toText(self.fileADM_cond, condition_dictionary)
-        funcs.write_toText(self.fileParamsStimulus, [float(x) for x in data_params])
-        funcs.write_toText(self.fileParamsStimulus, [float(x) for x in data_params_main])
-        funcs.write_toText(self.filePosition, [float(x) for x in data_position])
-        funcs.write_toText(self.fileArrayPos, condition_list)
+        # ----------------- END --------------------
 
     def draw(self, win):
         win.clear()
