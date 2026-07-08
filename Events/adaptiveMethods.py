@@ -748,6 +748,13 @@ def subject_response(trial, args):
     Record a subject's 2AFC response and update stored trial / staircase data.
 
     Writes updated trial history and parameter files via ``funcs``.
+    _________________________________________________________
+    @ all this file needs to do is:
+        1. decide to step up or step down the probes contrast
+            i) how many of the last responses (including now) are correct?
+            ii) step up or step down?
+        2. store history of responses and stimulus conditions
+    ---------------------------------------------------------
     """
     if not args:
         return
@@ -767,6 +774,7 @@ def subject_response(trial, args):
     staircase_id        = conditions_data['staircase_Identity_now']  
     stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
     probe_weber_contrast= conditions_data['now_weber_contrast'][staircase_id]  
+    probe_choice        = conditions_data['probe_Alternative_Choice'][staircase_id]
 
     params              = funcs.read_JSON(trial.file_params_Stimulus)
 
@@ -775,6 +783,7 @@ def subject_response(trial, args):
     pixel_metre_ratio   = params["pixel_metre_ratio"]
     probe_pos_y         = params["probe_pos_y"]
     n_up                = params["n_up"]
+    n_dw                = params["n_dw"] 
     probe_start         = params["probe_start"]
     probe_pos_x         = params["probe_pos_x"]
     probe_lr            = int(params["probe_lr"])
@@ -782,34 +791,67 @@ def subject_response(trial, args):
     background_cpu      = params["background_contrast"]
     max_cpu             = params["max_contrast"]
 
-    probe_pos_deg = funcs.Meter_convertToArcangle(
-        probe_pos_x, distance_to_monitor, pixel_metre_ratio
-    )
-    probe_pos_y_deg = funcs.Meter_convertToArcangle(
-        probe_pos_y, distance_to_monitor, pixel_metre_ratio
-    )
+
 
     baseline_contrast = _find_baseline_contrast(store_data, staircase_id, probe_start)
-    value_response    = _key_to_response(args[0])
+    subject_response    = _key_to_response(args[0])
 
-    if probe_lr == value_response:
+    if probe_choice == subject_response:
         _beep(1000, duration)
     else:
         _beep(300, duration)
 
+    def _get_single_staircase_history(data_responses, staircase_id):
+        #stimulus_condition_history       = data_responses[0]
+        probe_Alternative_Choice_history = data_responses[1]
+        human_Alternative_Choice_history = data_responses[2]
+        staircase_Identity_history       = data_responses[3]
+        #probe_weber_contrast_history     = data_responses[4]
+        probe_screen_intensity_history   = data_responses[5]
 
-    (
-        new_weber_contrast,
-        reversal_tick,
-        correct_tick,
-        param_start,
-        rate_down,
-        response_count,
-        total_reversals,
-        rate_up,
-    ) = update_staircase_probe_screen_intensity(store_data, data_params, True)
+        list_find  = [1, 2, 3, 1, 2, 3]
 
-    weber_value = convert_screen_intensity_history_to_weber_contrast_list([baseline_contrast], background_cpu, max_cpu)[0]
+        value_find = staircase_id
+        indices = [i for i, x in enumerate(staircase_Identity_history) if x == value_find]
+
+        return probe_screen_intensity_history[indices], probe_Alternative_Choice_history[indices], human_Alternative_Choice_history[indices]
+
+    staircase_intensity, staircase_stimulus_choice, staircase_subject_choice = _get_single_staircase_history(data_responses, staircase_id)
+    
+    def _check_responses_history(staircase_stimulus_choice, staircase_subject_choice):
+        """
+        Check if last stimulus and subjects choices are equal and are as long as n_dw. 
+        """
+        last_4_stimulus = staircase_stimulus_choice[:-n_dw]
+        last_4_subject  = staircase_subject_choice[:-n_dw]
+
+        if probe_choice == subject_response:
+            count_correct_responses = 0
+            for i in range(n_dw):
+                if last_4_stimulus[-i] == last_4_subject[-i]:
+                    count_correct_responses+=1
+                elif last_4_stimulus[-i] != last_4_subject[-i]:
+                    pass
+
+            if count_correct_responses == n_dw:
+                # contrast needs to be decreased
+                pass 
+            else:
+                # contrast remains the same
+                pass
+        elif probe_choice != subject_response:
+            # contrast needs to be increased
+            updw_bool = 0
+        else:
+            pass
+
+        return 0
+
+
+    def _increase_contrast():
+        return 0
+    def _decrease_contrast():
+        return 0
 
     funcs.write_toText(trial.filesDataMain, store_data)
 
