@@ -6,7 +6,7 @@ from libC import *
 from Functions.functionUSE import (
     adMethod_luminance_ID, 
     weberContrast, 
-    readText_toList_keyValue,
+    read_JSON,
     from_Text,
 )
 import numpy as np
@@ -80,7 +80,7 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
     ##  float Sde = 0.1;
     ##  double pi = 2 * acos(0.0);
     ### m = (1/(2*pi*pow(Sde,2)))*exp(-(pow(x,2)+pow(y,2))/(2*pow(Sde,2)))
-    def __init__(self,pos, file_params_Stimulus,file_response_record,params=Params()):
+    def __init__(self,pos, filename_Conditions,params=Params()):
         self.pos        = pos
         self.params     = copy_params(self._defaults,params)
         self.clock      = pyglet.clock.Clock()
@@ -92,8 +92,8 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
                                   'Lmin','Lmax','gamma','BTRR'
                                   ,'SdeX', 'SdeY'])) # <- added
         
-        self.fileParams     = file_params_Stimulus
-        self.filesDataMain  = file_response_record
+        
+        self.filename_Conditions = filename_Conditions
 
         glUseProgram(self.program)
         glUniform1f(self.uniforms['phase'],0.0)
@@ -115,25 +115,17 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         
         self.px             = self.pos[0]
         self.py             = self.pos[1]
-        dataParamsMain      = from_Text(self.fileParamsMain)
-        condition_dictionary= readText_toList_keyValue(self.fileADM_cond )
-        admTEXT             = dataParamsMain[0]
-        dataParams          = from_Text(self.fileParams)
 
-        bkg_contrast        = dataParams[12]
-        max_contrast        = dataParams[13]
-        
-        conditionVALUE      = condition_dictionary[1]
-        kwargs              = {'frequency':conditionVALUE[0],'position':conditionVALUE[1]}     
-        
-        self.px             = float(kwargs['position'])
-        fs                  = float(kwargs['frequency'])
-        
-        cL                  = adMethod_luminance_ID(admTEXT, self.fileParams, self.filesDataMain) 
-        self.params.fs      = fs
-        
-        bkg_Lum_intensity, max_Lum_intensity = bkg_contrast, max_contrast
-        cL                  = weberContrast([cL], bkg_Lum_intensity, max_Lum_intensity , np.log10,False)[0]
+        data_conditions         = read_JSON(self.fileCondition)
+
+        new_id               = data_conditions['staircase_Identity_now']  
+        stimulus_condition   = data_conditions['stimulus_condition'][new_id]
+        probe_weber_contrast = data_conditions['now_weber_contrast'][new_id]       
+        #probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
+
+
+        self.params.fs      = stimulus_condition
+        cL                  = probe_weber_contrast
         self.params.contr   = cL # <-- actually give contrast value
         
         glUseProgram(self.program)
@@ -173,10 +165,9 @@ class Dot_stairCase_centre(stim(c=1.0,sigma=0.17,fs=0.0,phi=0.0,edge=2.0,res=64,
     
     :param c: contrast [0.0,1.0]
     """
-    def __init__(self, pos, bkg,filename_params, filesData,params=Params()):
+    def __init__(self, pos, bkg,fileCondition,params=Params()):
         self.params     = copy_params(self._defaults,params)
-        self.filesData  = filesData
-        self.fileParams = filename_params
+        self.fileCondition = fileCondition
         self.params.bkg = bkg
         
         self.params = copy_params(self._defaults,params)
@@ -205,8 +196,8 @@ class Dot_stairCase_centre(stim(c=1.0,sigma=0.17,fs=0.0,phi=0.0,edge=2.0,res=64,
         self.posCentre  = pos
         
     def draw(self):
-        FILEparams      = from_Text(self.fileParams)
-        terminateBOOL   = int(FILEparams[20])
+        data_conditions = read_JSON(self.fileCondition)
+        terminateBOOL   = data_conditions['terminate_bool']
         if terminateBOOL == 0:
             c2 = self.params.c
             glColor4f(c2,c2,c2,1.0)

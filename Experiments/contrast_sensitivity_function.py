@@ -20,7 +20,7 @@ from libC import (
     run
 )
 from Events.adaptiveMethods import (
-    Trial_ADMs,
+    Trials_read_write_staircase_conditions,
     Trial_small,
     record_event,
 )
@@ -154,7 +154,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     def _make_adm_trial(name, stimuli, duration_ms, position, keys_for_trial=None):
         """Create a Trial_ADMs with the shared files used by this experiment."""
-        return Trial_ADMs(
+        return Trials_read_write_staircase_conditions(
             name,
             stimuli,
             duration_ms,
@@ -203,22 +203,19 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     fakeProbe = Dot_stairCase_centre(
         experiment_params['bkg_intensity'],
-        file_params_Stimulus,
-        file_response_record,
+        filename_Conditions
         (cx, cy),
         Params(**kwargs_fake_Fixate),
     )
     centreDOT = Dot_stairCase_centre(
         experiment_params['bkg_intensity'],
-        file_params_Stimulus,
-        file_response_record,
+        filename_Conditions
         (cx, cy),
         Params(**kwargs_fixate),
     )
     probeStimulus = Grating_ADM(
         posCentre,
-        file_params_Stimulus,
-        file_response_record,
+        filename_Conditions,
         Params(**kwargs_grating),
     )
 
@@ -231,6 +228,12 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         'fixation',
         fixation_trial,
         timeFixate,
+        [cx, cy],
+    )
+    fixate_state_new_condition = _make_adm_trial(
+        'new_condition',
+        fake_probe_trial,
+        timeInterval,
         [cx, cy],
     )
     fixateInterval = _make_adm_trial(
@@ -261,7 +264,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
         sequence = [
             fixateDOT,
-            fixateInterval,
+            fixate_state_new_condition,
             stimulusPROBE,
             fixateInterval,
             fixateRESPONSE,

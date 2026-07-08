@@ -126,7 +126,12 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         experiment_params['starting_screen_intensity'],
     )
     
-    value_params = dict_all_dicts.copy()    
+
+    flat_dict = {}
+
+    for subdict in dict_all_dicts.values():
+        flat_dict.update(subdict)
+    value_params = flat_dict.copy()    
 
     columnADM = [
         'condition', 
@@ -144,22 +149,24 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     columnsSet = {
         'condition_list': condition_list,
         'staircase_Identities': [range(len(condition_list))],
-        'stimulus_condition': [],
-        'probe_Alternative_Choice': [],
-        'human_Alternative_Choice': [],
-        'total_Reversals': [],
-        'staircase_Identity': [],
+        'probe_Alternative_Choice': [0 for _ in range(len(condition_list))],
+        'human_Alternative_Choice': [0 for _ in range(len(condition_list))],
+        'staircase_Identity_now': [0],
+        'stimulus_condition': [0],
+        'total_Reversals':  [0 for _ in range(len(condition_list))],
         'starting_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
         'correct_responses': [0 for _ in range(len(condition_list))],
         'now_weber_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
-        'now_screen_intensity': [],
-        'update_screen_intensity': [],
-        'update_weber_contrast':[],
+        'now_screen_intensity': [starting_screen_intensity for _ in range(len(condition_list))],
+        #'update_screen_intensity': [],
+        #'update_weber_contrast':[],
         'reversal_termination':[reversal_termination for _ in range(len(condition_list))],
         'nDW': [staircase_params['nDW']],
         'nUP': [staircase_params['nUP']],
         'logUNIT_UP': [staircase_params['logUNIT_UP']],
         'logUNIT_DW': [staircase_params['logUNIT_DW']],
+        'last_responses':0,
+        'terminate_bool':0,
     }
 
     column_titles   = ['stimulus_condition', 

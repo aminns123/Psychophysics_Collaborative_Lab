@@ -93,7 +93,7 @@ RIGHT_RESPONSE = 1
 # Contrast conversion
 # -----------------------------------------------------------------------------
 
-def convert_screen_intensity_to_weber_contrast(contrast_cpu, background_crt, max_crt, log_function=math.log10,
+def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, background_crt, max_crt, log_function=math.log10,
                   apply_log=False):
     """
     Convert CPU luminance values to Weber contrast.
@@ -384,7 +384,7 @@ def _beep(frequency, duration_ms):
 
 def _to_weber(value, background_cpu, max_cpu):
     """Convert a single CPU contrast value to Weber contrast."""
-    return convert_screen_intensity_to_weber_contrast([value], background_cpu, max_cpu)[0]
+    return convert_screen_intensity_history_to_weber_contrast_list([value], background_cpu, max_cpu)[0]
 
 
 def _adm_trial_counts(store_data, start_index=1):
@@ -401,10 +401,10 @@ def _adm_trial_counts(store_data, start_index=1):
     return counts_by_id, adm_index, current_adm_id
 
 
-def _count_adm_reversals(adm_ids, contrast_values, current_adm_id, background, maximum):
+def _count_staircase_reversals(adm_ids, contrast_values, current_adm_id, background, maximum):
     """Count staircase reversals for trials belonging to the current ADM."""
-    adm_contrasts  = retrieve_staircase_weber_contrasts(adm_ids, contrast_values, current_adm_id)
-    weber_contrasts = convert_screen_intensity_to_weber_contrast(adm_contrasts, background, maximum)
+    adm_contrasts   = retrieve_staircase_weber_contrasts(adm_ids, contrast_values, current_adm_id)
+    weber_contrasts = convert_screen_intensity_history_to_weber_contrast_list(adm_contrasts, background, maximum)
     return count_reversals_HighLow(weber_contrasts)[0]
 
 
@@ -596,14 +596,14 @@ def _update_staircase_weber(response, references, params, previous_state, adm_tr
 
 def _cpu_intensity_to_weber_contrast(probe_intensity, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
-    background = params["background_contrast"]
-    weber_contrast = convert_screenIntensity_to_weber_contrast(
+    background      = params["background_contrast"]
+    weber_contrast  = convert_screenIntensity_to_weber_contrast(
         params["max_contrast"], background, probe_intensity
     )
     return max(weber_contrast, background)
 
 
-def conditions(storeData, dataParams, conditionS):
+def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
     """
     Update adaptive staircase contrast for the current ADM condition.
 
@@ -627,7 +627,7 @@ def conditions(storeData, dataParams, conditionS):
     trials = _parse_store_data(storeData)
 
     counts_by_id, adm_index, current_adm_id = _adm_trial_counts(storeData)
-    total_reversals = _count_adm_reversals(
+    total_reversals = _count_staircase_reversals(
         trials["adm_ids"],
         trials["contrast"],
         current_adm_id,
@@ -641,6 +641,7 @@ def conditions(storeData, dataParams, conditionS):
     response = _evaluate_current_response(storeData, adm_index, counts_by_id, params)
     response["total_reversals"] = total_reversals
 
+    # tick #
     contrast_weber = _to_weber(
         response["base_contrast"],
         params["background_contrast"],
@@ -648,8 +649,8 @@ def conditions(storeData, dataParams, conditionS):
     )
 
     if conditionS:
-        references = _reference_contrasts_weber(storeData, params, previous_state)
-        updated = _update_staircase_weber(
+        references  = _reference_contrasts_weber(storeData, params, previous_state)
+        updated     = _update_staircase_weber(
             response,
             references,
             params,
@@ -671,10 +672,10 @@ def conditions(storeData, dataParams, conditionS):
         count_reversals_total   = previous_state["count_reversals_total"]
         response_count          = response["response_count"]
 
-    contrast_cpu = _cpu_intensity_to_weber_contrast(contrast_weber, params)
+    weber_contrast = _cpu_intensity_to_weber_contrast(contrast_weber, params)
 
     return (
-        contrast_cpu,
+        weber_contrast,
         reversal_n,
         correct_tick,
         param_start,
@@ -696,8 +697,10 @@ def record_event(event, time, trial, args):
     Stimulus trials log probe parameters; response trials record the subject
     choice and update the staircase.
     """
-    if trial.name == "stimuli":
-        trial.print_Value()
+    if trial.name == "new_condition":
+        trial.state_new_condition_for_stimulus()
+    elif trial.name == "stimuli":
+        pass
     elif event != "MOUSE" and trial.name == "response":
         subject_response(trial, args)
 
@@ -749,13 +752,13 @@ def subject_response(trial, args):
     if not args:
         return
 
+
     duration            = 500
-    data_params_main    = funcs.from_Text(trial.fileParamsMain)
-    store_data          = funcs.readText_toList(trial.filesDataMain)
-    data_params         = funcs.from_Text(trial.fileParams1)
-    params              = _parse_data_params(data_params)
-    condition_dictionary= funcs.readText_toList_keyValue(trial.fileADM_cond)
-    spatial_frequency   = condition_dictionary[1][0]
+    conditions_data     = funcs.read_JSON(trial.fileParamsfilename_Conditionsain)
+    params              = funcs.read_JSON(trial.file_params_Stimulus)
+    store_data          = funcs.readText_toList(trial.file_response_record)
+
+    spatial_frequency   = 
 
     adm_id              = data_params_main[0]
     distance_to_monitor = params["distance_to_monitor"]
@@ -777,7 +780,7 @@ def subject_response(trial, args):
     )
 
     baseline_contrast = _find_baseline_contrast(store_data, adm_id, probe_start)
-    value_response = _key_to_response(args[0])
+    value_response    = _key_to_response(args[0])
 
     if probe_lr == value_response:
         _beep(1000, duration)
@@ -794,7 +797,7 @@ def subject_response(trial, args):
     _append_store_value(store_data, "n_up_values", round(n_up + 1, 4))
 
     (
-        new_contrast,
+        new_weber_contrast,
         reversal_tick,
         correct_tick,
         param_start,
@@ -802,7 +805,7 @@ def subject_response(trial, args):
         response_count,
         total_reversals,
         rate_up,
-    ) = conditions(store_data, data_params, True)
+    ) = update_staircase_probe_screen_intensity(store_data, data_params, True)
 
     _append_store_value(store_data, "rate_down", round(rate_down, 4))
     _append_store_value(store_data, "reversals", round(total_reversals, 4))
@@ -811,7 +814,7 @@ def subject_response(trial, args):
     _append_store_value(store_data, "correct_tick", correct_tick)
     _append_store_value(store_data, "next_contrast", round(new_contrast, 8))
 
-    weber_value = convert_screen_intensity_to_weber_contrast([baseline_contrast], background_cpu, max_cpu)[0]
+    weber_value = convert_screen_intensity_history_to_weber_contrast_list([baseline_contrast], background_cpu, max_cpu)[0]
     _append_store_value(store_data, "weber_contrast", round(weber_value, 8))
     _append_store_value(store_data, "spatial_frequency", spatial_frequency)
 
@@ -854,7 +857,7 @@ class Trial_small:
         }
 
 
-class Trial_ADMs:
+class Trials_read_write_staircase_conditions:
     """Adaptive trial that assigns ADM conditions and logs probe parameters."""
 
     def __init__(
@@ -881,56 +884,66 @@ class Trial_ADMs:
         self.fileParamsStimulus = file_paramsStimulus
         self.fileResponseRecord = file_response_record
 
-    def print_Value(self):
-        """Select the next ADM condition and persist probe parameters to disk."""
-
-        if self.name != "stimuli":
-            print("No trial handler found for:", self.name)
-            return
-
+    def state_new_condition_for_stimulus(self):
+        """states new condition for stimulus, to be passed over to stimulus.py file"""
         import random
 
         data_params         = funcs.read_JSON(self.fileParamsStimulus)
-        background_contrast = data_params["background_contrast"]
-        max_contrast        = data_params["max_contrast"]
+        background_intensity= data_params["background_intensity"]
+        max_intensity       = data_params["max_intensity"]
 
-        data_conditions     = funcs.read_JSON(self.fileCondition)
+
         data_responses      = funcs.readText_toList(self.fileResponseRecord)
 
-        stimulus_condition          = data_responses[0]
-        probe_Alternative_Choice    = data_responses[1]
-        human_Alternative_Choice    = data_responses[2]
-        staircase_Identity          = data_responses[3]
-        probe_weber_contrast        = data_responses[4]
-        probe_screen_intensity      = data_responses[5]
 
+        staircase_Identity_history          = data_responses[3]
+        probe_screen_intensity_history      = data_responses[5]
+
+
+        data_conditions      = funcs.read_JSON(self.fileCondition)
         condition_list       = data_conditions['condition_list']
         staircase_Identities = data_conditions['staircase_Identities']
         current_staircase_id = data_conditions['staircase_Identity']   
+        now_screen_intensity = data_conditions['now_screen_intensity']
 
-        condition_value               = condition_list[random.randrange(len(condition_list))]
-        adm_cond, adm_index, new_id   = condition_ADM(staircase_Identities, condition_value)
+        new_id                  = random.choice(staircase_Identities)
+        condition_value         = condition_list[new_id]
+        probe_screen_intensity  = now_screen_intensity[new_id]
+        terminate_criteria      = data_conditions["terminate_criteria"][new_id]
+        last_responses          = data_conditions["last_responses"]
 
-        correct_responses   = data_conditions["correct_responses"][adm_index]
-        terminate_criteria  = data_conditions["terminate_criteria"][adm_index]
+        # ---------------------------------------- # 
 
+        probe_weber_contrast_history = convert_screen_intensity_history_to_weber_contrast_list(
+                                        probe_screen_intensity_history, 
+                                        background_intensity, 
+                                        max_intensity)
 
-        reversal_count      = _count_adm_reversals(staircase_Identity, probe_weber_contrast, current_staircase_id, background_contrast, max_contrast)
+        reversal_count               = _count_staircase_reversals(
+                                        staircase_Identity_history, 
+                                        probe_weber_contrast_history, 
+                                        current_staircase_id, 
+                                        background_intensity, 
+                                        max_intensity)
 
-        if reversal_count > terminate_criteria:
-            for index, adm_j in enumerate(adm_index):
-                if int(adm_j) != current_staircase_id:
-                    continue
+        def _terminate_staircase_bool():
+            """Checks if staircase """
+            if reversal_count > terminate_criteria:
                 if len(condition_list) > 1:
-                    remove_value = adm_cond[index]
+                    remove_value = condition_value
                     if remove_value in condition_list:
                         condition_list.remove(remove_value)
+                
                 elif len(condition_list) == 1:
-                    correct_responses += 1
-                    if correct_responses > 3:
+                    last_responses += 1
+                    if last_responses >= 2:
                         terminate_bool = 1
-                break
+            else:
+                pass
         
+        
+        _terminate_staircase_bool()
+
         px = self.pos  
         if px >= 0:
             value_response = RIGHT_RESPONSE
@@ -938,6 +951,21 @@ class Trial_ADMs:
             value_response = LEFT_RESPONSE
 
         _beep(550, self.T)
+
+        """save updated conditions"""
+
+        probe_weber_contrast = convert_screen_intensity_history_to_weber_contrast_list(
+                                        [probe_screen_intensity], 
+                                        background_intensity, 
+                                        max_intensity)[0]
+
+        data_conditions['stimulus_condition']               = condition_list
+        data_conditions['probe_Alternative_Choice'][new_id] = value_response
+        data_conditions['staircase_Identity_now']           = new_id
+        data_conditions['now_weber_contrast'][new_id]       = probe_weber_contrast
+        data_conditions['now_screen_intensity'][new_id]     = probe_screen_intensity
+        
+        funcs.create_JSON(self.fileCondition, data_conditions)
 
         # ----------------- END --------------------
 
