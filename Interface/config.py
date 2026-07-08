@@ -5,7 +5,7 @@ import json
 import Functions.functionsForUse as funcs
 
 from Events.adaptiveMethods import (
-    findCPU_fromWeberContrast,
+    _to_weber,
 )
 
 
@@ -69,6 +69,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'timeAB':       timeAB,
         'timeT':        timeT,
         'viewing_distance_m': viewing_distance_m,
+        'number_trials':10*3
     }
 
     staircase_params = {
@@ -120,10 +121,10 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     filename_response_main = filename_everything
 
     starting_screen_intensity = experiment_params['starting_screen_intensity']
-    starting_weber_contrast = findCPU_fromWeberContrast(
+    starting_weber_contrast = _to_weber(
+        experiment_params['starting_screen_intensity'],
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
-        experiment_params['starting_screen_intensity'],
     )
     
 
@@ -148,7 +149,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
 
     columnsSet = {
         'condition_list': condition_list,
-        'staircase_Identities': [range(len(condition_list))],
+        'staircase_Identities': list(range(len(condition_list))),
         'probe_Alternative_Choice': [0 for _ in range(len(condition_list))],
         'human_Alternative_Choice': [0 for _ in range(len(condition_list))],
         'staircase_Identity_now': [0],

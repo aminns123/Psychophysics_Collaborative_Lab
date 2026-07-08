@@ -83,15 +83,15 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         'center_y_pixel': cy,
         'window_width_pixel': win.width,
         'window_height_pixel': win.height,
+        'pyglet_wakeup_rate_check':60
     }
 
-    cx, cy                      = monitor_screen_params['cx'], monitor_screen_params['cy']
     monitor_refresh_rate        = monitor_screen_params['monitor_refresh_rate']
     pyglet_wakeup_rate_check    = monitor_screen_params['pyglet_wakeup_rate_check']
-    timeFixate                  = monitor_screen_params['timeFixate']
-    timeInterval                = monitor_screen_params['timeInterval']
-    timeAB                      = monitor_screen_params['timeAB']
-    timeT                       = monitor_screen_params['timeT']
+    timeFixate                  = experiment_params['timeFixate']
+    timeInterval                = experiment_params['timeInterval']
+    timeAB                      = experiment_params['timeAB']
+    timeT                       = experiment_params['timeT']
 
     # ------------------------------ Stimulus parameters ------------------------------
 
@@ -202,15 +202,15 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     ]
 
     fakeProbe = Dot_stairCase_centre(
-        experiment_params['bkg_intensity'],
-        filename_Conditions
         (cx, cy),
+        experiment_params['background_intensity'],
+        filename_Conditions,
         Params(**kwargs_fake_Fixate),
     )
     centreDOT = Dot_stairCase_centre(
-        experiment_params['bkg_intensity'],
-        filename_Conditions
         (cx, cy),
+        experiment_params['background_intensity'],
+        filename_Conditions,
         Params(**kwargs_fixate),
     )
     probeStimulus = Grating_ADM(

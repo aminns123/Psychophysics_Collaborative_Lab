@@ -124,10 +124,14 @@ def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, backgr
     return weber_values
 
 
-def convert_screenIntensity_to_weber_contrast(max_Intensity, background_Intensity, screen_Intensity):
-    """Convert Weber contrast back to CPU luminance."""
-    return ((max_Intensity - background_Intensity) * screen_Intensity) + background_Intensity
+#def convert_screenIntensity_to_weber_contrast(max_Intensity, background_Intensity, screen_Intensity):
+#    """Convert Weber contrast back to CPU luminance."""
+#    return ((max_Intensity - background_Intensity) * screen_Intensity) + background_Intensity
 
+
+def convert_weber_contrast_to_screenIntensity(max_Intensity, background_Intensity, weber_contrast):
+    """Convert Weber contrast back to CPU luminance."""
+    return ((max_Intensity - background_Intensity) * weber_contrast) + background_Intensity
 
 # -----------------------------------------------------------------------------
 # Staircase step rules
@@ -594,13 +598,13 @@ def _update_staircase_weber(response, references, params, previous_state, adm_tr
     return state
 
 
-def _cpu_intensity_to_weber_contrast(probe_intensity, params):
+def _weber_contrast_to_cpu_intensity(probe_weber_contrast, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
     background      = params["background_contrast"]
-    weber_contrast  = convert_screenIntensity_to_weber_contrast(
-        params["max_contrast"], background, probe_intensity
+    probe_intensity = convert_weber_contrast_to_screenIntensity(
+        params["max_contrast"], background, probe_weber_contrast
     )
-    return max(weber_contrast, background)
+    return max(probe_intensity, background)
 
 
 def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
@@ -672,10 +676,10 @@ def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
         count_reversals_total   = previous_state["count_reversals_total"]
         response_count          = response["response_count"]
 
-    weber_contrast = _cpu_intensity_to_weber_contrast(contrast_weber, params)
+    probe_screen_intensity = _weber_contrast_to_cpu_intensity(contrast_weber, params)
 
     return (
-        weber_contrast,
+        probe_screen_intensity,
         reversal_n,
         correct_tick,
         param_start,
@@ -771,7 +775,7 @@ def subject_response(trial, args):
     duration            = 500
 
     conditions_data     = funcs.read_JSON(trial.fileParamsfilename_Conditionsain)
-    staircase_id        = conditions_data['staircase_Identity_now']  
+    staircase_id        = conditions_data['staircase_Identity_now'][0]  
     stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
     probe_weber_contrast= conditions_data['now_weber_contrast'][staircase_id]  
     probe_choice        = conditions_data['probe_Alternative_Choice'][staircase_id]
@@ -791,9 +795,6 @@ def subject_response(trial, args):
     background_cpu      = params["background_contrast"]
     max_cpu             = params["max_contrast"]
 
-
-
-    baseline_contrast = _find_baseline_contrast(store_data, staircase_id, probe_start)
     subject_response    = _key_to_response(args[0])
 
     if probe_choice == subject_response:
@@ -814,9 +815,7 @@ def subject_response(trial, args):
         value_find = staircase_id
         indices = [i for i, x in enumerate(staircase_Identity_history) if x == value_find]
 
-        return probe_screen_intensity_history[indices], probe_Alternative_Choice_history[indices], human_Alternative_Choice_history[indices]
-
-    staircase_intensity, staircase_stimulus_choice, staircase_subject_choice = _get_single_staircase_history(data_responses, staircase_id)
+        return probe_Alternative_Choice_history[indices], human_Alternative_Choice_history[indices]
     
     def _check_responses_history(staircase_stimulus_choice, staircase_subject_choice):
         """
@@ -835,25 +834,53 @@ def subject_response(trial, args):
 
             if count_correct_responses == n_dw:
                 # contrast needs to be decreased
-                pass 
+                dw_bool = 0 
+                return dw_bool
             else:
                 # contrast remains the same
-                pass
+                pass_bool = 2
+                return pass_bool
         elif probe_choice != subject_response:
             # contrast needs to be increased
-            updw_bool = 0
+            up_bool = 1
+            return up_bool
+        else:
+            return 0
+
+    def _update_probe_contrast(integer):
+        def _increase_contrast():
+            return 0
+    
+        def _decrease_contrast():
+            return 0
+        
+        if integer == 0:
+            return _decrease_contrast()
+        elif integer == 1:
+            return _increase_contrast()
         else:
             pass
 
-        return 0
+    
+    # isolate staircase
+    (
+    staircase_stimulus_choice, 
+    staircase_subject_choice
+    ) = _get_single_staircase_history(data_responses, staircase_id)
+    # check last responses (do we change contrast of probe?)
+    contrast_update_bool        = _check_responses_history(staircase_stimulus_choice, staircase_subject_choice)
+    # update probes: contrast and cpu_intensity
+    new_probe_weber_contrast    = _update_probe_contrast(contrast_update_bool)
+    new_probe_screen_intensity  = _weber_contrast_to_cpu_intensity(new_probe_weber_contrast, params)
 
+    data_responses[0] = stimulus_condition_history.append(stimulus_condition)
+    data_responses[1] = probe_Alternative_Choice_history.append(probe_choice)
+    data_responses[2] = human_Alternative_Choice_history.append(subject_response)
+    data_responses[3] = staircase_Identity_history.append(staircase_id)
+    data_responses[4] = probe_weber_contrast_history.append(new_probe_weber_contrast)
+    data_responses[5] = probe_screen_intensity_history.append(new_probe_screen_intensity)
 
-    def _increase_contrast():
-        return 0
-    def _decrease_contrast():
-        return 0
-
-    funcs.write_toText(trial.filesDataMain, store_data)
+    funcs.write_toText(trial.file_response_record, data_responses)
 
 
 
@@ -991,7 +1018,7 @@ class Trials_read_write_staircase_conditions:
 
         data_conditions['stimulus_condition']               = condition_list
         data_conditions['probe_Alternative_Choice'][new_id] = value_response
-        data_conditions['staircase_Identity_now']           = new_id
+        data_conditions['staircase_Identity_now']           = [new_id]
         data_conditions['now_weber_contrast'][new_id]       = probe_weber_contrast
         data_conditions['now_screen_intensity'][new_id]     = probe_screen_intensity
         

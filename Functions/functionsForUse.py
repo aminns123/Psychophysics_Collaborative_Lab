@@ -261,11 +261,11 @@ def write_toText(path, data):
             file.write('\n')
             
         for x in range(len(data[y])): # new columns
-        
+            value = data[y][x]
             if x < len(data[y])-1:
-                file.write(str(data[y][x])+'\t') # want to swap col with row thus [y][x]->[x][y]
+                file.write(f"{value:.6f}\n"+'\t') # want to swap col with row thus [y][x]->[x][y]
             elif x == len(data[y])-1:
-                file.write(str(data[y][x]))          
+                file.write(f"{value:.6f}\n")          
     file.close()
 """
     ||$||

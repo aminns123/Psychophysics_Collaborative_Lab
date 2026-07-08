@@ -3,11 +3,8 @@ from __future__ import division
 
 from libC import *
 
-from Functions.functionUSE import (
-    adMethod_luminance_ID, 
-    weberContrast, 
+from  Functions.functionsForUse import (
     read_JSON,
-    from_Text,
 )
 import numpy as np
 from pyglet import text
@@ -116,9 +113,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         self.px             = self.pos[0]
         self.py             = self.pos[1]
 
-        data_conditions         = read_JSON(self.fileCondition)
+        data_conditions         = read_JSON(self.filename_Conditions)
 
-        new_id               = data_conditions['staircase_Identity_now']  
+        new_id               = data_conditions['staircase_Identity_now'][0]  
         stimulus_condition   = data_conditions['stimulus_condition'][new_id]
         probe_weber_contrast = data_conditions['now_weber_contrast'][new_id]       
         #probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     

@@ -43,8 +43,10 @@ listLum   = [19.0, 29,     41 , 49,    204,   255, 300,    322, 370, 403,   415,
 listCPULum= [0.24,0.294, 0.34, 0.374, 0.72,  0.8, 0.86, 0.89,  0.95, 0.98, 0.99]
 
 listName  = os.listdir(data_save_repository)
-
-listExperiments = os.listdir(EXPERIMENT_DIRECTORY)
+listExperiments = [
+    f.stem
+    for f in Path(EXPERIMENT_DIRECTORY).glob("*.py")
+]
 
 listBool  = ['NEW', 'OLD']
 checkDict = {'NEW_or_OLD':listBool, 'Name':listName}
@@ -96,7 +98,7 @@ with open(data_save_repository+"/"+boolDict["Name"]+"/"+"experiment_defined.json
 
 filename_Conditions, file_params_Stimulus, file_response_record = run_configure_experiment(NAME, data_save_repository, setupDict)
 
-#experiment.run_experiment(filename_Conditions, file_params_Stimulus, file_response_record, data_save_repository)
+experiment.run_experiment(filename_Conditions, file_params_Stimulus, file_response_record, data_save_repository)
 
 print('============== CWD ===============================')
 print('cwd:', os.getcwd())
