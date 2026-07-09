@@ -138,6 +138,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     # ------------------------------ Experiment setup ------------------------------
 
+    win.set_background([experiment_params['background_intensity'],experiment_params['background_intensity'],experiment_params['background_intensity']])
+
 
     # ------------------------------ local Functions ------------------------------
 
@@ -181,13 +183,12 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     # ------------------------------ Trial sequence ------------------------------
 
-    grating_displacement = funcs.convertArcangleTOPixel(0.5, experiment_params['viewing_distance_m'], pixel_metre_ratio) 
+    grating_displacement = funcs.convertArcangleTOPixel(5, experiment_params['viewing_distance_m'], pixel_metre_ratio) 
 
     alternative_forced_choice = {
         '2AFC_choice': [-grating_displacement, grating_displacement],  
     }
 
-    posCentre       = [cx, cy]
     response_keys   = [key.RIGHT, key.LEFT]
     keys_none       = []
     keys_default    = [
@@ -226,7 +227,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         Params(**kwargs_fixate),
     )
     probeStimulus = Grating_ADM(
-        posCentre,
+        (cx, cy),
         filename_Conditions,
         Params(**kwargs_grating),
     )

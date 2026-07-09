@@ -116,12 +116,11 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
 
         new_id               = data_conditions['staircase_Identity_now'][0]  
         stimulus_condition   = data_conditions['stimulus_condition'][new_id]
-        probe_weber_contrast = data_conditions['now_weber_contrast'][new_id]       
         probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
 
 
         self.params.fs      = stimulus_condition
-        cL                  = 1.0 # probe_weber_contrast
+        cL                  = probe_screen_intensity
         self.params.contr   = cL # <-- actually give contrast value
         
         glUseProgram(self.program)

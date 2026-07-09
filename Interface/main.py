@@ -67,13 +67,14 @@ elif boolDict['NEW_or_OLD']=='NEW':
     checkDict = {'Experiment_Type':listExperiments,
                  'Max_monitor_Luminance': listLum, 
                  'Background_Luminance': listLum, 
-                 'Screen_intensity': listCPULum
+                 'Background_Screen_intensity': listCPULum,
+                 #'starting_probe_intensity':listCPULum,
     }
     setupDict   = funcs.optionPrompt(checkDict)
 
     setupDict.update({'Name':boolDict['Name'],
                     'trialPOINT':9, # 8 , # 5
-                    'starting_screen_intensity':1.0,
+                    'starting_probe_intensity':1.0,
                     'stimulus_SF': 1.0,
                     'date_created':today,
                     'index_last_PosList':0,

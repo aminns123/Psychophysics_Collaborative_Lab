@@ -60,10 +60,10 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     reversal_termination= setupDict['reversal_termination']
 
     experiment_params = {
-        'background_intensity': float(setupDict['Screen_intensity']),
+        'background_intensity': float(setupDict['Background_Screen_intensity']),
         'max_intensity': 1.0,
         'max_monitor_cdm2': float(setupDict['Max_monitor_Luminance']),
-        'starting_screen_intensity': float(setupDict['starting_screen_intensity']),
+        'starting_probe_intensity': float(setupDict['starting_probe_intensity']),
         'timeFixate':   timeFixate,
         'timeInterval': timeInterval,
         'timeAB':       timeAB,
@@ -74,7 +74,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
 
     staircase_params = {
         'trialPOINT':           int(setupDict['trialPOINT']),
-        'n_dw':                  4,
+        'n_dw':                  2,
         'n_up':                  1,
         'number_trials':        10,
         'terminationINDEX':     9,
@@ -120,9 +120,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     filename_everything, _ = funcs.CheckFileName(folderName,filename_everything)
     filename_response_main = filename_everything
 
-    starting_screen_intensity = experiment_params['starting_screen_intensity']
+    starting_probe_intensity = experiment_params['starting_probe_intensity']
     starting_weber_contrast = _to_weber(
-        experiment_params['starting_screen_intensity'],
+        experiment_params['starting_probe_intensity'],
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
     )
@@ -159,7 +159,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'adm ID'
     ]
 
-    condition_list = [2,4,6,8]
+    deg1PCD        = 31.5 
+    condition_list = [2*deg1PCD,4*deg1PCD,6*deg1PCD,8*deg1PCD]
 
     columnsSet = {
         'condition_list': condition_list,
@@ -172,7 +173,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'starting_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
         'correct_responses': [0 for _ in range(len(condition_list))],
         'now_weber_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
-        'now_screen_intensity': [starting_screen_intensity for _ in range(len(condition_list))],
+        'now_screen_intensity': [starting_probe_intensity for _ in range(len(condition_list))],
         #'update_screen_intensity': [],
         #'update_weber_contrast':[],
         'reversal_termination':[reversal_termination for _ in range(len(condition_list))],

@@ -93,8 +93,9 @@ RIGHT_RESPONSE = 1
 # Contrast conversion
 # -----------------------------------------------------------------------------
 
-def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, background_crt, max_crt, log_function=math.log10,
-                  apply_log=False):
+def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, background_crt, max_crt, 
+                                                            log_function=math.log10,
+                                                            apply_log=False):
     """
     Convert CPU luminance values to Weber contrast.
 
@@ -773,9 +774,27 @@ def subject_response(trial, args):
                 ↓
         display CPU intensity 
 
+        or
+
+        Weber
+        ↓
+        (staircase operates entirely here)
+        ↓
+        CPU (once)
+        ↓
+        Display
+
     """
     if not args:
         return
+
+    params              = funcs.read_JSON(trial.file_parameters_Stimulus)
+    n_up                = params["n_up"]
+    n_dw                = params["n_dw"] 
+    background_intensity= params['background_intensity']
+    max_intensity       = params['max_intensity']
+    stetp_up            = params['logUNIT_UP']
+    stetp_dw            = params['logUNIT_DW']
 
     data_responses      = funcs.readText_toList(trial.file_response_record)
 
@@ -791,19 +810,14 @@ def subject_response(trial, args):
     conditions_data     = funcs.read_JSON(trial.file_experiment_Conditions)
     staircase_id        = conditions_data['staircase_Identity_now'][0]  
     stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
-    probe_weber_contrast= conditions_data['now_weber_contrast'][staircase_id]  
     now_screen_intensity= conditions_data['now_screen_intensity'][staircase_id]  
+    probe_weber_contrast= _to_weber(now_screen_intensity, background_intensity, max_intensity)
     probe_choice        = conditions_data['probe_Alternative_Choice'][staircase_id]
-
-    params              = funcs.read_JSON(trial.file_parameters_Stimulus)
-
-
-
-    n_up                = params["n_up"]
-    n_dw                = params["n_dw"] 
 
 
     subject_response    = _key_to_response(args[0])
+    probe_Alternative_Choice_history.append(probe_choice)
+    human_Alternative_Choice_history.append(subject_response)
 
     if probe_choice == subject_response:
         _beep(1000, duration)
@@ -829,57 +843,52 @@ def subject_response(trial, args):
     
     def _check_responses_history(staircase_stimulus_choice, staircase_subject_choice):
         """
-        Check if last stimulus and subjects choices are equal and are as long as n_dw. 
+        Returns:
+            0 -> decrease contrast
+            1 -> increase contrast
+            2 -> leave contrast unchanged
         """
-        
-        get_last_responses = len(staircase_subject_choice)
-        if get_last_responses < n_dw:
-            pass
-        else:
-            get_last_responses = n_dw
 
-        last_4_stimulus = staircase_stimulus_choice[-get_last_responses:]
-        last_4_subject  = staircase_subject_choice[-get_last_responses:]
-
+        # ----- Current response was correct -----
         if probe_choice == subject_response:
-            count_correct_responses = 0
-            
-            for i in range(get_last_responses):
-                if last_4_stimulus[i] == last_4_subject[i]:
-                    count_correct_responses+=1
-                elif last_4_stimulus[i] != last_4_subject[i]:
-                    pass
 
-            if count_correct_responses == get_last_responses:
-                # contrast needs to be decreased
-                dw_bool = 0 
-                return dw_bool
-            else:
-                # contrast remains the same
-                pass_bool = 2
-                return pass_bool
-        elif probe_choice != subject_response:
-            # contrast needs to be increased
-            up_bool = 1
-            return up_bool
+            n = min(len(staircase_subject_choice), n_dw)
+
+            recent_stimulus = staircase_stimulus_choice[-n:]
+            recent_subject  = staircase_subject_choice[-n:]
+
+            if all(s == r for s, r in zip(recent_stimulus, recent_subject)):
+                return 0      # decrease contrast
+
+            return 2          # keep same
+
+        # ----- Current response was incorrect -----
         else:
-            return 0
 
-    stetp_up = params['logUNIT_UP']
-    stetp_dw = params['logUNIT_DW']
-    def _update_probe_weber_contrast(integer):
+            n = min(len(staircase_subject_choice), n_up)
+
+            recent_stimulus = staircase_stimulus_choice[-n:]
+            recent_subject  = staircase_subject_choice[-n:]
+
+            if all(s != r for s, r in zip(recent_stimulus, recent_subject)):
+                return 1      # increase contrast
+
+            return 2          # keep same
+
+    def _update_probe_weber_contrast(integer, weber_contrast):
+
         def _increase_contrast():
-            return now_screen_intensity*pow(10, stetp_up)
+            return weber_contrast*pow(10, stetp_up)
     
         def _decrease_contrast():
-            return now_screen_intensity*pow(10, -stetp_dw)
+            return weber_contrast*pow(10, -stetp_dw)
         
         if integer == 0:
             return _decrease_contrast()
         elif integer == 1:
             return _increase_contrast()
         else:
-            return now_screen_intensity
+            return weber_contrast
 
     
     # isolate staircase
@@ -889,13 +898,16 @@ def subject_response(trial, args):
     ) = _get_single_staircase_history(data_responses, staircase_id)
     # check last responses (do we change contrast of probe?)
     contrast_update_bool        = _check_responses_history(staircase_stimulus_choice, staircase_subject_choice)
+    print('contrast_update_bool: ',contrast_update_bool)
+    print('probe_weber_contrast: ', probe_weber_contrast)
+    print("step_dw:", stetp_dw)
+
     # update probes: contrast and cpu_intensity
-    new_probe_weber_contrast    = _update_probe_weber_contrast(contrast_update_bool)
+    new_probe_weber_contrast    = _update_probe_weber_contrast(contrast_update_bool, probe_weber_contrast)
+    print('new_probe_weber_contras: ',new_probe_weber_contrast)
     new_probe_screen_intensity  = _weber_contrast_to_cpu_intensity(new_probe_weber_contrast, params)
 
     stimulus_condition_history.append(stimulus_condition)
-    probe_Alternative_Choice_history.append(probe_choice)
-    human_Alternative_Choice_history.append(subject_response)
     staircase_Identity_history.append(staircase_id)
     probe_weber_contrast_history.append(new_probe_weber_contrast)
     probe_screen_intensity_history.append(new_probe_screen_intensity)
@@ -907,6 +919,8 @@ def subject_response(trial, args):
     data_responses[4] = probe_weber_contrast_history
     data_responses[5] = probe_screen_intensity_history
 
+    conditions_data['now_screen_intensity'][staircase_id] = new_probe_screen_intensity
+    funcs.create_JSON(trial.file_experiment_Conditions, conditions_data)
 
     funcs.write_toText(trial.file_response_record, data_responses)
 
