@@ -41,7 +41,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     # ------------------------------ Window setup ------------------------------
     pyglet.options['vsync'] = True
     pyglet.options['double_buffer'] = True
-    win = ExpWindow(fullscreen=True)
+    win = ExpWindow(fullscreen=False)
 
 
     pixel_width             = win.width
@@ -165,7 +165,19 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             keys_for_trial or [],
             mouse=False,
         )
-
+    """
+    self,
+    name,
+    stimuli,
+    duration_ms,
+    pos,
+    n_up,
+    filename_Conditions,
+    file_paramsStimulus,
+    file_response_record,
+    keys=None,
+    mouse=False,
+    """
 
     # ------------------------------ Trial sequence ------------------------------
 
@@ -243,7 +255,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         [cx, cy],
     )
     fixateRESPONSE = _make_adm_trial(
-        'responses',
+        'response',
         fixation_trial,
         timeT,
         [cx, cy],

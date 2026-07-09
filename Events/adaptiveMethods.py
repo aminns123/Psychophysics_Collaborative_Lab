@@ -498,8 +498,8 @@ def _resolve_condition_threshold(params, total_reversals, adm_trial_count):
 def _reference_contrasts_weber(store_data, params, previous_state):
     """Build Weber-space reference contrasts for up/down staircase steps."""
     trials = _parse_store_data(store_data)
-    background = params["background_contrast"]
-    maximum = params["max_contrast"]
+    background = params["background_weber_contrast"]
+    maximum = params["max_weber_contrast"]
     param_start = previous_state["param_start"]
 
     if param_start == 0:
@@ -526,8 +526,8 @@ def _update_staircase_weber(response, references, params, previous_state, adm_tr
     total_reversals = response["total_reversals"]
     base_contrast = _to_weber(
         response["base_contrast"],
-        params["background_contrast"],
-        params["max_contrast"],
+        params["background_weber_contrast"],
+        params["max_weber_contrast"],
     )
 
     state = {
@@ -600,9 +600,9 @@ def _update_staircase_weber(response, references, params, previous_state, adm_tr
 
 def _weber_contrast_to_cpu_intensity(probe_weber_contrast, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
-    background      = params["background_contrast"]
+    background      = params["background_weber_contrast"]
     probe_intensity = convert_weber_contrast_to_screenIntensity(
-        params["max_contrast"], background, probe_weber_contrast
+        params["max_weber_contrast"], background, probe_weber_contrast
     )
     return max(probe_intensity, background)
 
@@ -635,8 +635,8 @@ def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
         trials["adm_ids"],
         trials["contrast"],
         current_adm_id,
-        params["background_contrast"],
-        params["max_contrast"],
+        params["background_weber_contrast"],
+        params["max_weber_contrast"],
     )
 
     previous_state = _load_previous_trial_state(storeData, adm_index, counts_by_id)
@@ -648,8 +648,8 @@ def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
     # tick #
     contrast_weber = _to_weber(
         response["base_contrast"],
-        params["background_contrast"],
-        params["max_contrast"],
+        params["background_weber_contrast"],
+        params["max_weber_contrast"],
     )
 
     if conditionS:
@@ -712,6 +712,9 @@ def record_event(event, time, trial, args):
 def _key_to_response(key):
     """Map keyboard input to a binary 2AFC response (0 = left/down, 1 = right/up)."""
     key = str(key).upper()
+    print('---------- KEY -------------')
+    print(key)
+    print('____________________________')
     if key in ("LSHIFT", "LEFT", "DOWN"):
         return LEFT_RESPONSE
     if key in ("RSHIFT", "RIGHT", "UP"):
@@ -774,26 +777,19 @@ def subject_response(trial, args):
 
     duration            = 500
 
-    conditions_data     = funcs.read_JSON(trial.fileParamsfilename_Conditionsain)
+    conditions_data     = funcs.read_JSON(trial.file_experiment_Conditions)
     staircase_id        = conditions_data['staircase_Identity_now'][0]  
     stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
     probe_weber_contrast= conditions_data['now_weber_contrast'][staircase_id]  
     probe_choice        = conditions_data['probe_Alternative_Choice'][staircase_id]
 
-    params              = funcs.read_JSON(trial.file_params_Stimulus)
+    params              = funcs.read_JSON(trial.file_parameters_Stimulus)
 
 
-    distance_to_monitor = params["distance_to_monitor"]
-    pixel_metre_ratio   = params["pixel_metre_ratio"]
-    probe_pos_y         = params["probe_pos_y"]
+
     n_up                = params["n_up"]
     n_dw                = params["n_dw"] 
-    probe_start         = params["probe_start"]
-    probe_pos_x         = params["probe_pos_x"]
-    probe_lr            = int(params["probe_lr"])
-    rate_up             = params["rate_up"]
-    background_cpu      = params["background_contrast"]
-    max_cpu             = params["max_contrast"]
+
 
     subject_response    = _key_to_response(args[0])
 
@@ -815,24 +811,34 @@ def subject_response(trial, args):
         value_find = staircase_id
         indices = [i for i, x in enumerate(staircase_Identity_history) if x == value_find]
 
-        return probe_Alternative_Choice_history[indices], human_Alternative_Choice_history[indices]
+        staircase_stimulus_choice = [probe_Alternative_Choice_history[i] for i in indices]
+        staircase_subject_choice  = [human_Alternative_Choice_history[i] for i in indices]
+        return staircase_stimulus_choice, staircase_subject_choice
     
     def _check_responses_history(staircase_stimulus_choice, staircase_subject_choice):
         """
         Check if last stimulus and subjects choices are equal and are as long as n_dw. 
         """
-        last_4_stimulus = staircase_stimulus_choice[:-n_dw]
-        last_4_subject  = staircase_subject_choice[:-n_dw]
+        
+        get_last_responses = len(staircase_subject_choice)
+        if get_last_responses < n_dw:
+            pass
+        else:
+            get_last_responses = n_dw
+
+        last_4_stimulus = staircase_stimulus_choice[-get_last_responses:]
+        last_4_subject  = staircase_subject_choice[-get_last_responses:]
 
         if probe_choice == subject_response:
             count_correct_responses = 0
-            for i in range(n_dw):
-                if last_4_stimulus[-i] == last_4_subject[-i]:
+            
+            for i in range(get_last_responses):
+                if last_4_stimulus[i] == last_4_subject[i]:
                     count_correct_responses+=1
-                elif last_4_stimulus[-i] != last_4_subject[-i]:
+                elif last_4_stimulus[i] != last_4_subject[i]:
                     pass
 
-            if count_correct_responses == n_dw:
+            if count_correct_responses == get_last_responses:
                 # contrast needs to be decreased
                 dw_bool = 0 
                 return dw_bool
@@ -873,12 +879,20 @@ def subject_response(trial, args):
     new_probe_weber_contrast    = _update_probe_contrast(contrast_update_bool)
     new_probe_screen_intensity  = _weber_contrast_to_cpu_intensity(new_probe_weber_contrast, params)
 
-    data_responses[0] = stimulus_condition_history.append(stimulus_condition)
-    data_responses[1] = probe_Alternative_Choice_history.append(probe_choice)
-    data_responses[2] = human_Alternative_Choice_history.append(subject_response)
-    data_responses[3] = staircase_Identity_history.append(staircase_id)
-    data_responses[4] = probe_weber_contrast_history.append(new_probe_weber_contrast)
-    data_responses[5] = probe_screen_intensity_history.append(new_probe_screen_intensity)
+    stimulus_condition_history.append(stimulus_condition)
+    probe_Alternative_Choice_history.append(probe_choice)
+    human_Alternative_Choice_history.append(subject_response)
+    staircase_Identity_history.append(staircase_id)
+    probe_weber_contrast_history.append(new_probe_weber_contrast)
+    probe_screen_intensity_history.append(new_probe_screen_intensity)
+
+    data_responses[0] = stimulus_condition_history
+    data_responses[1] = probe_Alternative_Choice_history
+    data_responses[2] = human_Alternative_Choice_history
+    data_responses[3] = staircase_Identity_history
+    data_responses[4] = probe_weber_contrast_history
+    data_responses[5] = probe_screen_intensity_history
+
 
     funcs.write_toText(trial.file_response_record, data_responses)
 
@@ -925,9 +939,8 @@ class Trials_read_write_staircase_conditions:
         stimuli,
         duration_ms,
         pos,
-        n_up,
-        filename_Conditions,
-        file_paramsStimulus,
+        file_experiment_Conditions,
+        file_parameters_Stimulus,
         file_response_record,
         keys=None,
         mouse=False,
@@ -938,35 +951,34 @@ class Trials_read_write_staircase_conditions:
         self.keys           = keys or []
         self.mouse          = mouse
         self.pos            = pos
-        self.nUP            = n_up
-        self.fileCondition      = filename_Conditions
-        self.fileParamsStimulus = file_paramsStimulus
-        self.fileResponseRecord = file_response_record
+        self.file_experiment_Conditions = file_experiment_Conditions
+        self.file_parameters_Stimulus   = file_parameters_Stimulus
+        self.file_response_record       = file_response_record
 
     def state_new_condition_for_stimulus(self):
         """states new condition for stimulus, to be passed over to stimulus.py file"""
         import random
 
-        data_params         = funcs.read_JSON(self.fileParamsStimulus)
+        data_params         = funcs.read_JSON(self.file_parameters_Stimulus)
         background_intensity= data_params["background_intensity"]
         max_intensity       = data_params["max_intensity"]
 
 
-        data_responses      = funcs.readText_toList(self.fileResponseRecord)
+        data_responses      = funcs.readText_toList(self.file_response_record)
         staircase_Identity_history          = data_responses[3]
         probe_screen_intensity_history      = data_responses[5]
 
 
-        data_conditions      = funcs.read_JSON(self.fileCondition)
+        data_conditions      = funcs.read_JSON(self.file_experiment_Conditions)
         condition_list       = data_conditions['condition_list']
         staircase_Identities = data_conditions['staircase_Identities']
-        current_staircase_id = data_conditions['staircase_Identity']   
+        #current_staircase_id = data_conditions['staircase_Identity']   
         now_screen_intensity = data_conditions['now_screen_intensity']
 
         new_id                  = random.choice(staircase_Identities)
         condition_value         = condition_list[new_id]
         probe_screen_intensity  = now_screen_intensity[new_id]
-        terminate_criteria      = data_conditions["terminate_criteria"][new_id]
+        terminate_criteria      = data_conditions["reversal_termination"][new_id]
         last_responses          = data_conditions["last_responses"]
 
         # ---------------------------------------- # 
@@ -979,7 +991,7 @@ class Trials_read_write_staircase_conditions:
         reversal_count               = _count_staircase_reversals(
                                         staircase_Identity_history, 
                                         probe_weber_contrast_history, 
-                                        current_staircase_id, 
+                                        new_id, 
                                         background_intensity, 
                                         max_intensity)
 
@@ -1001,7 +1013,7 @@ class Trials_read_write_staircase_conditions:
         
         _terminate_staircase_bool()
 
-        px = self.pos  
+        px = self.pos[0]  
         if px >= 0:
             value_response = RIGHT_RESPONSE
         else:
@@ -1022,7 +1034,7 @@ class Trials_read_write_staircase_conditions:
         data_conditions['now_weber_contrast'][new_id]       = probe_weber_contrast
         data_conditions['now_screen_intensity'][new_id]     = probe_screen_intensity
         
-        funcs.create_JSON(self.fileCondition, data_conditions)
+        funcs.create_JSON(self.file_experiment_Conditions, data_conditions)
 
         # ----------------- END --------------------
 

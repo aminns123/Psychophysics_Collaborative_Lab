@@ -62,7 +62,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     experiment_params = {
         'background_intensity': float(setupDict['Screen_intensity']),
         'max_intensity': 1.0,
-        'max_monitor_cdm2': float(setupDict['Background_Luminance']),
+        'max_monitor_cdm2': float(setupDict['Max_monitor_Luminance']),
         'starting_screen_intensity': float(setupDict['starting_screen_intensity']),
         'timeFixate':   timeFixate,
         'timeInterval': timeInterval,
@@ -74,8 +74,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
 
     staircase_params = {
         'trialPOINT':           int(setupDict['trialPOINT']),
-        'nDW':                  4,
-        'nUP':                  1,
+        'n_dw':                  4,
+        'n_up':                  1,
         'number_trials':        10,
         'terminationINDEX':     9,
         'logUNIT_UP':           0.19,
@@ -98,7 +98,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     # ------------------------------ Files and timing ------------------------------
 
 
-    UPDW_Rule           = 'DW'+str(int(staircase_params['nDW']))+'_UP'+str(int(staircase_params['nUP']))
+    UPDW_Rule           = 'DW'+str(int(staircase_params['n_dw']))+'_UP'+str(int(staircase_params['n_up']))
     experimentNAME      = setupDict['Experiment_Type']
     bkg_intensityFolder = 'Background_Intensity_'+str(experiment_params['background_intensity'])
 
@@ -126,13 +126,27 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
     )
-    
+
+    background_intensity = experiment_params['background_intensity']
+    background_weber_contrast = _to_weber(
+        background_intensity,
+        experiment_params['max_intensity'],
+        experiment_params['background_intensity'],
+    )
+    max_intensity = experiment_params['max_intensity']
+    max_weber_contrast = _to_weber(
+        max_intensity,
+        experiment_params['max_intensity'],
+        experiment_params['background_intensity'],
+    )
 
     flat_dict = {}
 
     for subdict in dict_all_dicts.values():
         flat_dict.update(subdict)
     value_params = flat_dict.copy()    
+    value_params.update({'background_weber_contrast':background_weber_contrast,
+                         'max_weber_contrast':max_weber_contrast})
 
     columnADM = [
         'condition', 
@@ -162,8 +176,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         #'update_screen_intensity': [],
         #'update_weber_contrast':[],
         'reversal_termination':[reversal_termination for _ in range(len(condition_list))],
-        'nDW': [staircase_params['nDW']],
-        'nUP': [staircase_params['nUP']],
+        'n_dw': [staircase_params['n_dw']],
+        'n_up': [staircase_params['n_up']],
         'logUNIT_UP': [staircase_params['logUNIT_UP']],
         'logUNIT_DW': [staircase_params['logUNIT_DW']],
         'last_responses':0,

@@ -228,8 +228,8 @@ def create_JSON(filename, dictionary: dict):
 """
 def read_JSON(filename):
     with open(filename, "r") as f:
-        dictionary = json.load(f)
-    return dictionary
+        text = f.read()
+    return json.loads(text)
 """
 ||$||
 """
@@ -247,12 +247,10 @@ def create_Text_columns(filename, subtitles: list):
 ||$||
 """
 def write_toText(path, data):
-    """
-    Write a x-Dimensional list (matrix) to a text file, transposing it in the process.
-    Each row of the matrix will be written as a line in the text file, with values separated by tabs.
-    """
     file = open(path, "w")
     
+    colS = 0
+    rowS = 0
     
     data =  list(map(list, zip(*data))) # Transpose list (must be a complete matrix/list, no gaps)
     
@@ -261,11 +259,11 @@ def write_toText(path, data):
             file.write('\n')
             
         for x in range(len(data[y])): # new columns
-            value = data[y][x]
+        
             if x < len(data[y])-1:
-                file.write(f"{value:.6f}\n"+'\t') # want to swap col with row thus [y][x]->[x][y]
+                file.write(str(data[y][x])+'\t') # want to swap col with row thus [y][x]->[x][y]
             elif x == len(data[y])-1:
-                file.write(f"{value:.6f}\n")          
+                file.write(str(data[y][x]))          
     file.close()
 """
     ||$||

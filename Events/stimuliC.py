@@ -77,7 +77,7 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
     ##  float Sde = 0.1;
     ##  double pi = 2 * acos(0.0);
     ### m = (1/(2*pi*pow(Sde,2)))*exp(-(pow(x,2)+pow(y,2))/(2*pow(Sde,2)))
-    def __init__(self,pos, filename_Conditions,params=Params()):
+    def __init__(self,pos, file_experiment_Conditions,params=Params()):
         self.pos        = pos
         self.params     = copy_params(self._defaults,params)
         self.clock      = pyglet.clock.Clock()
@@ -89,8 +89,7 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
                                   'Lmin','Lmax','gamma','BTRR'
                                   ,'SdeX', 'SdeY'])) # <- added
         
-        
-        self.filename_Conditions = filename_Conditions
+        self.file_experiment_Conditions = file_experiment_Conditions
 
         glUseProgram(self.program)
         glUniform1f(self.uniforms['phase'],0.0)
@@ -113,16 +112,16 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         self.px             = self.pos[0]
         self.py             = self.pos[1]
 
-        data_conditions         = read_JSON(self.filename_Conditions)
+        data_conditions         = read_JSON(self.file_experiment_Conditions)
 
         new_id               = data_conditions['staircase_Identity_now'][0]  
         stimulus_condition   = data_conditions['stimulus_condition'][new_id]
         probe_weber_contrast = data_conditions['now_weber_contrast'][new_id]       
-        #probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
+        probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
 
 
         self.params.fs      = stimulus_condition
-        cL                  = probe_weber_contrast
+        cL                  = 1.0 # probe_weber_contrast
         self.params.contr   = cL # <-- actually give contrast value
         
         glUseProgram(self.program)
