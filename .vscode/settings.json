@@ -1,6 +1,6 @@
 {
     "explorer.compactFolders": false,
     "scm.compactFolders": false,
-    "editor.fontSize": 16,
-    "workbench.colorTheme": "Monokai Pro (Filter Ristretto)"
+    "editor.fontSize": 14,
+    "workbench.colorTheme": "paddy-citadel"
 }

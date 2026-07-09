@@ -78,8 +78,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'n_up':                  1,
         'number_trials':        10,
         'terminationINDEX':     9,
-        'logUNIT_UP':           0.19,
-        'logUNIT_DW':           ratio4dw1up * 0.19,
+        'logUNIT_UP':           0.35,
+        'logUNIT_DW':           ratio2dw1up * 0.35,
         'preReversalStepDW':    0.2,
         'Reversal_or_Trial':    1,
         'limit_Trial_Run':      100,
@@ -160,7 +160,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     ]
 
     deg1PCD        = 31.5 
-    condition_list = [2*deg1PCD,4*deg1PCD,6*deg1PCD,8*deg1PCD]
+    condition_list = [2*deg1PCD,8*deg1PCD] # ,4*deg1PCD,6*deg1PCD,
 
     columnsSet = {
         'condition_list': condition_list,

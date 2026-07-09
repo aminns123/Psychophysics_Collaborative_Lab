@@ -31,6 +31,16 @@ print('============== FILES ===============================')
 import Functions.functionsForUse as funcs
 from Interface.config import run_configure_experiment
 
+
+def _create_folder_if_missing(folder_path):
+    Path(folder_path).mkdir(parents=True, exist_ok=True)
+
+def _create_first_subject(folder_path):
+    folder = Path(folder_path)
+
+    # If the folder contains nothing, create subject_1
+    if not any(folder.iterdir()):
+        (folder / "subject_1").mkdir()
 # ------------------------------ Experiment setup ------------------------------
 
 current_time    	    = datetime.datetime.now()
@@ -41,6 +51,9 @@ print("Today date is: ", today)
 "At max 500 cdm2"
 listLum   = [19.0, 29,     41 , 49,    204,   255, 300,    322, 370, 403,   415, 500]
 listCPULum= [0.24,0.294, 0.34, 0.374, 0.72,  0.8, 0.86, 0.89,  0.95, 0.98, 0.99]
+
+_create_folder_if_missing(data_save_repository)
+_create_first_subject(data_save_repository)
 
 listName  = os.listdir(data_save_repository)
 listExperiments = [

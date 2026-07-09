@@ -114,8 +114,8 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
 
         data_conditions         = read_JSON(self.file_experiment_Conditions)
 
-        new_id               = data_conditions['staircase_Identity_now'][0]  
-        stimulus_condition   = data_conditions['stimulus_condition'][new_id]
+        new_id                 = data_conditions['staircase_Identity_now'][0]  
+        stimulus_condition     = data_conditions['stimulus_condition'][new_id]
         probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
 
 
