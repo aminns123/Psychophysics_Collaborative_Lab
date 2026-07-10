@@ -179,8 +179,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'n_up': [staircase_params['n_up']],
         'logUNIT_UP': [staircase_params['logUNIT_UP']],
         'logUNIT_DW': [staircase_params['logUNIT_DW']],
-        'last_responses':0,
-        'terminate_bool':0,
+        'count_down_terminate':[0],
+        'terminate_bool':[0],
     }
 
     column_titles   = ['stimulus_condition', 

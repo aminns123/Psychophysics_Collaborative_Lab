@@ -834,12 +834,11 @@ def subject_response(trial, args):
         human_Alternative_Choice_history = data_responses[2]
         staircase_Identity_history       = data_responses[3]
         #probe_weber_contrast_history     = data_responses[4]
-        probe_screen_intensity_history   = data_responses[5]
+        #probe_screen_intensity_history   = data_responses[5]
 
-        list_find  = [1, 2, 3, 1, 2, 3]
-
+        list_find  = staircase_Identity_history
         value_find = staircase_id
-        indices = [i for i, x in enumerate(staircase_Identity_history) if x == value_find]
+        indices    = [i for i, x in enumerate(list_find) if x == value_find]
 
         staircase_stimulus_choice = [probe_Alternative_Choice_history[i] for i in indices]
         staircase_subject_choice  = [human_Alternative_Choice_history[i] for i in indices]
@@ -1011,8 +1010,8 @@ class Trials_read_write_staircase_conditions:
         condition_value         = condition_list[new_id]
         probe_screen_intensity  = staircase_intensity_active[new_id]
         terminate_criteria      = data_conditions["reversal_termination"][new_id]
-        last_responses          = data_conditions["last_responses"]
-
+        count_down_terminate    = data_conditions["count_down_terminate"][0]
+        terminate_bool          = data_conditions['terminate_bool'][0]
         # ---------------------------------------- # 
 
         probe_weber_contrast_history = convert_screen_intensity_history_to_weber_contrast_list(
@@ -1036,9 +1035,11 @@ class Trials_read_write_staircase_conditions:
                         condition_list.remove(remove_value)
                 
                 elif len(condition_list) == 1:
-                    last_responses += 1
-                    if last_responses >= 2:
+                    count_down_terminate += 1
+                    if count_down_terminate >= 2:
                         terminate_bool = 1
+                    else:
+                        terminate_bool = 0
             else:
                 pass
         
@@ -1068,6 +1069,8 @@ class Trials_read_write_staircase_conditions:
         data_conditions['weber_contrast_active'][new_id]        = probe_weber_contrast
         data_conditions['staircase_intensity_active'][new_id]   = probe_screen_intensity
         data_conditions['stimulus_choice_active']               = [stimulus_choice_active]
+        data_conditions['terminate_bool']                       = [terminate_bool]
+        data_conditions['count_down_terminate']                 = [count_down_terminate]
 
         print('--------- NEW STATE ------------')
         print('probe_screen_intensity: ', probe_screen_intensity)
