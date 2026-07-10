@@ -56,7 +56,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     timeInterval        = 250
     timeT               = 0
     timeAB              = 200
-    viewing_distance_m  = 0.5
+    viewing_distance_m  = 1.0
     reversal_termination= setupDict['reversal_termination']
 
     experiment_params = {

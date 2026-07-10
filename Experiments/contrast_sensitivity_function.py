@@ -130,8 +130,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         'Lmax':                 25,
         'gamma':                0.0,
         'BRTRR':                1.2,
-        'flanker_width': 		5.0, # arc angle in degree
-        'grating_displacement': 5.0, # 3
+        'flanker_width_deg': 		5.0, # arc angle in degree
+        'grating_displacement_deg': 5.0, # 3
         'probe_displacement_dx':0.4,
         'probe_displacement_dy':0.3,# was 0.2, 0.0
     }
@@ -182,14 +182,17 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     """
 
     # ------------------------------ Trial sequence ------------------------------
-
-    grating_displacement = int(funcs.convertArcangleTOPixel(kwargs_grating['grating_displacement'], 
+    grating_width        = int(funcs.convertArcangleTOPixel(kwargs_grating['flanker_width_deg'], 
+                                                        experiment_params['viewing_distance_m'], 
+                                                        pixel_metre_ratio))
+    grating_displacement = int(funcs.convertArcangleTOPixel(kwargs_grating['grating_displacement_deg'], 
                                                         experiment_params['viewing_distance_m'], 
                                                         pixel_metre_ratio))
 
     alternative_forced_choice = {
         '2AFC_choice': [cx-grating_displacement, cx+grating_displacement],  
     }
+    kwargs_grating.update({'width':grating_width})
 
     data_conditions = funcs.read_JSON(filename_Conditions)
     data_conditions.update({'2AFC_choice':alternative_forced_choice['2AFC_choice']})
