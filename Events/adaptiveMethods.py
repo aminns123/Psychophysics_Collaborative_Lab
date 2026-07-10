@@ -807,17 +807,21 @@ def subject_response(trial, args):
 
     duration            = 500
 
-    conditions_data     = funcs.read_JSON(trial.file_experiment_Conditions)
-    staircase_id        = conditions_data['staircase_Identity_now'][0]  
-    stimulus_condition  = conditions_data['stimulus_condition'][staircase_id]
-    now_screen_intensity= conditions_data['now_screen_intensity'][staircase_id]  
-    probe_weber_contrast= _to_weber(now_screen_intensity, background_intensity, max_intensity)
-    probe_choice        = conditions_data['probe_Alternative_Choice'][staircase_id]
+    conditions_data             = funcs.read_JSON(trial.file_experiment_Conditions)
+    staircase_id                = conditions_data['staircase_Identity_active'][0]  
+    stimulus_condition          = conditions_data['condition_list'][staircase_id]
+    staircase_intensity_active  = conditions_data['staircase_intensity_active'][staircase_id]  
+    probe_weber_contrast        = _to_weber(staircase_intensity_active, background_intensity, max_intensity)
+    probe_choice                = conditions_data['probe_Alternative_Choice'][staircase_id]
 
 
     subject_response    = _key_to_response(args[0])
     probe_Alternative_Choice_history.append(probe_choice)
     human_Alternative_Choice_history.append(subject_response)
+
+    print('------------- SUBJECT RESPONSE --------------------')
+    print('probe_choice: ', probe_choice)
+    print('subject_response: ', subject_response)
 
     if probe_choice == subject_response:
         _beep(1000, duration)
@@ -919,7 +923,7 @@ def subject_response(trial, args):
     data_responses[4] = probe_weber_contrast_history
     data_responses[5] = probe_screen_intensity_history
 
-    conditions_data['now_screen_intensity'][staircase_id] = new_probe_screen_intensity
+    conditions_data['staircase_intensity_active'][staircase_id] = new_probe_screen_intensity
     funcs.create_JSON(trial.file_experiment_Conditions, conditions_data)
 
     funcs.write_toText(trial.file_response_record, data_responses)
@@ -997,15 +1001,15 @@ class Trials_read_write_staircase_conditions:
         probe_screen_intensity_history      = data_responses[5]
 
 
-        data_conditions      = funcs.read_JSON(self.file_experiment_Conditions)
-        condition_list       = data_conditions['condition_list']
-        staircase_Identities = data_conditions['staircase_Identities']
+        data_conditions             = funcs.read_JSON(self.file_experiment_Conditions)
+        condition_list              = data_conditions['condition_list']
+        staircase_Identities        = data_conditions['staircase_Identities']
         #current_staircase_id = data_conditions['staircase_Identity']   
-        now_screen_intensity = data_conditions['now_screen_intensity']
+        staircase_intensity_active   = data_conditions['staircase_intensity_active']
 
         new_id                  = random.choice(staircase_Identities)
         condition_value         = condition_list[new_id]
-        probe_screen_intensity  = now_screen_intensity[new_id]
+        probe_screen_intensity  = staircase_intensity_active[new_id]
         terminate_criteria      = data_conditions["reversal_termination"][new_id]
         last_responses          = data_conditions["last_responses"]
 
@@ -1041,10 +1045,12 @@ class Trials_read_write_staircase_conditions:
         
         _terminate_staircase_bool()
 
-        px = self.pos[0]  
-        if px >= 0:
+        state1, state2 = data_conditions['2AFC_choice']
+
+        stimulus_choice_active   = self.pos[0]  
+        if stimulus_choice_active == state2:
             value_response = RIGHT_RESPONSE
-        else:
+        elif stimulus_choice_active == state1:
             value_response = LEFT_RESPONSE
 
         _beep(550, self.T)
@@ -1056,12 +1062,17 @@ class Trials_read_write_staircase_conditions:
                                         background_intensity, 
                                         max_intensity)[0]
 
-        data_conditions['stimulus_condition']               = condition_list
-        data_conditions['probe_Alternative_Choice'][new_id] = value_response
-        data_conditions['staircase_Identity_now']           = [new_id]
-        data_conditions['now_weber_contrast'][new_id]       = probe_weber_contrast
-        data_conditions['now_screen_intensity'][new_id]     = probe_screen_intensity
-        
+        data_conditions['condition_list']                       = condition_list
+        data_conditions['probe_Alternative_Choice'][new_id]     = value_response
+        data_conditions['staircase_Identity_active']            = [new_id]
+        data_conditions['weber_contrast_active'][new_id]        = probe_weber_contrast
+        data_conditions['staircase_intensity_active'][new_id]   = probe_screen_intensity
+        data_conditions['stimulus_choice_active']               = [stimulus_choice_active]
+
+        print('--------- NEW STATE ------------')
+        print('probe_screen_intensity: ', probe_screen_intensity)
+        print('stimulus_choice_active: ', stimulus_choice_active)
+
         funcs.create_JSON(self.file_experiment_Conditions, data_conditions)
 
         # ----------------- END --------------------

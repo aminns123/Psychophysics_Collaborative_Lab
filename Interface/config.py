@@ -56,7 +56,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     timeInterval        = 250
     timeT               = 0
     timeAB              = 200
-    viewing_distance_m  = 1.0
+    viewing_distance_m  = 0.5
     reversal_termination= setupDict['reversal_termination']
 
     experiment_params = {
@@ -167,15 +167,13 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'staircase_Identities': list(range(len(condition_list))),
         'probe_Alternative_Choice': [0 for _ in range(len(condition_list))],
         'human_Alternative_Choice': [0 for _ in range(len(condition_list))],
-        'staircase_Identity_now': [0],
-        'stimulus_condition': [0],
+        'staircase_Identity_active': [0],
+        'stimulus_choice_active': [0], 
         'total_Reversals':  [0 for _ in range(len(condition_list))],
         'starting_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
         'correct_responses': [0 for _ in range(len(condition_list))],
-        'now_weber_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
-        'now_screen_intensity': [starting_probe_intensity for _ in range(len(condition_list))],
-        #'update_screen_intensity': [],
-        #'update_weber_contrast':[],
+        'weber_contrast_active': [starting_weber_contrast for _ in range(len(condition_list))],
+        'staircase_intensity_active': [starting_probe_intensity for _ in range(len(condition_list))], 
         'reversal_termination':[reversal_termination for _ in range(len(condition_list))],
         'n_dw': [staircase_params['n_dw']],
         'n_up': [staircase_params['n_up']],
@@ -197,28 +195,3 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     funcs.create_Text_columns(filename_response_main, column_titles)
 
     return filename_Conditions, filename_parameters, filename_response_main
-
-    """
-    funcs.create_Text(fileParamsPosition, valuePosition)
-    funcs.create_Text_academic(fileADM_indexing, columnADM)
-    funcs.create_Text(fileArrayCondition, condition_list)
-    funcs.create_Text_academic(fileADM_condition, columnADM_condition)
-
-    bool_general, bool_fs, bool_x, omegaf = 0, 1, 0, 1.0
-
-
-    condition_names     = ['frequency', 'position_', 'general__', 'nan_row__']
-    condition_values    = [omegaf, 0.0, 0.0, 0.0]
-    condition_enabled   = [bool_fs, bool_x, bool_general, 0.0]
-
-    adm_condition_table = funcs.readText_toList(fileADM_condition)
-    adm_condition_table[0].extend(condition_names)
-    adm_condition_table[1].extend(condition_values)
-    adm_condition_table[2].extend(condition_enabled)
-    adm_condition_table[3].extend([0 for _ in condition_names])
-
-    # Remove the placeholder row created by ``create_Text_academic``.
-    for column in adm_condition_table:
-        column.pop(0)
-    funcs.write_toText(fileADM_condition, adm_condition_table)
-    """

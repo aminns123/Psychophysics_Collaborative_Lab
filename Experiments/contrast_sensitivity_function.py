@@ -41,7 +41,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     # ------------------------------ Window setup ------------------------------
     pyglet.options['vsync'] = True
     pyglet.options['double_buffer'] = True
-    win = ExpWindow(fullscreen=False)
+    win = ExpWindow(fullscreen=True)
 
 
     pixel_width             = win.width
@@ -51,8 +51,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     aspect_ratio            = screen_width_pixel/screen_height_pixel
     monitor_refresh_rate    = 60
 
-    metre_width             = 596.2e-3 # 610e-3
-    metre_height            = 335.3e-3 # 350e-3
+    metre_width             = 610e-3 # 596.2e-3 # 
+    metre_height            = 350e-3 # 335.3e-3 # 
     screen_width_m          = metre_width
     screen_height_m         = metre_height
 
@@ -131,7 +131,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         'gamma':                0.0,
         'BRTRR':                1.2,
         'flanker_width': 		5.0, # arc angle in degree
-        'flanker_displacement': 3.0,
+        'grating_displacement': 5.0, # 3
         'probe_displacement_dx':0.4,
         'probe_displacement_dy':0.3,# was 0.2, 0.0
     }
@@ -183,11 +183,17 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     # ------------------------------ Trial sequence ------------------------------
 
-    grating_displacement = funcs.convertArcangleTOPixel(5, experiment_params['viewing_distance_m'], pixel_metre_ratio) 
+    grating_displacement = int(funcs.convertArcangleTOPixel(kwargs_grating['grating_displacement'], 
+                                                        experiment_params['viewing_distance_m'], 
+                                                        pixel_metre_ratio))
 
     alternative_forced_choice = {
-        '2AFC_choice': [-grating_displacement, grating_displacement],  
+        '2AFC_choice': [cx-grating_displacement, cx+grating_displacement],  
     }
+
+    data_conditions = funcs.read_JSON(filename_Conditions)
+    data_conditions.update({'2AFC_choice':alternative_forced_choice['2AFC_choice']})
+    funcs.create_JSON(filename_Conditions, data_conditions)
 
     response_keys   = [key.RIGHT, key.LEFT]
     keys_none       = []
@@ -243,12 +249,6 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         timeFixate,
         [cx, cy],
     )
-    fixate_state_new_condition = _make_adm_trial(
-        'new_condition',
-        fake_probe_trial,
-        timeInterval,
-        [cx, cy],
-    )
     fixateInterval = _make_adm_trial(
         'fixation',
         fake_probe_trial,
@@ -268,11 +268,17 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
         posX = random.choice(alternative_forced_choice['2AFC_choice'])
 
+        fixate_state_new_condition = _make_adm_trial(
+            'new_condition',
+            fake_probe_trial,
+            timeInterval,
+            [posX, cy],
+        )
         stimulusPROBE = _make_adm_trial(
             'stimuli',
             probe_trial,
             timeAB,
-            [cx+posX, cy],
+            [posX, cy],
         )    
 
         sequence = [

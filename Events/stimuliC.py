@@ -54,15 +54,6 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
             float Sde = 0.03; // 0.05 or 0.17 | USE: Sde = 0.03, 0.025 for <10cdm2
             //float m = exp(-0.5*(x*x + y*y)/pow(Sde,2)); // <- 2 or 2.5
             float m = exp(-0.5*((x*x)/pow(SdeX,2) + (y*y)/pow(SdeY,2)));
-            
-            //float m = (1.0/(2.0*pi*pow(Sde,2.0)))*exp(-(pow(x,2.0)+pow(y,2.0))/(2.0*pow(Sde,2.0))); 
-            //float m = abs(sin(fs*x)+phase);
-            //float c = m*contr*cos(fs*x + phase);
-            // ==================================================  # <- added
-            //float normalized_x = x / width;  // Normalize x by the stimulus width
-            //float normalized_y = y / width;  // Normalize y by the stimulus width
-            //float c = m * contr * sin(fs * (normalized_x * cos(theta) + normalized_y * sin(theta)) + phase);
-            // ==================================================
             float c = m*contr*sin(fs*(x*cos(theta)+y*sin(theta)) + phase);
             if (box == 1.0) {
                 gl_FragColor.rgba = vec4(lum2image(c),1.0);
@@ -114,13 +105,16 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
 
         data_conditions         = read_JSON(self.file_experiment_Conditions)
 
-        new_id                 = data_conditions['staircase_Identity_now'][0]  
-        stimulus_condition     = data_conditions['stimulus_condition'][new_id]
-        probe_screen_intensity = data_conditions['now_screen_intensity'][new_id]     
-
+        new_id                   = data_conditions['staircase_Identity_active'][0]  
+        stimulus_condition       = data_conditions['condition_list'][new_id]
+        probe_screen_intensity   = data_conditions['staircase_intensity_active'][new_id]     
+        stimulus_choice_active   = data_conditions['stimulus_choice_active'][0]
 
         self.params.fs      = stimulus_condition
         cL                  = probe_screen_intensity
+        #print('--------- STIMULUS ------------')
+        #print('probe_screen_intensity: ', cL)
+        #print('stimulus_choice_active: ', stimulus_choice_active)
         self.params.contr   = cL # <-- actually give contrast value
         
         glUseProgram(self.program)
@@ -128,9 +122,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         glUniform1f(self.uniforms['contr'],self.params.contr)
         glUseProgram(0)
         
-        p = self.params
-        x, y = self.pos
-        w2 = p.width/2.0
+        p   = self.params
+        w2  = p.width/2.0
+        x   = stimulus_choice_active
         glUseProgram(self.program)
         ph = p.speed*(self.clock.time()-self.t0)
         glUniform1f(self.uniforms['phase'],ph)
@@ -138,7 +132,7 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         
         glPushMatrix()
         glLoadIdentity()
-        glTranslatef(self.pos[0],self.pos[1],0.0)
+        glTranslatef(x,self.pos[1],0.0)
         glBegin(GL_QUADS)
         glTexCoord2f(0.0,1.0)
         glVertex2f(-w2,-w2)
