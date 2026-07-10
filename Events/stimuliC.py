@@ -112,11 +112,10 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         probe_weber_contrast     = data_conditions['weber_contrast_active'][new_id] 
 
         self.params.fs      = stimulus_condition
-        cL                  = probe_weber_contrast
         #print('--------- STIMULUS ------------')
         #print('probe_screen_intensity: ', cL)
         #print('stimulus_choice_active: ', stimulus_choice_active)
-        self.params.contr   = cL # <-- actually give contrast value
+        self.params.contr   = probe_weber_contrast # <-- actually give contrast value
         
         glUseProgram(self.program)
         glUniform1f(self.uniforms['fs'],   self.params.fs)
