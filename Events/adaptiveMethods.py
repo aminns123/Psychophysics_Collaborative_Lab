@@ -253,34 +253,6 @@ def count_values_type(values, unique_values, start_index):
         total += count
     return counts, total
 
-
-def returnOnce(values):
-    """Return absolute values, keeping first occurrence of each."""
-    seen = []
-    for value in values:
-        absolute = abs(value)
-        if absolute not in seen:
-            seen.append(absolute)
-    return seen
-
-
-def count_Abs_type(count_rows):
-    """Merge counts for values that differ only by sign."""
-    merged_values = []
-    merged_counts = []
-
-    for value, count in count_rows:
-        key = abs(value)
-        if key not in merged_values:
-            merged_values.append(key)
-            merged_counts.append(count)
-        else:
-            index = findIndexFloat(merged_values, key)
-            merged_counts[index] += count
-
-    return [[merged_values[i], merged_counts[i]] for i in range(len(merged_values))]
-
-
 # -----------------------------------------------------------------------------
 # Staircase orchestration (``conditions`` and helpers)
 # -----------------------------------------------------------------------------
@@ -294,10 +266,6 @@ def _parse_store_data(store_data):
     """Map legacy trial-store list indices to named trial arrays."""
     return {name: store_data[index] for name, index in STORE_DATA_INDEX.items()}
 
-
-def _append_store_value(store_data, field_name, value):
-    """Append ``value`` to a named field in the legacy trial store."""
-    store_data[STORE_DATA_INDEX[field_name]].append(value)
 
 
 def _beep(frequency, duration_ms):
@@ -536,90 +504,6 @@ def _weber_contrast_to_cpu_intensity(probe_weber_contrast, params):
     )
     return max(probe_intensity, background)
 
-
-def update_staircase_probe_screen_intensity(storeData, dataParams, conditionS):
-    """
-    Update adaptive staircase contrast for the current ADM condition.
-
-    Parameters
-    ----------
-    storeData : list
-        Trial history in legacy list format (see ``STORE_DATA_INDEX``).
-    dataParams : list
-        Experiment parameters in legacy list format (see ``DATA_PARAM_INDEX``).
-    conditionS : bool
-        When True, apply Weber-space staircase updates before converting back
-        to CPU luminance. When False, re-use the previous contrast state.
-
-    Returns
-    -------
-    tuple
-        (contrast_cpu, reversal_tick, correct_tick, param_start, rate_down,
-         response_count, count_reversals_total, rate_up)
-    """
-    params = _parse_data_params(dataParams)
-    trials = _parse_store_data(storeData)
-
-    counts_by_id, adm_index, current_adm_id = _adm_trial_counts(storeData)
-    total_reversals = _count_staircase_reversals(
-        trials["adm_ids"],
-        trials["contrast"],
-        current_adm_id,
-        params["background_intensity"],
-        params["max_intensity"],
-    )
-
-    previous_state = _load_previous_trial_state(storeData, adm_index, counts_by_id)
-    previous_state["rate_down"] = trials["rate_down"][-1]
-
-    response = _evaluate_current_response(storeData, adm_index, counts_by_id, params)
-    response["total_reversals"] = total_reversals
-
-    # tick #
-    contrast_weber = _to_weber(
-        response["base_contrast"],
-        params["background_intensity"],
-        params["max_intensity"],
-    )
-
-    if conditionS:
-        references  = _reference_contrasts_weber(storeData, params, previous_state)
-        updated     = _update_staircase_weber(
-            response,
-            references,
-            params,
-            previous_state,
-            counts_by_id[adm_index][1],
-        )
-        contrast_weber          = updated["contrast_weber"]
-        correct_tick            = updated["correct_tick"]
-        param_start             = updated["param_start"]
-        reversal_n              = updated["reversal_n"]
-        rate_down               = updated["rate_down"]
-        count_reversals_total   = updated["count_reversals_total"]
-        response_count          = updated["response_count"]
-    else:
-        correct_tick            = previous_state["correct_tick"]
-        param_start             = previous_state["param_start"]
-        reversal_n              = previous_state["reversal_n"]
-        rate_down               = previous_state["rate_down"]
-        count_reversals_total   = previous_state["count_reversals_total"]
-        response_count          = response["response_count"]
-
-    probe_screen_intensity = _weber_contrast_to_cpu_intensity(contrast_weber, params)
-
-    return (
-        probe_screen_intensity,
-        reversal_n,
-        correct_tick,
-        param_start,
-        rate_down,
-        response_count,
-        count_reversals_total,
-        params["rate_up"],
-    )
-
-
 # -----------------------------------------------------------------------------
 # Event logging and response handling
 # -----------------------------------------------------------------------------
@@ -650,34 +534,6 @@ def _key_to_response(key):
     if key in ("RSHIFT", "RIGHT", "UP"):
         return RIGHT_RESPONSE
     raise ValueError(f"Unrecognised response key: {key}")
-
-
-def _find_baseline_contrast(store_data, adm_id, probe_start):
-    """Find the contrast baseline for the current ADM before recording a response."""
-    trials              = _parse_store_data(store_data)
-    contrast_history    = trials["next_contrast"]
-    adm_ids             = trials["adm_ids"]
-    param_starts        = trials["param_start"]
-    min_trials          = 1
-    start_index         = 1
-
-    unique_ids      = check_values(adm_ids)
-    counts_by_id, _ = count_values_type(adm_ids, unique_ids, start_index)
-    adm_id_list     = appendTrials(counts_by_id)
-    adm_index       = findIndex(adm_id_list, adm_id)
-
-    if counts_by_id[adm_index][1] < min_trials:
-        return probe_start
-
-    for trial_index in range(len(contrast_history) - 1, -1, -1):
-        if int(adm_ids[trial_index]) != adm_id:
-            continue
-        base_contrast = contrast_history[trial_index]
-        if int(param_starts[trial_index]) == 0:
-            return probe_start
-        return base_contrast
-
-    return probe_start
 
 
 def subject_response(trial, args):
@@ -1027,94 +883,3 @@ class Trials_read_write_staircase_conditions:
             "pos": self.pos,
             "nUP": self.nUP,
         }
-
-
-# -----------------------------------------------------------------------------
-# ADM condition assignment
-# -----------------------------------------------------------------------------
-
-def condition_ADM(data_adm_index, condition_value):
-    """
-    Look up or create an ADM ID for a stimulus condition (e.g. position or SF).
-
-    Returns
-    -------
-    tuple
-        (condition_values, adm_ids, active_adm_id)
-    """
-    adm_cond, adm_index = data_adm_index[0], data_adm_index[1]
-
-    for index, cond_j in enumerate(adm_cond):
-        if cond_j == condition_value:
-            return adm_cond, adm_index, int(adm_index[index])
-
-    next_id = len(adm_cond)
-    if next_id not in adm_index:
-        adm_cond.append(condition_value)
-        adm_index.append(next_id)
-        return adm_cond, adm_index, next_id
-
-    for index, adm_j in enumerate(adm_index):
-        if adm_j == next_id:
-            return adm_cond, adm_index, int(adm_index[index])
-
-    return adm_cond, adm_index, next_id
-
-
-def condition_INDEX(data_adm_index, adm_value):
-    """Return the condition value associated with an ADM ID."""
-    adm_cond, adm_index = data_adm_index[0], data_adm_index[1]
-    for index, adm_j in enumerate(adm_index):
-        if adm_j == adm_value:
-            return int(adm_cond[index])
-    return None
-
-
-def condition_KEY_VALUE(condition_value, condition_statement, **kwargs):
-    """Assign a condition parameter into ``kwargs`` by name."""
-    if condition_statement == "position":
-        kwargs["px"] = condition_value
-    elif condition_statement == "frequency":
-        kwargs["fs"] = condition_value
-    else:
-        print("No condition handler for:", condition_statement)
-    return kwargs
-
-
-def condition_Dictionary(condition_value, adm_id, condition_dict, **kwargs):
-    """
-    Bind the next free condition slot to ``condition_value`` and ``adm_id``.
-
-    ``condition_dict`` layout: [names, values, active_flags, adm_ids].
-    """
-    names, values, active_flags, adm_ids = condition_dict
-
-    for index, is_active in enumerate(active_flags):
-        if int(is_active) != 1:
-            continue
-        kwargs[names[index]] = condition_value
-        values[index] = condition_value
-        adm_ids[index] = adm_id
-        break
-
-    condition_dict[1] = values
-    condition_dict[3] = adm_ids
-    return condition_dict, kwargs
-
-
-def associationAB(condition_list, values_list):
-    """
-    Group threshold values by condition and return lists per unique condition.
-
-    Conditions are sorted in ascending order.
-    """
-    unique_conditions = check_values(condition_list)
-    counts, _ = count_values_type(condition_list, unique_conditions, 0)
-    condition_keys = sorted(appendTrials(counts))
-    grouped = [[] for _ in range(len(condition_keys))]
-
-    for index, condition in enumerate(condition_list):
-        key_index = condition_keys.index(condition)
-        grouped[key_index].append(values_list[index])
-
-    return grouped
