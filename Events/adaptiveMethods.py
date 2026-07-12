@@ -61,23 +61,6 @@ def convert_weber_contrast_to_screenIntensity(max_Intensity, background_Intensit
 # Staircase step rules
 # -----------------------------------------------------------------------------
 
-def conditionRateUPDW(current_lum, reference_lum, rate, step, log_unit, rule):
-    """
-    Compute the next contrast level for an up or down staircase step.
-
-    The ``rule`` selects how ``current_lum`` and ``reference_lum`` are combined.
-    See ``CONDITION_RULE`` for valid rule indices.
-    """
-    rule = int(rule)
-    if rule == CONDITION_RULE["weighted_average"]:
-        return (current_lum + reference_lum) * rate
-    if rule == CONDITION_RULE["additive_step"]:
-        return current_lum + step
-    if rule == CONDITION_RULE["log_step"]:
-        return current_lum * (10 ** log_unit)
-    if rule == CONDITION_RULE["log_step_offset"]:
-        return current_lum * (10 ** math.log10(1 + log_unit))
-    raise ValueError(f"Unknown condition rule: {rule}")
 
 def count_reversals_HighLow(contrast_list):
     """
@@ -121,57 +104,6 @@ def count_reversals_HighLow(contrast_list):
 
     return len(reversal_indices), reversal_indices, reversal_contrasts
 
-def defineReversal_Multi(store_data, step_backs):
-    """
-    Find trial indices for the last correct and last incorrect response.
-
-    Walks backward through trials for the current ADM ID. The correct index
-    is the most recent correct trial; the wrong index is the most recent
-    incorrect trial before contrast dropped below the current level.
-
-    Parameters
-    ----------
-    store_data : list
-        Full trial store (see ``STORE_DATA_INDEX``).
-    step_backs : unused
-        Kept for backward compatibility with older call sites.
-
-    Returns
-    -------
-    tuple
-        (correct_trial_index, wrong_trial_index)
-    """
-    del step_backs  # legacy parameter, not used
-
-    trials = _parse_store_data(store_data)
-    current_adm_id = int(trials["adm_ids"][-1])
-    current_contrast = trials["contrast"][-1]
-
-    correct_index = 0
-    wrong_index = 0
-    trial_index = len(trials["probe_positions"]) - 1
-
-    while trial_index > 0:
-        trial_index -= 1
-        if int(trials["adm_ids"][trial_index]) != current_adm_id:
-            continue
-
-        probe_side = trials["probe_lr"][trial_index]
-        response_side = trials["human_lr"][trial_index]
-
-        if probe_side != response_side:
-            wrong_index = trial_index
-            if trials["contrast"][correct_index] > current_contrast:
-                break
-        elif probe_side == response_side:
-            correct_index = trial_index
-
-    if trial_index == 0:
-        correct_index = 1
-
-    return correct_index, wrong_index
-
-
 def retrieve_staircase_weber_contrasts(adm_list, contrast_list, adm_id_now):
     """Return contrast values for all trials belonging to ``adm_id_now``."""
     return [
@@ -179,49 +111,6 @@ def retrieve_staircase_weber_contrasts(adm_list, contrast_list, adm_id_now):
         for index, adm_id in enumerate(adm_list)
         if int(adm_id) == adm_id_now
     ]
-
-
-# -----------------------------------------------------------------------------
-# Trial data utilities
-# -----------------------------------------------------------------------------
-
-def check_values(values):
-    """Return unique values from ``values``, preserving first-seen order."""
-    seen = []
-    for value in values:
-        if value not in seen:
-            seen.append(value)
-    return seen
-
-def findIndex(array_list, target):
-    """Return the index of ``target`` in ``array_list`` (integer comparison)."""
-    target = int(target)
-    for index, value in enumerate(array_list):
-        if int(value) == target:
-            return index
-    return 0
-
-def appendTrials(count_rows):
-    """Extract the first column from rows shaped like ``[[value, count], ...]``."""
-    return [row[0] for row in count_rows]
-
-
-def count_values_type(values, unique_values, start_index):
-    """
-    Count occurrences of each value in ``unique_values``.
-
-    Returns
-    -------
-    tuple
-        (rows of [value, count], total_count)
-    """
-    counts = []
-    total = 0
-    for value in unique_values:
-        count = sum(1 for item in values[start_index:] if item == value)
-        counts.append([value, count])
-        total += count
-    return counts, total
 
 # -----------------------------------------------------------------------------
 # Staircase orchestration (``conditions`` and helpers)
@@ -255,12 +144,6 @@ def _count_staircase_reversals(adm_ids, contrast_values, current_adm_id, backgro
     adm_contrasts   = retrieve_staircase_weber_contrasts(adm_ids, contrast_values, current_adm_id)
     weber_contrasts = convert_screen_intensity_history_to_weber_contrast_list(adm_contrasts, background, maximum)
     return count_reversals_HighLow(weber_contrasts)[0]
-
-def _resolve_condition_threshold(params, total_reversals, adm_trial_count):
-    """Pick the active stopping rule based on experiment configuration."""
-    if params["condition_mode"] == CONDITION_MODE["trial_count"]:
-        return adm_trial_count, params["trial_point"]
-    return total_reversals, params["reversal_point"]
 
 def _weber_contrast_to_cpu_intensity(probe_weber_contrast, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
