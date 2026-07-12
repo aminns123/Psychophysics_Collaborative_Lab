@@ -53,12 +53,6 @@ def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, backgr
         weber_values.append(weber)
     return weber_values
 
-
-#def convert_screenIntensity_to_weber_contrast(max_Intensity, background_Intensity, screen_Intensity):
-#    """Convert Weber contrast back to CPU luminance."""
-#    return ((max_Intensity - background_Intensity) * screen_Intensity) + background_Intensity
-
-
 def convert_weber_contrast_to_screenIntensity(max_Intensity, background_Intensity, weber_contrast):
     """Convert Weber contrast back to CPU luminance."""
     return ((max_Intensity - background_Intensity) * weber_contrast) + background_Intensity
@@ -66,18 +60,6 @@ def convert_weber_contrast_to_screenIntensity(max_Intensity, background_Intensit
 # -----------------------------------------------------------------------------
 # Staircase step rules
 # -----------------------------------------------------------------------------
-
-def rate_dw(rate_down, reversals, reversal_point):
-    """
-    Down-step rate before vs after the reversal threshold.
-
-    Uses a fixed rate (0.3) until ``reversal_point`` reversals, then switches
-    to the configured ``rate_down``.
-    """
-    if reversals < reversal_point:
-        return DEFAULT_PRE_REVERSAL_RATE
-    return rate_down
-
 
 def conditionRateUPDW(current_lum, reference_lum, rate, step, log_unit, rule):
     """
@@ -96,7 +78,6 @@ def conditionRateUPDW(current_lum, reference_lum, rate, step, log_unit, rule):
     if rule == CONDITION_RULE["log_step_offset"]:
         return current_lum * (10 ** math.log10(1 + log_unit))
     raise ValueError(f"Unknown condition rule: {rule}")
-
 
 def count_reversals_HighLow(contrast_list):
     """
@@ -139,7 +120,6 @@ def count_reversals_HighLow(contrast_list):
             reversal_contrasts.append(contrast_list[index])
 
     return len(reversal_indices), reversal_indices, reversal_contrasts
-
 
 def defineReversal_Multi(store_data, step_backs):
     """
@@ -213,7 +193,6 @@ def check_values(values):
             seen.append(value)
     return seen
 
-
 def findIndex(array_list, target):
     """Return the index of ``target`` in ``array_list`` (integer comparison)."""
     target = int(target)
@@ -221,15 +200,6 @@ def findIndex(array_list, target):
         if int(value) == target:
             return index
     return 0
-
-
-def findIndexFloat(array_list, target):
-    """Return the index of ``target`` in ``array_list`` (exact match)."""
-    for index, value in enumerate(array_list):
-        if value == target:
-            return index
-    return 0
-
 
 def appendTrials(count_rows):
     """Extract the first column from rows shaped like ``[[value, count], ...]``."""
@@ -257,16 +227,9 @@ def count_values_type(values, unique_values, start_index):
 # Staircase orchestration (``conditions`` and helpers)
 # -----------------------------------------------------------------------------
 
-def _parse_data_params(data_params):
-    """Map legacy parameter list indices to named values."""
-    return {name: data_params[index] for name, index in DATA_PARAM_INDEX.items()}
-
-
 def _parse_store_data(store_data):
     """Map legacy trial-store list indices to named trial arrays."""
     return {name: store_data[index] for name, index in STORE_DATA_INDEX.items()}
-
-
 
 def _beep(frequency, duration_ms):
     """
@@ -283,25 +246,9 @@ def _beep(frequency, duration_ms):
 
     winsound.Beep(int(frequency), int(duration_ms))
 
-
 def _to_weber(value, background_cpu, max_cpu):
     """Convert a single CPU contrast value to Weber contrast."""
     return convert_screen_intensity_history_to_weber_contrast_list([value], background_cpu, max_cpu)[0]
-
-
-def _adm_trial_counts(store_data, start_index=1):
-    """Return per-ADM-ID trial counts and the index for the current ADM."""
-    trials = _parse_store_data(store_data)
-    adm_ids = trials["adm_ids"]
-    current_adm_id = int(adm_ids[-1])
-
-    unique_ids = check_values(adm_ids)
-    counts_by_id, _ = count_values_type(adm_ids, unique_ids, start_index)
-    adm_id_list = appendTrials(counts_by_id)
-    adm_index = findIndex(adm_id_list, current_adm_id)
-
-    return counts_by_id, adm_index, current_adm_id
-
 
 def _count_staircase_reversals(adm_ids, contrast_values, current_adm_id, background, maximum):
     """Count staircase reversals for trials belonging to the current ADM."""
@@ -309,192 +256,11 @@ def _count_staircase_reversals(adm_ids, contrast_values, current_adm_id, backgro
     weber_contrasts = convert_screen_intensity_history_to_weber_contrast_list(adm_contrasts, background, maximum)
     return count_reversals_HighLow(weber_contrasts)[0]
 
-
-def _load_previous_trial_state(store_data, adm_index, counts_by_id):
-    """
-    Recover staircase state from the previous trial for the current ADM.
-
-    Returns a dict with keys: param_start, correct_tick, reversal_n,
-    count_reversals_total.
-    """
-    trials = _parse_store_data(store_data)
-    adm_ids = trials["adm_ids"]
-    current_adm_id = int(adm_ids[-1])
-
-    if counts_by_id[adm_index][1] < 1:
-        return {
-            "param_start": 0,
-            "correct_tick": trials["correct_tick"][0],
-            "reversal_n": trials["reversal_count"][-1],
-            "count_reversals_total": 0,
-        }
-
-    for trial_index in range(len(trials["correct_tick"]) - 1, -1, -1):
-        if int(adm_ids[trial_index]) != current_adm_id:
-            continue
-        return {
-            "param_start": trials["param_start"][trial_index],
-            "correct_tick": trials["correct_tick"][trial_index],
-            "reversal_n": trials["reversal_count"][trial_index],
-            "count_reversals_total": trials["reversals"][trial_index],
-        }
-
-    return {
-        "param_start": 0,
-        "correct_tick": trials["correct_tick"][0],
-        "reversal_n": trials["reversal_count"][-1],
-        "count_reversals_total": 0,
-    }
-
-
-def _evaluate_current_response(store_data, adm_index, counts_by_id, params):
-    """
-    Assess the latest trial: wrong/correct, contrast used, recent response tally.
-    """
-    trials = _parse_store_data(store_data)
-    adm_ids = trials["adm_ids"]
-    current_adm_id = int(adm_ids[-1])
-    last_index = len(trials["probe_lr"]) - 1
-    n_up = params["n_up"]
-    adm_trial_count = counts_by_id[adm_index][1]
-
-    wrong = trials["probe_lr"][last_index] != trials["human_lr"][last_index]
-    base_contrast = trials["contrast"][last_index]
-    response_count = 0
-
-    if adm_trial_count >= n_up:
-        responses_seen = 0
-        for trial_index in range(last_index, 0, -1):
-            if responses_seen >= n_up + 1:
-                break
-            if int(adm_ids[trial_index]) != current_adm_id:
-                continue
-
-            if trials["probe_lr"][trial_index] == trials["human_lr"][trial_index]:
-                response_count -= 1
-            else:
-                response_count += 1
-            responses_seen += 1
-
-        if int(adm_ids[last_index]) == current_adm_id:
-            wrong = trials["probe_lr"][last_index] != trials["human_lr"][last_index]
-
-    return {
-        "wrong": wrong,
-        "base_contrast": base_contrast,
-        "response_count": response_count,
-    }
-
-
 def _resolve_condition_threshold(params, total_reversals, adm_trial_count):
     """Pick the active stopping rule based on experiment configuration."""
     if params["condition_mode"] == CONDITION_MODE["trial_count"]:
         return adm_trial_count, params["trial_point"]
     return total_reversals, params["reversal_point"]
-
-
-def _reference_contrasts_weber(store_data, params, previous_state):
-    """Build Weber-space reference contrasts for up/down staircase steps."""
-    trials = _parse_store_data(store_data)
-    background = params["background_intensity"]
-    maximum = params["max_intensity"]
-    param_start = previous_state["param_start"]
-
-    if param_start == 0:
-        previous_up = params["probe_start"]
-        param_start += 1
-        previous_wrong = None
-    else:
-        correct_index, wrong_index = defineReversal_Multi(
-            store_data, previous_state["reversal_n"]
-        )
-        previous_up = trials["contrast"][correct_index]
-        previous_wrong = _to_weber(trials["contrast"][wrong_index], background, maximum)
-
-    return {
-        "param_start": param_start,
-        "previous_up": _to_weber(previous_up, background, maximum),
-        "previous_wrong": previous_wrong,
-        "background_weber": _to_weber(background, background, maximum),
-    }
-
-
-def _update_staircase_weber(response, references, params, previous_state, adm_trial_count):
-    """Apply staircase update rules in Weber contrast space."""
-    total_reversals = response["total_reversals"]
-    base_contrast = _to_weber(
-        response["base_contrast"],
-        params["background_webbackground_intensityer_contrast"],
-        params["max_intensity"],
-    )
-
-    state = {
-        "contrast_weber": base_contrast,
-        "correct_tick": previous_state["correct_tick"],
-        "param_start": references["param_start"],
-        "reversal_n": previous_state["reversal_n"],
-        "rate_down": previous_state.get("rate_down"),
-        "count_reversals_total": previous_state["count_reversals_total"],
-        "response_count": response["response_count"],
-    }
-
-    if response["wrong"]:
-        state["count_reversals_total"] = total_reversals
-        state["correct_tick"] = 0
-        state["contrast_weber"] = conditionRateUPDW(
-            base_contrast,
-            references["previous_up"],
-            params["rate_up"],
-            params["step_down_up"],
-            params["log_unit_up"],
-            params["condition_rule"],
-        )
-        state["reversal_n"] += 1
-        return state
-
-    state["count_reversals_total"] = total_reversals
-    condition_now, condition_point = _resolve_condition_threshold(
-        params, total_reversals, adm_trial_count
-    )
-    past_threshold = (
-        condition_now >= condition_point
-        or total_reversals >= params["reversal_point"]
-    )
-
-    if past_threshold:
-        if state["correct_tick"] >= params["n_up"]:
-            state["correct_tick"] = 0
-            state["reversal_n"] = 1
-            state["rate_down"] = rate_dw(
-                params["rate_down"], total_reversals, params["reversal_point"]
-            )
-            state["contrast_weber"] = conditionRateUPDW(
-                base_contrast,
-                references["previous_wrong"],
-                state["rate_down"],
-                -params["step_down_up"],
-                -params["log_unit_down"],
-                params["condition_rule"],
-            )
-        else:
-            state["contrast_weber"] = base_contrast
-            state["correct_tick"] += 1
-    else:
-        state["rate_down"] = rate_dw(
-            params["rate_down"], total_reversals, params["reversal_point"]
-        )
-        state["contrast_weber"] = conditionRateUPDW(
-            base_contrast,
-            references["background_weber"],
-            state["rate_down"],
-            -params["step_down_up"],
-            -params["pre_reversal_step"],
-            params["condition_rule"],
-        )
-        state["correct_tick"] = 0
-
-    return state
-
 
 def _weber_contrast_to_cpu_intensity(probe_weber_contrast, params):
     """Convert Weber contrast back to CPU luminance, clamped to background."""
