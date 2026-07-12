@@ -60,22 +60,22 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     reversal_termination= setupDict['reversal_termination']
 
     experiment_params = {
-        'background_intensity': float(setupDict['Background_Screen_intensity']),
-        'max_intensity': 1.0,
-        'max_monitor_cdm2': float(setupDict['Max_monitor_Luminance']),
+        'background_intensity': 	float(setupDict['Background_Screen_intensity']),
+        'max_intensity': 			1.0,
+        'max_monitor_cdm2': 		float(setupDict['Max_monitor_Luminance']),
         'starting_probe_intensity': float(setupDict['starting_probe_intensity']),
-        'timeFixate':   timeFixate,
-        'timeInterval': timeInterval,
-        'timeAB':       timeAB,
-        'timeT':        timeT,
-        'viewing_distance_m': viewing_distance_m,
-        'number_trials':10*3
+        'timeFixate':   			timeFixate,
+        'timeInterval':	 			timeInterval,
+        'timeAB':       			timeAB,
+        'timeT':        			timeT,
+        'viewing_distance_m': 		viewing_distance_m,
+        'number_trials':			10*3
     }
 
     staircase_params = {
         'trialPOINT':           int(setupDict['trialPOINT']),
-        'n_dw':                  2,
-        'n_up':                  1,
+        'n_dw':                 2,
+        'n_up':                 1,
         'number_trials':        10,
         'terminationINDEX':     9,
         'logUNIT_UP':           0.35,
@@ -121,20 +121,20 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     filename_response_main = filename_everything
 
     starting_probe_intensity = experiment_params['starting_probe_intensity']
-    starting_weber_contrast = _to_weber(
+    starting_weber_contrast  = _to_weber(
         experiment_params['starting_probe_intensity'],
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
     )
 
-    background_intensity = experiment_params['background_intensity']
-    background_weber_contrast = _to_weber(
+    background_intensity 		= experiment_params['background_intensity']
+    background_weber_contrast 	= _to_weber(
         background_intensity,
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
     )
-    max_intensity = experiment_params['max_intensity']
-    max_weber_contrast = _to_weber(
+    max_intensity 		= experiment_params['max_intensity']
+    max_weber_contrast 	= _to_weber(
         max_intensity,
         experiment_params['max_intensity'],
         experiment_params['background_intensity'],
