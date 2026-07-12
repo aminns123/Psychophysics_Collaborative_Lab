@@ -37,15 +37,14 @@ def _create_folder_if_missing(folder_path):
 
 def _create_first_subject(folder_path):
     folder = Path(folder_path)
-
     # If the folder contains nothing, create subject_1
     if not any(folder.iterdir()):
         (folder / "subject_1").mkdir()
+
 # ------------------------------ Experiment setup ------------------------------
 
 current_time    	    = datetime.datetime.now()
 today           	    = str(current_time.year)+'_'+str(current_time.month)+'_'+str(current_time.day)
-print("Today date is: ", today)
 
 
 "At max 500 cdm2"
@@ -55,7 +54,7 @@ listCPULum= [0.24,0.294, 0.34, 0.374, 0.72,  0.8, 0.86, 0.89,  0.95, 0.98, 0.99]
 _create_folder_if_missing(data_save_repository)
 _create_first_subject(data_save_repository)
 
-listName  = os.listdir(data_save_repository)
+listName  		= os.listdir(data_save_repository)
 listExperiments = [
     f.stem
     for f in Path(EXPERIMENT_DIRECTORY).glob("*.py")
@@ -66,22 +65,20 @@ checkDict = {'NEW_or_OLD':listBool, 'Name':listName}
 boolDict  = funcs.optionPrompt(checkDict)
 
 fileExperimentLast = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
-print(fileExperimentLast)
 
 if boolDict['NEW_or_OLD'] =='OLD':
-    keyValue = funcs.readText_toList_keyValue(fileExperimentLast)
-    keyList   =keyValue[0]
-    valueList =keyValue[1]
+    keyValue  = funcs.readText_toList_keyValue(fileExperimentLast)
+    keyList   = keyValue[0]
+    valueList = keyValue[1]
     setupDict = {}
     for j in range(len(keyList)):
         setupDict.update({keyList[j]:valueList[j]})
 
 elif boolDict['NEW_or_OLD']=='NEW':
-    checkDict = {'Experiment_Type':listExperiments,
+    checkDict 	= {'Experiment_Type':listExperiments,
                  'Max_monitor_Luminance': listLum, 
                  'Background_Luminance': listLum, 
                  'Background_Screen_intensity': listCPULum,
-                 #'starting_probe_intensity':listCPULum,
     }
     setupDict   = funcs.optionPrompt(checkDict)
 
@@ -96,8 +93,6 @@ elif boolDict['NEW_or_OLD']=='NEW':
                     'positionBool':1, 
                     'positionFind':1})
 
-print('--------------------------------')
-print('setupDict:\n', setupDict)   
 
 fileExperimentLast  = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
 filePosition        = data_save_repository+"/"+boolDict["Name"]+"/"+"ExpLast_positionPixel.txt"
