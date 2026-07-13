@@ -2,5 +2,9 @@
     "explorer.compactFolders": false,
     "scm.compactFolders": false,
     "editor.fontSize": 14,
-    "workbench.colorTheme": "Matrix"
+    "workbench.colorTheme": "Matrix",
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python.analysis.typeCheckingMode": "basic",
+    "editor.wordWrapColumn": 200
 }

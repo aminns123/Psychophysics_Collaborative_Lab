@@ -64,16 +64,12 @@ listBool  = ['NEW', 'OLD']
 checkDict = {'NEW_or_OLD':listBool, 'Name':listName}
 boolDict  = funcs.optionPrompt(checkDict)
 
-fileExperimentLast = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
+fileExperimentLast = data_save_repository+"/"+str(boolDict["Name"])+"/"+"ExperimentLast.txt"
 
 if boolDict['NEW_or_OLD'] =='OLD':
-    keyValue  = funcs.readText_toList_keyValue(fileExperimentLast)
-    keyList   = keyValue[0]
-    valueList = keyValue[1]
-    setupDict = {}
-    for j in range(len(keyList)):
-        setupDict.update({keyList[j]:valueList[j]})
-
+    file_read = data_save_repository+"/"+str(boolDict["Name"])+"/"+"experiment_defined.json"
+    keyValue  = funcs.read_JSON(file_read)
+    setupDict = keyValue.copy()
 elif boolDict['NEW_or_OLD']=='NEW':
     checkDict 	= {'Experiment_Type':listExperiments,
                  'Max_monitor_Luminance': listLum, 
@@ -94,15 +90,13 @@ elif boolDict['NEW_or_OLD']=='NEW':
                     'positionFind':1})
 
 
-fileExperimentLast  = data_save_repository+"/"+boolDict["Name"]+"/"+"ExperimentLast.txt"
-filePosition        = data_save_repository+"/"+boolDict["Name"]+"/"+"ExpLast_positionPixel.txt"
 
 NAME            = boolDict['Name']
 EXPERIMENT_TYPE = setupDict['Experiment_Type']
 module_name     = f"Experiments.{EXPERIMENT_TYPE}"
 experiment      = importlib.import_module(module_name)
 
-with open(data_save_repository+"/"+boolDict["Name"]+"/"+"experiment_defined.json", "w") as f:
+with open(data_save_repository+"/"+str(boolDict["Name"])+"/"+"experiment_defined.json", "w") as f:
     json.dump(setupDict, f, indent=4)
 
 filename_Conditions, file_params_Stimulus, file_response_record = run_configure_experiment(NAME, data_save_repository, setupDict)

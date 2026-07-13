@@ -116,10 +116,6 @@ def retrieve_staircase_weber_contrasts(adm_list, contrast_list, adm_id_now):
 # Staircase orchestration (``conditions`` and helpers)
 # -----------------------------------------------------------------------------
 
-def _parse_store_data(store_data):
-    """Map legacy trial-store list indices to named trial arrays."""
-    return {name: store_data[index] for name, index in STORE_DATA_INDEX.items()}
-
 def _beep(frequency, duration_ms):
     """
     Play an optional feedback tone.
@@ -444,8 +440,8 @@ class Trials_read_write_staircase_conditions:
         condition_value         = condition_list[new_id]
         probe_screen_intensity  = staircase_intensity_active[new_id]
         terminate_criteria      = data_conditions["reversal_termination"][new_id]
-        count_down_terminate    = data_conditions["count_down_terminate"][0]
-        terminate_bool          = data_conditions['terminate_bool'][0]
+        count_down_terminate    = int(data_conditions["count_down_terminate"][0])
+        terminate_bool          = int(data_conditions['terminate_bool'][0])
         # ---------------------------------------- # 
 
         probe_weber_contrast_history = convert_screen_intensity_history_to_weber_contrast_list(
@@ -459,26 +455,8 @@ class Trials_read_write_staircase_conditions:
                                         new_id, 
                                         background_intensity, 
                                         max_intensity)
-
-        def _terminate_staircase_bool():
-            """Checks if staircase """
-            if reversal_count > terminate_criteria:
-                if len(condition_list) > 1:
-                    remove_value = condition_value
-                    if remove_value in condition_list:
-                        condition_list.remove(remove_value)
-                
-                elif len(condition_list) == 1:
-                    count_down_terminate += 1
-                    if count_down_terminate >= 2:
-                        terminate_bool = 1
-                    else:
-                        terminate_bool = 0
-            else:
-                pass
         
-        
-        _terminate_staircase_bool()
+        condition_list, count_down_terminate, terminate_bool = _terminate_staircase_bool(condition_list, condition_value, reversal_count, terminate_criteria, count_down_terminate, terminate_bool)
 
         state1, state2 = data_conditions['2AFC_choice']
 
@@ -530,5 +508,22 @@ class Trials_read_write_staircase_conditions:
             "mouse": self.mouse,
             "stimuli": self.stimuli,
             "pos": self.pos,
-            "nUP": self.nUP,
         }
+
+def _terminate_staircase_bool(condition_list, condition_value, reversal_count, terminate_criteria, count_down_terminate, terminate_bool):
+    """Checks if staircase """
+    if reversal_count > terminate_criteria:
+        if len(condition_list) > 1:
+            remove_value = condition_value
+            if remove_value in condition_list:
+                condition_list.remove(remove_value)
+        
+        elif len(condition_list) == 1:
+            count_down_terminate += 1
+            if count_down_terminate >= 2:
+                terminate_bool = 1
+            else:
+                terminate_bool = 0
+    else:
+        pass
+    return condition_list, count_down_terminate, terminate_bool
