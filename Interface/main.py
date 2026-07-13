@@ -46,7 +46,6 @@ def _create_first_subject(folder_path):
 current_time    	    = datetime.datetime.now()
 today           	    = str(current_time.year)+'_'+str(current_time.month)+'_'+str(current_time.day)
 
-
 "At max 500 cdm2"
 listLum   = [19.0, 29,     41 , 49,    204,   255, 300,    322, 370, 403,   415, 500]
 listCPULum= [0.24,0.294, 0.34, 0.374, 0.72,  0.8, 0.86, 0.89,  0.95, 0.98, 0.99]
