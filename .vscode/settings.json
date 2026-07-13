@@ -6,5 +6,6 @@
     "python-envs.defaultEnvManager": "ms-python.python:conda",
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python.analysis.typeCheckingMode": "basic",
-    "editor.wordWrapColumn": 200
+    "editor.wordWrapColumn": 200,
+    "scm.diffDecorations": "none"
 }

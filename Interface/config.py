@@ -148,16 +148,6 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     value_params.update({'background_weber_contrast':background_weber_contrast,
                          'max_weber_contrast':max_weber_contrast})
 
-    columnADM = [
-        'condition', 
-        'ADM index'
-    ]
-    columnADM_condition = [
-        'condition', 
-        'condition value', 
-        'BOOL condition', 
-        'adm ID'
-    ]
 
     deg1PCD        = 31.5 
     condition_list = [2*deg1PCD,8*deg1PCD] # ,4*deg1PCD,6*deg1PCD,
