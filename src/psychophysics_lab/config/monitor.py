@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .models import MonitorProfile
+from .models import LuminanceCalibrationPoint, MonitorProfile
 from ..paths import find_repo_root
 
 
@@ -11,6 +11,14 @@ def _profile_from_dict(data: dict) -> MonitorProfile:
     resolution = data.get("expected_resolution_px")
     if resolution is not None:
         resolution = (int(resolution[0]), int(resolution[1]))
+
+    calibration = tuple(
+        LuminanceCalibrationPoint(
+            screen_intensity=float(item["screen_intensity"]),
+            luminance_cdm2=float(item["luminance_cdm2"]),
+        )
+        for item in data.get("luminance_calibration", [])
+    )
 
     profile = MonitorProfile(
         id=str(data["id"]),
@@ -22,6 +30,9 @@ def _profile_from_dict(data: dict) -> MonitorProfile:
         pyglet_wakeup_rate_hz=int(data.get("pyglet_wakeup_rate_hz", data["refresh_rate_hz"])),
         expected_resolution_px=resolution,
         notes=str(data.get("notes", "")),
+        calibration_status=str(data.get("calibration_status", "unverified")),
+        luminance_calibration=calibration,
+        calibration_notes=str(data.get("calibration_notes", "")),
     )
     profile.validate()
     return profile

@@ -30,6 +30,8 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
     background = float(values["Background_Screen_intensity"])
     if not background <= starting <= 1:
         errors.append("Starting probe intensity must lie between background intensity and 1.0.")
+    if float(values["Background_Luminance"]) > float(values["Max_monitor_Luminance"]):
+        errors.append("Background luminance cannot exceed maximum monitor luminance.")
     for key in ("timeFixate", "timeInterval", "timeAB", "timeT"):
         if int(values[key]) < 0:
             errors.append(f"{key} must not be negative.")
@@ -62,7 +64,11 @@ CSF_SPEC = ExperimentSpec(
             "choice",
             default=None,
             choices=LUMINANCE_CHOICES,
-            help_text="Recorded legacy physical-luminance condition.",
+            help_text=(
+                "Measured physical background luminance. If the selected monitor profile contains "
+                "a verified luminance calibration table, PsyCoLab enforces the corresponding "
+                "digital command."
+            ),
         ),
         ConfigField(
             "Background_Screen_intensity",
@@ -71,8 +77,9 @@ CSF_SPEC = ExperimentSpec(
             default=None,
             choices=SCREEN_INTENSITY_CHOICES,
             help_text=(
-                "Legacy normalised display command. The physical-luminance and digital-intensity "
-                "lists are intentionally not auto-paired until calibration mapping is reviewed."
+                "Normalised digital display command. The current legacy monitor profile has no "
+                "trusted command-to-luminance table encoded yet, so this pair is saved as "
+                "manual/unverified until that calibration is supplied."
             ),
         ),
         ConfigField("n_down", "Correct responses required for a downward step", "int", default=2),

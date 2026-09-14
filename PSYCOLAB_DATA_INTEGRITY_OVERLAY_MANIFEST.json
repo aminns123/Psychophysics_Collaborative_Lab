@@ -1,0 +1,141 @@
+{
+  "overlay_name": "PsyCoLab Data Integrity Update",
+  "overlay_version": "0.2.0",
+  "base_repository": "aminns123/Psychophysics_Collaborative_Lab",
+  "base_commit": "136d4fdd4825e6f759a72a045da8897187ce2b4c",
+  "created_utc": "2026-09-14T14:21:49.147015+00:00",
+  "apply_to": "repository root",
+  "validation": {
+    "python_files_compiled": 19,
+    "focused_pure_unit_tests": "6 passed",
+    "focused_tests": [
+      "tests/test_trial_log.py",
+      "tests/test_workspace.py",
+      "tests/test_monitor_calibration.py"
+    ],
+    "hardware_integration_tested": false,
+    "note": "Pyglet/OpenGL display execution must be validated on the laboratory machine."
+  },
+  "files": [
+    {
+      "path": ".gitignore",
+      "size_bytes": 619,
+      "sha256": "51615993419eeea6f2a4c54da57e328b07602546fb3ce666391e6c7539a7b80d"
+    },
+    {
+      "path": "DATA_INTEGRITY_UPDATE_README.txt",
+      "size_bytes": 2560,
+      "sha256": "fc62676132d715df97badc986495587158d1683bb8550fa857a58301630f1ffc"
+    },
+    {
+      "path": "Events/adaptive_session.py",
+      "size_bytes": 7939,
+      "sha256": "22650eb6e89a17616ce53e060d5ec2b75ee0e0747c6d23d4e8b72e9012dbb660"
+    },
+    {
+      "path": "Experiments/contrast_sensitivity_function.py",
+      "size_bytes": 12550,
+      "sha256": "dd0a24675ec9093ff8f209be8beb87c0ca61174f5687c67dd4dac76066504532"
+    },
+    {
+      "path": "Interface/config.py",
+      "size_bytes": 9263,
+      "sha256": "a5e94142469dba5b76018142ae212d56381a06b55f3a6b05efe61b736d44d331"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 11660,
+      "sha256": "fad76f74a2e68d8189250ce150c93560698dd4a863bfceb15ef6009b324db493"
+    },
+    {
+      "path": "configs/monitors/legacy_reference_display.json",
+      "size_bytes": 771,
+      "sha256": "05ce59036f2318cfd41d4dc06b6bcf137a8467677105c18b43ed481091cd172b"
+    },
+    {
+      "path": "pyproject.toml",
+      "size_bytes": 657,
+      "sha256": "fec8ecc556e2c5d0639914ea402bae38ac8ebcefd127afbfd0adc18f84745556"
+    },
+    {
+      "path": "scripts/cleanup_git_tracking.py",
+      "size_bytes": 1829,
+      "sha256": "84ed5c97e096f667455276d17be40ae391155ab70e1f25c6e41258e923a138ed"
+    },
+    {
+      "path": "src/psychophysics_lab/__init__.py",
+      "size_bytes": 101,
+      "sha256": "5861a29aa45169415d550ce2d6e084a0e02fb6603a570fd3d4decd6e5859819a"
+    },
+    {
+      "path": "src/psychophysics_lab/app.py",
+      "size_bytes": 3423,
+      "sha256": "7824bc7fe6f55a58aa5e4c4e89abb2fcd88fa6bedc09a4ad7d88029139fe7fb2"
+    },
+    {
+      "path": "src/psychophysics_lab/config/models.py",
+      "size_bytes": 4584,
+      "sha256": "3029bb1c2eb7da12612839c3f8713091ca7034f63f1b603535a9bcd10dd83d1d"
+    },
+    {
+      "path": "src/psychophysics_lab/config/monitor.py",
+      "size_bytes": 2122,
+      "sha256": "96abf413ed85271f3679d0737387244793e797e281a58f0ac4089d3ecef81e0b"
+    },
+    {
+      "path": "src/psychophysics_lab/core/runner.py",
+      "size_bytes": 14766,
+      "sha256": "6306ebd5a91467f35cf80d61a6dd6525c0c19ac35cf64d24e18c0345a490d39c"
+    },
+    {
+      "path": "src/psychophysics_lab/data/session.py",
+      "size_bytes": 802,
+      "sha256": "238090bca69a0d97994155b2dad06b8a4e103bd7f62d28b9044f642edba3a34e"
+    },
+    {
+      "path": "src/psychophysics_lab/data/trials.py",
+      "size_bytes": 1933,
+      "sha256": "edf82e7d3498134b98c6f005eaa74e0ab764a2c65b61577a69f50f9dc3672b76"
+    },
+    {
+      "path": "src/psychophysics_lab/data/workspace.py",
+      "size_bytes": 5809,
+      "sha256": "b9be853ba006a32967f2de6ed178ea3892934f6a6ad1a31c20a6f3180a9a4bc1"
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+      "size_bytes": 5058,
+      "sha256": "c758061ea208372fa9af248e153b6729b6c11a47ddc3fec7b1b4463b97007556"
+    },
+    {
+      "path": "src/psychophysics_lab/paths.py",
+      "size_bytes": 2455,
+      "sha256": "0b3a8c66b15029653acfde265ab15bc94cccdd70b91fdc0599895e3a1f458828"
+    },
+    {
+      "path": "src/psychophysics_lab/ui/setup.py",
+      "size_bytes": 17567,
+      "sha256": "ea0ca506136d1e199bfc74d88b0e6b130b3d24204029692ca376b42702ba7eed"
+    },
+    {
+      "path": "tests/test_adaptive_session.py",
+      "size_bytes": 7384,
+      "sha256": "96ce165363e16e619aa0b44f23a336a80238a4f09d787c3fb1c790c2b7043701"
+    },
+    {
+      "path": "tests/test_monitor_calibration.py",
+      "size_bytes": 1510,
+      "sha256": "0e35faa49bcbf9142d3fdc7a90655fa9be7d0b6d6cd42719c728ab4ef0b211ca"
+    },
+    {
+      "path": "tests/test_trial_log.py",
+      "size_bytes": 2268,
+      "sha256": "e04d37d52a201c6cea7557444a28b5d0d2171bb6bb7b2f7f1c0a3b104e2acd87"
+    },
+    {
+      "path": "tests/test_workspace.py",
+      "size_bytes": 2499,
+      "sha256": "7848d60dc3b71559a9b0efbd43fcb80596ce4c62e6f7b5784fa28eeb50ec7c2a"
+    }
+  ]
+}

@@ -15,12 +15,15 @@ build/
 dist/
 *.egg-info/
 
+# Local PsyCoLab machine preference (stores only the last data-folder path)
+.psycolab_local.json
+
 # Logs / temporary files
 *.log
 tmp/
 temp/
 
-# Optional local runtime data if a user chooses to place it inside the repo.
-# The current PsyCoLab default remains a sibling folder named
-# local_psychophysics_data, preserving the legacy project behaviour.
+# Optional local runtime data if a user deliberately chooses this historical
+# sibling-folder name inside a working tree. The TUI now rejects data folders
+# inside/above the repository and recommends an adjacent folder instead.
 local_psychophysics_data/

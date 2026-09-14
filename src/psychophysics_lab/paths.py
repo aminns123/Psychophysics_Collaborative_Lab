@@ -1,4 +1,4 @@
-"""Repository and data paths used by the public PsyCoLab shell."""
+"""Repository and data paths used by PsyCoLab."""
 
 from __future__ import annotations
 
@@ -44,10 +44,29 @@ def find_repo_root(start: Path | None = None) -> Path:
 
 
 def default_data_root(repo_root: Path | None = None) -> Path:
-    """Preserve the legacy sibling-folder data location by default."""
+    """Default to a sibling folder so experimental data stays out of Git."""
     override = os.environ.get("PSYCOLAB_DATA_DIR")
     if override:
-        return Path(override).expanduser().resolve()
+        return Path(os.path.expandvars(override)).expanduser().resolve()
 
     root = repo_root or find_repo_root()
     return root.parent / "local_psychophysics_data"
+
+
+def resolve_data_root(value: str | Path, repo_root: Path) -> Path:
+    """Resolve a TUI-entered data directory without placing it inside the repo."""
+    raw = os.path.expandvars(str(value).strip())
+    if not raw:
+        raise ValueError("A data folder is required.")
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = repo_root.parent / path
+    path = path.resolve()
+
+    repo = repo_root.resolve()
+    if path == repo or path.is_relative_to(repo) or repo.is_relative_to(path):
+        raise ValueError(
+            "Experimental data must be stored in a separate folder outside the "
+            "PsyCoLab repository (an adjacent/sibling folder is recommended)."
+        )
+    return path

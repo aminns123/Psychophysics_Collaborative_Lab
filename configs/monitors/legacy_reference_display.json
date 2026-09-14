@@ -7,5 +7,8 @@
   "viewing_distance_m": 1.0,
   "pyglet_wakeup_rate_hz": 60,
   "expected_resolution_px": null,
+  "calibration_status": "manual_unverified",
+  "luminance_calibration": [],
+  "calibration_notes": "No trusted digital-command to measured-luminance table has been encoded yet. PsyCoLab therefore records the selected physical luminance and digital command explicitly but does not claim that they are a verified pair.",
   "notes": "Matches the physical geometry currently embedded in the CSF renderer. Verify the actual display and photometric calibration before collecting data."
 }

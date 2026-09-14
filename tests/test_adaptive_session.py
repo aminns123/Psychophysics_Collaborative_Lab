@@ -1,3 +1,4 @@
+import csv
 import json
 from pathlib import Path
 import tempfile
@@ -63,6 +64,20 @@ class SessionTests(unittest.TestCase):
         self.assertAlmostEqual(rows[4][-1], 10 ** -.1)
         self.assertAlmostEqual(rows[5][-1], .5 + .5 * 10 ** -.1)
         self.assertEqual(self.session.run.total_trials, 1)
+
+        # The canonical record explicitly separates what was shown from the
+        # post-response value intended for the next presentation.
+        with self.session.trial_log.path.open(newline='', encoding='utf-8') as handle:
+            canonical = list(csv.DictReader(handle, delimiter='\t'))
+        self.assertEqual(len(canonical), 1)
+        self.assertEqual(canonical[0]['step'], 'down')
+        self.assertAlmostEqual(float(canonical[0]['presented_screen_intensity']), 1.0)
+        self.assertAlmostEqual(
+            float(canonical[0]['next_screen_intensity']),
+            .5 + .5 * 10 ** -.1,
+        )
+        self.assertAlmostEqual(float(canonical[0]['presented_display_contrast']), 1.0)
+        self.assertAlmostEqual(float(canonical[0]['next_display_contrast']), 10 ** -.1)
 
     def test_success_clears_queue_and_exits_immediately(self):
         for correct in [True, False, True]:
