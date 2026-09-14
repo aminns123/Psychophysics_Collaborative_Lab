@@ -8,6 +8,7 @@ import json
 import pyglet
 
 import Functions.functionsForUse as funcs
+from Events.adaptive_session import LegacyStaircaseSession
 
 from Events.stimuliC import (
     Dot_stairCase_centre, 
@@ -22,7 +23,6 @@ from libC import (
 from Events.adaptiveMethods import (
     Trials_read_write_staircase_conditions,
     Trial_small,
-    record_event,
 )
 
 
@@ -38,6 +38,9 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
 
     experiment_params       = dict_all_dicts['experiment_params']
+    adaptive_session = LegacyStaircaseSession(
+        filename_Conditions, file_params_Stimulus, file_response_record,
+        max_trials=experiment_params['number_trials'])
     # ------------------------------ Window setup ------------------------------
     pyglet.options['vsync'] = True
     pyglet.options['double_buffer'] = True
@@ -156,7 +159,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
     def _make_adm_trial(name, stimuli, duration_ms, position, keys_for_trial=None):
         """Create a Trial_ADMs with the shared files used by this experiment."""
-        return Trials_read_write_staircase_conditions(
+        return adaptive_session.attach(Trials_read_write_staircase_conditions(
             name,
             stimuli,
             duration_ms,
@@ -166,7 +169,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             file_response_record,
             keys_for_trial or [],
             mouse=False,
-        )
+        ))
     """
     self,
     name,
@@ -210,7 +213,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         key.RSHIFT,
     ]
 
-    win.set_logger(record_event)
+    win.set_logger(adaptive_session.logger(win))
 
     # ------------------------------ Stimuli ------------------------------
 
@@ -301,9 +304,12 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     # pyglet.clock.schedule_interval(update, 1/60.0)  # match monitor refresh
 
     win.set_trials(trials)
-    run(refresh_rate=monitor_refresh_rate)
-
-    # ------------------------------- Finish experiment run -------------------------------
-
-    funcs.removeZeroRow(file_response_record)
-    funcs.correctFileSpacings(file_response_record)
+    try:
+        run(refresh_rate=monitor_refresh_rate)
+    except Exception as exc:
+        adaptive_session.save(status='error', error=exc)
+        raise
+    finally:
+        adaptive_session.finish()
+        funcs.removeZeroRow(file_response_record)
+        funcs.correctFileSpacings(file_response_record)

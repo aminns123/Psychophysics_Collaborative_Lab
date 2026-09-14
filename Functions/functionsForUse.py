@@ -1,7 +1,6 @@
 
 import os
 import json
-import numpy as np
 
 
 def CheckFileName(folderName, fileName):
@@ -358,6 +357,7 @@ def convertArcangleTOPixel(arcAngle, distanceToMonitor, pixel_metre_ratio):
         ------------------------------------
     """
     #posRatioPixel = (np.tan(np.radians(arcAngle))*distanceToMonitor) 
+    import numpy as np
     posRatioPixel = 2*(np.tan(np.radians(arcAngle)/2)*distanceToMonitor)
     return posRatioPixel/pixel_metre_ratio
 """
@@ -379,6 +379,7 @@ def Meter_convertToArcangle(Meter_distanceM, distanceToMonitor, pixel_metre_rati
         phi=2arctan((x/2)*d)
         ---------------------------------------
     """
+    import numpy as np
     radians_to_degree   = 180/np.pi
     meterDist           = Meter_distanceM # *pixel_metre_ratio
     
