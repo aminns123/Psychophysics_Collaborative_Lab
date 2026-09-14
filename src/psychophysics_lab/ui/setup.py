@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import traceback
 from typing import Any
 
 from textual.app import App, ComposeResult
@@ -16,6 +17,30 @@ from ..experiments.registry import get_experiment, list_experiments
 from ..experiments.spec import ConfigField, ExperimentSpec
 from ..paths import resolve_data_root
 
+
+
+
+def _report_ui_exception(app: App, exc: BaseException, *, phase: str) -> None:
+    """Best-effort logging for exceptions raised inside Textual message handlers.
+
+    Textual handles message-callback exceptions internally, so they do not always
+    propagate to the outer application crash boundary. Log them here as well.
+    """
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    try:
+        from ..diagnostics import write_crash_report
+
+        report = write_crash_report(
+            exc,
+            repo_root=getattr(app, "repo_root", None),
+            data_root=getattr(app, "data_root", None),
+            phase=phase,
+        )
+        if report is not None:
+            print(f"PsyCoLab UI crash report saved to: {report}")
+    except Exception:
+        # Diagnostics must never create a second UI failure.
+        pass
 
 def _field_widget_id(field: ConfigField) -> str:
     safe = field.key.replace("_", "-")
@@ -101,28 +126,35 @@ class ExperimentConfigScreen(Screen):
         return values
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "back":
-            self.app.pop_screen()
+        button_id = event.button.id
+        if button_id not in {"back", "review"}:
             return
-        if event.button.id != "review":
+
+        # Screen-owned buttons must not bubble to PsyCoLabSetupApp's handler.
+        event.stop()
+
+        if button_id == "back":
+            try:
+                self.app.pop_screen()
+            except Exception as exc:
+                _report_ui_exception(self.app, exc, phase="tui_experiment_config_back")
             return
 
         status = self.query_one("#config-status", Static)
         try:
             values = self._collect()
+            request = SetupRequest(
+                participant_id=self.participant_id,
+                session_mode=self.session_mode,
+                experiment_id=self.experiment.id,
+                monitor_profile_id=self.monitor_profile_id,
+                experiment_values=values,
+                data_root=str(self.data_root),
+            )
+            self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
-            return
-
-        request = SetupRequest(
-            participant_id=self.participant_id,
-            session_mode=self.session_mode,
-            experiment_id=self.experiment.id,
-            monitor_profile_id=self.monitor_profile_id,
-            experiment_values=values,
-            data_root=str(self.data_root),
-        )
-        self.app.push_screen(ReviewScreen(request=request))
+            _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
 
 
 class ReviewScreen(Screen):
@@ -175,16 +207,27 @@ class ReviewScreen(Screen):
         yield Header(show_clock=True)
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
+            yield Static("", id="review-status")
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Run Experiment", id="run", variant="success")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "back":
-            self.app.pop_screen()
-        elif event.button.id == "run":
-            self.app.exit(self.request)
+        button_id = event.button.id
+        if button_id not in {"back", "run"}:
+            return
+
+        # Prevent the same button event from reaching the root setup handler.
+        event.stop()
+        try:
+            if button_id == "back":
+                self.app.pop_screen()
+            else:
+                self.app.exit(self.request)
+        except Exception as exc:
+            self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
+            _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
 
 class PsyCoLabSetupApp(App):
@@ -236,7 +279,7 @@ class PsyCoLabSetupApp(App):
         margin-left: 1;
     }
 
-    #setup-status, #config-status {
+    #setup-status, #config-status, #review-status {
         min-height: 1;
         margin-top: 1;
     }
@@ -391,12 +434,21 @@ class PsyCoLabSetupApp(App):
         self.query_one("#data-root", Input).value = str(data_root)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "exit":
+        button_id = event.button.id
+
+        # Button.Pressed bubbles through Textual. Child screens own back/review/run
+        # buttons; ignore them here before querying widgets that only exist on the
+        # root setup screen. This prevents NoMatches on the final review page.
+        if button_id not in {"exit", "load-data-root", "configure"}:
+            return
+
+        event.stop()
+        if button_id == "exit":
             self.exit(None)
             return
 
         status = self.query_one("#setup-status", Static)
-        if event.button.id == "load-data-root":
+        if button_id == "load-data-root":
             try:
                 self._refresh_data_root()
                 status.update(f"[green]Loaded data folder: {self.data_root}[/green]")
@@ -404,7 +456,7 @@ class PsyCoLabSetupApp(App):
                 status.update(f"[red]{exc}[/red]")
             return
 
-        if event.button.id != "configure":
+        if button_id != "configure":
             return
 
         try:
@@ -451,6 +503,7 @@ class PsyCoLabSetupApp(App):
             )
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
+            _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 
 
 def run_setup_tui(*, repo_root: Path, data_root: Path) -> SetupRequest | None:

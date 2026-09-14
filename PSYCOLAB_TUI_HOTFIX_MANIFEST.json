@@ -1,0 +1,20 @@
+{
+  "base_commit": "8dda87b87328bbfd3bf566360050b68df4d99447",
+  "files": [
+    {
+      "path": "TUI_EVENT_HOTFIX_README.txt",
+      "bytes": 1371,
+      "sha256": "e0d3581604517e91518a8265a82474f6bd977456d7dbe2e61e0046699f4e4c17"
+    },
+    {
+      "path": "src/psychophysics_lab/ui/__pycache__/setup.cpython-313.pyc",
+      "bytes": 25263,
+      "sha256": "0c2f88fd4ed0a1399536c97fd97920ee7736f535ea986a064f05957bc957bb3f"
+    },
+    {
+      "path": "src/psychophysics_lab/ui/setup.py",
+      "bytes": 19733,
+      "sha256": "75335c9c91ea65d489238e862169d4c97d1687110f83019d7fe8de79138e16a5"
+    }
+  ]
+}
