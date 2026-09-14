@@ -55,12 +55,14 @@ if errorlevel 1 (
     echo.
     echo ERROR: PsyCoLab environment setup failed.
     echo Review the messages above. No experiment has been started.
+    echo This terminal will remain open until you press a key.
     pause
     exit /b 1
 )
 
 if not exist ".venv\Scripts\python.exe" (
     echo ERROR: .venv\Scripts\python.exe was not created.
+    echo This terminal will remain open until you press a key.
     pause
     exit /b 1
 )
@@ -73,7 +75,19 @@ set "APP_EXIT=%ERRORLEVEL%"
 
 if not "%APP_EXIT%"=="0" (
     echo.
-    echo PsyCoLab exited with code %APP_EXIT%.
+    echo ============================================================
+    echo   PsyCoLab stopped with an error - exit code %APP_EXIT%
+    echo ============================================================
+    echo.
+    echo The terminal is being kept open deliberately.
+    echo Look above for the traceback and crash-report location.
+    echo Reports are normally written to a .psycolab_logs folder either:
+    echo   - inside the selected data folder, or
+    echo   - inside this PsyCoLab checkout as a fallback.
+    echo.
+    echo If Python suffered a low-level/native failure, a psycolab_fatal_*.log
+    echo file may also be present in the fallback .psycolab_logs folder.
+    echo.
     pause
 )
 
