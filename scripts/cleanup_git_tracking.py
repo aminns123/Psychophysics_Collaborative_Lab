@@ -32,11 +32,13 @@ def main() -> int:
         or path.startswith(".venv/")
         or path.startswith(".venv.incompatible-")
         or path.startswith(".pytest_cache/")
+        or path.startswith(".vscode/")
+        or path.startswith(".psycolab_logs/")
         or "/__pycache__/" in f"/{path}"
         or path.endswith((".pyc", ".pyo"))
     ]
     if not unwanted:
-        print("No tracked .venv / Python cache files were found.")
+        print("No tracked local virtualenv / cache / editor files were found.")
         return 0
 
     print(f"Stopping Git tracking for {len(unwanted)} local runtime files...")

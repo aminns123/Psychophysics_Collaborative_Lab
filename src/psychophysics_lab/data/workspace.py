@@ -55,7 +55,10 @@ def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest |
         experiment_id=str(raw["experiment_id"]),
         monitor_profile_id=str(raw["monitor_profile_id"]),
         experiment_values=dict(raw["experiment_values"]),
-        data_root=str(raw.get("data_root") or state.get("data_root") or "") or None,
+        # The selected data folder is runtime/machine context, not part of a
+        # reusable experiment setup. Keeping this None makes a copied data
+        # workspace portable to another computer.
+        data_root=None,
     )
 
 
@@ -111,12 +114,15 @@ def save_workspace_state(
     data_root.mkdir(parents=True, exist_ok=True)
     previous = load_workspace_state(data_root) or {}
     request_payload = asdict(request)
-    request_payload["data_root"] = str(data_root.resolve())
+    # Machine-specific paths are deliberately not persisted in the portable
+    # workspace state. .psycolab_local.json remembers the current machine's
+    # selected folder separately and is ignored by Git.
+    request_payload["data_root"] = None
 
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": "PsyCoLab — Psychophysics Collaborative Lab",
-        "data_root": str(data_root.resolve()),
+        "data_root": ".",
         "updated_utc": datetime.now(timezone.utc).isoformat(),
         "last_participant_id": request.participant_id,
         "last_experiment_id": request.experiment_id,

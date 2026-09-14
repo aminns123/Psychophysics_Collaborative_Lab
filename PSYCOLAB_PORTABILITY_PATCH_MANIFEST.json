@@ -1,0 +1,112 @@
+[
+  {
+    "path": ".gitignore",
+    "bytes": 723,
+    "sha256": "6f4daff8fc1e33679c39a697fd3d2b8d9d8d997e2170e987a06bfd9213262508"
+  },
+  {
+    "path": "PORTABILITY_CRASH_FIX_README.txt",
+    "bytes": 2989,
+    "sha256": "1d1a14862ddaa5dcc5df522b6a5a8f548e88f963bcd03eadafa5f04e0fc6e409"
+  },
+  {
+    "path": "README.md",
+    "bytes": 13255,
+    "sha256": "02f6f7b351c4a128a5087294905adc50b379b9f24a1dadf40c290631b3149571"
+  },
+  {
+    "path": "pyproject.toml",
+    "bytes": 657,
+    "sha256": "bced183b40cbeabdb1105202e3dfb75641ee7568a04a4390229b50e6ee7d31b3"
+  },
+  {
+    "path": "scripts/__pycache__/cleanup_git_tracking.cpython-313.pyc",
+    "bytes": 2989,
+    "sha256": "94229c4c3f9a39af84ca1e4b3cc9cb7905797a8b7525cb00236f22ecb66b253e"
+  },
+  {
+    "path": "scripts/__pycache__/portability_check.cpython-313.pyc",
+    "bytes": 5807,
+    "sha256": "8c9c3bed3916e78e4bf187748ca7a2ba601e1ff08cdcc5128cca5945225dfd8f"
+  },
+  {
+    "path": "scripts/cleanup_git_tracking.py",
+    "bytes": 1927,
+    "sha256": "4d52981d765d6455a321d1cd1cca40180ef8683f0fee6e6b932eca8f30efbbc7"
+  },
+  {
+    "path": "scripts/portability_check.py",
+    "bytes": 3520,
+    "sha256": "9c88c369c37351aaa5ea6f9baa91db752ae3791cc6806ce50491808e6dc2d241"
+  },
+  {
+    "path": "src/psychophysics_lab/__init__.py",
+    "bytes": 101,
+    "sha256": "cf025a91943abe580a53bfec77d9439bccd0748d4a0767d9bb26328f85bce1ef"
+  },
+  {
+    "path": "src/psychophysics_lab/__pycache__/__init__.cpython-313.pyc",
+    "bytes": 284,
+    "sha256": "fae7f064ad6c6ba8fb205611f97318b7b35f422bc7e6a83d6046953068644124"
+  },
+  {
+    "path": "src/psychophysics_lab/__pycache__/app.cpython-313.pyc",
+    "bytes": 6176,
+    "sha256": "886991963f46ac1b201c0cba4d0961e9fd719f6284cbc6cb5c0d9450029ee6f0"
+  },
+  {
+    "path": "src/psychophysics_lab/__pycache__/diagnostics.cpython-313.pyc",
+    "bytes": 4702,
+    "sha256": "b11983c281718de13c332c2526d7ede6aa8968ca1ba58e7d13ef11bbb3f967c1"
+  },
+  {
+    "path": "src/psychophysics_lab/app.py",
+    "bytes": 5115,
+    "sha256": "f039c45317b7b16a24837c70a7df85db9850100bd9c1094b93cd11224c71c7d1"
+  },
+  {
+    "path": "src/psychophysics_lab/core/__pycache__/runner.cpython-313.pyc",
+    "bytes": 19310,
+    "sha256": "338b7d4e4bb96c7a394458f691a8b415c43826231ed697ad376fdbdbf3455e5a"
+  },
+  {
+    "path": "src/psychophysics_lab/core/runner.py",
+    "bytes": 15088,
+    "sha256": "5c94c02e3e3c3a33b62cefa111f5ba36fe951ca88b2458ffaa8ac0bb47e7ccd2"
+  },
+  {
+    "path": "src/psychophysics_lab/data/__pycache__/workspace.cpython-313.pyc",
+    "bytes": 7957,
+    "sha256": "7b292d0522e337536a033887e6822d7adb505734112e223bfd8ccc3f771efd2a"
+  },
+  {
+    "path": "src/psychophysics_lab/data/workspace.py",
+    "bytes": 6117,
+    "sha256": "e01520d3f2d95fd5301d041e66796c4d6a05c728450cd8133246ca5a3bd78217"
+  },
+  {
+    "path": "src/psychophysics_lab/diagnostics.py",
+    "bytes": 3341,
+    "sha256": "33b7a598e4013381a5745b5619b9893030bc4f8f679ffa564f80a671fe31fab2"
+  },
+  {
+    "path": "tests/__pycache__/test_diagnostics.cpython-313.pyc",
+    "bytes": 915,
+    "sha256": "280853b956fe67eca151fdb83e9e0413a871800fa8064fa3806ef6f62f9db33c"
+  },
+  {
+    "path": "tests/__pycache__/test_portability.cpython-313.pyc",
+    "bytes": 2968,
+    "sha256": "b3ee24804169cf3cd2b26547b3e67317a6b28ec69763005b22f11c379301f7a6"
+  },
+  {
+    "path": "tests/test_diagnostics.py",
+    "bytes": 524,
+    "sha256": "4d638387ae883c99dbb4b25280bb75bd32d0aa48be3c7ba9d51b02266f7f654c"
+  },
+  {
+    "path": "tests/test_portability.py",
+    "bytes": 2225,
+    "sha256": "26f179d2956d3a73508449850c93989739068993fe58bbe2c6292c4cf18fbd58"
+  }
+]

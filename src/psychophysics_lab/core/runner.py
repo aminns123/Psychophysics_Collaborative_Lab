@@ -148,7 +148,9 @@ def _software_provenance(repo_root: Path) -> dict:
         "psycolab_version": source_version,
         "installed_distribution_version": _safe_version("psychophysics-lab"),
         "python_version": platform.python_version(),
-        "python_executable": sys.executable,
+        # Store only the executable name in canonical run metadata. Full local
+        # paths belong in optional crash diagnostics, not portable datasets.
+        "python_executable_name": Path(sys.executable).name,
         "platform": platform.platform(),
         "packages": {
             "numpy": _safe_version("numpy"),
@@ -199,9 +201,10 @@ def _manifest_payload(
             ),
             "notes": profile.get("calibration_notes", ""),
         },
-        "data_root": str(data_root),
-        "run_directory": str(run_dir),
-        "repository_root": str(repo_root),
+        # Canonical metadata avoids absolute user/machine paths. The run folder
+        # is self-contained and its file references below are relative.
+        "run_directory": ".",
+        "path_policy": "canonical file references are relative to this run directory",
         "software": _software_provenance(repo_root),
     }
 

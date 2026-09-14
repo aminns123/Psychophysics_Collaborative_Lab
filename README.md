@@ -270,3 +270,38 @@ The script removes `.venv` and Python cache files from the **Git index only**. I
 ```
 
 Unit tests are appropriate for configuration, registry, data handling and adaptive algorithms. Real stimulus rendering/timing must additionally be validated on the intended laboratory display.
+
+## Portability and crash diagnostics
+
+PsyCoLab does not contain a hard-coded user home directory, drive letter, Conda
+installation path or repository checkout path. The launcher resolves itself from
+`%~dp0`, Python code discovers the repository from the package location, and the
+researcher chooses the experimental data folder at runtime.
+
+Two files may contain machine-local paths by design, but neither is part of the
+shared scientific configuration:
+
+- `.psycolab_local.json` remembers the last data folder on the current computer
+  and is ignored by Git;
+- `.psycolab_logs/` contains optional crash reports and is ignored by Git.
+
+The portable `psycolab_data_config.json` stored at the top of a data workspace
+now records `data_root` as `.` and does not persist the previous computer's
+absolute data path. Canonical run manifests likewise use run-relative file
+references rather than depending on a user-specific checkout path.
+
+If the setup TUI or the transition from the TUI to the Pyglet experiment fails,
+PsyCoLab prints the full traceback, exits with a non-zero code so the Windows
+launcher pauses, and writes a local `psycolab_error_*.log` file. Share that log
+when reporting a launch problem.
+
+Before sharing or deploying a checkout, run:
+
+```powershell
+.venv\Scripts\python.exe scripts\cleanup_git_tracking.py
+.venv\Scripts\python.exe scripts\portability_check.py
+```
+
+The first command stops Git tracking local `.venv`, cache and `.vscode` files
+without deleting them from the computer. The second checks for tracked local
+runtime artefacts and common hard-coded user-home paths.

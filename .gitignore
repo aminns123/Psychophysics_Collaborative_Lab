@@ -27,3 +27,7 @@ temp/
 # sibling-folder name inside a working tree. The TUI now rejects data folders
 # inside/above the repository and recommends an adjacent folder instead.
 local_psychophysics_data/
+
+# Local editor/runtime diagnostics (never part of the shared laboratory code)
+.vscode/
+.psycolab_logs/
