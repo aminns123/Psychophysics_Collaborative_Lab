@@ -1,0 +1,26 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local virtual environments / build artefacts
+.venv/
+.venv.incompatible-*/
+build/
+dist/
+*.egg-info/
+
+# Logs / temporary files
+*.log
+tmp/
+temp/
+
+# Optional local runtime data if a user chooses to place it inside the repo.
+# The current PsyCoLab default remains a sibling folder named
+# local_psychophysics_data, preserving the legacy project behaviour.
+local_psychophysics_data/

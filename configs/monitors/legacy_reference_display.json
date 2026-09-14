@@ -1,0 +1,11 @@
+{
+  "id": "legacy_reference_display",
+  "display_name": "Legacy reference display (610 x 350 mm, 60 Hz, 1.0 m)",
+  "physical_width_m": 0.61,
+  "physical_height_m": 0.35,
+  "refresh_rate_hz": 60,
+  "viewing_distance_m": 1.0,
+  "pyglet_wakeup_rate_hz": 60,
+  "expected_resolution_px": null,
+  "notes": "Matches the physical geometry currently embedded in the CSF renderer. Verify the actual display and photometric calibration before collecting data."
+}
