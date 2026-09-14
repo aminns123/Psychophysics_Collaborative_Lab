@@ -2,16 +2,16 @@
 Adaptive psychophysical methods (ADM staircase).
 
 This module implements contrast staircases for adaptive threshold experiments.
-Trial history and experiment settings are still stored as indexed lists
-(legacy format). Named index maps below document that layout so the code can
-be migrated to structured config objects later.
-
-Main entry point for staircase updates: ``conditions()``.
+Trial history remains in its legacy six-column format. Pure independent
+response state and lifecycle live in Events.staircase; this module adapts the
+existing CSF trial/file interface to those mechanisms.
 """
 
 import math
 
 import Functions.functionsForUse as funcs
+from Events.staircase import ResponseStreak, Step
+from Events.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
 
 DEFAULT_PRE_REVERSAL_RATE = 0.3
 LEFT_RESPONSE = 0
@@ -26,9 +26,9 @@ def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, backgr
                                                             log_function=math.log10,
                                                             apply_log=False):
     """
-    Convert CPU luminance values to Weber contrast.
+    Legacy name: convert digital intensities to normalized display contrast.
 
-    Weber contrast = (L - L_background) / (L_max - L_background)
+    C_disp = (I_n - I_b) / (I_M - I_b), NOT conventional Weber contrast.
 
     Parameters
     ----------
@@ -47,15 +47,17 @@ def convert_screen_intensity_history_to_weber_contrast_list(contrast_cpu, backgr
 
     weber_values = []
     for value in contrast_cpu:
-        weber = (value - background_crt) / span
+        weber = normalized_display_contrast(value,
+            background_intensity=background_crt, maximum_intensity=max_crt)
         if apply_log:
             weber = log_function(weber)
         weber_values.append(weber)
     return weber_values
 
 def convert_weber_contrast_to_screenIntensity(max_Intensity, background_Intensity, weber_contrast):
-    """Convert Weber contrast back to CPU luminance."""
-    return ((max_Intensity - background_Intensity) * weber_contrast) + background_Intensity
+    """Legacy compatibility name: invert normalized display contrast."""
+    return display_contrast_to_screen_intensity(weber_contrast,
+        background_intensity=background_Intensity, maximum_intensity=max_Intensity)
 
 # -----------------------------------------------------------------------------
 # Staircase step rules
@@ -132,8 +134,9 @@ def _beep(frequency, duration_ms):
     winsound.Beep(int(frequency), int(duration_ms))
 
 def _to_weber(value, background_cpu, max_cpu):
-    """Convert a single CPU contrast value to Weber contrast."""
-    return convert_screen_intensity_history_to_weber_contrast_list([value], background_cpu, max_cpu)[0]
+    """Legacy compatibility name for C_disp; this is not Weber contrast."""
+    return normalized_display_contrast(value,
+        background_intensity=background_cpu, maximum_intensity=max_cpu)
 
 def _count_staircase_reversals(adm_ids, contrast_values, current_adm_id, background, maximum):
     """Count staircase reversals for trials belonging to the current ADM."""
@@ -160,12 +163,17 @@ def record_event(event, time, trial, args):
     Stimulus trials log probe parameters; response trials record the subject
     choice and update the staircase.
     """
-    if trial.name == "new_condition":
-        trial.state_new_condition_for_stimulus()
-    elif trial.name == "stimuli":
-        pass
-    elif event != "MOUSE" and trial.name == "response":
-        subject_response(trial, args)
+    if trial is None:
+        return
+    if event == "TRIAL":
+        if trial.name == "new_condition":
+            trial.state_new_condition_for_stimulus()
+        elif trial.name == "response":
+            trial.response_recorded = False
+    elif event == "KEY" and trial.name == "response":
+        # The engine logs keys before applying the trial's accepted-key filter.
+        if len(args) >= 2 and args[1] in trial.keys:
+            subject_response(trial, args)
 
 
 def _key_to_response(key):
@@ -215,14 +223,11 @@ def subject_response(trial, args):
         Display
 
     """
-    if not args:
+    if not args or getattr(trial, "response_recorded", False):
         return
 
     params              = funcs.read_JSON(trial.file_parameters_Stimulus)
-    n_up                = params["n_up"]
-    n_dw                = params["n_dw"] 
     background_intensity= params['background_intensity']
-    max_intensity       = params['max_intensity']
     stetp_up            = params['logUNIT_UP']
     stetp_dw            = params['logUNIT_DW']
 
@@ -241,39 +246,35 @@ def subject_response(trial, args):
     staircase_id                = conditions_data['staircase_Identity_active'][0]  
     stimulus_condition          = conditions_data['condition_list'][staircase_id]
     staircase_intensity_active  = conditions_data['staircase_intensity_active'][staircase_id]  
-    probe_weber_contrast        = _to_weber(staircase_intensity_active, background_intensity, max_intensity)
+    probe_weber_contrast = normalized_display_contrast(staircase_intensity_active,
+        background_intensity=background_intensity, maximum_intensity=params['max_intensity'])
     probe_choice                = conditions_data['probe_Alternative_Choice'][staircase_id]
 
 
-    subject_response    = _key_to_response(args[0])
+    response = _key_to_response(args[0])
     probe_Alternative_Choice_history.append(probe_choice)
-    human_Alternative_Choice_history.append(subject_response)
+    human_Alternative_Choice_history.append(response)
 
     print('------------- SUBJECT RESPONSE --------------------')
     print('probe_choice: ', probe_choice)
-    print('subject_response: ', subject_response)
+    print('subject_response: ', response)
 
-    if probe_choice == subject_response:
+    if probe_choice == response:
         _beep(1000, duration)
     else:
         _beep(300, duration)
 
     
-    # isolate staircase
-    (
-    staircase_stimulus_choice, 
-    staircase_subject_choice
-    ) = _get_single_staircase_history(data_responses, staircase_id)
-    # check last responses (do we change contrast of probe?)
-    contrast_update_bool        = _check_responses_history(staircase_stimulus_choice, staircase_subject_choice, probe_choice, n_dw, n_up)
-    print('contrast_update_bool: ',contrast_update_bool)
-    print('probe_weber_contrast: ', probe_weber_contrast)
-    print("step_dw:", stetp_dw)
+    # Response state is explicit and independent of the legacy sentinel/history.
+    def update_value(step):
+        contrast = _update_probe_weber_contrast(step, probe_weber_contrast, stetp_up, stetp_dw)
+        return _weber_contrast_to_cpu_intensity(contrast, params)
 
-    # update probes: contrast and cpu_intensity
-    new_probe_weber_contrast    = _update_probe_weber_contrast(contrast_update_bool, probe_weber_contrast, stetp_up, stetp_dw)
-    print('new_probe_weber_contras: ',new_probe_weber_contrast)
-    new_probe_screen_intensity  = _weber_contrast_to_cpu_intensity(new_probe_weber_contrast, params)
+    step, new_probe_screen_intensity = trial.adaptive_run.respond(
+        staircase_id, probe_choice == response, update_value)
+    # Preserve the legacy six-column post-update quantities and their mathematics.
+    new_probe_weber_contrast = _update_probe_weber_contrast(
+        step, probe_weber_contrast, stetp_up, stetp_dw)
 
     stimulus_condition_history.append(stimulus_condition)
     staircase_Identity_history.append(staircase_id)
@@ -288,9 +289,13 @@ def subject_response(trial, args):
     data_responses[5] = probe_screen_intensity_history
 
     conditions_data['staircase_intensity_active'][staircase_id] = new_probe_screen_intensity
+    conditions_data['total_Reversals'][staircase_id] = trial.adaptive_run.states[staircase_id].reversal_count
+    conditions_data['active_staircase_ids'] = list(trial.adaptive_run.active_ids)
+    conditions_data['terminate_bool'] = [int(trial.adaptive_run.status != 'running')]
     funcs.create_JSON(trial.file_experiment_Conditions, conditions_data)
 
     funcs.write_toText(trial.file_response_record, data_responses)
+    trial.response_recorded = True
 
 def _get_single_staircase_history(data_responses, staircase_id):
     #stimulus_condition_history       = data_responses[0]
@@ -309,38 +314,20 @@ def _get_single_staircase_history(data_responses, staircase_id):
     return staircase_stimulus_choice, staircase_subject_choice
 
 def _check_responses_history(staircase_stimulus_choice, staircase_subject_choice, probe_choice, n_dw, n_up):
+    """Compatibility helper: replay a complete single-staircase response history.
+
+    The caller must include the current response exactly once and exclude any
+    placeholder row. Live experiments use explicit AdaptiveRun state instead.
+    probe_choice is retained for call compatibility; history supplies correctness.
     """
-    Returns:
-        0 -> decrease contrast
-        1 -> increase contrast
-        2 -> leave contrast unchanged
-    """
+    if len(staircase_stimulus_choice) != len(staircase_subject_choice):
+        raise ValueError("Stimulus and response histories must have equal lengths")
+    streak = ResponseStreak()
+    step = Step.HOLD
+    for stimulus, response in zip(staircase_stimulus_choice, staircase_subject_choice):
+        step = streak.respond(stimulus == response, n_dw, n_up)
+    return step
 
-    # ----- Current response was correct -----
-    if probe_choice == subject_response:
-
-        n = min(len(staircase_subject_choice), n_dw)
-
-        recent_stimulus = staircase_stimulus_choice[-n:]
-        recent_subject  = staircase_subject_choice[-n:]
-
-        if all(s == r for s, r in zip(recent_stimulus, recent_subject)):
-            return 0      # decrease contrast
-
-        return 2          # keep same
-
-    # ----- Current response was incorrect -----
-    else:
-
-        n = min(len(staircase_subject_choice), n_up)
-
-        recent_stimulus = staircase_stimulus_choice[-n:]
-        recent_subject  = staircase_subject_choice[-n:]
-
-        if all(s != r for s, r in zip(recent_stimulus, recent_subject)):
-            return 1      # increase contrast
-
-        return 2          # keep same
 
 def _update_probe_weber_contrast(integer, weber_contrast, stetp_up, stetp_dw):
 
@@ -423,38 +410,10 @@ class Trials_read_write_staircase_conditions:
         max_intensity       = data_params["max_intensity"]
 
 
-        data_responses      = funcs.readText_toList(self.file_response_record)
-        staircase_Identity_history          = data_responses[3]
-        probe_screen_intensity_history      = data_responses[5]
-
-
-        data_conditions             = funcs.read_JSON(self.file_experiment_Conditions)
-        condition_list              = data_conditions['condition_list']
-        staircase_Identities        = data_conditions['staircase_Identities']
-        #current_staircase_id = data_conditions['staircase_Identity']   
-        staircase_intensity_active   = data_conditions['staircase_intensity_active']
-
-        new_id                  = random.choice(staircase_Identities)
-        condition_value         = condition_list[new_id]
-        probe_screen_intensity  = staircase_intensity_active[new_id]
-        terminate_criteria      = data_conditions["reversal_termination"][new_id]
-        count_down_terminate    = int(data_conditions["count_down_terminate"][0])
-        terminate_bool          = int(data_conditions['terminate_bool'][0])
-        # ---------------------------------------- # 
-
-        probe_weber_contrast_history = convert_screen_intensity_history_to_weber_contrast_list(
-                                        probe_screen_intensity_history, 
-                                        background_intensity, 
-                                        max_intensity)
-
-        reversal_count               = _count_staircase_reversals(
-                                        staircase_Identity_history, 
-                                        probe_weber_contrast_history, 
-                                        new_id, 
-                                        background_intensity, 
-                                        max_intensity)
-        
-        condition_list, count_down_terminate, terminate_bool = _terminate_staircase_bool(condition_list, condition_value, reversal_count, terminate_criteria, count_down_terminate, terminate_bool)
+        data_conditions = funcs.read_JSON(self.file_experiment_Conditions)
+        # Keep condition arrays and identities stable; select only unfinished IDs.
+        new_id = self.adaptive_run.select(random.choice)
+        probe_screen_intensity = data_conditions['staircase_intensity_active'][new_id]
 
         state1, state2 = data_conditions['2AFC_choice']
 
@@ -473,14 +432,13 @@ class Trials_read_write_staircase_conditions:
                                         background_intensity, 
                                         max_intensity)[0]
 
-        data_conditions['condition_list']                       = condition_list
         data_conditions['probe_Alternative_Choice'][new_id]     = value_response
         data_conditions['staircase_Identity_active']            = [new_id]
         data_conditions['weber_contrast_active'][new_id]        = probe_weber_contrast
         data_conditions['staircase_intensity_active'][new_id]   = probe_screen_intensity
         data_conditions['stimulus_choice_active']               = [stimulus_choice_active]
-        data_conditions['terminate_bool']                       = [terminate_bool]
-        data_conditions['count_down_terminate']                 = [count_down_terminate]
+        data_conditions['terminate_bool'] = [int(self.adaptive_run.status != 'running')]
+        data_conditions['active_staircase_ids'] = list(self.adaptive_run.active_ids)
 
         print('--------- NEW STATE ------------')
         print('probe_screen_intensity: ', probe_screen_intensity)
@@ -507,21 +465,3 @@ class Trials_read_write_staircase_conditions:
             "stimuli": self.stimuli,
             "pos": self.pos,
         }
-
-def _terminate_staircase_bool(condition_list, condition_value, reversal_count, terminate_criteria, count_down_terminate, terminate_bool):
-    """Checks if staircase """
-    if reversal_count > terminate_criteria:
-        if len(condition_list) > 1:
-            remove_value = condition_value
-            if remove_value in condition_list:
-                condition_list.remove(remove_value)
-        
-        elif len(condition_list) == 1:
-            count_down_terminate += 1
-            if count_down_terminate >= 2:
-                terminate_bool = 1
-            else:
-                terminate_bool = 0
-    else:
-        pass
-    return condition_list, count_down_terminate, terminate_bool

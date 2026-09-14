@@ -4,9 +4,7 @@ import json
 
 import Functions.functionsForUse as funcs
 
-from Events.adaptiveMethods import (
-    _to_weber,
-)
+from Events.display_contrast import normalized_display_contrast
 
 
 # ------------------------------ Experiment setup ------------------------------
@@ -121,23 +119,23 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     filename_response_main = filename_everything
 
     starting_probe_intensity = experiment_params['starting_probe_intensity']
-    starting_weber_contrast  = _to_weber(
+    starting_display_contrast  = normalized_display_contrast(
         experiment_params['starting_probe_intensity'],
-        experiment_params['max_intensity'],
-        experiment_params['background_intensity'],
+        background_intensity=experiment_params['background_intensity'],
+        maximum_intensity=experiment_params['max_intensity'],
     )
 
     background_intensity 		= experiment_params['background_intensity']
-    background_weber_contrast 	= _to_weber(
+    background_display_contrast 	= normalized_display_contrast(
         background_intensity,
-        experiment_params['max_intensity'],
-        experiment_params['background_intensity'],
+        background_intensity=experiment_params['background_intensity'],
+        maximum_intensity=experiment_params['max_intensity'],
     )
     max_intensity 		= experiment_params['max_intensity']
-    max_weber_contrast 	= _to_weber(
+    max_display_contrast 	= normalized_display_contrast(
         max_intensity,
-        experiment_params['max_intensity'],
-        experiment_params['background_intensity'],
+        background_intensity=experiment_params['background_intensity'],
+        maximum_intensity=experiment_params['max_intensity'],
     )
 
     flat_dict = {}
@@ -145,8 +143,8 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
     for subdict in dict_all_dicts.values():
         flat_dict.update(subdict)
     value_params = flat_dict.copy()    
-    value_params.update({'background_weber_contrast':background_weber_contrast,
-                         'max_weber_contrast':max_weber_contrast})
+    value_params.update({'background_weber_contrast':background_display_contrast,
+                         'max_weber_contrast':max_display_contrast})
 
 
     deg1PCD        = 31.5 
@@ -160,9 +158,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict):
         'staircase_Identity_active': [0],
         'stimulus_choice_active': [0], 
         'total_Reversals':  [0 for _ in range(len(condition_list))],
-        'starting_contrast': [starting_weber_contrast for _ in range(len(condition_list))],
+        'starting_contrast': [starting_display_contrast for _ in range(len(condition_list))],
         'correct_responses': [0 for _ in range(len(condition_list))],
-        'weber_contrast_active': [starting_weber_contrast for _ in range(len(condition_list))],
+        'weber_contrast_active': [starting_display_contrast for _ in range(len(condition_list))],
         'staircase_intensity_active': [starting_probe_intensity for _ in range(len(condition_list))], 
         'reversal_termination':[reversal_termination for _ in range(len(condition_list))],
         'n_dw': [staircase_params['n_dw']],
