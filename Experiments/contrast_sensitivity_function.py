@@ -10,6 +10,7 @@ from Events.adaptive_session import LegacyStaircaseSession
 from Events.stimuliC import Dot_stairCase_centre, Grating_ADM
 from libC import ExpWindow, Params, key, run
 from Events.adaptiveMethods import Trials_read_write_staircase_conditions, Trial_small
+from psychophysics_lab.core.lifecycle import install_escape_handler
 
 
 # ------------------------------ Experiment setup ------------------------------
@@ -262,6 +263,11 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     ]
 
     win.set_logger(adaptive_session.logger(win))
+    install_escape_handler(
+        win,
+        escape_key=key.ESCAPE,
+        on_abort=adaptive_session.abort_by_user,
+    )
 
     # ------------------------------ Stimuli ------------------------------
     experiment_title = [_make_text_label("Contrast Sensitivity Function\n", (cx, cy))]

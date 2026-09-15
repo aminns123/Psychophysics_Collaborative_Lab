@@ -89,6 +89,16 @@ if not "%APP_EXIT%"=="0" (
     echo file may also be present in the fallback .psycolab_logs folder.
     echo.
     pause
+    exit /b %APP_EXIT%
 )
 
-exit /b %APP_EXIT%
+echo.
+echo ============================================================
+echo   PsyCoLab finished normally
+echo ============================================================
+echo.
+echo The terminal is being kept open so you can review the run summary above.
+echo Press any key when you are ready to close this window.
+echo.
+pause
+exit /b 0

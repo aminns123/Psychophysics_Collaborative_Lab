@@ -46,6 +46,10 @@ class RunArtifacts:
     conditions_file: Path
     parameters_file: Path
     manifest_file: Path
+    status: str = "returned"
+    accepted_trials: int = 0
+    completed_staircase_ids: tuple = ()
+    unfinished_staircase_ids: tuple = ()
 
 
 @contextmanager
@@ -544,6 +548,7 @@ def run_request(
             manifest_file=manifest_file,
         )
 
+    adaptive_summary = payload.get("adaptive_session") or {}
     return RunArtifacts(
         run_directory=run_dir,
         trial_log_file=trial_log_file,
@@ -551,4 +556,12 @@ def run_request(
         conditions_file=conditions_file,
         parameters_file=parameters_file,
         manifest_file=manifest_file,
+        status=str(payload.get("status", "returned")),
+        accepted_trials=int(payload.get("accepted_trials", 0)),
+        completed_staircase_ids=tuple(
+            adaptive_summary.get("completed_staircase_ids", ())
+        ),
+        unfinished_staircase_ids=tuple(
+            adaptive_summary.get("unfinished_staircase_ids", ())
+        ),
     )

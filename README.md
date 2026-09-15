@@ -230,6 +230,33 @@ libC.py
 
 This migration is intentionally incremental.
 
+## Experiment termination and Escape
+
+PsyCoLab distinguishes scientific completion from an intentional manual abort
+and from software failure. The current adaptive experiment uses four principal
+final states:
+
+- `completed` — every active staircase reached its configured termination criterion;
+- `max_trials_reached` — the accepted-response safety ceiling was reached first;
+- `aborted_by_user` — the researcher deliberately pressed Escape;
+- `error` — an unexpected failure occurred.
+
+After an accepted response, `trials.tsv` is appended and flushed immediately.
+If that response completes the final unfinished staircase, PsyCoLab stops
+accepting further responses, clears the remaining presentation queue, closes the
+Pyglet experiment window automatically, finalises all run metadata and returns
+to the terminal. No extra Escape press is required.
+
+Pressing Escape before scientific completion is a controlled termination rather
+than a crash. PsyCoLab first records `aborted_by_user`, then closes the experiment
+window and finalises the run. A partially presented stimulus for which no response
+was accepted does not create a fabricated trial row.
+
+The Windows launcher keeps the terminal open after both normal and error exits so
+the researcher can read the final status and saved-data location.
+
+See `docs/EXPERIMENT_LIFECYCLE.md` for the detailed lifecycle contract.
+
 ## Acquisition versus analysis
 
 PsyCoLab run folders are immutable acquisition records. Do not put plots,

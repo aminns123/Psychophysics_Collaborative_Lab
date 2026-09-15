@@ -14,6 +14,7 @@ from Events.adaptiveMethods import record_event
 from Events.display_contrast import normalized_display_contrast
 from Events.staircase import AdaptiveRun, StaircaseConfig
 import Functions.functionsForUse as funcs
+from psychophysics_lab.core.lifecycle import request_window_end
 from psychophysics_lab.data.trials import TrialLog
 
 
@@ -196,21 +197,29 @@ class LegacyStaircaseSession:
                     self._append_canonical_trial(before, time)
                     self.save()
                     if self.run.status != "running":
-                        window.trials.clear()
-                        window.exit()
+                        request_window_end(window, self.run.status)
             except Exception as exc:
                 try:
                     self.save(status="error", error=exc)
                 finally:
-                    window.trials.clear()
-                    window.exit()
+                    request_window_end(window, "error")
                 raise
         return log
 
+    def abort_by_user(self):
+        """Persist an intentional Escape termination without consuming a trial."""
+        status = self.run.status if self.run.status != "running" else "aborted_by_user"
+        self.save(status=status)
+
     def finish(self):
+        """Finalise metadata without overwriting a deliberate terminal status."""
         if self.metadata_path.exists():
-            if json.loads(
-                self.metadata_path.read_text(encoding="utf-8")
-            )["status"] == "error":
+            recorded = json.loads(self.metadata_path.read_text(encoding="utf-8"))
+            if recorded.get("status") in {
+                "error",
+                "aborted_by_user",
+                "completed",
+                "max_trials_reached",
+            }:
                 return
         self.save(status="aborted" if self.run.status == "running" else self.run.status)

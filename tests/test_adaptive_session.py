@@ -134,6 +134,14 @@ class SessionTests(unittest.TestCase):
         self.session.finish()
         self.assertEqual(json.loads(self.session.metadata_path.read_text())['status'], 'aborted')
 
+    def test_manual_escape_status_is_preserved_by_finalisation(self):
+        self.respond(0, True)
+        self.session.abort_by_user()
+        self.session.finish()
+        metadata = json.loads(self.session.metadata_path.read_text())
+        self.assertEqual(metadata['status'], 'aborted_by_user')
+        self.assertEqual(metadata['total_trials'], 1)
+
     def test_recording_failure_stops_queue_with_error(self):
         with patch('Events.adaptiveMethods.funcs.write_toText', side_effect=OSError('disk full')):
             with self.assertRaises(OSError):

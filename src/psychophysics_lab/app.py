@@ -34,6 +34,42 @@ def _diagnose(repo_root: Path) -> int:
     return 0
 
 
+def _print_run_summary(artifacts: Any) -> None:
+    """Print a clear scientific end state after run finalisation has completed."""
+    status = str(getattr(artifacts, "status", "returned"))
+    accepted = int(getattr(artifacts, "accepted_trials", 0))
+    completed = tuple(getattr(artifacts, "completed_staircase_ids", ()))
+    unfinished = tuple(getattr(artifacts, "unfinished_staircase_ids", ()))
+
+    print("\n" + "=" * 60)
+    if status == "completed":
+        print("PsyCoLab experiment completed successfully.")
+        print("All adaptive staircases reached their termination criteria.")
+    elif status == "max_trials_reached":
+        print("PsyCoLab experiment ended at the response safety ceiling.")
+        print("Not all adaptive staircases reached their termination criteria.")
+    elif status == "aborted_by_user":
+        print("PsyCoLab experiment ended by user (Escape).")
+        print("All accepted responses up to the abort were preserved.")
+    elif status == "aborted":
+        print("PsyCoLab experiment ended before its completion criteria were met.")
+    else:
+        print(f"PsyCoLab experiment ended with status: {status}")
+
+    print(f"Accepted responses: {accepted}")
+    if completed or unfinished:
+        print(f"Completed staircases: {list(completed)}")
+        print(f"Unfinished staircases: {list(unfinished)}")
+    print("Data saved successfully.")
+    print(f"Run folder:       {artifacts.run_directory}")
+    print(f"Canonical trials: {artifacts.trial_log_file}")
+    readable = artifacts.run_directory / "trials_readable.txt"
+    if readable.exists():
+        print(f"Readable trials:  {readable}")
+    print(f"Session manifest: {artifacts.manifest_file}")
+    print("=" * 60)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="psycolab",
@@ -109,11 +145,7 @@ def _main(
 
     if diagnostic_context is not None:
         diagnostic_context["phase"] = "finished"
-    print("\nPsyCoLab session finished.")
-    print(f"Run folder:       {artifacts.run_directory}")
-    print(f"Canonical trials: {artifacts.trial_log_file}")
-    print(f"Legacy response:  {artifacts.response_file}")
-    print(f"Session manifest: {artifacts.manifest_file}")
+    _print_run_summary(artifacts)
     return 0
 
 
