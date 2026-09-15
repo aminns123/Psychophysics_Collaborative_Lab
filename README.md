@@ -1,213 +1,212 @@
 # PsyCoLab — Psychophysics Collaborative Lab
 
-PsyCoLab is a developing Python framework for configuring and running visual psychophysics experiments. The project is being refactored from a research codebase into a reusable laboratory tool while preserving the behaviour of working experiments until their scientific details are deliberately reviewed.
+PsyCoLab is a developing Python framework for configuring and running visual
+psychophysics experiments. It is being refactored from a research codebase into
+a reusable laboratory tool while preserving working scientific behaviour until
+specific stimulus/procedure changes are deliberately reviewed.
 
-The repository contains the code, experiment definitions, monitor profiles, setup interface and launch machinery. **Experimental data should live outside the Git repository.**
+The repository contains experiment definitions, monitor profiles, setup/launch
+machinery and acquisition code. **Experimental participant data live outside the
+Git repository.**
 
-The current repository contains one reference experiment: a contrast sensitivity function (CSF) experiment. The CSF is an example built using the framework; it is not the definition of the framework.
-
-## Current status
-
-The current framework provides:
-
-- repaired independent adaptive staircase state and termination;
-- explicit normalised display contrast (`C_disp`) handling;
-- an explicit experiment registry;
-- a Textual setup interface;
-- a monitor-profile boundary;
-- a user-selectable external data folder;
-- one self-contained directory per experimental run;
-- an append-only canonical `trials.tsv` record;
-- legacy response output retained for backwards compatibility;
-- run-specific experiment, monitor, runtime-display and software provenance records;
-- a top-level data-folder configuration remembering the last subject/experiment/settings;
-- a Python 3.11 / Pyglet 1.5.27 reproducible environment definition;
-- a Windows one-click launcher.
-
-The legacy Pyglet/OpenGL renderer is intentionally retained. The current CSF shader mathematics have **not** been changed by this framework phase.
+The current reference experiment is a contrast sensitivity function (CSF)
+experiment. It is an example built with the framework; it is not the definition
+of the framework.
 
 ## First launch on Windows
 
-1. Clone or download this repository.
-2. Make sure Python **3.11** is installed.
+1. Clone/download the repository.
+2. Install Python **3.11**.
 3. Double-click `run_psycolab.bat`.
-4. The launcher creates/reuses a local `.venv`.
-5. Required packages are installed from `pyproject.toml` when needed.
-6. The PsyCoLab Textual setup interface opens.
-7. Choose the **data folder**. An adjacent folder outside the repository is recommended.
-8. Enter or reuse a participant ID.
-9. Choose an experiment and validated display profile.
-10. Configure the experiment-specific parameters.
-11. Review the session.
-12. Choose **Run Experiment**.
-13. The Textual app exits completely, then the Pyglet experiment launches.
+4. PsyCoLab creates/reuses `.venv`.
+5. Choose an external data folder in the TUI.
+6. Enter/reuse a pseudonymous participant ID.
+7. Choose experiment and display profile.
+8. Configure experiment-specific values.
+9. Review the run.
+10. Choose **Run Experiment**.
+11. The Textual TUI closes before Pyglet/OpenGL launches.
 
-PsyCoLab does not silently install Python itself.
-
-### Command-line equivalents
+Useful direct commands:
 
 ```powershell
 .venv\Scripts\python.exe -m psychophysics_lab
 .venv\Scripts\python.exe -m psychophysics_lab --diagnose
-.venv\Scripts\python.exe -m psychophysics_lab --list-experiments
+.venv\Scripts\python.exe scripts\portability_check.py
 ```
 
-## Data ownership and folder structure
+## Acquisition-data contract
 
-The default data folder remains a sibling of the repository:
+PsyCoLab now uses a stable, human-readable acquisition hierarchy:
 
 ```text
-<parent>/
-├── Psychophysics_Collaborative_Lab/
-└── local_psychophysics_data/
+participant
+└── experiment
+    └── display_profile
+        └── important fixed run-level conditions
+            └── date
+                └── run_NNN
 ```
 
-The TUI may point PsyCoLab to another folder, but it deliberately rejects folders that are inside the Git repository or that contain the repository. This keeps participant data, large result files and local laboratory state out of version control.
-
-At the top of the selected data folder PsyCoLab writes:
+For the current CSF reference experiment:
 
 ```text
-psycolab_data_config.json
-```
-
-This file is a convenience index containing the most recent participant, experiment, monitor profile, experiment parameter values, run status and run location. It allows the next launch to pre-fill the setup and offer **Reuse previous setup (starts a new run)**. It is not a replacement for the run-specific scientific record.
-
-Every run owns a unique directory:
-
-```text
-local_psychophysics_data/
+PsyCoLab_Data/
+├── psycolab_data_config.json
+├── runs_index.csv
 └── S001/
     └── contrast_sensitivity/
-        └── 2026-09-14/
-            └── run_20260914_145600_a1b2c3d4/
-                ├── manifest.json
-                ├── experiment_config.json
-                ├── monitor_profile.json
-                ├── runtime_display.json
-                ├── resolved_experiment.json
-                ├── trials.tsv
-                ├── legacy_response.txt
-                ├── legacy_response.session.json
-                └── state/
-                    ├── experiment_defined.json
-                    ├── conditions.runtime.json
-                    ├── conditions.initial.json
-                    ├── conditions.final.json
-                    ├── parameters.runtime.json
-                    ├── parameters.initial.json
-                    ├── parameters.final.json
-                    ├── user_experiment_config.json
-                    ├── user_config.initial.json
-                    └── user_config.final.json
+        └── legacy_reference_display/
+            └── max_500cdm2/
+                └── background_49cdm2_unverified/
+                    └── 2026-09-15/
+                        ├── run_001/
+                        └── run_002/
 ```
 
-This gives PsyCoLab a simple rule:
+The `_unverified` suffix is deliberate while the legacy monitor profile lacks a
+trusted encoded command-to-luminance calibration. Once a monitor profile has a
+verified mapping the folder becomes, for example, `background_49cdm2`.
 
-> **one experimental run = one self-contained run folder**
+Dates occur only after the scientifically useful grouping levels, so a long-term
+workspace remains browsable by participant/experiment/condition instead of
+becoming a top-level collection of thousands of dates.
 
-Run folders are not reused or overwritten by later sessions.
+Each experiment may declare its own fixed run-level grouping folders. PsyCoLab's
+core storage layer therefore does **not** hard-code CSF, staircase or luminance
+assumptions.
 
-## Canonical trial data
+See [`docs/DATA_LAYOUT.md`](docs/DATA_LAYOUT.md) for the storage contract and
+rules for adding future experiments.
 
-`trials.tsv` is the new canonical response-level record. One row is appended for each accepted participant response and flushed to disk immediately.
+## One run = one self-contained scientific record
 
-Important fields include:
-
-- trial index;
-- staircase identity and staircase trial index;
-- stimulus condition;
-- target alternative;
-- participant response and correctness;
-- the display contrast and digital intensity **actually presented** for that response;
-- the staircase step (`down`, `up`, `hold`);
-- whether the response created a reversal;
-- reversal count;
-- the next contrast/intensity produced by the adaptive rule;
-- staircase/run completion state.
-
-The historical six-column response file is still written as `legacy_response.txt` so previous analysis can continue to work. Its historical post-update semantics are therefore preserved rather than silently redefined.
-
-## Run manifest and reproducibility
-
-`manifest.json` is the high-level scientific provenance record for a run. It stores:
-
-- participant ID;
-- experiment ID and complete experiment values;
-- selected monitor profile and calibration status;
-- the legacy setup passed to the experiment;
-- run status and timestamps;
-- file ownership within the run directory;
-- Python, NumPy, Pyglet and Textual versions;
-- operating system information;
-- the Git commit when available;
-- whether the Git working tree was clean at run time;
-- SHA-256 fingerprints of the main runtime source files, so a dirty working tree can still be identified precisely;
-- SHA-256 fingerprints of completed run-owned output files (excluding the manifest itself);
-- adaptive-session metadata;
-- the actual runtime display geometry reported by the experiment.
-
-`runtime_display.json` records the fullscreen pixel dimensions actually obtained by Pyglet together with the physical dimensions, viewing distance, field of view and calculated pixels/degree used during that run.
-
-`resolved_experiment.json` records the concrete timing, fixation, grating, response-mapping, adaptive and resolved pixel-geometry values used by the reference experiment, including values that are still hard-coded in the legacy implementation. This makes those parameters visible in the dataset rather than requiring later source-code archaeology.
-
-## Participant IDs
-
-Use pseudonymous IDs such as:
+A run folder contains:
 
 ```text
-S001
-subject_1
-pilot-A
+run_001/
+├── manifest.json
+├── experiment_config.json
+├── monitor_profile.json
+├── runtime_display.json
+├── resolved_experiment.json
+├── adaptive_session.json
+├── trials.tsv
+├── legacy_response.txt
+└── state/
+    ├── experiment_defined.json
+    ├── conditions.runtime.json
+    ├── conditions.initial.json
+    ├── conditions.final.json
+    ├── parameters.runtime.json
+    ├── parameters.initial.json
+    ├── parameters.final.json
+    ├── user_experiment_config.json
+    ├── user_config.initial.json
+    └── user_config.final.json
 ```
 
-Avoid personally identifying information in participant folder names.
+`run_001`, `run_002`, ... are human navigation labels. `manifest.json` also
+stores a globally unique `run_uuid`.
 
-## Reusing the previous setup
+`trials.tsv` is the canonical append-only response record. It distinguishes the
+stimulus **actually presented** from the post-response staircase state intended
+for the next presentation.
 
-The selected data folder remembers its last setup in `psycolab_data_config.json`.
+The historical six-column file is retained as `legacy_response.txt` for
+backwards compatibility; its historical semantics are not silently redefined.
 
-When PsyCoLab is opened again on the same machine:
+## Workspace convenience files
 
-- the last data folder is restored from the local, Git-ignored `.psycolab_local.json` pointer;
-- the previous participant, experiment and monitor are preselected when available;
-- choosing **Reuse previous setup** loads the previous experiment parameter values;
-- a completely new run directory is still created.
+`psycolab_data_config.json` remembers the last participant, experiment, display
+profile and parameter values so the next launch can pre-fill the TUI. Reusing
+those settings creates a **new** run; it is not partial-staircase resumption.
 
-This is **not** resume-from-partial-staircase functionality. A reused setup always starts a new adaptive run.
+`runs_index.csv` contains one human-readable row per acquisition with participant,
+experiment, display, condition path, date, run number, status, accepted-trial
+count and relative path. It is an index only: each run folder remains the
+authoritative scientific record.
+
+## What belongs in folder names?
+
+Folder names are for fixed, scientifically useful run-level grouping variables.
+
+Good examples:
+
+```text
+max_500cdm2/
+background_49cdm2/
+```
+
+Things that should remain in config/trial files instead:
+
+```text
+DW2_UP1
+step_down_0.19
+10_reversals
+250ms
+2cpd
+4cpd
+```
+
+Adaptive parameters are implementation/procedure details rather than universal
+filesystem concepts, and trial-varying values must never generate folders.
+
+## Saved parameters and provenance
+
+`manifest.json` records the run identity/status, Git/source fingerprints,
+software versions, monitor/calibration information and relative file ownership.
+
+`experiment_config.json` stores the requested and normalised experiment values
+without machine-specific data-root paths.
+
+`resolved_experiment.json` records concrete runtime timing, stimulus, response
+mapping, adaptive parameters and resolved geometry.
+
+`runtime_display.json` records the actual fullscreen dimensions obtained by
+Pyglet plus physical dimensions, viewing distance, field of view and calculated
+pixels/degree.
+
+`adaptive_session.json` records staircase completion/reversal state using
+run-relative paths.
+
+The saved maximum accepted-response value is kept consistent across the
+experiment and staircase parameter records.
 
 ## Display profiles and luminance calibration
 
-Display profiles live in:
+Profiles live under:
 
 ```text
 configs/monitors/
 ```
 
-The initial profile reproduces the geometry currently assumed by the reference CSF:
+The current reference profile preserves the legacy geometry:
 
 - width: 610 mm;
 - height: 350 mm;
-- refresh: 60 Hz;
+- refresh rate: 60 Hz;
 - viewing distance: 1.0 m.
 
-Monitor profiles can now also contain an explicit `luminance_calibration` table mapping normalised digital screen intensity to measured luminance in cd/m². When such a table is present, the TUI validates that the physical luminance and digital command form a calibrated pair.
-
-The current legacy reference profile deliberately contains **no invented calibration mapping** and is marked `manual_unverified`. PsyCoLab therefore records both selected values and surfaces a warning rather than pretending that the existing unequal legacy choice lists form a verified calibration table. Add measured calibration points only from the actual laboratory calibration.
+The existing reference profile is `manual_unverified`: PsyCoLab does not invent
+a correspondence between the old unequal luminance and digital-command lists.
+When a measured calibration table is added and marked verified, PsyCoLab can
+enforce the physical/digital pairing.
 
 ## Architecture
 
 ```text
 src/psychophysics_lab/
-├── adaptive/        future public adaptive-method boundary
-├── config/          session/display configuration models
-├── core/            experiment orchestration bridge
-├── data/            workspace, trial recording and participant helpers
-├── experiments/     explicit experiment specifications/registry
-├── stimuli/         future public stimulus boundary
-└── ui/              Textual setup interface
+├── adaptive/
+├── config/
+├── core/
+├── data/
+├── experiments/
+├── stimuli/
+└── ui/
 ```
 
-Working legacy implementation remains temporarily in:
+Working legacy experiment/rendering code remains temporarily under:
 
 ```text
 Events/
@@ -217,91 +216,50 @@ Interface/
 libC.py
 ```
 
-The migration is incremental: stable data/configuration boundaries are added before the graphics layer is rewritten.
+This migration is intentionally incremental.
 
-## Adaptive methods
+## Acquisition versus analysis
 
-The staircase algorithm is parameterised rather than defined globally by a particular paper. `n_down`, `n_up`, step sizes, reversal termination and the maximum response ceiling are experiment/session configuration.
+PsyCoLab run folders are immutable acquisition records. Do not put plots,
+bootstrap outputs, fitted models or publication figures into them.
 
-The current reference defaults remain:
+Processed/derived analysis should live in a separate analysis/publication
+structure, following the useful raw-versus-processed distinction used by the
+PNAS data archive.
 
-- 2-down / 1-up;
-- up-step 0.35 legacy log units;
-- down-step `0.5488 × 0.35`;
-- 10 reversals;
-- 30 accepted responses as the safety ceiling.
+## Portability and errors
 
-Changing these through the setup interface is an explicit session choice.
+The shared repository does not require a particular user name, home directory,
+drive letter or checkout location. `.psycolab_local.json` may remember the
+selected data folder on one machine but is Git-ignored and is not scientific
+metadata.
 
-## Known limitations / deliberately deferred work
+Canonical dataset paths are relative.
 
-- The CSF shader contrast expression is preserved and still requires a separate scientific/rendering review.
-- The legacy `31.5` spatial scaling has not been reinterpreted as measured pixels/degree.
-- The current luminance command/luminance table must be populated from real measurements before a profile can claim verified photometric pairing.
-- Additional monitor profiles must be validated before the current CSF can use them.
-- `packages.zip` is retained until its legacy role has been fully audited.
-- The Pyglet/OpenGL implementation has not been modernised.
-- Physical rendering and display timing still require validation on the intended laboratory display.
-- True resume-from-partial-staircase state is not implemented.
+If the setup TUI or experiment launch raises a normal Python error, PsyCoLab
+prints the traceback and writes a best-effort `psycolab_error_*.log`; the Windows
+launcher uses a non-zero exit code to remain open/pause rather than silently
+disappearing.
 
-## One-time Git cleanup
+## Current scientific limitations
 
-The commit used to build this update already contains a tracked `.venv`. `.gitignore` prevents future additions but cannot untrack files already committed.
+The following remain deliberately deferred:
 
-After extracting this update, run once from the repository:
-
-```powershell
-.venv\Scripts\python.exe scripts\cleanup_git_tracking.py
-```
-
-or, if the virtual environment is not available:
-
-```powershell
-python scripts\cleanup_git_tracking.py
-```
-
-The script removes `.venv` and Python cache files from the **Git index only**. It does not delete the local virtual environment. Review the result with `git status`, then commit the removals when satisfied.
+- CSF shader contrast mathematics have not been reinterpreted;
+- the legacy `31.5` spatial scaling has not been redefined as measured PPD;
+- the legacy reference luminance mapping is not yet verified;
+- the Pyglet/OpenGL renderer has not been modernised;
+- physical rendering/timing still requires validation on the intended display;
+- true resume-from-partial-staircase state is not implemented.
 
 ## Development tests
+
+When development dependencies are available:
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -e ".[dev]"
 .venv\Scripts\python.exe -m pytest
 ```
 
-Unit tests are appropriate for configuration, registry, data handling and adaptive algorithms. Real stimulus rendering/timing must additionally be validated on the intended laboratory display.
-
-## Portability and crash diagnostics
-
-PsyCoLab does not contain a hard-coded user home directory, drive letter, Conda
-installation path or repository checkout path. The launcher resolves itself from
-`%~dp0`, Python code discovers the repository from the package location, and the
-researcher chooses the experimental data folder at runtime.
-
-Two files may contain machine-local paths by design, but neither is part of the
-shared scientific configuration:
-
-- `.psycolab_local.json` remembers the last data folder on the current computer
-  and is ignored by Git;
-- `.psycolab_logs/` contains optional crash reports and is ignored by Git.
-
-The portable `psycolab_data_config.json` stored at the top of a data workspace
-now records `data_root` as `.` and does not persist the previous computer's
-absolute data path. Canonical run manifests likewise use run-relative file
-references rather than depending on a user-specific checkout path.
-
-If the setup TUI or the transition from the TUI to the Pyglet experiment fails,
-PsyCoLab prints the full traceback, exits with a non-zero code so the Windows
-launcher pauses, and writes a local `psycolab_error_*.log` file. Share that log
-when reporting a launch problem.
-
-Before sharing or deploying a checkout, run:
-
-```powershell
-.venv\Scripts\python.exe scripts\cleanup_git_tracking.py
-.venv\Scripts\python.exe scripts\portability_check.py
-```
-
-The first command stops Git tracking local `.venv`, cache and `.vscode` files
-without deleting them from the computer. The second checks for tracked local
-runtime artefacts and common hard-coded user-home paths.
+Real stimulus rendering/timing requires additional validation on the laboratory
+display.

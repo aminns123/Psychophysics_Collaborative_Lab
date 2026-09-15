@@ -13,13 +13,20 @@ import platform
 import subprocess
 import sys
 from typing import Iterator
+from uuid import uuid4
 
 from .. import __version__ as source_version
 from ..config.models import SetupRequest
 from ..config.monitor import load_monitor_profiles
+from ..data.index import upsert_run_index
 from ..data.participants import validate_participant_id
 from ..data.session import atomic_write_json, copy_snapshot
-from ..data.workspace import create_run_directory, save_workspace_state
+from ..data.workspace import (
+    DATA_LAYOUT_SCHEMA_VERSION,
+    create_run_directory,
+    run_number_from_path,
+    save_workspace_state,
+)
 from ..experiments.registry import get_experiment
 from ..paths import default_data_root, find_repo_root, resolve_data_root
 
@@ -63,10 +70,7 @@ def _safe_version(package: str) -> str | None:
 
 
 def _git_provenance(repo_root: Path) -> dict:
-    payload = {
-        "commit": None,
-        "working_tree_clean": None,
-    }
+    payload = {"commit": None, "working_tree_clean": None}
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -91,7 +95,6 @@ def _git_provenance(repo_root: Path) -> dict:
     return payload
 
 
-
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -101,11 +104,6 @@ def _sha256(path: Path) -> str:
 
 
 def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
-    """Hash the files that materially define the current reference run.
-
-    This supplements the Git commit when a laboratory runs from a dirty working
-    tree and also fingerprints retained legacy dependencies such as packages.zip.
-    """
     relative_paths = (
         "Experiments/contrast_sensitivity_function.py",
         "Events/adaptive_session.py",
@@ -118,9 +116,11 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
         "libC.py",
         "packages.zip",
         "src/psychophysics_lab/core/runner.py",
+        "src/psychophysics_lab/experiments/spec.py",
         "src/psychophysics_lab/experiments/contrast_sensitivity.py",
         "src/psychophysics_lab/config/models.py",
         "src/psychophysics_lab/config/monitor.py",
+        "src/psychophysics_lab/data/index.py",
         "src/psychophysics_lab/data/trials.py",
         "src/psychophysics_lab/data/workspace.py",
     )
@@ -132,24 +132,21 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
     return fingerprints
 
 
-
 def _run_artifact_fingerprints(run_dir: Path) -> dict[str, str]:
-    """Hash completed run-owned artifacts (excluding the manifest itself)."""
     fingerprints: dict[str, str] = {}
     for path in sorted(run_dir.rglob("*")):
         if not path.is_file() or path.name == "manifest.json" or path.name.endswith(".tmp"):
             continue
-        relative = str(path.relative_to(run_dir)).replace("\\", "/")
+        relative = path.relative_to(run_dir).as_posix()
         fingerprints[relative] = _sha256(path)
     return fingerprints
+
 
 def _software_provenance(repo_root: Path) -> dict:
     return {
         "psycolab_version": source_version,
         "installed_distribution_version": _safe_version("psychophysics-lab"),
         "python_version": platform.python_version(),
-        # Store only the executable name in canonical run metadata. Full local
-        # paths belong in optional crash diagnostics, not portable datasets.
         "python_executable_name": Path(sys.executable).name,
         "platform": platform.platform(),
         "packages": {
@@ -164,9 +161,51 @@ def _software_provenance(repo_root: Path) -> dict:
 
 def _relative(run_dir: Path, path: Path) -> str:
     try:
-        return str(path.resolve().relative_to(run_dir.resolve()))
+        return path.resolve().relative_to(run_dir.resolve()).as_posix()
     except ValueError:
         return str(path.resolve())
+
+
+def _portable_request_payload(request: SetupRequest) -> dict:
+    payload = asdict(request)
+    payload["data_root"] = None
+    return payload
+
+
+def _trial_count(trial_log_file: Path) -> int:
+    if not trial_log_file.exists():
+        return 0
+    with trial_log_file.open("r", encoding="utf-8") as handle:
+        count = sum(1 for _ in handle)
+    return max(0, count - 1)  # subtract TSV header
+
+
+def _index_row(
+    *,
+    run_uuid: str,
+    request: SetupRequest,
+    grouping_parts: tuple[str, ...],
+    run_dir: Path,
+    data_root: Path,
+    status: str,
+    started_utc: str,
+    finished_utc: str = "",
+    accepted_trials: int | str = "",
+) -> dict:
+    return {
+        "run_uuid": run_uuid,
+        "participant_id": request.participant_id,
+        "experiment_id": request.experiment_id,
+        "monitor_profile_id": request.monitor_profile_id,
+        "condition_path": "/".join(grouping_parts),
+        "date": run_dir.parent.name,
+        "run_number": run_number_from_path(run_dir),
+        "status": status,
+        "accepted_trials": accepted_trials,
+        "relative_path": run_dir.relative_to(data_root).as_posix(),
+        "started_utc": started_utc,
+        "finished_utc": finished_utc,
+    }
 
 
 def _manifest_payload(
@@ -177,12 +216,26 @@ def _manifest_payload(
     run_dir: Path,
     data_root: Path,
     repo_root: Path,
+    grouping_parts: tuple[str, ...],
+    run_uuid: str,
     status: str,
 ) -> dict:
+    relative_run_path = run_dir.relative_to(data_root).as_posix()
     return {
-        "schema_version": 2,
+        "schema_version": 3,
+        "data_layout_schema_version": DATA_LAYOUT_SCHEMA_VERSION,
         "project": "PsyCoLab — Psychophysics Collaborative Lab",
-        "run_id": run_dir.name,
+        "run_uuid": run_uuid,
+        "run_label": run_dir.name,
+        "run_number": run_number_from_path(run_dir),
+        "date": run_dir.parent.name,
+        "relative_run_path": relative_run_path,
+        "storage_hierarchy": {
+            "participant_id": request.participant_id,
+            "experiment_id": request.experiment_id,
+            "monitor_profile_id": request.monitor_profile_id,
+            "experiment_grouping_folders": list(grouping_parts),
+        },
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "status": status,
         "participant_id": request.participant_id,
@@ -201,10 +254,10 @@ def _manifest_payload(
             ),
             "notes": profile.get("calibration_notes", ""),
         },
-        # Canonical metadata avoids absolute user/machine paths. The run folder
-        # is self-contained and its file references below are relative.
-        "run_directory": ".",
-        "path_policy": "canonical file references are relative to this run directory",
+        "path_policy": (
+            "run file references are relative; data-root/repository absolute paths "
+            "are not part of canonical scientific metadata"
+        ),
         "software": _software_provenance(repo_root),
     }
 
@@ -215,11 +268,7 @@ def run_request(
     repo_root: Path | None = None,
     data_root: Path | None = None,
 ) -> RunArtifacts:
-    """Configure and run one experiment in a self-contained run directory.
-
-    Textual has already exited before this function imports Pyglet or any legacy
-    experiment module.
-    """
+    """Configure and run one experiment in one self-contained run directory."""
     root = (repo_root or find_repo_root()).resolve()
     if data_root is not None:
         data_candidate = data_root
@@ -245,29 +294,39 @@ def run_request(
             "Add/validate the display adapter before collecting data."
         )
 
+    values = spec.normalise_values(request.experiment_values)
+    grouping_parts = spec.data_path_parts(values, profile)
     setup = spec.build_legacy_setup(
         participant_id=participant_id,
-        values=request.experiment_values,
+        values=values,
         monitor_profile=profile,
     )
 
+    local_started = datetime.now().astimezone()
     run_dir = create_run_directory(
         data,
         participant_id=participant_id,
         experiment_id=request.experiment_id,
+        monitor_profile_id=profile.id,
+        grouping_parts=grouping_parts,
+        now=local_started,
     )
+    run_uuid = str(uuid4())
+
     state_dir = run_dir / "state"
     manifest_file = run_dir / "manifest.json"
     experiment_config_file = run_dir / "experiment_config.json"
     monitor_profile_file = run_dir / "monitor_profile.json"
     trial_log_file = run_dir / "trials.tsv"
     runtime_display_file = run_dir / "runtime_display.json"
+    adaptive_session_file = run_dir / "adaptive_session.json"
 
     atomic_write_json(
         experiment_config_file,
         {
-            "schema_version": 1,
-            "request": asdict(request),
+            "schema_version": 2,
+            "request": _portable_request_payload(request),
+            "normalised_experiment_values": values,
             "legacy_setup": setup,
         },
     )
@@ -280,8 +339,11 @@ def run_request(
         run_dir=run_dir,
         data_root=data,
         repo_root=root,
+        grouping_parts=grouping_parts,
+        run_uuid=run_uuid,
         status="configuring",
     )
+    started_utc = payload["created_utc"]
     payload["files"] = {
         "manifest": "manifest.json",
         "experiment_config": "experiment_config.json",
@@ -289,8 +351,12 @@ def run_request(
         "canonical_trials": "trials.tsv",
         "runtime_display": "runtime_display.json",
         "resolved_experiment": "resolved_experiment.json",
+        "adaptive_session": "adaptive_session.json",
+        "legacy_response": "legacy_response.txt",
+        "state_directory": "state/",
     }
     atomic_write_json(manifest_file, payload)
+
     save_workspace_state(
         data,
         request,
@@ -299,6 +365,22 @@ def run_request(
         legacy_setup=setup,
         manifest_file=manifest_file,
     )
+    try:
+        upsert_run_index(
+            data,
+            _index_row(
+                run_uuid=run_uuid,
+                request=request,
+                grouping_parts=grouping_parts,
+                run_dir=run_dir,
+                data_root=data,
+                status="configuring",
+                started_utc=started_utc,
+            ),
+        )
+    except Exception as index_error:
+        payload["runs_index_error"] = repr(index_error)
+        atomic_write_json(manifest_file, payload)
 
     conditions_file = state_dir / "conditions.runtime.json"
     parameters_file = state_dir / "parameters.runtime.json"
@@ -307,8 +389,6 @@ def run_request(
 
     try:
         with _legacy_runtime_context(root):
-            # Delayed imports are intentional: Textual must be fully closed before
-            # Pyglet/OpenGL modules are imported.
             from Interface.config import run_configure_experiment
 
             conditions, parameters, response = run_configure_experiment(
@@ -336,13 +416,9 @@ def run_request(
             payload["status"] = "configured"
             payload["files"].update(
                 {
-                    "legacy_response": _relative(run_dir, response_file),
                     "conditions_runtime": _relative(run_dir, conditions_file),
                     "parameters_runtime": _relative(run_dir, parameters_file),
                     "user_config_runtime": _relative(run_dir, user_config_file),
-                    "adaptive_session": _relative(
-                        run_dir, response_file.with_suffix(".session.json")
-                    ),
                     "snapshots": {
                         key: _relative(run_dir, value) for key, value in snapshots.items()
                     },
@@ -378,7 +454,12 @@ def run_request(
         if user_config_file.exists():
             copy_snapshot(user_config_file, state_dir / "user_config.final.json")
 
-        adaptive_metadata = response_file.with_suffix(".session.json")
+        adaptive_metadata = adaptive_session_file
+        # Defensive compatibility with a partially migrated run.
+        legacy_adaptive_metadata = response_file.with_suffix(".session.json")
+        if not adaptive_metadata.exists() and legacy_adaptive_metadata.exists():
+            adaptive_metadata = legacy_adaptive_metadata
+
         if adaptive_metadata.exists():
             try:
                 adaptive = json.loads(adaptive_metadata.read_text(encoding="utf-8"))
@@ -398,11 +479,33 @@ def run_request(
             except Exception as display_error:
                 payload["runtime_display_error"] = repr(display_error)
 
-        payload["finished_utc"] = datetime.now(timezone.utc).isoformat()
+        finished_utc = datetime.now(timezone.utc).isoformat()
+        payload["finished_utc"] = finished_utc
+        payload["accepted_trials"] = _trial_count(trial_log_file)
+
         try:
             payload["output_sha256"] = _run_artifact_fingerprints(run_dir)
         except Exception as hash_error:
             payload["output_sha256_error"] = repr(hash_error)
+
+        try:
+            upsert_run_index(
+                data,
+                _index_row(
+                    run_uuid=run_uuid,
+                    request=request,
+                    grouping_parts=grouping_parts,
+                    run_dir=run_dir,
+                    data_root=data,
+                    status=str(payload.get("status", "returned")),
+                    accepted_trials=payload["accepted_trials"],
+                    started_utc=started_utc,
+                    finished_utc=finished_utc,
+                ),
+            )
+        except Exception as index_error:
+            payload["runs_index_error"] = repr(index_error)
+
         atomic_write_json(manifest_file, payload)
         save_workspace_state(
             data,

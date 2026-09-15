@@ -21,6 +21,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     PsyCoLab. The legacy four-argument interface is preserved.
     """
     state_directory = Path(data_save_repository)
+    run_directory = Path(file_response_record).parent
     with (state_directory / "user_experiment_config.json").open("r", encoding="utf-8") as f:
         dict_all_dicts = json.load(f)
 
@@ -31,6 +32,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         file_params_Stimulus,
         file_response_record,
         max_trials=experiment_params["number_trials"],
+        metadata_path=run_directory / "adaptive_session.json",
+        trial_log_path=run_directory / "trials.tsv",
     )
 
     # ------------------------------ Window setup ------------------------------
@@ -93,7 +96,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         "pyglet_wakeup_rate_check": pyglet_wakeup_rate_check,
     }
 
-    runtime_display_path = Path(file_response_record).parent / "runtime_display.json"
+    runtime_display_path = run_directory / "runtime_display.json"
     temporary_display = runtime_display_path.with_name(runtime_display_path.name + ".tmp")
     temporary_display.write_text(json.dumps(monitor_screen_params, indent=2), encoding="utf-8")
     temporary_display.replace(runtime_display_path)
@@ -203,11 +206,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     data_conditions.update({"2AFC_choice": alternative_forced_choice["2AFC_choice"]})
     funcs.create_JSON(filename_Conditions, data_conditions)
 
-    # Save the fully resolved parameters that actually define this run. This is
-    # deliberately separate from the source code so a dataset can be interpreted
-    # without hunting through hard-coded stimulus constants later.
     resolved_experiment = {
-        "schema_version": 1,
+        "schema_version": 2,
         "experiment_id": "contrast_sensitivity",
         "timings_ms": {
             "fixation": int(timeFixate),
@@ -238,10 +238,13 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             "n_up": int(adaptive_session.parameters["n_up"]),
             "log_step_up": float(adaptive_session.parameters["logUNIT_UP"]),
             "log_step_down": float(adaptive_session.parameters["logUNIT_DW"]),
+            "reversal_limit_per_staircase": list(
+                data_conditions.get("reversal_termination", [])
+            ),
             "max_accepted_responses": int(experiment_params["number_trials"]),
         },
     }
-    resolved_path = Path(file_response_record).parent / "resolved_experiment.json"
+    resolved_path = run_directory / "resolved_experiment.json"
     resolved_tmp = resolved_path.with_name(resolved_path.name + ".tmp")
     resolved_tmp.write_text(json.dumps(resolved_experiment, indent=2), encoding="utf-8")
     resolved_tmp.replace(resolved_path)

@@ -3,10 +3,40 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ..config.models import MonitorProfile
 from .spec import ConfigField, ExperimentSpec
 
 LUMINANCE_CHOICES = (19.0, 29.0, 41.0, 49.0, 204.0, 255.0, 300.0, 322.0, 370.0, 403.0, 415.0, 500.0)
 SCREEN_INTENSITY_CHOICES = (0.24, 0.294, 0.34, 0.374, 0.72, 0.8, 0.86, 0.89, 0.95, 0.98, 0.99)
+
+
+def _folder_number(value: float) -> str:
+    number = float(value)
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.6f}".rstrip("0").rstrip(".").replace(".", "p")
+
+
+def _data_path_parts(
+    values: Mapping[str, Any],
+    monitor_profile: MonitorProfile,
+) -> tuple[str, ...]:
+    """Human-readable fixed run conditions for CSF acquisition.
+
+    The current reference profile has no trusted encoded luminance-command
+    mapping, so the background folder is visibly marked ``_unverified``.
+    """
+    max_luminance = _folder_number(float(values["Max_monitor_Luminance"]))
+    background_luminance = _folder_number(float(values["Background_Luminance"]))
+
+    background_folder = f"background_{background_luminance}cdm2"
+    if not monitor_profile.has_verified_luminance_mapping:
+        background_folder += "_unverified"
+
+    return (
+        f"max_{max_luminance}cdm2",
+        background_folder,
+    )
 
 
 def _validate(values: Mapping[str, Any]) -> list[str]:
@@ -49,6 +79,7 @@ CSF_SPEC = ExperimentSpec(
     legacy_module="Experiments.contrast_sensitivity_function",
     legacy_experiment_type="contrast_sensitivity_function",
     compatible_monitor_profiles=("legacy_reference_display",),
+    data_path_builder=_data_path_parts,
     fields=(
         ConfigField(
             "Max_monitor_Luminance",
@@ -100,8 +131,6 @@ CSF_SPEC = ExperimentSpec(
         ConfigField("starting_probe_intensity", "Starting probe digital intensity", "float", default=1.0),
     ),
     fixed_setup={
-        # Preserved legacy CSF setup values. Their scientific meaning will be
-        # reviewed with the stimulus layer rather than silently reinterpreted here.
         "trialPOINT": 9,
         "stimulus_SF": 1.0,
         "index_last_PosList": 0,

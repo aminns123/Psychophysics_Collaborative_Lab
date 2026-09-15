@@ -1,0 +1,90 @@
+{
+  "project": "PsyCoLab \u2014 Psychophysics Collaborative Lab",
+  "base_commit": "93ad95af723dfb1da0c182cf7dbc341f5e927a3b",
+  "data_layout_schema_version": 1,
+  "compiled_python_files": [
+    "Events/adaptive_session.py",
+    "Experiments/contrast_sensitivity_function.py",
+    "Interface/config.py",
+    "src/psychophysics_lab/core/runner.py",
+    "src/psychophysics_lab/data/index.py",
+    "src/psychophysics_lab/data/workspace.py",
+    "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+    "src/psychophysics_lab/experiments/spec.py",
+    "tests/test_experiment_data_paths.py",
+    "tests/test_runs_index.py",
+    "tests/test_workspace.py"
+  ],
+  "files": [
+    {
+      "path": "DATA_LAYOUT_UPDATE_README.txt",
+      "bytes": 2019,
+      "sha256": "879f95b1aa310897bd643e63e8ba6a8ccd979922efa771935efcf927026c8d50"
+    },
+    {
+      "path": "Events/adaptive_session.py",
+      "bytes": 8623,
+      "sha256": "19c4e2ea8c8f30f76aa479608ee3b523fa2b684c96bc48874c4e4e4bb7d5be1a"
+    },
+    {
+      "path": "Experiments/contrast_sensitivity_function.py",
+      "bytes": 12581,
+      "sha256": "bd2d785125548c2878de8b9960958346515624f59bcaacd3767366cba92e0661"
+    },
+    {
+      "path": "Interface/config.py",
+      "bytes": 9359,
+      "sha256": "dd35a70e936d7f67984d297e30a2eb04437d69b5ae910f2aeefcc04b66919dc7"
+    },
+    {
+      "path": "README.md",
+      "bytes": 8347,
+      "sha256": "c30515b867574778817f47ecbf2df9fbec31f7644d5aa1e63c93532d24c40a0a"
+    },
+    {
+      "path": "docs/DATA_LAYOUT.md",
+      "bytes": 6189,
+      "sha256": "0b7034febf459b43b571eaa1a6cfc20d02aa77c16b4f9c145cb6dacb7dc9c382"
+    },
+    {
+      "path": "src/psychophysics_lab/core/runner.py",
+      "bytes": 18305,
+      "sha256": "b1c94ac886463e025203b3df2b804203c9196780d4d58c29a1cf5e3f104a18dd"
+    },
+    {
+      "path": "src/psychophysics_lab/data/index.py",
+      "bytes": 2340,
+      "sha256": "ebaddea1b7b6c876cfa4c0fd43c8bc34830b3970f0dfb54d8bb7a9ef10775f43"
+    },
+    {
+      "path": "src/psychophysics_lab/data/workspace.py",
+      "bytes": 8223,
+      "sha256": "b2ddc19d994bb15cde672c15c4e53808f98153dbcbb44ea1215e65d1185b34f0"
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+      "bytes": 5919,
+      "sha256": "8345e9f33efa4256c05021ce381e13c8d160a5a0617d763f55da975dadf72c64"
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/spec.py",
+      "bytes": 4150,
+      "sha256": "c82d0650212c659ffd15a00df14dd554607c84f6638d3edd3d56dc1b23a49a14"
+    },
+    {
+      "path": "tests/test_experiment_data_paths.py",
+      "bytes": 1663,
+      "sha256": "31ae95f5ea70f7d5512fcf9bae6fc3b3583445812f440ef9cc52685ff4a8e4af"
+    },
+    {
+      "path": "tests/test_runs_index.py",
+      "bytes": 1502,
+      "sha256": "e839a7f7f6daa58702cc550acc2310cf02857eea18054614e5ceffa233b3e053"
+    },
+    {
+      "path": "tests/test_workspace.py",
+      "bytes": 4189,
+      "sha256": "c1e999b6e43f6205c92b34f1c5dd0a3dc6884607f25fa9e617d553f677a833c7"
+    }
+  ]
+}

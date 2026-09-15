@@ -6,6 +6,8 @@ from typing import Any, Callable, Iterable, Mapping
 
 from ..config.models import MonitorProfile
 
+DataPathBuilder = Callable[[Mapping[str, Any], MonitorProfile], Iterable[str]]
+
 
 @dataclass(frozen=True)
 class ConfigField:
@@ -33,7 +35,6 @@ class ConfigField:
             return float(value)
         if self.kind == "choice":
             if value not in self.choices:
-                # Textual may return an equivalent numeric string when state is restored.
                 for choice in self.choices:
                     if str(choice) == str(value):
                         return choice
@@ -55,6 +56,9 @@ class ExperimentSpec:
     fixed_setup: Mapping[str, Any] = field(default_factory=dict)
     compatible_monitor_profiles: tuple[str, ...] = ()
     validator: Callable[[Mapping[str, Any]], Iterable[str]] | None = None
+    # Optional human-facing grouping levels placed between display profile and
+    # date. This keeps the universal storage engine experiment-agnostic.
+    data_path_builder: DataPathBuilder | None = None
 
     def field_defaults(self) -> dict[str, Any]:
         return {item.key: item.default for item in self.fields}
@@ -68,6 +72,21 @@ class ExperimentSpec:
         if errors:
             raise ValueError("\n".join(errors))
         return normalised
+
+    def data_path_parts(
+        self,
+        values: Mapping[str, Any],
+        monitor_profile: MonitorProfile,
+    ) -> tuple[str, ...]:
+        """Return experiment-defined run-level grouping folders.
+
+        Only fixed, scientifically useful run-level conditions belong here.
+        Trial-varying values and implementation details belong in trials/config.
+        """
+        if self.data_path_builder is None:
+            return ()
+        normalised = self.normalise_values(values)
+        return tuple(str(part) for part in self.data_path_builder(normalised, monitor_profile))
 
     def values_from_legacy_setup(self, setup: Mapping[str, Any]) -> dict[str, Any]:
         values = self.field_defaults()

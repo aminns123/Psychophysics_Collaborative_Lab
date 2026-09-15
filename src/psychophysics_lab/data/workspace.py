@@ -1,4 +1,4 @@
-"""Persistent local workspace state and per-run directory ownership."""
+"""Persistent workspace state and the PsyCoLab acquisition-data layout."""
 
 from __future__ import annotations
 
@@ -7,14 +7,18 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-from typing import Any
-from uuid import uuid4
+import re
+from typing import Any, Iterable
 
 from ..config.models import SetupRequest
 from .session import atomic_write_json
 
 DATA_CONFIG_FILENAME = "psycolab_data_config.json"
+RUNS_INDEX_FILENAME = "runs_index.csv"
 LOCAL_PREFERENCES_FILENAME = ".psycolab_local.json"
+DATA_LAYOUT_SCHEMA_VERSION = 1
+
+_RUN_RE = re.compile(r"^run_(\d+)$")
 
 
 def data_config_path(data_root: Path) -> Path:
@@ -55,11 +59,28 @@ def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest |
         experiment_id=str(raw["experiment_id"]),
         monitor_profile_id=str(raw["monitor_profile_id"]),
         experiment_values=dict(raw["experiment_values"]),
-        # The selected data folder is runtime/machine context, not part of a
-        # reusable experiment setup. Keeping this None makes a copied data
-        # workspace portable to another computer.
+        # The selected data folder is machine-local context, not part of a
+        # portable reusable experiment setup.
         data_root=None,
     )
+
+
+def _safe_component(value: str, *, label: str) -> str:
+    """Validate one human-readable folder component.
+
+    Experiment definitions may choose grouping labels, but they may not inject
+    path separators or traversal tokens into the acquisition hierarchy.
+    """
+    text = str(value).strip()
+    if not text:
+        raise ValueError(f"{label} folder component must not be empty.")
+    if text in {".", ".."}:
+        raise ValueError(f"{label} folder component is not valid: {text!r}")
+    if "/" in text or "\\" in text:
+        raise ValueError(f"{label} folder component must not contain path separators: {text!r}")
+    if any(ord(char) < 32 for char in text):
+        raise ValueError(f"{label} folder component contains a control character.")
+    return text
 
 
 def create_run_directory(
@@ -67,33 +88,79 @@ def create_run_directory(
     *,
     participant_id: str,
     experiment_id: str,
+    monitor_profile_id: str,
+    grouping_parts: Iterable[str] = (),
     now: datetime | None = None,
 ) -> Path:
-    """Create one immutable directory that owns every artifact from one run."""
+    """Create one run directory using the stable PsyCoLab human-facing hierarchy.
+
+    Layout contract v1:
+
+        participant /
+        experiment /
+        display profile /
+        experiment-defined run-level grouping folders /
+        YYYY-MM-DD /
+        run_NNN /
+
+    Dates therefore occur only *after* the scientifically useful grouping
+    levels, avoiding a top-level forest of date folders. ``run_NNN`` is for
+    human navigation; a separate UUID is stored in manifest.json.
+    """
     local_now = now or datetime.now()
     date_text = local_now.strftime("%Y-%m-%d")
-    stamp = local_now.strftime("%Y%m%d_%H%M%S")
-    base = data_root / participant_id / experiment_id / date_text
+
+    components = [
+        _safe_component(participant_id, label="participant"),
+        _safe_component(experiment_id, label="experiment"),
+        _safe_component(monitor_profile_id, label="monitor profile"),
+        *[
+            _safe_component(part, label="experiment grouping")
+            for part in grouping_parts
+        ],
+        date_text,
+    ]
+    base = data_root.joinpath(*components)
     base.mkdir(parents=True, exist_ok=True)
 
-    for _ in range(100):
-        run_id = f"run_{stamp}_{uuid4().hex[:8]}"
-        run_dir = base / run_id
+    existing_numbers: list[int] = []
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        match = _RUN_RE.fullmatch(child.name)
+        if match:
+            existing_numbers.append(int(match.group(1)))
+
+    candidate = max(existing_numbers, default=0) + 1
+    # mkdir is the final authority, so two simultaneous processes cannot be
+    # assigned the same run folder merely because they scanned at the same time.
+    for _ in range(10_000):
+        run_dir = base / f"run_{candidate:03d}"
         try:
             run_dir.mkdir()
             (run_dir / "state").mkdir()
             return run_dir
         except FileExistsError:
-            continue
-    raise RuntimeError("Could not allocate a unique PsyCoLab run directory.")
+            candidate += 1
+
+    raise RuntimeError("Could not allocate a unique PsyCoLab run number.")
+
+
+def run_number_from_path(run_directory: Path) -> int:
+    match = _RUN_RE.fullmatch(run_directory.name)
+    if not match:
+        raise ValueError(f"Not a PsyCoLab run_NNN directory: {run_directory}")
+    return int(match.group(1))
 
 
 def _relative_to_data_root(path: Path | None, data_root: Path) -> str | None:
     if path is None:
         return None
     try:
-        return str(path.resolve().relative_to(data_root.resolve()))
+        return path.resolve().relative_to(data_root.resolve()).as_posix()
     except ValueError:
+        # Canonical data files should be inside data_root. Returning an absolute
+        # path here is retained only as a defensive fallback for legacy callers.
         return str(path.resolve())
 
 
@@ -106,21 +173,19 @@ def save_workspace_state(
     legacy_setup: dict[str, Any] | None = None,
     manifest_file: Path | None = None,
 ) -> Path:
-    """Store the latest setup at the top of the chosen data folder.
+    """Store the latest setup at the top of the chosen data workspace.
 
-    This is a convenience index, not the canonical scientific record. Every run
-    also owns immutable copies of its full configuration inside its run folder.
+    This is convenience state, not the canonical scientific record. Every run
+    owns immutable copies of its configuration inside its own run directory.
     """
     data_root.mkdir(parents=True, exist_ok=True)
     previous = load_workspace_state(data_root) or {}
     request_payload = asdict(request)
-    # Machine-specific paths are deliberately not persisted in the portable
-    # workspace state. .psycolab_local.json remembers the current machine's
-    # selected folder separately and is ignored by Git.
     request_payload["data_root"] = None
 
     payload: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
+        "data_layout_schema_version": DATA_LAYOUT_SCHEMA_VERSION,
         "project": "PsyCoLab — Psychophysics Collaborative Lab",
         "data_root": ".",
         "updated_utc": datetime.now(timezone.utc).isoformat(),
@@ -150,11 +215,7 @@ def local_preferences_path(repo_root: Path) -> Path:
 
 
 def preferred_data_root(repo_root: Path, fallback: Path) -> Path:
-    """Remember only the last data-folder path in the local checkout.
-
-    The file is ignored by Git and contains no experiment data. An explicit
-    PSYCOLAB_DATA_DIR environment variable continues to take precedence.
-    """
+    """Remember only the last data-folder path in the local checkout."""
     if os.environ.get("PSYCOLAB_DATA_DIR"):
         return fallback.resolve()
     path = local_preferences_path(repo_root)

@@ -86,7 +86,11 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         "trialPOINT": int(setupDict["trialPOINT"]),
         "n_dw": int(setupDict.get("n_down", 2)),
         "n_up": int(setupDict.get("n_up", 1)),
-        "number_trials": 10,
+        # Keep this historical key, but make its saved value agree with the
+        # actual maximum accepted-response ceiling used by the run.
+        "number_trials": max_trials,
+        "max_trials": max_trials,
+        "reversal_termination": reversal_termination,
         "terminationINDEX": 9,
         "logUNIT_UP": float(setupDict.get("logUNIT_UP", 0.35)),
         "logUNIT_DW": float(setupDict.get("logUNIT_DW", ratio2dw1up * 0.35)),
@@ -170,8 +174,6 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     value_params = flat_dict.copy()
     value_params.update(
         {
-            # Historical key names retained for analysis compatibility. These
-            # values are C_disp, not conventional Weber contrast.
             "background_weber_contrast": background_display_contrast,
             "max_weber_contrast": max_display_contrast,
         }
