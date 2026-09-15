@@ -31,3 +31,7 @@ local_psychophysics_data/
 # Local editor/runtime diagnostics (never part of the shared laboratory code)
 .vscode/
 .psycolab_logs/
+.idea/
+*.tmp
+*.swp
+*~

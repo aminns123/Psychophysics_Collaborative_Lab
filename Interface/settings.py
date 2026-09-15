@@ -1,1 +1,0 @@
-RENDER_GRAPHICS = False

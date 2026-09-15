@@ -115,32 +115,42 @@ def _sha256(path: Path) -> str:
 
 
 def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
-    relative_paths = (
-        "Experiments/contrast_sensitivity_function.py",
-        "Events/adaptive_session.py",
-        "Events/adaptiveMethods.py",
-        "Events/display_contrast.py",
-        "Events/staircase.py",
-        "Events/stimuliC.py",
-        "Interface/config.py",
-        "Functions/functionsForUse.py",
-        "libC.py",
-        "packages.zip",
-        "src/psychophysics_lab/core/runner.py",
-        "src/psychophysics_lab/experiments/spec.py",
-        "src/psychophysics_lab/experiments/contrast_sensitivity.py",
-        "src/psychophysics_lab/config/models.py",
-        "src/psychophysics_lab/config/monitor.py",
-        "src/psychophysics_lab/data/index.py",
-        "src/psychophysics_lab/data/trials.py",
-        "src/psychophysics_lab/data/workspace.py",
-    )
-    fingerprints: dict[str, str] = {}
-    for relative in relative_paths:
-        path = repo_root / relative
-        if path.is_file():
-            fingerprints[relative] = _sha256(path)
-    return fingerprints
+    """Hash the acquisition source inventory, independent of Git availability.
+
+    All Python sources under the package and legacy runtime roots are included,
+    along with the legacy dependency archive. Profiles are saved separately in
+    each run; data, tooling, tests and local environment files are not sources.
+    """
+    repo_root = repo_root.resolve()
+    roots = ("src/psychophysics_lab", "Events", "Experiments", "Functions", "Interface")
+    excluded = {"tests", "test", "__pycache__", "tmp", "temp", "node_modules"}
+    paths = []
+    for relative_root in roots:
+        source_root = repo_root / relative_root
+        if source_root.is_symlink() or source_root.resolve() != source_root:
+            continue
+        for directory, subdirectories, filenames in os.walk(source_root, followlinks=False):
+            base = Path(directory)
+            subdirectories[:] = sorted(
+                name for name in subdirectories
+                if not name.startswith(".") and name.lower() not in excluded
+                and (name.lower() != "data" or
+                     (relative_root == "src/psychophysics_lab" and base == source_root))
+                and not (base / name).is_symlink()
+                and (base / name).resolve() == base / name
+                and (base / name).resolve().is_relative_to(source_root.resolve())
+            )
+            for name in filenames:
+                path = base / name
+                if (path.suffix == ".py" and not path.is_symlink()
+                        and not name.startswith((".", "test_", "conftest."))
+                        and not name.endswith("_test.py")):
+                    paths.append(path)
+    paths.extend(repo_root / name for name in ("libC.py", "packages.zip")
+                 if (repo_root / name).is_file() and not (repo_root / name).is_symlink())
+    return {path.relative_to(repo_root).as_posix(): _sha256(path)
+            for path in sorted(paths, key=lambda path: path.relative_to(repo_root).as_posix())}
+
 
 
 def _run_artifact_fingerprints(run_dir: Path) -> dict[str, str]:

@@ -230,6 +230,18 @@ libC.py
 
 This migration is intentionally incremental.
 
+See [the current architecture](docs/ARCHITECTURE.md) for package responsibilities
+and provenance coverage, and [CONTRIBUTING.md](CONTRIBUTING.md) for development rules.
+
+Validate a finalized run without modifying it:
+
+```text
+python scripts/validate_run.py <run_directory>
+```
+
+The validator reports PASS/FAIL and individual consistency checks; it does not
+validate physical stimulus rendering, timing or calibration.
+
 ## Experiment termination and Escape
 
 PsyCoLab distinguishes scientific completion from an intentional manual abort

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.data.workspace import (
     load_workspace_state,
@@ -69,3 +71,14 @@ def test_shared_runtime_files_do_not_contain_author_specific_path_literals():
                     hits.append(f"{path.relative_to(root)} contains {needle!r}")
 
     assert hits == []
+
+
+@pytest.mark.parametrize("name", ["tmp/archive-audit/dependency.whl", "temp/probe.py",
+                                 ".idea/workspace.xml", "local_psychophysics_data/S001/trials.tsv",
+                                 "run.log", "state.json.tmp", ".venv.incompatible-old/file.py"])
+def test_portability_checker_rejects_tracked_temporary_data_and_runtime_files(monkeypatch, name):
+    from scripts import portability_check
+
+    monkeypatch.setattr(portability_check, "tracked_files", lambda: [name])
+    monkeypatch.setattr(portability_check, "text_files", lambda: [])
+    assert portability_check.main() == 1

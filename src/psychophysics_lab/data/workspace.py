@@ -12,6 +12,8 @@ from typing import Any, Iterable
 
 from ..config.models import SetupRequest
 from .session import atomic_write_json
+from .identifiers import validate_path_component
+from .participants import validate_participant_id
 
 DATA_CONFIG_FILENAME = "psycolab_data_config.json"
 RUNS_INDEX_FILENAME = "runs_index.csv"
@@ -71,16 +73,7 @@ def _safe_component(value: str, *, label: str) -> str:
     Experiment definitions may choose grouping labels, but they may not inject
     path separators or traversal tokens into the acquisition hierarchy.
     """
-    text = str(value).strip()
-    if not text:
-        raise ValueError(f"{label} folder component must not be empty.")
-    if text in {".", ".."}:
-        raise ValueError(f"{label} folder component is not valid: {text!r}")
-    if "/" in text or "\\" in text:
-        raise ValueError(f"{label} folder component must not contain path separators: {text!r}")
-    if any(ord(char) < 32 for char in text):
-        raise ValueError(f"{label} folder component contains a control character.")
-    return text
+    return validate_path_component(value, label=label)
 
 
 def create_run_directory(
@@ -111,7 +104,7 @@ def create_run_directory(
     date_text = local_now.strftime("%Y-%m-%d")
 
     components = [
-        _safe_component(participant_id, label="participant"),
+        validate_participant_id(participant_id),
         _safe_component(experiment_id, label="experiment"),
         _safe_component(monitor_profile_id, label="monitor profile"),
         *[

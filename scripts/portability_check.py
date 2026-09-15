@@ -19,6 +19,10 @@ FORBIDDEN_TRACKED_PREFIXES = (
     ".vscode/",
     ".pytest_cache/",
     ".psycolab_logs/",
+    ".idea/",
+    "tmp/",
+    "temp/",
+    "local_psychophysics_data/",
 )
 
 SCAN_PREFIXES = (
@@ -29,12 +33,14 @@ SCAN_PREFIXES = (
     "Interface/",
     "scripts/",
     "configs/",
+    ".github/",
 )
 
 ROOT_TEXT_FILES = {
     "run_psycolab.bat",
     "pyproject.toml",
     ".gitignore",
+    "libC.py",
 }
 
 ALLOWED_TEXT_SUFFIXES = {".py", ".json", ".toml", ".bat", ".sh", ".yaml", ".yml", ".txt"}
@@ -132,6 +138,8 @@ def main() -> int:
             failures.append(f"tracked Python cache: {path}")
         if any(normalized.startswith(prefix) for prefix in FORBIDDEN_TRACKED_PREFIXES):
             failures.append(f"tracked local-only path: {path}")
+        if normalized.startswith(".venv.incompatible-") or normalized.endswith((".log", ".tmp", ".swp", "~")):
+            failures.append(f"tracked local runtime/temporary file: {path}")
 
     try:
         candidates = text_files()

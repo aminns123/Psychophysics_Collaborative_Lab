@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "psychophysics-lab"
-version = "0.2.2"
+dynamic = ["version"]
 description = "PsyCoLab — Psychophysics Collaborative Lab"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -28,6 +28,9 @@ psycolab = "psychophysics_lab.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "psychophysics_lab.__version__"}
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
