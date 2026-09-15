@@ -52,6 +52,7 @@ PsyCoLab_Data/
                         │   ├── resolved_experiment.json
                         │   ├── adaptive_session.json
                         │   ├── trials.tsv
+                        │   ├── trials_readable.txt
                         │   ├── trial_data_dictionary.tsv
                         │   ├── legacy_response.txt
                         │   └── state/
@@ -146,6 +147,11 @@ must be regenerated.
 
 `trials.tsv` is the canonical accepted-response table and is append-only during
 acquisition.
+
+`trials_readable.txt` is a derived fixed-width rendering created at run
+finalisation for convenient human inspection. It is non-canonical and may be
+regenerated from `trials.tsv`; each column width is determined independently
+from the longest header/value in that column.
 
 `trial_data_dictionary.tsv` is written into every run beside `trials.tsv` and
 defines the exact column order, logical type, units/encoding, meaning and notes

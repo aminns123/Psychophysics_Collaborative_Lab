@@ -22,8 +22,10 @@ from ..data.index import upsert_run_index
 from ..data.participants import validate_participant_id
 from ..data.session import atomic_write_json, copy_snapshot
 from ..data.trials import (
+    READABLE_TRIALS_FILENAME,
     TRIAL_DATA_DICTIONARY_FILENAME,
     TRIAL_SCHEMA_VERSION,
+    write_readable_trial_table,
     write_trial_data_dictionary,
 )
 from ..data.workspace import (
@@ -324,6 +326,7 @@ def run_request(
     monitor_profile_file = run_dir / "monitor_profile.json"
     trial_log_file = run_dir / "trials.tsv"
     trial_dictionary_file = run_dir / TRIAL_DATA_DICTIONARY_FILENAME
+    readable_trials_file = run_dir / READABLE_TRIALS_FILENAME
     runtime_display_file = run_dir / "runtime_display.json"
     adaptive_session_file = run_dir / "adaptive_session.json"
 
@@ -361,6 +364,7 @@ def run_request(
         "experiment_config": "experiment_config.json",
         "monitor_profile": "monitor_profile.json",
         "canonical_trials": "trials.tsv",
+        "readable_trials": READABLE_TRIALS_FILENAME,
         "trial_data_dictionary": TRIAL_DATA_DICTIONARY_FILENAME,
         "runtime_display": "runtime_display.json",
         "resolved_experiment": "resolved_experiment.json",
@@ -495,6 +499,17 @@ def run_request(
         finished_utc = datetime.now(timezone.utc).isoformat()
         payload["finished_utc"] = finished_utc
         payload["accepted_trials"] = _trial_count(trial_log_file)
+
+        if trial_log_file.exists():
+            try:
+                write_readable_trial_table(
+                    trial_log_file,
+                    readable_trials_file,
+                )
+            except Exception as readable_error:
+                # trials.tsv is canonical. Failure to create the derived
+                # human-readable view must never invalidate acquired data.
+                payload["readable_trials_error"] = repr(readable_error)
 
         try:
             payload["output_sha256"] = _run_artifact_fingerprints(run_dir)

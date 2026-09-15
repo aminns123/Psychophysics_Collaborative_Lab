@@ -92,6 +92,7 @@ run_001/
 ├── resolved_experiment.json
 ├── adaptive_session.json
 ├── trials.tsv
+├── trials_readable.txt
 ├── trial_data_dictionary.tsv
 ├── legacy_response.txt
 └── state/
@@ -113,6 +114,11 @@ stores a globally unique `run_uuid`.
 `trials.tsv` is the canonical append-only response record. It distinguishes the
 stimulus **actually presented** from the post-response staircase state intended
 for the next presentation.
+
+`trials_readable.txt` is generated from the canonical TSV at run finalisation as
+a fixed-width human-readable view. Each column is padded to the longest value in
+that column, making headers and values easy to follow. It is derived rather than
+canonical and can always be regenerated from `trials.tsv`.
 
 `trial_data_dictionary.tsv` is saved beside it in every run and defines every
 trial column, its logical type, units/encoding and meaning, including

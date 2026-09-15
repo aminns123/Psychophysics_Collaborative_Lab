@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 TRIAL_SCHEMA_VERSION = 1
 TRIAL_DATA_DICTIONARY_FILENAME = "trial_data_dictionary.tsv"
+READABLE_TRIALS_FILENAME = "trials_readable.txt"
 
 
 @dataclass(frozen=True)
@@ -214,6 +215,74 @@ def write_trial_data_dictionary(
         os.fsync(handle.fileno())
     os.replace(temporary, path)
     return path
+
+
+def write_readable_trial_table(
+    trials_path: str | Path,
+    output_path: str | Path | None = None,
+    *,
+    spacing: int = 2,
+) -> Path:
+    """Write a fixed-width human-readable view derived from ``trials.tsv``.
+
+    ``trials.tsv`` remains the canonical machine-readable record. This helper
+    reads the completed TSV, measures each column independently, and pads that
+    column to the width of its longest header/value. Two spaces separate columns
+    by default.
+
+    The readable file is derived and may always be regenerated from trials.tsv.
+    """
+    trials_path = Path(trials_path)
+    output = (
+        Path(output_path)
+        if output_path is not None
+        else trials_path.with_name(READABLE_TRIALS_FILENAME)
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    if not trials_path.exists():
+        raise FileNotFoundError(f"Canonical trial table does not exist: {trials_path}")
+
+    with trials_path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if reader.fieldnames is None:
+            raise ValueError(f"Canonical trial table has no header: {trials_path}")
+        fieldnames = list(reader.fieldnames)
+        rows = [dict(row) for row in reader]
+
+    if fieldnames != list(TRIAL_COLUMNS):
+        raise ValueError(
+            "Canonical trial-table columns do not match the active PsyCoLab "
+            f"schema. Expected {list(TRIAL_COLUMNS)!r}, got {fieldnames!r}."
+        )
+
+    widths = {
+        column: max(
+            len(column),
+            *(len(str(row.get(column, ""))) for row in rows),
+        )
+        for column in fieldnames
+    }
+    separator = " " * max(1, int(spacing))
+
+    def render(values: Mapping[str, Any]) -> str:
+        return separator.join(
+            str(values.get(column, "")).ljust(widths[column])
+            for column in fieldnames
+        ).rstrip()
+
+    temporary = output.with_name(output.name + ".tmp")
+    with temporary.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(render({column: column for column in fieldnames}) + "\n")
+        handle.write(
+            separator.join("-" * widths[column] for column in fieldnames) + "\n"
+        )
+        for row in rows:
+            handle.write(render(row) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, output)
+    return output
 
 
 class TrialLog:

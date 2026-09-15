@@ -2,17 +2,22 @@
 
 **Canonical trial schema version:** `1`
 
-Every newly created PsyCoLab run contains both:
+Every newly created PsyCoLab run contains:
 
 ```text
 trials.tsv
+trials_readable.txt
 trial_data_dictionary.tsv
 ```
 
-The first is the append-only accepted-response record. The second is a
-self-contained description of every column in that exact trial table, including
-experiment-specific encodings. This means a copied run remains understandable
-without needing to inspect PsyCoLab's Python source.
+`trials.tsv` is the canonical append-only accepted-response record.
+`trials_readable.txt` is a derived fixed-width view of the same rows for human
+inspection. Each column is padded independently to the width of its longest
+header/value, so values line up underneath their titles. The readable file is
+regenerated at run finalisation and can always be recreated from `trials.tsv`.
+`trial_data_dictionary.tsv` is the self-contained definition of every column,
+including experiment-specific encodings. This means a copied run remains
+understandable without needing to inspect PsyCoLab's Python source.
 
 The dictionary itself has one row per `trials.tsv` column and records:
 
