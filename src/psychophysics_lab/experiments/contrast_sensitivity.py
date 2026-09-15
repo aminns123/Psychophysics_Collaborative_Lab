@@ -80,6 +80,41 @@ CSF_SPEC = ExperimentSpec(
     legacy_experiment_type="contrast_sensitivity_function",
     compatible_monitor_profiles=("legacy_reference_display",),
     data_path_builder=_data_path_parts,
+    trial_column_overrides={
+        "stimulus_condition": {
+            "units_or_encoding": "legacy CSF condition value; physical units not yet validated",
+            "meaning": (
+                "Legacy CSF staircase condition value associated with the accepted response."
+            ),
+            "notes": (
+                "The current reference implementation derives these values from the retained "
+                "31.5 spatial scaling (currently 63 and 252). Do not relabel them as cycles/degree "
+                "until the deferred stimulus/spatial-calibration review is completed."
+            ),
+        },
+        "stimulus_position_px": {
+            "units_or_encoding": "horizontal Pyglet window coordinate in pixels",
+            "meaning": (
+                "Horizontal x-position of the 2AFC target selected for this accepted response."
+            ),
+            "notes": (
+                "The corresponding left/right alternatives and window centre are recorded in "
+                "resolved_experiment.json."
+            ),
+        },
+        "target_alternative": {
+            "units_or_encoding": "0 = left; 1 = right",
+            "meaning": "Correct spatial alternative for the current CSF response.",
+        },
+        "participant_response": {
+            "units_or_encoding": "0 = left; 1 = right",
+            "meaning": "Participant's encoded left/right response for the current CSF trial.",
+        },
+        "response_key": {
+            "units_or_encoding": "LEFT or RIGHT",
+            "meaning": "Accepted keyboard key recorded for the current CSF response.",
+        },
+    },
     fields=(
         ConfigField(
             "Max_monitor_Luminance",

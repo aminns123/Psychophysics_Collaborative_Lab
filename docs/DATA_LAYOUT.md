@@ -52,6 +52,7 @@ PsyCoLab_Data/
                         │   ├── resolved_experiment.json
                         │   ├── adaptive_session.json
                         │   ├── trials.tsv
+                        │   ├── trial_data_dictionary.tsv
                         │   ├── legacy_response.txt
                         │   └── state/
                         │       ├── experiment_defined.json
@@ -145,6 +146,12 @@ must be regenerated.
 
 `trials.tsv` is the canonical accepted-response table and is append-only during
 acquisition.
+
+`trial_data_dictionary.tsv` is written into every run beside `trials.tsv` and
+defines the exact column order, logical type, units/encoding, meaning and notes
+for that run's trial table. Experiment-specific response encodings are resolved
+into this file at run creation time. See `docs/TRIAL_DATA_DICTIONARY.md` for the
+repository-wide explanation.
 
 `manifest.json` is the high-level provenance record.
 

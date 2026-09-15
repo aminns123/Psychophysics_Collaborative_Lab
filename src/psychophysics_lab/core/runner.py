@@ -21,6 +21,11 @@ from ..config.monitor import load_monitor_profiles
 from ..data.index import upsert_run_index
 from ..data.participants import validate_participant_id
 from ..data.session import atomic_write_json, copy_snapshot
+from ..data.trials import (
+    TRIAL_DATA_DICTIONARY_FILENAME,
+    TRIAL_SCHEMA_VERSION,
+    write_trial_data_dictionary,
+)
 from ..data.workspace import (
     DATA_LAYOUT_SCHEMA_VERSION,
     create_run_directory,
@@ -318,6 +323,7 @@ def run_request(
     experiment_config_file = run_dir / "experiment_config.json"
     monitor_profile_file = run_dir / "monitor_profile.json"
     trial_log_file = run_dir / "trials.tsv"
+    trial_dictionary_file = run_dir / TRIAL_DATA_DICTIONARY_FILENAME
     runtime_display_file = run_dir / "runtime_display.json"
     adaptive_session_file = run_dir / "adaptive_session.json"
 
@@ -331,6 +337,11 @@ def run_request(
         },
     )
     atomic_write_json(monitor_profile_file, profile.to_dict())
+    write_trial_data_dictionary(
+        trial_dictionary_file,
+        experiment_id=spec.id,
+        overrides=spec.trial_column_overrides,
+    )
 
     payload = _manifest_payload(
         request=request,
@@ -344,11 +355,13 @@ def run_request(
         status="configuring",
     )
     started_utc = payload["created_utc"]
+    payload["trial_schema_version"] = TRIAL_SCHEMA_VERSION
     payload["files"] = {
         "manifest": "manifest.json",
         "experiment_config": "experiment_config.json",
         "monitor_profile": "monitor_profile.json",
         "canonical_trials": "trials.tsv",
+        "trial_data_dictionary": TRIAL_DATA_DICTIONARY_FILENAME,
         "runtime_display": "runtime_display.json",
         "resolved_experiment": "resolved_experiment.json",
         "adaptive_session": "adaptive_session.json",

@@ -59,6 +59,10 @@ class ExperimentSpec:
     # Optional human-facing grouping levels placed between display profile and
     # date. This keeps the universal storage engine experiment-agnostic.
     data_path_builder: DataPathBuilder | None = None
+    # Optional experiment-specific clarifications for the canonical trial
+    # dictionary. Keys are trials.tsv column names; values may override
+    # logical_type, units_or_encoding, meaning and/or notes.
+    trial_column_overrides: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     def field_defaults(self) -> dict[str, Any]:
         return {item.key: item.default for item in self.fields}
