@@ -70,6 +70,18 @@ def _print_run_summary(artifacts: Any) -> None:
     print("=" * 60)
 
 
+def _print_geometry_summary(artifacts: Any) -> None:
+    print("\n" + "=" * 60)
+    print("PsyCoLab display geometry check finished.")
+    print(f"Fullscreen resolution: {artifacts.resolution_px[0]} x {artifacts.resolution_px[1]} px")
+    print(f"Intended ruler length: {artifacts.intended_length_mm:.3f} mm")
+    print(f"Realised pixel-rounded length: {artifacts.realised_length_mm:.3f} mm")
+    print(f"Realised visual angle: {artifacts.realised_visual_angle_deg:.5f} deg")
+    print(f"Diagnostic report: {artifacts.report_file}")
+    print("Return to the Display Check page to record the ruler measurement.")
+    print("=" * 60)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="psycolab",
@@ -113,50 +125,77 @@ def _main(
     except ValueError:
         initial_data_root = resolve_data_root(fallback_data_root, repo_root)
     initial_data_root.mkdir(parents=True, exist_ok=True)
-    if diagnostic_context is not None:
-        diagnostic_context["data_root"] = initial_data_root
-        diagnostic_context["phase"] = "tui_setup"
 
-    # Deliberately import Textual only for the interactive path.
-    from .ui.setup import run_setup_tui
+    # The hub may temporarily close to run a fullscreen display diagnostic and
+    # then reopen.  Participant experiments still close Textual before Pyglet
+    # and return to the terminal when acquisition finishes.
+    while True:
+        if diagnostic_context is not None:
+            diagnostic_context["data_root"] = initial_data_root
+            diagnostic_context["phase"] = "tui_setup"
 
-    request = run_setup_tui(repo_root=repo_root, data_root=initial_data_root)
-    if request is None:
+        from .ui.setup import run_setup_tui
+
+        action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root)
+        if action is None:
+            return 0
+
+        from .core.geometry_check import GeometryCheckRequest
+
+        if isinstance(action, GeometryCheckRequest):
+            selected_data_root = (
+                Path(action.data_root).expanduser().resolve()
+                if action.data_root
+                else initial_data_root
+            )
+            selected_data_root = resolve_data_root(selected_data_root, repo_root)
+            try:
+                remember_data_root(repo_root, selected_data_root)
+            except OSError as exc:
+                print(f"Warning: could not remember the selected data folder locally: {exc}")
+
+            if diagnostic_context is not None:
+                diagnostic_context["data_root"] = selected_data_root
+                diagnostic_context["phase"] = "display_geometry_check"
+
+            from .core.geometry_check import run_geometry_check
+
+            artifacts = run_geometry_check(
+                action,
+                repo_root=repo_root,
+                data_root=selected_data_root,
+            )
+            _print_geometry_summary(artifacts)
+            initial_data_root = selected_data_root
+            continue
+
+        selected_data_root = (
+            Path(action.data_root).expanduser().resolve()
+            if action.data_root
+            else initial_data_root
+        )
+        if diagnostic_context is not None:
+            diagnostic_context["data_root"] = selected_data_root
+            diagnostic_context["phase"] = "post_tui_experiment_launch"
+
+        try:
+            remember_data_root(repo_root, selected_data_root)
+        except OSError as exc:
+            print(f"Warning: could not remember the selected data folder locally: {exc}")
+
+        # Pyglet/OpenGL imports happen only inside run_request, after Textual exits.
+        from .core.runner import run_request
+
+        artifacts = run_request(action, repo_root=repo_root, data_root=selected_data_root)
+
+        if diagnostic_context is not None:
+            diagnostic_context["phase"] = "finished"
+        _print_run_summary(artifacts)
         return 0
-
-    selected_data_root = (
-        Path(request.data_root).expanduser().resolve()
-        if request.data_root
-        else initial_data_root
-    )
-    if diagnostic_context is not None:
-        diagnostic_context["data_root"] = selected_data_root
-        diagnostic_context["phase"] = "post_tui_experiment_launch"
-
-    try:
-        remember_data_root(repo_root, selected_data_root)
-    except OSError as exc:
-        print(f"Warning: could not remember the selected data folder locally: {exc}")
-
-    # Pyglet/OpenGL imports happen only inside run_request, after Textual exits.
-    from .core.runner import run_request
-
-    artifacts = run_request(request, repo_root=repo_root, data_root=selected_data_root)
-
-    if diagnostic_context is not None:
-        diagnostic_context["phase"] = "finished"
-    _print_run_summary(artifacts)
-    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run PsyCoLab with both Python- and native-failure diagnostics.
-
-    Ordinary exceptions are printed and written to a timestamped crash report.
-    A best-effort ``faulthandler`` trace also remains if Python terminates because
-    of a lower-level/native fault. The batch launcher receives a non-zero code so
-    the terminal pauses instead of disappearing immediately.
-    """
+    """Run PsyCoLab with both Python- and native-failure diagnostics."""
     context: dict[str, Any] = {
         "repo_root": None,
         "data_root": None,

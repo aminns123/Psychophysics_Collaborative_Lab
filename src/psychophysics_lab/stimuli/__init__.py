@@ -1,5 +1,21 @@
-"""Future reusable stimulus APIs.
+"""Reusable stimulus definitions and testable stimulus geometry."""
 
-The existing Pyglet/OpenGL stimuli remain in Events/stimuliC.py during the
-public-v1 migration. They are intentionally not rewritten here yet.
-"""
+from .geometry import (
+    WhiteBarStimulus,
+    geometry_reference_table,
+    physical_length_for_pixels,
+    physical_length_for_visual_angle,
+    pixels_for_physical_length,
+    resolve_white_bar,
+    visual_angle_for_physical_length,
+)
+
+__all__ = [
+    "WhiteBarStimulus",
+    "geometry_reference_table",
+    "physical_length_for_pixels",
+    "physical_length_for_visual_angle",
+    "pixels_for_physical_length",
+    "resolve_white_bar",
+    "visual_angle_for_physical_length",
+]
