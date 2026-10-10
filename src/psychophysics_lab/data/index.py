@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from .workspace import RUNS_INDEX_FILENAME
+from .locking import file_lock
+from uuid import uuid4
 
 RUN_INDEX_FIELDS = (
     "run_uuid",
@@ -34,6 +36,11 @@ def runs_index_path(data_root: Path) -> Path:
 
 
 def upsert_run_index(data_root: Path, row: dict[str, Any]) -> Path:
+    with file_lock(data_root / "runs_index.lock"):
+        return _upsert_run_index(data_root, row)
+
+
+def _upsert_run_index(data_root: Path, row: dict[str, Any]) -> Path:
     """Insert/update one run row atomically, keyed by ``run_uuid``."""
     data_root.mkdir(parents=True, exist_ok=True)
     path = runs_index_path(data_root)
@@ -63,7 +70,7 @@ def upsert_run_index(data_root: Path, row: dict[str, Any]) -> Path:
     if not replaced:
         rows.append({key: str(value) for key, value in normalized.items()})
 
-    temporary = path.with_name(path.name + ".tmp")
+    temporary = path.with_name(path.name + f".{uuid4().hex}.tmp")
     with temporary.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=RUN_INDEX_FIELDS)
         writer.writeheader()

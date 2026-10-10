@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _plain(static: Static) -> str:
     rendered = static.render()
-    return getattr(rendered, "plain", str(rendered))
+    return getattr(getattr(rendered, "_renderable", rendered), "plain", str(rendered))
 
 
 def test_hub_navigation_and_reactive_experiment_summary(tmp_path):
@@ -26,10 +26,12 @@ def test_hub_navigation_and_reactive_experiment_summary(tmp_path):
             summary = app.query_one("#experiment-summary", Static)
             assert "reference experiment" in _plain(summary).lower()
 
-            await pilot.click("#nav-experiments")
+            await pilot.click(app.screen.query_one("#nav-experiments", Button))
+            await pilot.pause()
             assert isinstance(app.screen, ExperimentsScreen)
 
-            await pilot.click("#nav-setup")
+            await pilot.click(app.screen.query_one("#nav-setup", Button))
+            await pilot.pause()
             assert not isinstance(app.screen, ExperimentsScreen)
 
     asyncio.run(scenario())
@@ -57,9 +59,9 @@ def test_setup_configuration_reaches_review_with_external_path(tmp_path):
             assert isinstance(app.screen, ExperimentConfigScreen)
 
             screen = app.screen
-            screen.query_one("#field-Max-monitor-Luminance", Select).value = 500.0
-            screen.query_one("#field-Background-Luminance", Select).value = 49.0
-            screen.query_one("#field-Background-Screen-intensity", Select).value = 0.374
+            screen.query_one("#field-Max-monitor-Luminance", Input).value = "500.0"
+            screen.query_one("#field-Background-Luminance", Input).value = "49.0"
+            screen.query_one("#field-Background-Screen-intensity", Input).value = "0.374"
             screen.query_one("#review", Button).press()
             await pilot.pause()
             assert isinstance(app.screen, ReviewScreen)

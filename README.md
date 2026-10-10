@@ -35,6 +35,23 @@ Useful direct commands:
 .venv\Scripts\python.exe scripts\portability_check.py
 ```
 
+## TUI, local display profiles and diagnostics
+
+The six navigation buttons stay at the top of every page. Configure, Review and
+Run actions remain outside the scrolling forms. **Inspect** opens the real file
+in VS Code with the repository folder supplied as the project context.
+
+Use **Display → Edit / copy display profile** to create a machine-local profile,
+detect/select its monitor and save a numbered revision. Shared profiles under
+`configs/monitors/` remain reference specifications. The default local folder is
+`../local_psychophysics_config/`, separate from source and participant data.
+Display tests cover size, position, spatial gratings and temporal modulation;
+their reports distinguish requested values, pixel/frame quantisation and
+software timing observations from physical measurements.
+
+See [the display and TUI guide](docs/TUI_AND_LOCAL_DISPLAYS.md) for calibration,
+multiple monitors, frequency limits, configuration overrides and acceptance checks.
+
 ## Acquisition-data contract
 
 PsyCoLab now uses a stable, human-readable acquisition hierarchy:
@@ -92,6 +109,7 @@ run_001/
 ├── resolved_experiment.json
 ├── adaptive_session.json
 ├── trials.tsv
+├── trial_context.json
 ├── trials_readable.txt
 ├── trial_data_dictionary.tsv
 ├── legacy_response.txt
@@ -113,7 +131,9 @@ stores a globally unique `run_uuid`.
 
 `trials.tsv` is the canonical append-only response record. It distinguishes the
 stimulus **actually presented** from the post-response staircase state intended
-for the next presentation.
+for the next presentation. `trial_context.json` links all rows in that run to the
+run UUID, exact profile revision/hash, calibration status and runtime snapshots.
+The canonical TSV columns and existing run hierarchy are unchanged.
 
 `trials_readable.txt` is generated from the canonical TSV at run finalisation as
 a fixed-width human-readable view. Each column is padded to the longest value in

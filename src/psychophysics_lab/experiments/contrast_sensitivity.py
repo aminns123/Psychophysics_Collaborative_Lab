@@ -60,13 +60,22 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
     background = float(values["Background_Screen_intensity"])
     if not background <= starting <= 1:
         errors.append("Starting probe intensity must lie between background intensity and 1.0.")
-    if float(values["Background_Luminance"]) > float(values["Max_monitor_Luminance"]):
-        errors.append("Background luminance cannot exceed maximum monitor luminance.")
+    if float(values["Max_monitor_Luminance"]) <= 0:
+        errors.append("Maximum luminance must be positive.")
+    if float(values["Background_Luminance"]) >= float(values["Max_monitor_Luminance"]):
+        errors.append("Background luminance must be below maximum monitor luminance.")
     for key in ("timeFixate", "timeInterval", "timeAB", "timeT"):
         if int(values[key]) < 0:
             errors.append(f"{key} must not be negative.")
 
     return errors
+
+
+def _validate_monitor(values, profile):
+    profile.validate_luminance_pair(luminance_cdm2=float(values["Background_Luminance"]), screen_intensity=float(values["Background_Screen_intensity"]))
+    endpoints = [point.luminance_cdm2 for point in profile.luminance_calibration if point.screen_intensity == 1.0]
+    if profile.has_verified_luminance_mapping and endpoints and abs(endpoints[0]-float(values["Max_monitor_Luminance"])) > 1e-6:
+        raise ValueError("Maximum luminance differs from the measured full-command endpoint.")
 
 
 CSF_SPEC = ExperimentSpec(
@@ -119,17 +128,17 @@ CSF_SPEC = ExperimentSpec(
         ConfigField(
             "Max_monitor_Luminance",
             "Maximum monitor luminance (cd/m²)",
-            "choice",
+            "float",
             default=None,
-            choices=LUMINANCE_CHOICES,
-            help_text="Legacy calibration choice. Select the value appropriate to the display/session.",
+            minimum=0.0,
+            help_text="Measured maximum luminance for this display; verified profiles enforce the measured endpoint.",
         ),
         ConfigField(
             "Background_Luminance",
             "Background luminance (cd/m²)",
-            "choice",
+            "float",
             default=None,
-            choices=LUMINANCE_CHOICES,
+            minimum=0.0,
             help_text=(
                 "Measured physical background luminance. If the selected monitor profile contains "
                 "a verified luminance calibration table, PsyCoLab enforces the corresponding "
@@ -139,9 +148,9 @@ CSF_SPEC = ExperimentSpec(
         ConfigField(
             "Background_Screen_intensity",
             "Background digital screen intensity",
-            "choice",
+            "float",
             default=None,
-            choices=SCREEN_INTENSITY_CHOICES,
+            minimum=0.0, maximum=1.0,
             help_text=(
                 "Normalised digital display command. The current legacy monitor profile has no "
                 "trusted command-to-luminance table encoded yet, so this pair is saved as "
@@ -174,4 +183,6 @@ CSF_SPEC = ExperimentSpec(
         "positionFind": 1,
     },
     validator=_validate,
+    monitor_validator=_validate_monitor,
+    source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py", "Experiments/contrast_sensitivity_function.py"),
 )

@@ -22,6 +22,8 @@ def _diagnose(repo_root: Path) -> int:
     print("PsyCoLab — Psychophysics Collaborative Lab")
     print(f"Repository: {repo_root}")
     print(f"Data root:   {initial_data_root}")
+    from .config.local import config_root
+    print(f"Local config: {config_root(repo_root, initial_data_root)}")
     for package in ("numpy", "pyglet", "textual"):
         try:
             found = version(package)
@@ -60,7 +62,10 @@ def _print_run_summary(artifacts: Any) -> None:
     if completed or unfinished:
         print(f"Completed staircases: {list(completed)}")
         print(f"Unfinished staircases: {list(unfinished)}")
-    print("Data saved successfully.")
+    if status == "error":
+        print("Acquisition failed. Inspect the manifest and surviving trial records.")
+    else:
+        print("Run records finalised; physical stimulus/timing validation remains separate.")
     print(f"Run folder:       {artifacts.run_directory}")
     print(f"Canonical trials: {artifacts.trial_log_file}")
     readable = artifacts.run_directory / "trials_readable.txt"
@@ -191,7 +196,7 @@ def _main(
         if diagnostic_context is not None:
             diagnostic_context["phase"] = "finished"
         _print_run_summary(artifacts)
-        return 0
+        return 1 if artifacts.status == "error" else 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:

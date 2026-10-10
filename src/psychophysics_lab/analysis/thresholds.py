@@ -8,6 +8,7 @@ change staircase updates, termination, trial files or run manifests.
 from __future__ import annotations
 
 import csv
+import hashlib
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
@@ -229,6 +230,14 @@ def analyse_thresholds(
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "source_run_relative": source_relative,
         "source_run_uuid": manifest.get("run_uuid"),
+        "input_sha256": {name: hashlib.sha256((run_directory / name).read_bytes()).hexdigest() for name in ("manifest.json", "trials.tsv")},
+        "quality_flags": {
+            "source_status": manifest.get("status", "unknown"),
+            "incomplete_run": manifest.get("status") != "completed",
+            "calibration_status": manifest.get("calibration", {}).get("status", "unverified"),
+            "timing_status": manifest.get("runtime_display", {}).get("timing_status", "unverified"),
+            "photon_timing_verified": False},
+        "monitor_profile_sha256": manifest.get("monitor_profile_sha256"),
         "participant_id": manifest.get("participant_id"),
         "experiment_id": manifest.get("experiment_id"),
         "retain_fraction": fraction,

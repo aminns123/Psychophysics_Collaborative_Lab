@@ -31,13 +31,13 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
 
     # ------------------------------ Monitor geometry ------------------------------
     monitor_profile = dict(setupDict.get("monitor_profile", {}))
-    monitor_refresh_rate = int(
+    monitor_refresh_rate = float(
         monitor_profile.get(
             "refresh_rate_hz",
             setupDict.get("monitor_refresh_rate", 60),
         )
     )
-    pyglet_wakeup_rate_check = int(
+    pyglet_wakeup_rate_check = float(
         monitor_profile.get(
             "pyglet_wakeup_rate_hz",
             setupDict.get("pyglet_wakeup_rate_check", 180),

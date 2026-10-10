@@ -271,6 +271,8 @@ def readText_toList(path):
     file        = open(path, "r")
     contents    = file.read()
     file.close()
+    if not contents.strip():
+        return [[] for _ in range(6)]
     contents = contents.replace("\t",",")
     contLists= contents.split('\n')
 
@@ -303,7 +305,8 @@ def removeZeroRow(filesData):
     """
     if count == 0:
         for i in range(len(listOut)):
-            listOut[i].pop(0)
+            if listOut[i]:
+                listOut[i].pop(0)
     elif count != 0:
         pass # print('== no zeros here ==')
         

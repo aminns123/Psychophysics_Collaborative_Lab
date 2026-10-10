@@ -35,3 +35,6 @@ local_psychophysics_data/
 *.tmp
 *.swp
 *~
+
+# Local advisory preference lock
+.psycolab_preferences.lock

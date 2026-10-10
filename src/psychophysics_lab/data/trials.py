@@ -257,10 +257,7 @@ def write_readable_trial_table(
         )
 
     widths = {
-        column: max(
-            len(column),
-            *(len(str(row.get(column, ""))) for row in rows),
-        )
+        column: max([len(column)] + [len(str(row.get(column, ""))) for row in rows])
         for column in fieldnames
     }
     separator = " " * max(1, int(spacing))

@@ -347,6 +347,20 @@ def validate_run(run_directory: Path) -> list[Check]:
 
     check("Manifest, configuration and state snapshot consistency", snapshots_check)
 
+    def profile_context_check():
+        from psychophysics_lab.config.local import content_hash
+        expected = manifest.get("monitor_profile_sha256")
+        if expected is None:
+            return  # Older records remain valid under their original contract.
+        profile = metadata["monitor_profile.json"]
+        require(content_hash(profile) == expected, "profile snapshot hash differs from manifest")
+        context = read_json(root, "trial_context.json")
+        require(context.get("monitor_profile_sha256") == expected and context.get("run_uuid") == manifest.get("run_uuid"), "trial/profile context identity differs")
+        require(context.get("profile_revision") == profile.get("revision", 0), "profile revision differs")
+        require(context.get("canonical_trials") == "trials.tsv" and context.get("monitor_profile") == "monitor_profile.json", "trial context references differ")
+
+    check("Trial context and display calibration snapshot", profile_context_check)
+
     def legacy_check():
         if not csf:
             return

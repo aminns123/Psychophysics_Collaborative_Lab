@@ -8,13 +8,17 @@ import traceback
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
 from ..analysis.thresholds import analyse_thresholds
 from ..config.models import SetupRequest
 from ..config.monitor import load_monitor_profiles
+from ..config.local import config_root, content_hash, preferences, save_preferences, load_presets, save_preset
+from ..config.preflight import compatible, validate_setup
+from .editor import open_source
+from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
     GeometryCheckRequest,
     latest_geometry_report,
@@ -29,12 +33,12 @@ from ..stimuli.geometry import physical_length_for_visual_angle
 
 
 NAV_PAGES = (
-    ("setup", "Run / Setup"),
+    ("setup", "Setup"),
     ("experiments", "Experiments"),
     ("stimuli", "Stimuli"),
-    ("display", "Display Check"),
+    ("display", "Display"),
     ("data", "Data"),
-    ("help", "Help / Developer"),
+    ("help", "Help"),
 )
 
 
@@ -114,31 +118,27 @@ def _prospective_run_path(request: SetupRequest, experiment: ExperimentSpec, pro
 
 
 def _source_candidates(repo_root: Path, experiment: ExperimentSpec) -> tuple[Path, ...]:
-    candidates = [
-        repo_root / "src" / "psychophysics_lab" / "experiments" / f"{experiment.id}.py",
-        repo_root.joinpath(*experiment.legacy_module.split(".")).with_suffix(".py"),
-    ]
+    candidates = [repo_root / path for path in experiment.source_paths]
+    if not candidates:
+        import importlib.util
+        for module in (experiment.legacy_module,):
+            try:
+                spec = importlib.util.find_spec(module)
+                if spec and spec.origin:
+                    candidates.append(Path(spec.origin))
+            except (ImportError, ValueError, AttributeError):
+                pass
     unique: list[Path] = []
     for path in candidates:
-        if path.exists() and path not in unique:
+        if path.resolve().is_relative_to(repo_root.resolve()) and path.is_file() and path not in unique:
             unique.append(path)
     return tuple(unique)
 
 
 def _stimulus_sources(repo_root: Path) -> tuple[Path, ...]:
-    directory = repo_root / "src" / "psychophysics_lab" / "stimuli"
-    paths = []
-    if directory.exists():
-        paths.extend(
-            path for path in sorted(directory.glob("*.py"))
-            if path.name != "__init__.py"
-        )
-    # The current working CSF renderer remains in the compatibility layer.
-    # Expose it for inspection without pretending it has already been migrated.
-    legacy = repo_root / "Events" / "stimuliC.py"
-    if legacy.exists():
-        paths.append(legacy)
-    return tuple(paths)
+    from ..stimuli.registry import list_stimuli
+    return tuple(repo_root / item.source_path for item in list_stimuli()
+                 if (repo_root / item.source_path).is_file())
 
 
 def _nav_bar() -> Horizontal:
@@ -164,7 +164,11 @@ class CodeViewScreen(Screen):
         self.path = path
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Back", id="back", variant="primary")
         with VerticalScroll(id="code-body"):
             yield Static(f"[b]{self.title_text}[/b]\n{self.path}")
             try:
@@ -172,10 +176,11 @@ class CodeViewScreen(Screen):
             except Exception as exc:
                 text = f"Could not read file: {exc}"
             yield Static(text, id="code-text", markup=False)
-            yield Button("Back", id="back", variant="primary")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        if _handle_nav(self, event):
+            return
         if event.button.id == "back":
             event.stop()
             self.app.pop_screen()
@@ -183,10 +188,6 @@ class CodeViewScreen(Screen):
 
 class HubPage(Screen):
     page_title = "PsyCoLab"
-
-    def header(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield _nav_bar()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         _handle_nav(self, event)
@@ -196,8 +197,9 @@ class ExperimentsScreen(HubPage):
     page_title = "Experiments"
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
         specs = list_experiments()
         options = [(spec.display_name, spec.id) for spec in specs]
         with VerticalScroll(classes="page-body"):
@@ -209,8 +211,8 @@ class ExperimentsScreen(HubPage):
             yield Select(options, value=specs[0].id, allow_blank=False, id="inspect-experiment")
             yield Static("", id="experiment-inspection")
             with Horizontal(classes="buttons"):
-                yield Button("View experiment definition", id="view-exp-definition")
-                yield Button("View runtime implementation", id="view-exp-runtime")
+                yield Button("Inspect definition", id="view-exp-definition")
+                yield Button("Inspect runtime", id="view-exp-runtime")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -244,7 +246,7 @@ class ExperimentsScreen(HubPage):
         sources = _source_candidates(self.app.repo_root, spec)
         if event.button.id == "view-exp-definition" and sources:
             event.stop()
-            self.app.push_screen(CodeViewScreen(title=f"{spec.display_name} — definition", path=sources[0]))
+            self.app.inspect_source(sources[0])
         elif event.button.id == "view-exp-runtime":
             event.stop()
             if len(sources) >= 2:
@@ -253,15 +255,16 @@ class ExperimentsScreen(HubPage):
                 path = sources[0]
             else:
                 return
-            self.app.push_screen(CodeViewScreen(title=f"{spec.display_name} — runtime", path=path))
+            self.app.inspect_source(path)
 
 
 class StimuliScreen(HubPage):
     page_title = "Stimuli"
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
         sources = _stimulus_sources(self.app.repo_root)
         options = [(path.stem.replace("_", " ").title(), str(path)) for path in sources]
         with VerticalScroll(classes="page-body"):
@@ -273,7 +276,7 @@ class StimuliScreen(HubPage):
             if options:
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
-                yield Button("View stimulus source", id="view-stimulus-source", variant="primary")
+                yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
         yield Footer()
@@ -309,7 +312,7 @@ class StimuliScreen(HubPage):
         if event.button.id == "view-stimulus-source":
             event.stop()
             path = self._selected_path()
-            self.app.push_screen(CodeViewScreen(title=path.name, path=path))
+            self.app.inspect_source(path)
 
 
 class DisplayCheckScreen(HubPage):
@@ -320,20 +323,29 @@ class DisplayCheckScreen(HubPage):
         profile_options = [(item.display_name, item.id) for item in profiles]
         last_profile = next(iter(self.app.monitor_profiles))
         state = _workspace_request(self.app.data_root)
-        if state and state.monitor_profile_id in self.app.monitor_profiles:
+        preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
+        if preferred in self.app.monitor_profiles:
+            last_profile = preferred
+        elif state and state.monitor_profile_id in self.app.monitor_profiles:
             last_profile = state.monitor_profile_id
 
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Edit / copy display profile", id="edit-profile")
+                yield Button("Launch display test", id="launch-geometry", variant="success")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Display Geometry Check[/b]\n"
-                "This is a laboratory diagnostic, not a participant experiment. A white bar is "
-                "rendered fullscreen so its physical length can be checked with a ruler."
+                "Choose size, position, spatial frequency or temporal modulation. Diagnostics are "
+                "saved with local display configuration; laboratory verification remains necessary."
             )
             yield Label("Display profile")
             yield Select(profile_options, value=last_profile, allow_blank=False, id="geometry-monitor")
-            yield Label("Check mode")
+            yield Label("Diagnostic")
+            yield Select(list(TESTS), value="size", allow_blank=False, id="geometry-test")
+            yield Label("Size units")
             yield Select(
                 [("Visual angle (degrees)", "visual_angle_deg"), ("Physical length (mm)", "physical_mm")],
                 value="visual_angle_deg",
@@ -351,8 +363,12 @@ class DisplayCheckScreen(HubPage):
             )
             yield Label("Bar thickness (mm)")
             yield Input(value="5", id="geometry-thickness")
+            yield Label("Position units (offset from screen centre)")
+            yield Select([("Millimetres", "mm"), ("Degrees", "degrees")], value="mm", allow_blank=False, id="geometry-position-units")
+            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Duration (seconds, maximum 60)", "10")):
+                yield Label(label)
+                yield Input(value=value, id="geometry-" + key)
             yield Static("", id="geometry-preview", classes="info-card")
-            yield Button("Launch Fullscreen Ruler Check", id="launch-geometry", variant="success")
             yield Static(
                 "Automated tests verify the geometry calculation only. The ruler measurement, "
                 "viewing distance, fullscreen behaviour and timing are laboratory checks.",
@@ -367,6 +383,24 @@ class DisplayCheckScreen(HubPage):
         yield Footer()
 
     def on_mount(self) -> None:
+        for key, value in self.app.display_draft.items():
+            matches = self.query("#" + key)
+            if matches:
+                try:
+                    matches.first().value = value
+                except ValueError:
+                    pass
+        self._refresh_preview()
+        self._refresh_latest()
+
+    def on_screen_resume(self) -> None:
+        if not self.is_mounted:
+            return
+        selector = self.query_one("#geometry-monitor", Select)
+        current = selector.value
+        selector.set_options([(p.display_name,p.id) for p in self.app.monitor_profiles.values()])
+        preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
+        selector.value = preferred if preferred in self.app.monitor_profiles else current
         self._refresh_preview()
         self._refresh_latest()
 
@@ -374,36 +408,43 @@ class DisplayCheckScreen(HubPage):
         value = self.query_one("#geometry-monitor", Select).value
         return self.app.monitor_profiles[str(value)]
 
+    def _request(self):
+        return GeometryCheckRequest(
+            monitor_profile_id=str(self.query_one("#geometry-monitor", Select).value),
+            mode=str(self.query_one("#geometry-mode", Select).value),
+            value=float(self.query_one("#geometry-value", Input).value),
+            orientation=str(self.query_one("#geometry-orientation", Select).value),
+            thickness_mm=float(self.query_one("#geometry-thickness", Input).value),
+            data_root=str(self.app.data_root),
+            test_kind=str(self.query_one("#geometry-test", Select).value),
+            position_units=str(self.query_one("#geometry-position-units", Select).value),
+            x_position=float(self.query_one("#geometry-x", Input).value),
+            y_position=float(self.query_one("#geometry-y", Input).value),
+            spatial_cpd=float(self.query_one("#geometry-spatial", Input).value),
+            temporal_hz=float(self.query_one("#geometry-temporal", Input).value),
+            duration_s=float(self.query_one("#geometry-duration", Input).value))
+
     def _refresh_preview(self) -> None:
         try:
             profile = self._profile()
-            mode = str(self.query_one("#geometry-mode", Select).value)
-            value = float(self.query_one("#geometry-value", Input).value)
-            if mode == "visual_angle_deg":
-                length_mm = physical_length_for_visual_angle(value, profile.viewing_distance_m) * 1000.0
-                requested = f"{value:g}° at {profile.viewing_distance_m:.3f} m"
+            resolution = profile.expected_resolution_px
+            if resolution:
+                bar, plan = resolve_test(profile, self._request(), resolution)
+                details = json.dumps(plan, indent=2)
             else:
-                if value <= 0:
-                    raise ValueError("Physical length must be positive.")
-                length_mm = value
-                requested = f"{value:g} mm physical length"
-            resolution_note = (
-                f"Expected profile resolution: {profile.expected_resolution_px[0]} × "
-                f"{profile.expected_resolution_px[1]} px."
-                if profile.expected_resolution_px
-                else "Pixel length will be resolved from the actual fullscreen resolution at launch."
-            )
-            self.query_one("#geometry-preview", Static).update(
-                _monitor_summary(profile)
-                + f"\n\nRequested: {requested}\nExpected ruler length: [b]{length_mm:.2f} mm[/b]\n"
-                + resolution_note
-            )
-        except Exception as exc:
-            self.query_one("#geometry-preview", Static).update(f"[red]{exc}[/red]")
+                # Refresh-rate planning is pure even before display enumeration.
+                from ..core.display_tests import temporal_plan
+                request = self._request()
+                details = "Resolution will be verified at launch."
+                if request.test_kind.startswith("temporal_"):
+                    details += "\n" + json.dumps(temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind), indent=2)
+            self.query_one("#geometry-preview", Static).update(_monitor_summary(profile) + "\n\n" + details)
+        except (ValueError, TypeError) as exc:
+            self.query_one("#geometry-preview", Static).update(str(exc))
 
     def _refresh_latest(self) -> None:
         profile_id = str(self.query_one("#geometry-monitor", Select).value)
-        report = latest_geometry_report(self.app.data_root, profile_id)
+        report = latest_geometry_report(self.app.local_config_root, profile_id)
         if report is None:
             text = "No geometry check has been saved for this display in the active workspace."
         else:
@@ -416,7 +457,7 @@ class DisplayCheckScreen(HubPage):
                     f"{float(measured):.2f} mm; error {float(measurement['error_percent']):+.2f}%"
                 )
                 text = (
-                    f"{report.relative_to(self.app.data_root)}\n"
+                    f"{report.relative_to(self.app.local_config_root)}\n"
                     f"Status: {payload.get('status', 'unknown')}\n"
                     f"Expected: {bar.get('intended_length_mm', 'n/a')} mm\n"
                     f"Rendered: {bar.get('length_px', 'n/a')} px\n"
@@ -427,32 +468,31 @@ class DisplayCheckScreen(HubPage):
         self.query_one("#latest-geometry", Static).update(text)
 
     def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id in {"geometry-monitor", "geometry-mode", "geometry-orientation"}:
+        if event.select.id and event.select.id.startswith("geometry-"):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        if event.input.id in {"geometry-value", "geometry-thickness"}:
+        if event.input.id and event.input.id.startswith("geometry-") and event.input.id != "geometry-measured":
             self._refresh_preview()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id == "edit-profile":
+            event.stop()
+            from .profiles import ProfileScreen
+            self.app.push_screen(ProfileScreen(profile=self._profile()))
+            return
         status = self.query_one("#geometry-status", Static)
         if event.button.id == "launch-geometry":
             event.stop()
             try:
-                request = GeometryCheckRequest(
-                    monitor_profile_id=str(self.query_one("#geometry-monitor", Select).value),
-                    mode=str(self.query_one("#geometry-mode", Select).value),
-                    value=float(self.query_one("#geometry-value", Input).value),
-                    orientation=str(self.query_one("#geometry-orientation", Select).value),
-                    thickness_mm=float(self.query_one("#geometry-thickness", Input).value),
-                    data_root=str(self.app.data_root),
-                )
-                if request.value <= 0 or request.thickness_mm <= 0:
-                    raise ValueError("Requested value and bar thickness must be positive.")
+                request = self._request()
+                profile = self._profile()
+                if profile.expected_resolution_px:
+                    resolve_test(profile, request, profile.expected_resolution_px)
                 self.app.exit(request)
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
@@ -460,12 +500,12 @@ class DisplayCheckScreen(HubPage):
             event.stop()
             try:
                 profile_id = str(self.query_one("#geometry-monitor", Select).value)
-                report = latest_geometry_report(self.app.data_root, profile_id)
+                report = latest_geometry_report(self.app.local_config_root, profile_id)
                 if report is None:
                     raise ValueError("Run a fullscreen geometry check first.")
                 measured = float(self.query_one("#geometry-measured", Input).value)
                 payload = record_geometry_measurement(
-                    data_root=self.app.data_root,
+                    data_root=self.app.local_config_root,
                     report_file=report,
                     measured_length_mm=measured,
                 )
@@ -494,8 +534,9 @@ class DataScreen(HubPage):
         if not options:
             options = [("No runs found in this workspace", "__none__")]
 
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Acquisition data[/b]\n"
@@ -617,8 +658,9 @@ class HelpScreen(HubPage):
     page_title = "Help / Developer"
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]PsyCoLab development map[/b]\n\n"
@@ -670,11 +712,18 @@ class ExperimentConfigScreen(Screen):
         self.session_mode = session_mode
         self.experiment = experiment
         self.monitor_profile_id = monitor_profile_id
-        self.defaults = defaults
+        self.defaults = dict(defaults)
 
     def compose(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
-        yield Header(show_clock=True)
+        self.draft_key = (self.participant_id, self.experiment.id, self.monitor_profile_id)
+        self.defaults.update(self.app.config_drafts.get(self.draft_key, {}))
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Back", id="back")
+                yield Button("Review", id="review", variant="primary")
         with VerticalScroll(id="config-body"):
             yield Static(
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n"
@@ -690,17 +739,36 @@ class ExperimentConfigScreen(Screen):
                     kwargs: dict[str, Any] = {"id": widget_id, "allow_blank": field.default is None}
                     if value is not None:
                         kwargs["value"] = value
-                    yield Select(options, **kwargs)
+                    yield Select(options, disabled=not field.editable, **kwargs)
                 else:
-                    yield Input(value="" if value is None else str(value), id=widget_id)
+                    yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable)
                 if field.help_text:
                     yield Static(field.help_text, classes="field-help")
 
+            yield Label("Saved local preset")
+            presets = load_presets(self.app.local_config_root, self.experiment.id)
+            yield Select([(name, name) for name in presets], id="config-preset")
+            yield Button("Load preset", id="load-preset")
+            yield Input(placeholder="New preset name", id="preset-name")
+            yield Button("Save validated preset", id="save-preset")
             yield Static("", id="config-status")
-            with Horizontal(classes="buttons"):
-                yield Button("Back", id="back")
-                yield Button("Review", id="review", variant="primary")
         yield Footer()
+
+    def remember_draft(self) -> None:
+        raw = {}
+        for field in self.experiment.fields:
+            widget = self.query_one("#" + _field_widget_id(field))
+            value = widget.value
+            raw[field.key] = None if _is_blank_select_value(value) else value
+        self.app.config_drafts[self.draft_key] = raw
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if hasattr(self, "draft_key"):
+            self.remember_draft()
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if hasattr(self, "draft_key"):
+            self.remember_draft()
 
     def _collect(self) -> dict[str, Any]:
         values: dict[str, Any] = {}
@@ -715,18 +783,32 @@ class ExperimentConfigScreen(Screen):
             values[field.key] = field.coerce(raw)
         values = self.experiment.normalise_values(values)
 
-        # Monitor-aware validation currently applies to the CSF luminance pair.
-        # The scientific semantics are unchanged; the UI simply surfaces the
-        # selected profile's existing validation before launch.
         profile = self.app.monitor_profiles[self.monitor_profile_id]
-        if {"Background_Luminance", "Background_Screen_intensity"}.issubset(values):
-            profile.validate_luminance_pair(
-                luminance_cdm2=float(values["Background_Luminance"]),
-                screen_intensity=float(values["Background_Screen_intensity"]),
-            )
+        if self.experiment.monitor_validator:
+            self.experiment.monitor_validator(values, profile)
         return values
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        if _handle_nav(self, event):
+            return
+        if event.button.id in {"save-preset", "load-preset"}:
+            event.stop()
+            try:
+                if event.button.id == "save-preset":
+                    name = self.query_one("#preset-name", Input).value
+                    save_preset(self.app.local_config_root, name, self.experiment.id, self._collect())
+                    selector = self.query_one("#config-preset", Select)
+                    selector.set_options([(name, name) for name in load_presets(self.app.local_config_root, self.experiment.id)])
+                    selector.value = name
+                else:
+                    name = str(self.query_one("#config-preset", Select).value)
+                    values = self.experiment.normalise_values(load_presets(self.app.local_config_root, self.experiment.id)[name])
+                    for field in self.experiment.fields:
+                        self.query_one("#" + _field_widget_id(field)).value = values[field.key] if field.kind == "choice" else str(values[field.key])
+                self.query_one("#config-status", Static).update("Preset saved / loaded.")
+            except (ValueError, KeyError, OSError) as exc:
+                self.query_one("#config-status", Static).update(str(exc))
+            return
         button_id = event.button.id
         if button_id not in {"back", "review"}:
             return
@@ -746,10 +828,13 @@ class ExperimentConfigScreen(Screen):
                 experiment_values=values,
                 data_root=str(self.data_root),
             )
+            request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id])
+            self.remember_draft()
             self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
-            _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
+            if not isinstance(exc, (ValueError, KeyError)):
+                _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
 
 
 class ReviewScreen(Screen):
@@ -775,6 +860,9 @@ class ReviewScreen(Screen):
             f"Experiment: {experiment.display_name}",
             f"Display: {profile.display_name}",
             f"Calibration status: {profile.calibration_status}",
+            f"Profile revision: {profile.revision} · SHA256: {content_hash(profile.to_dict())}",
+            f"Display binding: {profile.display_binding or 'legacy primary display; verify before acquisition'}",
+            f"Geometry: {profile.geometry_status}; timing: {profile.timing_status}",
             "",
             "[b]Expected run location[/b]",
             prospective,
@@ -785,6 +873,14 @@ class ReviewScreen(Screen):
         for field in experiment.fields:
             lines.append(f"{field.label}: {self.request.experiment_values[field.key]}")
 
+        if self.request.experiment_id == "contrast_sensitivity":
+            values = self.request.experiment_values
+            down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
+            # Two independent reference staircases. First step + alternating
+            # reversal directions require this optimistic minimum response count.
+            minimum = 2 * (min(down, up) + ((reversals+1)//2)*max(down, up) + (reversals//2)*min(down, up))
+            if values["max_trials"] < minimum:
+                lines.append(f"[yellow]The response ceiling {values['max_trials']} is below the optimistic minimum {minimum} needed for the requested reversals in both staircases. A ceiling stop is expected; defaults are preserved.[/yellow]")
         if not profile.has_verified_luminance_mapping and {
             "Background_Luminance",
             "Background_Screen_intensity",
@@ -807,16 +903,20 @@ class ReviewScreen(Screen):
             ]
         )
 
-        yield Header(show_clock=True)
-        with VerticalScroll(id="review-body"):
-            yield Static("\n".join(lines), id="review-text")
-            yield Static("", id="review-status")
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Run Experiment", id="run", variant="success")
+        with VerticalScroll(id="review-body"):
+            yield Static("\n".join(lines), id="review-text")
+            yield Static("", id="review-status")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        if _handle_nav(self, event):
+            return
         button_id = event.button.id
         if button_id not in {"back", "run"}:
             return
@@ -825,6 +925,9 @@ class ReviewScreen(Screen):
             if button_id == "back":
                 self.app.pop_screen()
             else:
+                spec = get_experiment(self.request.experiment_id)
+                current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
+                validate_setup(self.request, spec, current)
                 self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
@@ -836,37 +939,21 @@ class PsyCoLabSetupApp(App):
     SUB_TITLE = "Psychophysics Collaborative Lab"
 
     CSS = """
-    Screen { align: center middle; }
-
-    #hub-nav {
-        width: 96%;
-        height: auto;
-        align-horizontal: center;
-        margin-bottom: 1;
-    }
-    #hub-nav Button { margin-right: 1; }
-
-    #setup-body, #review-body, .page-body, #code-body {
-        width: 92%;
-        max-width: 120;
-        height: auto;
-        max-height: 92%;
-        border: round $accent;
-        padding: 1 2;
-    }
-    #config-body {
-        width: 92%;
-        max-width: 120;
-        height: 92%;
-        border: round $accent;
-        padding: 1 2;
+    Screen { align: center top; }
+    #fixed-shell { dock: top; height: auto; width: 100%; }
+    #fixed-shell Header { dock: none; height: 1; }
+    #hub-nav { width: 100%; height: 3; }
+    #hub-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
+    #setup-body, #review-body, .page-body, #code-body, #config-body {
+        width: 100%; height: 1fr; border: round $accent; padding: 1 2;
     }
     Label { margin-top: 1; }
     Input, Select { width: 100%; }
     .field-help { color: $text-muted; margin-bottom: 1; }
     .info-card { border: solid $surface-lighten-2; padding: 1; margin-top: 1; margin-bottom: 1; }
     .section-title { margin-top: 2; }
-    .buttons { height: auto; margin-top: 2; align-horizontal: right; }
+    .buttons { height: 3; margin: 0; align-horizontal: right; }
+    .buttons Button { min-width: 0; max-width: 50%; margin: 0; }
     .wrap-buttons { align-horizontal: left; }
     Button { margin-left: 1; }
     #setup-status, #config-status, #review-status, #geometry-status, #data-status {
@@ -880,9 +967,32 @@ class PsyCoLabSetupApp(App):
         super().__init__()
         self.repo_root = repo_root.resolve()
         self.data_root = data_root.resolve()
+        self.local_config_root = config_root(self.repo_root, self.data_root)
         self.monitor_profiles = load_monitor_profiles(repo_root)
+        self.config_drafts = {}
+        self.display_draft = {}
+
+    def inspect_source(self, path: Path) -> None:
+        try:
+            open_source(self.repo_root, path, executable=preferences(self.local_config_root).get("editor_executable"))
+            self.notify(f"Opened {path.name} in the PsyCoLab VS Code project.")
+        except (ValueError, OSError) as exc:
+            self.notify(str(exc), severity="error", timeout=10)
+
+    def reload_profiles(self) -> None:
+        self.monitor_profiles = load_monitor_profiles(self.repo_root)
+        self._refresh_experiment_context()
+        preferred = preferences(self.local_config_root).get("active_monitor_profile_id")
+        experiment = get_experiment(str(self.screen_stack[0].query_one("#experiment", Select).value))
+        if preferred in self._compatible_profiles(experiment):
+            self.screen_stack[0].query_one("#monitor-profile", Select).value = preferred
 
     def open_hub_page(self, page: str) -> None:
+        if isinstance(self.screen, DisplayCheckScreen):
+            self.display_draft = {w.id: w.value for w in self.screen.query("Input, Select") if w.id}
+        for screen in self.screen_stack:
+            if isinstance(screen, ExperimentConfigScreen):
+                screen.remember_draft()
         if page == "setup":
             while len(self.screen_stack) > 1:
                 self.pop_screen()
@@ -933,6 +1043,9 @@ class PsyCoLabSetupApp(App):
                 if last_request and last_request.monitor_profile_id in allowed_profiles
                 else next(iter(allowed_profiles))
             )
+            preferred = preferences(self.local_config_root).get("active_monitor_profile_id")
+            if preferred in allowed_profiles:
+                monitor_default = preferred
             monitor_options = [
                 (profile.display_name, profile.id) for profile in allowed_profiles.values()
             ]
@@ -956,8 +1069,12 @@ class PsyCoLabSetupApp(App):
         if warning:
             last_summary = f"[red]{warning}[/red]"
 
-        yield Header(show_clock=True)
-        yield _nav_bar()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Exit", id="exit")
+                yield Button("Configure Experiment", id="configure", variant="primary")
         with VerticalScroll(id="setup-body"):
             yield Static(
                 "[b]Run an experiment[/b]\n"
@@ -1014,9 +1131,6 @@ class PsyCoLabSetupApp(App):
             yield Static("", id="monitor-summary", classes="info-card")
 
             yield Static("", id="setup-status")
-            with Horizontal(classes="buttons"):
-                yield Button("Exit", id="exit")
-                yield Button("Configure Experiment", id="configure", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -1027,26 +1141,26 @@ class PsyCoLabSetupApp(App):
             return dict(self.monitor_profiles)
         return {
             key: profile for key, profile in self.monitor_profiles.items()
-            if key in experiment.compatible_monitor_profiles
+            if compatible(experiment, profile)
         }
 
     def _refresh_experiment_context(self) -> None:
-        experiment_id = self.query_one("#experiment", Select).value
+        experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
         if _is_blank_select_value(experiment_id):
             return
         experiment = get_experiment(str(experiment_id))
-        self.query_one("#experiment-summary", Static).update(
+        self.screen_stack[0].query_one("#experiment-summary", Static).update(
             f"[b]{experiment.display_name}[/b]\n{experiment.description}"
         )
         profiles = self._compatible_profiles(experiment)
-        selector = self.query_one("#monitor-profile", Select)
+        selector = self.screen_stack[0].query_one("#monitor-profile", Select)
         if not profiles:
             selector.set_options([("No compatible monitor profiles", "__none__")])
             selector.value = "__none__"
-            self.query_one("#monitor-summary", Static).update(
+            self.screen_stack[0].query_one("#monitor-summary", Static).update(
                 "[red]No registered monitor profile is compatible with this experiment.[/red]"
             )
-            self.query_one("#setup-status", Static).update(
+            self.screen_stack[0].query_one("#setup-status", Static).update(
                 "[red]Add/validate a monitor profile before running this experiment.[/red]"
             )
             return
@@ -1057,15 +1171,15 @@ class PsyCoLabSetupApp(App):
         self._refresh_monitor_context()
 
     def _refresh_monitor_context(self) -> None:
-        value = self.query_one("#monitor-profile", Select).value
+        value = self.screen_stack[0].query_one("#monitor-profile", Select).value
         if _is_blank_select_value(value) or str(value) not in self.monitor_profiles:
             return
-        self.query_one("#monitor-summary", Static).update(
+        self.screen_stack[0].query_one("#monitor-summary", Static).update(
             _monitor_summary(self.monitor_profiles[str(value)])
         )
 
     def _selected_data_root(self, *, create: bool) -> Path:
-        value = self.query_one("#data-root", Input).value
+        value = self.screen_stack[0].query_one("#data-root", Input).value
         data_root = resolve_data_root(value, self.repo_root)
         if create:
             data_root.mkdir(parents=True, exist_ok=True)
@@ -1073,12 +1187,13 @@ class PsyCoLabSetupApp(App):
 
     def _refresh_data_root(self) -> None:
         data_root = self._selected_data_root(create=True)
+        self.local_config_root = config_root(self.repo_root, data_root)
         self.data_root = data_root
         state, warning = self._state_for(data_root)
         last_request = request_from_workspace_state(state)
 
         participants = list_participants(data_root)
-        participant_select = self.query_one("#participant-select", Select)
+        participant_select = self.screen_stack[0].query_one("#participant-select", Select)
         participant_select.set_options(
             [(item, item) for item in participants] + [("+ New participant", "__new__")]
         )
@@ -1094,27 +1209,27 @@ class PsyCoLabSetupApp(App):
             last_run = (state or {}).get("last_run", {})
             if last_run.get("run_directory"):
                 summary += f"\nLast run: {last_run['run_directory']}"
-            self.query_one("#participant", Input).value = last_request.participant_id
+            self.screen_stack[0].query_one("#participant", Input).value = last_request.participant_id
             participant_select.value = (
                 last_request.participant_id if last_request.participant_id in participants else "__new__"
             )
-            self.query_one("#session-mode", Select).value = "reuse"
+            self.screen_stack[0].query_one("#session-mode", Select).value = "reuse"
             if any(spec.id == last_request.experiment_id for spec in list_experiments()):
-                self.query_one("#experiment", Select).value = last_request.experiment_id
+                self.screen_stack[0].query_one("#experiment", Select).value = last_request.experiment_id
             self._refresh_experiment_context()
             if last_request.monitor_profile_id in self.monitor_profiles:
                 compatible = self._compatible_profiles(get_experiment(last_request.experiment_id))
                 if last_request.monitor_profile_id in compatible:
-                    self.query_one("#monitor-profile", Select).value = last_request.monitor_profile_id
+                    self.screen_stack[0].query_one("#monitor-profile", Select).value = last_request.monitor_profile_id
         else:
             participant_select.value = "__new__"
-        self.query_one("#last-run-summary", Static).update(summary)
-        self.query_one("#data-root", Input).value = str(data_root)
+        self.screen_stack[0].query_one("#last-run-summary", Static).update(summary)
+        self.screen_stack[0].query_one("#data-root", Input).value = str(data_root)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "participant-select":
             if not _is_blank_select_value(event.value) and str(event.value) != "__new__":
-                self.query_one("#participant", Input).value = str(event.value)
+                self.screen_stack[0].query_one("#participant", Input).value = str(event.value)
         elif event.select.id == "experiment":
             self._refresh_experiment_context()
         elif event.select.id == "monitor-profile":
@@ -1134,7 +1249,7 @@ class PsyCoLabSetupApp(App):
             self.exit(None)
             return
 
-        status = self.query_one("#setup-status", Static)
+        status = self.screen_stack[0].query_one("#setup-status", Static)
         if button_id == "load-data-root":
             try:
                 self._refresh_data_root()
@@ -1145,18 +1260,19 @@ class PsyCoLabSetupApp(App):
 
         try:
             data_root = self._selected_data_root(create=True)
+            self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
-            participant = validate_participant_id(self.query_one("#participant", Input).value)
-            session_mode = self.query_one("#session-mode", Select).value
-            experiment_id = self.query_one("#experiment", Select).value
-            monitor_id = self.query_one("#monitor-profile", Select).value
+            participant = validate_participant_id(self.screen_stack[0].query_one("#participant", Input).value)
+            session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
+            experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
+            monitor_id = self.screen_stack[0].query_one("#monitor-profile", Select).value
 
             if _is_blank_select_value(session_mode) or _is_blank_select_value(experiment_id) or _is_blank_select_value(monitor_id):
                 raise ValueError("Starting settings, experiment and display profile must be selected.")
 
             experiment = get_experiment(str(experiment_id))
             monitor_id = str(monitor_id)
-            if experiment.compatible_monitor_profiles and monitor_id not in experiment.compatible_monitor_profiles:
+            if not compatible(experiment, self.monitor_profiles[monitor_id]):
                 raise ValueError("The selected experiment is not validated for that display profile.")
 
             defaults = experiment.field_defaults()
@@ -1186,7 +1302,8 @@ class PsyCoLabSetupApp(App):
             )
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
-            _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
+            if not isinstance(exc, (ValueError, KeyError)):
+                _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 
 
 def run_setup_tui(*, repo_root: Path, data_root: Path) -> SetupRequest | GeometryCheckRequest | None:

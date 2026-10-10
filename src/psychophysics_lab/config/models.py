@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Any
+import math
+from ..data.identifiers import validate_path_component
 
 
 @dataclass(frozen=True)
@@ -12,9 +14,9 @@ class LuminanceCalibrationPoint:
     luminance_cdm2: float
 
     def validate(self) -> None:
-        if not 0.0 <= self.screen_intensity <= 1.0:
+        if isinstance(self.screen_intensity, bool) or not math.isfinite(self.screen_intensity) or not 0.0 <= self.screen_intensity <= 1.0:
             raise ValueError("Calibration screen intensity must be in [0, 1].")
-        if self.luminance_cdm2 < 0:
+        if not math.isfinite(self.luminance_cdm2) or self.luminance_cdm2 < 0:
             raise ValueError("Calibration luminance must be non-negative.")
 
 
@@ -24,16 +26,48 @@ class MonitorProfile:
     display_name: str
     physical_width_m: float
     physical_height_m: float
-    refresh_rate_hz: int
+    refresh_rate_hz: float
     viewing_distance_m: float
-    pyglet_wakeup_rate_hz: int = 60
+    pyglet_wakeup_rate_hz: float = 60
     expected_resolution_px: tuple[int, int] | None = None
     notes: str = ""
     calibration_status: str = "unverified"
     luminance_calibration: tuple[LuminanceCalibrationPoint, ...] = ()
     calibration_notes: str = ""
 
+    profile_uuid: str = ""
+    revision: int = 0
+    origin: str = "reference"
+    display_binding: dict[str, Any] | None = None
+    qualified_experiments: tuple[str, ...] = ()
+    calibration_method: str = ""
+    calibration_date: str = ""
+    geometry_status: str = "unverified"
+    timing_status: str = "unverified"
+
     def validate(self) -> None:
+        validate_path_component(self.id, label="monitor profile")
+        for name in ("physical_width_m", "physical_height_m", "viewing_distance_m", "refresh_rate_hz", "pyglet_wakeup_rate_hz"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} must be positive and finite.")
+        for name in ("calibration_status", "geometry_status", "timing_status"):
+            if getattr(self, name) not in {"unverified", "manual_unverified", "verified"}:
+                raise ValueError(f"Unknown {name}.")
+        if self.origin not in {"reference", "local"}:
+            raise ValueError("Profile origin must be reference or local.")
+        if not self.display_name.strip():
+            raise ValueError("Display name must not be empty.")
+        for experiment in self.qualified_experiments:
+            validate_path_component(experiment, label="qualified experiment")
+        if self.display_binding is not None:
+            binding = self.display_binding
+            if not isinstance(binding, dict) or any(type(binding.get(key)) is not int for key in ("index", "x", "y", "width", "height")):
+                raise ValueError("Display binding needs integer index, position and resolution.")
+            if binding["index"] < 0 or binding["width"] <= 0 or binding["height"] <= 0:
+                raise ValueError("Display binding has invalid index or resolution.")
+        if isinstance(self.revision, bool) or not isinstance(self.revision, int) or self.revision < 0:
+            raise ValueError("Profile revision must be a nonnegative integer.")
         if not self.id.strip():
             raise ValueError("Monitor profile id must not be empty.")
         if self.physical_width_m <= 0 or self.physical_height_m <= 0:
@@ -46,10 +80,17 @@ class MonitorProfile:
             raise ValueError("Pyglet wake-up rate must be positive.")
         if self.expected_resolution_px is not None:
             width, height = self.expected_resolution_px
-            if width <= 0 or height <= 0:
+            if any(isinstance(x, bool) or not isinstance(x, int) or x <= 0 for x in (width, height)):
                 raise ValueError("Expected resolution must contain positive pixel dimensions.")
         for point in self.luminance_calibration:
             point.validate()
+        commands = [point.screen_intensity for point in self.luminance_calibration]
+        luminances = [point.luminance_cdm2 for point in self.luminance_calibration]
+        if len(set(commands)) != len(commands) or len(set(luminances)) != len(luminances):
+            raise ValueError("Calibration points must have unique commands and luminances.")
+        ordered = sorted(self.luminance_calibration, key=lambda point: point.screen_intensity)
+        if any(a.luminance_cdm2 >= b.luminance_cdm2 for a, b in zip(ordered, ordered[1:])):
+            raise ValueError("Measured luminance must increase with the digital command.")
 
     @property
     def has_verified_luminance_mapping(self) -> bool:
@@ -91,6 +132,8 @@ class MonitorProfile:
         Profiles without an encoded calibration table remain usable, but the run
         is explicitly marked as manual/unverified in the manifest and TUI.
         """
+        if not math.isfinite(luminance_cdm2) or not math.isfinite(screen_intensity):
+            raise ValueError("Luminance and digital command must be finite.")
         if not self.has_verified_luminance_mapping:
             return
         expected = self.screen_intensity_for_luminance(luminance_cdm2)
@@ -124,3 +167,4 @@ class SetupRequest:
     monitor_profile_id: str
     experiment_values: dict[str, Any]
     data_root: str | None = None
+    monitor_profile_hash: str | None = None

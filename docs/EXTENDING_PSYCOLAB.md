@@ -105,3 +105,55 @@ acquisition, but the analysis convention must be saved alongside its output.
 5. Run full headless CI.
 6. Perform monitor/fullscreen/timing/calibration laboratory checks.
 7. Only then collect scientific data.
+
+## Inspectable sources and separate configuration adapters
+
+Register stimulus metadata with `StimulusSpec` / `register_stimulus` in
+`psychophysics_lab.stimuli.registry`. Give each stimulus a unique ID, human name,
+description and repository-relative Python `source_path`. The inspector lists
+registered components, rather than every Python file in the stimulus folder.
+
+An `ExperimentSpec` can now declare `source_paths`, `configure_module`,
+`configure_function` and `monitor_validator`. The default configuration adapter
+remains `Interface.config.run_configure_experiment` for backwards compatibility.
+A new experiment should provide its own configuration adapter instead of using
+CSF's conditions/parameter generator. It receives
+`(participant_id, data_root, resolved_setup, run_directory=...)`, writes only
+inside the newly allocated run and returns conditions, parameters and response
+paths. It also writes `state/user_experiment_config.json`. Its runtime keeps the
+current `(conditions, parameters, response, state_directory)` call signature.
+
+`examples/minimal_experiment.py` is an executable, hardware-free adapter example.
+It is deliberately not registered in the participant-facing application. To
+exercise it locally without changing the shared registry:
+
+```python
+from pathlib import Path
+from examples.minimal_experiment import SPEC
+from psychophysics_lab.experiments.registry import register_experiment
+from psychophysics_lab.config.models import SetupRequest
+from psychophysics_lab.core.runner import run_request
+
+register_experiment(SPEC)
+run_request(
+    SetupRequest("synthetic_example", "new", SPEC.id,
+                 "legacy_reference_display", {"example_level": 0.5}),
+    repo_root=Path.cwd(),
+    data_root=Path.cwd().parent / "synthetic_pipeline_data",
+)
+```
+
+Run this from the repository root using its Python environment. It creates new
+synthetic records; it does not present stimuli or produce participant evidence.
+Register a scientific extension explicitly in the project registry once reviewed.
+Duplicate IDs are rejected. Add field units/ranges/help and pure validation;
+use `monitor_validator` for profile-dependent constraints. `editable=False`
+marks read-only fields, while `fixed_setup` holds protected built-in constants.
+Custom displays must list experiments in `qualified_experiments` only after
+the laboratory has qualified that combination. Merely copying a reference
+profile does not establish equivalence.
+
+Automatic plugin discovery and a new universal trial/procedure API are outside
+this change. The explicit adapter boundary lets contributors add modules while
+the tested legacy CSF renderer, staircase rules and condition scaling remain in
+place. Add an end-to-end hardware-free adapter test before a physical trial.

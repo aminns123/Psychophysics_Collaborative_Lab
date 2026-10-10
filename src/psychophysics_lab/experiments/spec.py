@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Iterable, Mapping
+import math
+from types import MappingProxyType
 
 from ..config.models import MonitorProfile
 
@@ -19,20 +21,34 @@ class ConfigField:
     help_text: str = ""
     legacy_key: str | None = None
 
+    units: str = ""
+    minimum: float | None = None
+    maximum: float | None = None
+    editable: bool = True
+
     @property
     def target_key(self) -> str:
         return self.legacy_key or self.key
 
     def coerce(self, value: Any) -> Any:
+        if not self.editable and value not in (None, "", self.default):
+            raise ValueError(f"{self.label} is a fixed specification field.")
         if value is None or value == "":
             if self.default is None:
                 raise ValueError(f"{self.label} must be selected.")
             value = self.default
 
-        if self.kind == "int":
-            return int(value)
-        if self.kind == "float":
-            return float(value)
+        if self.kind in {"int", "float"}:
+            if isinstance(value, bool):
+                raise ValueError(f"{self.label} must be a number, not a boolean.")
+            number = float(value)
+            if not math.isfinite(number):
+                raise ValueError(f"{self.label} must be finite.")
+            if self.kind == "int" and not number.is_integer():
+                raise ValueError(f"{self.label} must be a whole number.")
+            if self.minimum is not None and number < self.minimum or self.maximum is not None and number > self.maximum:
+                raise ValueError(f"{self.label} is outside its permitted range.")
+            return int(number) if self.kind == "int" else number
         if self.kind == "choice":
             if value not in self.choices:
                 for choice in self.choices:
@@ -64,10 +80,31 @@ class ExperimentSpec:
     # logical_type, units_or_encoding, meaning and/or notes.
     trial_column_overrides: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
+    monitor_validator: Callable | None = None
+    configure_module: str = "Interface.config"
+    configure_function: str = "run_configure_experiment"
+    source_paths: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        from pathlib import PurePosixPath
+        from ..data.identifiers import validate_path_component
+        validate_path_component(self.id, label="experiment")
+        if len({item.key for item in self.fields}) != len(self.fields):
+            raise ValueError("Experiment fields must have unique keys.")
+        for value in self.source_paths:
+            path = PurePosixPath(value)
+            if path.is_absolute() or ".." in path.parts or "\\" in value or not value.endswith(".py"):
+                raise ValueError("Inspectable experiment sources must be relative Python files.")
+        object.__setattr__(self, "fixed_setup", MappingProxyType(dict(self.fixed_setup)))
+        object.__setattr__(self, "trial_column_overrides", MappingProxyType({key: MappingProxyType(dict(value)) for key, value in self.trial_column_overrides.items()}))
+
     def field_defaults(self) -> dict[str, Any]:
         return {item.key: item.default for item in self.fields}
 
     def normalise_values(self, values: Mapping[str, Any]) -> dict[str, Any]:
+        unknown = set(values) - {item.key for item in self.fields}
+        if unknown:
+            raise ValueError(f"Unknown experiment values: {sorted(unknown)}")
         normalised: dict[str, Any] = {}
         for item in self.fields:
             normalised[item.key] = item.coerce(values.get(item.key, item.default))

@@ -489,7 +489,8 @@ class ExpWindow(window.Window):
                 DEBUG(val)
                 DEBUG(traceback.print_tb(tb))
                 DEBUG('##############################\n')
-                ret = 'next'
+                self.psycolab_recording_error = e
+                raise
             if ret == 'next':
                 # skip stimulus
                 self.run = False
@@ -542,7 +543,10 @@ def update(dt):
 
 def run(refresh_rate=60.0):
     clock.schedule_interval(update,1/refresh_rate)
-    pyglet.app.run()
+    try:
+        pyglet.app.run()
+    finally:
+        clock.unschedule(update)
 
 # import keyboard
 

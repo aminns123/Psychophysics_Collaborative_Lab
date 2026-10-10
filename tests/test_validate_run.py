@@ -69,10 +69,8 @@ def synthetic_run(tmp_path, monkeypatch, status="max_trials_reached"):
             session.save(status="error", error="synthetic failure")
         session.finish()
         funcs.removeZeroRow(response)
-        # The legacy spacing helper cannot read an empty file. This synthetic
-        # zero-response fixture checks the validator, without changing runtime.
-        if sequence:
-            funcs.correctFileSpacings(response)
+        # Empty aborts exercise the actual legacy cleanup and canonical export.
+        funcs.correctFileSpacings(response)
 
     def import_module(name, *args, **kwargs):
         if name == "Experiments.contrast_sensitivity_function":
@@ -102,12 +100,11 @@ def test_valid_finalized_runs_are_read_only(tmp_path, monkeypatch, status):
     assert snapshot(root) == before
 
 
-def test_existing_zero_response_export_failure_is_reported_without_repair(tmp_path, monkeypatch):
+def test_zero_response_abort_is_valid_and_validation_is_read_only(tmp_path, monkeypatch):
     root = synthetic_run(tmp_path, monkeypatch, "empty_abort")
     before = snapshot(root)
     checks = validate_run(root)
-    assert any(c.name.startswith("Required canonical") and not c.passed for c in checks)
-    assert any(c.name.startswith("Readable trial") and not c.passed for c in checks)
+    assert all(c.passed for c in checks), [c for c in checks if not c.passed]
     assert snapshot(root) == before
 
 

@@ -17,6 +17,8 @@ from uuid import uuid4
 
 from .. import __version__ as source_version
 from ..config.models import SetupRequest
+from ..config.preflight import validate_setup
+from ..config.local import config_root, content_hash, save_preferences
 from ..config.monitor import load_monitor_profiles
 from ..data.index import upsert_run_index
 from ..data.participants import validate_participant_id
@@ -25,6 +27,7 @@ from ..data.trials import (
     READABLE_TRIALS_FILENAME,
     TRIAL_DATA_DICTIONARY_FILENAME,
     TRIAL_SCHEMA_VERSION,
+    TrialLog,
     write_readable_trial_table,
     write_trial_data_dictionary,
 )
@@ -284,294 +287,166 @@ def _manifest_payload(
 
 
 def run_request(
-    request: SetupRequest,
-    *,
-    repo_root: Path | None = None,
-    data_root: Path | None = None,
+    request: SetupRequest, *, repo_root: Path | None = None, data_root: Path | None = None,
 ) -> RunArtifacts:
-    """Configure and run one experiment in one self-contained run directory."""
+    """Validate first; allocate a new record; preserve primary and cleanup errors."""
+    import random
     root = (repo_root or find_repo_root()).resolve()
-    if data_root is not None:
-        data_candidate = data_root
-    elif request.data_root:
-        data_candidate = Path(request.data_root).expanduser()
-    else:
-        data_candidate = default_data_root(root)
-    data = resolve_data_root(data_candidate, root)
-    data.mkdir(parents=True, exist_ok=True)
-
-    participant_id = validate_participant_id(request.participant_id)
-
+    candidate = data_root or (Path(request.data_root).expanduser() if request.data_root else default_data_root(root))
+    data = resolve_data_root(candidate, root)
+    config_root(root, data)  # Never mix machine configuration with source/data.
     spec = get_experiment(request.experiment_id)
     profiles = load_monitor_profiles(root)
-    try:
-        profile = profiles[request.monitor_profile_id]
-    except KeyError as exc:
-        raise ValueError(f"Unknown monitor profile: {request.monitor_profile_id}") from exc
-
-    if spec.compatible_monitor_profiles and profile.id not in spec.compatible_monitor_profiles:
-        raise ValueError(
-            f"{spec.display_name} is not yet validated for monitor profile {profile.display_name!r}. "
-            "Add/validate the display adapter before collecting data."
-        )
-
-    values = spec.normalise_values(request.experiment_values)
+    if request.monitor_profile_id not in profiles:
+        raise ValueError(f"Unknown monitor profile: {request.monitor_profile_id}")
+    profile = profiles[request.monitor_profile_id]
+    request = validate_setup(request, spec, profile)
+    values = request.experiment_values
     grouping_parts = spec.data_path_parts(values, profile)
-    setup = spec.build_legacy_setup(
-        participant_id=participant_id,
-        values=values,
-        monitor_profile=profile,
-    )
-
-    local_started = datetime.now().astimezone()
-    run_dir = create_run_directory(
-        data,
-        participant_id=participant_id,
-        experiment_id=request.experiment_id,
-        monitor_profile_id=profile.id,
-        grouping_parts=grouping_parts,
-        now=local_started,
-    )
+    setup = spec.build_legacy_setup(participant_id=request.participant_id, values=values, monitor_profile=profile)
+    run_dir = create_run_directory(data, participant_id=request.participant_id, experiment_id=spec.id,
+                                   monitor_profile_id=profile.id, grouping_parts=grouping_parts,
+                                   now=datetime.now().astimezone())
     run_uuid = str(uuid4())
-
     state_dir = run_dir / "state"
     manifest_file = run_dir / "manifest.json"
-    experiment_config_file = run_dir / "experiment_config.json"
-    monitor_profile_file = run_dir / "monitor_profile.json"
     trial_log_file = run_dir / "trials.tsv"
-    trial_dictionary_file = run_dir / TRIAL_DATA_DICTIONARY_FILENAME
-    readable_trials_file = run_dir / READABLE_TRIALS_FILENAME
-    runtime_display_file = run_dir / "runtime_display.json"
-    adaptive_session_file = run_dir / "adaptive_session.json"
-
-    atomic_write_json(
-        experiment_config_file,
-        {
-            "schema_version": 2,
-            "request": _portable_request_payload(request),
-            "normalised_experiment_values": values,
-            "legacy_setup": setup,
-        },
-    )
-    atomic_write_json(monitor_profile_file, profile.to_dict())
-    write_trial_data_dictionary(
-        trial_dictionary_file,
-        experiment_id=spec.id,
-        overrides=spec.trial_column_overrides,
-    )
-
-    payload = _manifest_payload(
-        request=request,
-        setup=setup,
-        profile=profile.to_dict(),
-        run_dir=run_dir,
-        data_root=data,
-        repo_root=root,
-        grouping_parts=grouping_parts,
-        run_uuid=run_uuid,
-        status="configuring",
-    )
-    started_utc = payload["created_utc"]
-    payload["trial_schema_version"] = TRIAL_SCHEMA_VERSION
-    payload["files"] = {
-        "manifest": "manifest.json",
-        "experiment_config": "experiment_config.json",
-        "monitor_profile": "monitor_profile.json",
-        "canonical_trials": "trials.tsv",
-        "readable_trials": READABLE_TRIALS_FILENAME,
-        "trial_data_dictionary": TRIAL_DATA_DICTIONARY_FILENAME,
-        "runtime_display": "runtime_display.json",
-        "resolved_experiment": "resolved_experiment.json",
-        "adaptive_session": "adaptive_session.json",
-        "legacy_response": "legacy_response.txt",
-        "state_directory": "state/",
-    }
-    atomic_write_json(manifest_file, payload)
-
-    save_workspace_state(
-        data,
-        request,
-        status="configuring",
-        run_directory=run_dir,
-        legacy_setup=setup,
-        manifest_file=manifest_file,
-    )
-    try:
-        upsert_run_index(
-            data,
-            _index_row(
-                run_uuid=run_uuid,
-                request=request,
-                grouping_parts=grouping_parts,
-                run_dir=run_dir,
-                data_root=data,
-                status="configuring",
-                started_utc=started_utc,
-            ),
-        )
-    except Exception as index_error:
-        payload["runs_index_error"] = repr(index_error)
-        atomic_write_json(manifest_file, payload)
-
+    response_file = run_dir / "legacy_response.txt"
     conditions_file = state_dir / "conditions.runtime.json"
     parameters_file = state_dir / "parameters.runtime.json"
-    response_file = run_dir / "legacy_response.txt"
     user_config_file = state_dir / "user_experiment_config.json"
+    adaptive_session_file = run_dir / "adaptive_session.json"
+    runtime_display_file = run_dir / "runtime_display.json"
+    started_utc = datetime.now(timezone.utc).isoformat()
+    payload = {"schema_version": 3, "run_uuid": run_uuid, "created_utc": started_utc,
+               "status": "configuring", "participant_id": request.participant_id,
+               "experiment_id": spec.id, "monitor_profile_id": profile.id}
+    primary_error = None
+
+    def convenience(name, operation):
+        try:
+            operation()
+        except Exception as exc:
+            payload[name + "_error"] = repr(exc)
+
+    def update_index():
+        upsert_run_index(data, _index_row(run_uuid=run_uuid, request=request, grouping_parts=grouping_parts,
+                         run_dir=run_dir, data_root=data, status=payload["status"], started_utc=started_utc,
+                         finished_utc=payload.get("finished_utc", ""), accepted_trials=payload.get("accepted_trials", "")))
+
+    def workspace():
+        save_workspace_state(data, request, status=payload["status"], run_directory=run_dir,
+                             legacy_setup=setup, manifest_file=manifest_file)
 
     try:
+        # A minimal manifest survives failure while building rich provenance.
+        atomic_write_json(manifest_file, payload)
+        payload = _manifest_payload(request=request, setup=setup, profile=profile.to_dict(), run_dir=run_dir,
+                    data_root=data, repo_root=root, grouping_parts=grouping_parts, run_uuid=run_uuid, status="configuring")
+        payload["created_utc"] = started_utc
+        payload["monitor_profile_sha256"] = content_hash(profile.to_dict())
+        registered_sources = {}
+        for relative in spec.source_paths:
+            source = (root / relative).resolve()
+            if not source.is_relative_to(root) or not source.is_file():
+                raise ValueError(f"Registered experiment source is missing or outside the repository: {relative}")
+            registered_sources[relative] = _sha256(source)
+        payload["registered_source_sha256"] = registered_sources
+        payload["random_provenance"] = {"algorithm": "python.random MT19937", "initial_state": random.getstate()}
+        payload["trial_schema_version"] = TRIAL_SCHEMA_VERSION
+        payload["files"] = {"manifest": "manifest.json", "experiment_config": "experiment_config.json",
+            "monitor_profile": "monitor_profile.json", "canonical_trials": "trials.tsv",
+            "readable_trials": READABLE_TRIALS_FILENAME, "trial_data_dictionary": TRIAL_DATA_DICTIONARY_FILENAME,
+            "runtime_display": "runtime_display.json", "resolved_experiment": "resolved_experiment.json",
+            "adaptive_session": "adaptive_session.json", "legacy_response": "legacy_response.txt", "state_directory": "state/"}
+        atomic_write_json(manifest_file, payload)
+        atomic_write_json(run_dir / "experiment_config.json", {"schema_version": 2,
+            "request": _portable_request_payload(request), "normalised_experiment_values": values, "legacy_setup": setup})
+        atomic_write_json(run_dir / "monitor_profile.json", profile.to_dict())
+        TrialLog(trial_log_file)  # Header remains valid even when no response is accepted.
+        atomic_write_json(run_dir / "trial_context.json", {
+            "schema_version": 1, "run_uuid": run_uuid, "trial_schema_version": TRIAL_SCHEMA_VERSION,
+            "canonical_trials": "trials.tsv", "applies_to": "all accepted-response rows in this new run",
+            "monitor_profile": "monitor_profile.json", "monitor_profile_sha256": content_hash(profile.to_dict()),
+            "profile_uuid": profile.profile_uuid, "profile_revision": profile.revision,
+            "runtime_display": "runtime_display.json", "resolved_experiment": "resolved_experiment.json",
+            "geometry_status": profile.geometry_status, "timing_status": profile.timing_status,
+            "photon_timing_verified": False})
+        payload["files"]["trial_context"] = "trial_context.json"
+        write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=spec.trial_column_overrides)
+        convenience("workspace", workspace)
+        convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
+        convenience("runs_index", update_index)
         with _legacy_runtime_context(root):
-            from Interface.config import run_configure_experiment
-
-            conditions, parameters, response = run_configure_experiment(
-                request.participant_id,
-                str(data),
-                setup,
-                run_directory=str(run_dir),
-            )
-            conditions_file = Path(conditions).resolve()
-            parameters_file = Path(parameters).resolve()
-            response_file = Path(response).resolve()
-
-            snapshots = {
-                "conditions_initial": state_dir / "conditions.initial.json",
-                "parameters_initial": state_dir / "parameters.initial.json",
-                "user_config_initial": state_dir / "user_config.initial.json",
-                "conditions_final": state_dir / "conditions.final.json",
-                "parameters_final": state_dir / "parameters.final.json",
-                "user_config_final": state_dir / "user_config.final.json",
-            }
-            copy_snapshot(conditions_file, snapshots["conditions_initial"])
-            copy_snapshot(parameters_file, snapshots["parameters_initial"])
-            copy_snapshot(user_config_file, snapshots["user_config_initial"])
-
+            adapter = importlib.import_module(spec.configure_module)
+            configure = getattr(adapter, spec.configure_function)
+            conditions, parameters, response = configure(request.participant_id, str(data), setup, run_directory=str(run_dir))
+            conditions_file, parameters_file, response_file = map(lambda value: Path(value).resolve(), (conditions, parameters, response))
+            if any(not path.is_relative_to(run_dir.resolve()) for path in (conditions_file, parameters_file, response_file)):
+                raise ValueError("Runtime adapter returned a file outside its new run.")
+            snapshots = {}
+            for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):
+                for phase in ("initial", "final"):
+                    snapshots[f"{name}_{phase}"] = state_dir / f"{name}.{phase}.json"
+                copy_snapshot(source, snapshots[f"{name}_initial"])
+            payload["files"].update({"conditions_runtime": _relative(run_dir, conditions_file),
+                "parameters_runtime": _relative(run_dir, parameters_file), "user_config_runtime": _relative(run_dir, user_config_file),
+                "snapshots": {key: _relative(run_dir, value) for key, value in snapshots.items()}})
             payload["status"] = "configured"
-            payload["files"].update(
-                {
-                    "conditions_runtime": _relative(run_dir, conditions_file),
-                    "parameters_runtime": _relative(run_dir, parameters_file),
-                    "user_config_runtime": _relative(run_dir, user_config_file),
-                    "snapshots": {
-                        key: _relative(run_dir, value) for key, value in snapshots.items()
-                    },
-                }
-            )
             atomic_write_json(manifest_file, payload)
-            save_workspace_state(
-                data,
-                request,
-                status="configured",
-                run_directory=run_dir,
-                legacy_setup=setup,
-                manifest_file=manifest_file,
-            )
-
+            convenience("workspace", workspace)
             experiment = importlib.import_module(spec.legacy_module)
-            experiment.run_experiment(
-                str(conditions_file),
-                str(parameters_file),
-                str(response_file),
-                str(state_dir),
-            )
-
+            experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
     except Exception as exc:
+        primary_error = exc
         payload["status"] = "error"
         payload["error"] = repr(exc)
-        raise
     finally:
-        if conditions_file.exists():
-            copy_snapshot(conditions_file, state_dir / "conditions.final.json")
-        if parameters_file.exists():
-            copy_snapshot(parameters_file, state_dir / "parameters.final.json")
-        if user_config_file.exists():
-            copy_snapshot(user_config_file, state_dir / "user_config.final.json")
-
-        adaptive_metadata = adaptive_session_file
-        # Defensive compatibility with a partially migrated run.
-        legacy_adaptive_metadata = response_file.with_suffix(".session.json")
-        if not adaptive_metadata.exists() and legacy_adaptive_metadata.exists():
-            adaptive_metadata = legacy_adaptive_metadata
-
-        if adaptive_metadata.exists():
+        for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):
             try:
-                adaptive = json.loads(adaptive_metadata.read_text(encoding="utf-8"))
+                copy_snapshot(source, state_dir / f"{name}.final.json")
+            except Exception as exc:
+                payload.setdefault("finalisation_errors", []).append({"operation": name + " snapshot", "error": repr(exc)})
+                payload["status"] = "error"
+        adaptive_path = adaptive_session_file if adaptive_session_file.exists() else response_file.with_suffix(".session.json")
+        if adaptive_path.exists():
+            try:
+                adaptive = json.loads(adaptive_path.read_text(encoding="utf-8"))
                 payload["adaptive_session"] = adaptive
-                if payload.get("status") != "error":
-                    payload["status"] = adaptive.get("status", "returned")
-            except Exception as metadata_error:
-                payload["adaptive_metadata_error"] = repr(metadata_error)
-        elif payload.get("status") != "error":
+                if payload["status"] != "error": payload["status"] = adaptive.get("status", "returned")
+            except Exception as exc:
+                payload["adaptive_metadata_error"] = repr(exc)
+                payload["status"] = "error"
+        elif payload["status"] != "error":
             payload["status"] = "returned"
-
+            if spec.id != "contrast_sensitivity":
+                payload.get("files", {}).pop("adaptive_session", None)
         if runtime_display_file.exists():
-            try:
-                payload["runtime_display"] = json.loads(
-                    runtime_display_file.read_text(encoding="utf-8")
-                )
-            except Exception as display_error:
-                payload["runtime_display_error"] = repr(display_error)
-
-        finished_utc = datetime.now(timezone.utc).isoformat()
-        payload["finished_utc"] = finished_utc
-        payload["accepted_trials"] = _trial_count(trial_log_file)
-
+            try: payload["runtime_display"] = json.loads(runtime_display_file.read_text(encoding="utf-8"))
+            except Exception as exc:
+                payload["runtime_display_error"] = repr(exc)
+                payload["status"] = "error"
+        payload["finished_utc"] = datetime.now(timezone.utc).isoformat()
+        try: payload["accepted_trials"] = _trial_count(trial_log_file)
+        except Exception as exc:
+            payload["trial_count_error"] = repr(exc)
+            payload["accepted_trials"] = 0
+            payload["status"] = "error"
         if trial_log_file.exists():
-            try:
-                write_readable_trial_table(
-                    trial_log_file,
-                    readable_trials_file,
-                )
-            except Exception as readable_error:
-                # trials.tsv is canonical. Failure to create the derived
-                # human-readable view must never invalidate acquired data.
-                payload["readable_trials_error"] = repr(readable_error)
-
-        try:
-            payload["output_sha256"] = _run_artifact_fingerprints(run_dir)
-        except Exception as hash_error:
-            payload["output_sha256_error"] = repr(hash_error)
-
-        try:
-            upsert_run_index(
-                data,
-                _index_row(
-                    run_uuid=run_uuid,
-                    request=request,
-                    grouping_parts=grouping_parts,
-                    run_dir=run_dir,
-                    data_root=data,
-                    status=str(payload.get("status", "returned")),
-                    accepted_trials=payload["accepted_trials"],
-                    started_utc=started_utc,
-                    finished_utc=finished_utc,
-                ),
-            )
-        except Exception as index_error:
-            payload["runs_index_error"] = repr(index_error)
-
-        atomic_write_json(manifest_file, payload)
-        save_workspace_state(
-            data,
-            request,
-            status=str(payload.get("status", "returned")),
-            run_directory=run_dir,
-            legacy_setup=setup,
-            manifest_file=manifest_file,
-        )
-
-    adaptive_summary = payload.get("adaptive_session") or {}
-    return RunArtifacts(
-        run_directory=run_dir,
-        trial_log_file=trial_log_file,
-        response_file=response_file,
-        conditions_file=conditions_file,
-        parameters_file=parameters_file,
-        manifest_file=manifest_file,
-        status=str(payload.get("status", "returned")),
-        accepted_trials=int(payload.get("accepted_trials", 0)),
-        completed_staircase_ids=tuple(
-            adaptive_summary.get("completed_staircase_ids", ())
-        ),
-        unfinished_staircase_ids=tuple(
-            adaptive_summary.get("unfinished_staircase_ids", ())
-        ),
-    )
+            convenience("readable_trials", lambda: write_readable_trial_table(trial_log_file, run_dir / READABLE_TRIALS_FILENAME))
+        convenience("output_sha256", lambda: payload.update(output_sha256=_run_artifact_fingerprints(run_dir)))
+        if payload["status"] == "error" and "error" not in payload:
+            payload["error"] = "Acquisition or finalisation reported an error; see recorded diagnostics."
+        convenience("runs_index", update_index)
+        convenience("workspace", workspace)
+        try: atomic_write_json(manifest_file, payload)
+        except Exception as exc:
+            if primary_error is None: primary_error = exc
+            else: primary_error.add_note(f"Final manifest could not be written: {exc!r}")
+    if primary_error is not None: raise primary_error
+    adaptive = payload.get("adaptive_session") or {}
+    return RunArtifacts(run_directory=run_dir, trial_log_file=trial_log_file, response_file=response_file,
+        conditions_file=conditions_file, parameters_file=parameters_file, manifest_file=manifest_file,
+        status=payload["status"], accepted_trials=payload["accepted_trials"],
+        completed_staircase_ids=tuple(adaptive.get("completed_staircase_ids", ())),
+        unfinished_staircase_ids=tuple(adaptive.get("unfinished_staircase_ids", ())))

@@ -12,6 +12,7 @@ from typing import Any, Iterable
 
 from ..config.models import SetupRequest
 from .session import atomic_write_json
+from .locking import file_lock
 from .identifiers import validate_path_component
 from .participants import validate_participant_id
 
@@ -225,11 +226,15 @@ def preferred_data_root(repo_root: Path, fallback: Path) -> Path:
 
 
 def remember_data_root(repo_root: Path, data_root: Path) -> None:
-    atomic_write_json(
-        local_preferences_path(repo_root),
-        {
+    path = local_preferences_path(repo_root)
+    with file_lock(repo_root / ".psycolab_preferences.lock"):
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(previous, dict): previous = {}
+        except (OSError, ValueError):
+            previous = {}
+        atomic_write_json(path, previous | {
             "schema_version": 1,
             "last_data_root": str(data_root.resolve()),
             "updated_utc": datetime.now(timezone.utc).isoformat(),
-        },
-    )
+        })
