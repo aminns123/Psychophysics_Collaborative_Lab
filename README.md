@@ -37,9 +37,11 @@ and threshold-analysis code without a display:
 .venv\\Scripts\\python.exe -m simulations --seed 123 --max-trials 400
 ```
 
-Synthetic runs are stored only in a separately marked sibling workspace and
-are explicitly labeled **not human acquisition**; virtual timestamps are
-reproducible but do not measure actual presentation or response times.
+Synthetic runs are saved in the **same external data repository as human
+runs**, beneath reserved `synthetic_...` participant IDs, with per-participant
+markers and explicit synthetic provenance. The human TUI's saved setup is not
+overwritten. Virtual timestamps are reproducible but do not measure actual
+presentation or response times.
 
 ## First launch on Windows
 
