@@ -71,31 +71,64 @@ def test_invalid_observer_rejected(kwargs):
         CSFObserver(**kwargs)
 
 
-def test_workspace_never_adopts_or_changes_existing_data(tmp_path):
-    occupied=tmp_path/"psycolab_simulations";occupied.mkdir()
-    sentinel=occupied/"human.tsv";sentinel.write_bytes(b"DO NOT CHANGE")
-    with pytest.raises(ValueError,match="unmarked"):
-        simulation_workspace(occupied,ROOT)
+def test_virtual_observers_share_human_data_root_without_touching_human_files(tmp_path):
+    from psychophysics_lab.data.workspace import save_workspace_state
+    from psychophysics_lab.data.participants import list_participants
+    from psychophysics_lab.core.synthetic import MARKER, register_virtual_participant
+
+    data_root = tmp_path / "local_psychophysics_data"
+    data_root.mkdir()
+    human = data_root / "H001"
+    human.mkdir()
+    sentinel = human / "human_trials.tsv"
+    sentinel.write_bytes(b"DO NOT CHANGE")
+    request = SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display", {})
+    save_workspace_state(data_root, request, status="completed")
+    original_state = (data_root / "psycolab_data_config.json").read_bytes()
+
+    assert simulation_workspace(data_root, ROOT) == data_root.resolve()
+    artifacts, _ = simulate(data_root=data_root, repo_root=ROOT, seed=123, values={"max_trials": 1})
+    assert artifacts.run_directory.is_relative_to(data_root / "synthetic_123")
+    assert (data_root / "synthetic_123" / MARKER).is_file()
+    assert (artifacts.run_directory / "SYNTHETIC_DATA.json").exists()
+    assert (data_root / "runs_index.csv").exists()
     assert sentinel.read_bytes() == b"DO NOT CHANGE"
-    assert len(list(occupied.iterdir())) == 1
-    with pytest.raises(ValueError,match="named"):
-        simulation_workspace(tmp_path/"real_data",ROOT)
-    assert not (tmp_path/"real_data").exists()
+    assert (data_root / "psycolab_data_config.json").read_bytes() == original_state
+    assert list_participants(data_root) == ("H001",)
+    assert resolve_data_root(data_root, ROOT) == data_root.resolve()
 
 
-def test_human_and_synthetic_workspaces_are_mutually_exclusive(tmp_path):
-    synthetic=simulation_workspace(tmp_path/"psycolab_simulations",ROOT)
-    for candidate in (synthetic,synthetic/"subfolder",tmp_path):
-        with pytest.raises(ValueError,match="synthetic"):
-            resolve_data_root(candidate,ROOT)
-    human=tmp_path/"human";human.mkdir()
-    (human/"psycolab_data_config.json").write_text("{}")
-    with pytest.raises(ValueError,match="acquisition workspace"):
-        simulation_workspace(human/"psycolab_simulations",ROOT)
-    request=SetupRequest("real_person","new","contrast_sensitivity","legacy_reference_display",{})
-    with pytest.raises(ValueError,match="synthetic_"):
-        run_request(request,repo_root=ROOT,data_root=synthetic,simulation=SimulationRun(synthetic,{"seed":1},lambda *a:None))
-    assert list(synthetic.iterdir()) == [synthetic/".psycolab_synthetic.json"]
+def test_virtual_ids_are_reserved_and_existing_unmarked_ids_are_not_adopted(tmp_path):
+    from psychophysics_lab.core.synthetic import register_virtual_participant
+
+    data_root = tmp_path / "local_psychophysics_data"
+    data_root.mkdir()
+    occupied = data_root / "synthetic_77"
+    occupied.mkdir()
+    sentinel = occupied / "trials.tsv"
+    sentinel.write_bytes(b"DO NOT CHANGE")
+    with pytest.raises(ValueError, match="not marked synthetic"):
+        register_virtual_participant(data_root, "synthetic_77")
+    assert sentinel.read_bytes() == b"DO NOT CHANGE"
+
+    with pytest.raises(ValueError, match="reserved"):
+        run_request(SetupRequest("synthetic_77", "new", "contrast_sensitivity",
+                                 "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root)
+    with pytest.raises(ValueError, match="synthetic_"):
+        run_request(SetupRequest("real_person", "new", "contrast_sensitivity",
+                                 "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root,
+                    simulation=SimulationRun(data_root, {"seed": 1}, lambda *args: None))
+    with pytest.raises(ValueError, match="separate folder"):
+        simulation_workspace(ROOT / "unwanted", ROOT)
+    assert sentinel.read_bytes() == b"DO NOT CHANGE"
+
+
+def test_default_simulator_uses_selected_external_human_data_root(tmp_path, monkeypatch):
+    data_root = tmp_path / "local_psychophysics_data"
+    monkeypatch.setenv("PSYCOLAB_DATA_DIR", str(data_root))
+    artifacts, _ = simulate(seed=5, repo_root=ROOT, values={"max_trials": 1}, analyse=False)
+    assert artifacts.run_directory.is_relative_to(data_root / "synthetic_5")
+    assert not (ROOT / "psycolab_simulations").exists()
 
 
 def test_simulator_failure_stays_synthetic_and_finalises(tmp_path,monkeypatch):

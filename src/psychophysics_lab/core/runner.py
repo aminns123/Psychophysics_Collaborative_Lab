@@ -296,6 +296,8 @@ def run_request(
     root = (repo_root or find_repo_root()).resolve()
     candidate = data_root or (Path(request.data_root).expanduser() if request.data_root else default_data_root(root))
     data = resolve_data_root(candidate, root, allow_synthetic=simulation is not None)
+    if simulation is None and request.participant_id.lower().startswith("synthetic_"):
+        raise ValueError("Participant IDs beginning synthetic_ are reserved for virtual observers.")
     if simulation is not None:
         from .synthetic import SimulationRun
         if not isinstance(simulation, SimulationRun):
@@ -398,8 +400,8 @@ def run_request(
             spec.trial_column_overrides, synthetic=simulation is not None
         )
         write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
-        convenience("workspace", workspace)
         if simulation is None:
+            convenience("workspace", workspace)
             convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
         convenience("runs_index", update_index)
         with _legacy_runtime_context(root):
@@ -419,7 +421,8 @@ def run_request(
                 "snapshots": {key: _relative(run_dir, value) for key, value in snapshots.items()}})
             payload["status"] = "configured"
             atomic_write_json(manifest_file, payload)
-            convenience("workspace", workspace)
+            if simulation is None:
+                convenience("workspace", workspace)
             if simulation is not None:
                 simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
             elif spec.procedure is not None:
@@ -470,7 +473,8 @@ def run_request(
         if payload["status"] == "error" and "error" not in payload:
             payload["error"] = "Acquisition or finalisation reported an error; see recorded diagnostics."
         convenience("runs_index", update_index)
-        convenience("workspace", workspace)
+        if simulation is None:
+            convenience("workspace", workspace)
         try: atomic_write_json(manifest_file, payload)
         except Exception as exc:
             if primary_error is None: primary_error = exc

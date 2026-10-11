@@ -18,10 +18,17 @@ def screen_info(screen, index):
         mode=screen.get_mode() if hasattr(screen,'get_mode') else None
     except (OSError, NotImplementedError):
         mode = None
-    rate=getattr(mode,'rate',None)
-    if rate is not None and (not math.isfinite(float(rate)) or float(rate) <= 0):
+    rate = getattr(mode, 'rate', None)
+    try:
+        rate = float(rate) if rate is not None else None
+        if rate is not None and (not math.isfinite(rate) or rate <= 0):
+            rate = None
+    except (TypeError, ValueError, OverflowError):
         rate = None
-    identity=screen.get_device_name() if hasattr(screen,'get_device_name') else getattr(screen,'device_name',None)
+    try:
+        identity = screen.get_device_name() if hasattr(screen, 'get_device_name') else getattr(screen, 'device_name', None)
+    except (OSError, NotImplementedError):
+        identity = getattr(screen, 'device_name', None)
     if isinstance(identity,bytes): identity=identity.decode(errors='replace')
     return DisplayInfo(index,int(screen.x),int(screen.y),int(screen.width),int(screen.height),float(rate) if rate else None,str(identity) if identity else None)
 
@@ -62,7 +69,12 @@ def select_screen(profile):
         info = matches[0]
     else: raise ValueError('Local profiles need an explicit monitor binding.')
     if profile.expected_resolution_px and (info.width,info.height)!=profile.expected_resolution_px:
-        raise ValueError('Bound monitor resolution differs from the selected profile.')
+        raise ValueError(
+            f"Selected display reports {info.width}x{info.height} pixels, but profile "
+            f"expects {profile.expected_resolution_px[0]}x{profile.expected_resolution_px[1]}. "
+            "Check Windows resolution, display scaling/DPI awareness and the physical monitor binding; "
+            "do not assume reported logical pixels are the framebuffer size."
+        )
     if profile.display_binding and info.refresh_hz and abs(info.refresh_hz-profile.refresh_rate_hz)>.5:
         raise ValueError('Bound monitor refresh mode differs from the selected profile.')
     return screens[info.index],asdict(info)|{'binding_status':'explicit' if profile.display_binding else 'legacy_default_unverified','refresh_source':'OS mode' if info.refresh_hz else 'unknown','photon_timing_verified':False}

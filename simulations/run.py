@@ -6,11 +6,12 @@ from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun, simulation_workspace
 from psychophysics_lab.experiments.registry import get_experiment
-from psychophysics_lab.paths import find_repo_root
+from psychophysics_lab.paths import find_repo_root, default_data_root
+from psychophysics_lab.data.workspace import preferred_data_root
 from .registry import get_simulation
 
 
-def simulate(*, workspace, seed=123, experiment_id="contrast_sensitivity", observer=None,
+def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contrast_sensitivity", observer=None,
              values=None, repo_root=None, analyse=True):
     if type(seed) is not int or seed < 0:
         raise ValueError("Seed must be a nonnegative integer.")
@@ -23,7 +24,12 @@ def simulate(*, workspace, seed=123, experiment_id="contrast_sensitivity", obser
         "observer_model": type(observer).__name__, "observer_parameters": asdict(observer),
         "physical_display_used": False, "human_participant": False,
         "note": "Synthetic pipeline test; observer midpoint is not a validated human threshold."}
-    test_root = simulation_workspace(Path(workspace), root)
+    if workspace is not None and data_root is not None:
+        raise ValueError("Specify data_root only; workspace is a retained compatibility alias.")
+    selected_root = data_root if data_root is not None else workspace
+    if selected_root is None:
+        selected_root = preferred_data_root(root, default_data_root(root))
+    test_root = simulation_workspace(Path(selected_root), root)
     request = SetupRequest(f"synthetic_{seed}", "new", experiment_id, spec.monitor_profile_id, selected_values)
     algorithm_id = experiment.adaptive.algorithm_id if experiment.adaptive else None
     simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id))
@@ -36,6 +42,7 @@ def simulate(*, workspace, seed=123, experiment_id="contrast_sensitivity", obser
             if "No reversal observations" not in str(exc):
                 raise
             from psychophysics_lab.data.session import atomic_write_json
-            atomic_write_json(test_root / ("analysis_unavailable_" + artifacts.run_directory.name + "_" + str(seed) + ".json"),
-                              {"data_kind": "synthetic", "reason": str(exc)})
+            missing_analysis = artifacts.run_directory / "analysis" / "threshold_unavailable.json"
+            missing_analysis.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_json(missing_analysis, {"data_kind": "synthetic", "reason": str(exc)})
     return artifacts, analysis
