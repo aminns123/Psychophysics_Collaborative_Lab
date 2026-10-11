@@ -1,69 +1,75 @@
 # Synthetic experiment and pipeline tests
 
-This facility is designed to exercise PsyCoLab's **real configuration,
-adaptive procedure, canonical trial log, validation and threshold analysis**
-without a human participant, Pyglet fullscreen window or audio device.
+Synthetic and human acquisition use the **same external PsyCoLab data repository**.
+The simulation API reads the selected data root (or the usual
+`PSYCOLAB_DATA_DIR` override), and both types use the existing
+`participant/experiment/display/conditions/date/run_NNN` hierarchy.
 
-## Run the CSF virtual observer
+## Run a CSF virtual observer
 
-From the project root, with its Python 3.11 environment active:
+From the repository root, after installing Python 3.11 and PsyCoLab:
 
 ```powershell
 python -m simulations --seed 123 --max-trials 400
 python -m simulations --seeds 1,2,3 --thresholds 0.05,0.1,0.2
+python -m simulations --data-root "C:\\path\\to\\local_psychophysics_data" --seed 123
 ```
 
-Or use Python:
+Without `--data-root`, the simulator uses the same preferred external data
+folder that the human TUI last selected. The earlier `--workspace` flag remains
+as an alias for compatibility.
 
-```python
-from simulations.csf import CSFObserver
-from simulations.run import simulate
+## Shared folder layout
 
-artifacts, analysis = simulate(
-    workspace="..\\psycolab_simulations",  # isolated, marked sibling folder
-    seed=123,
-    observer=CSFObserver(threshold=0.1, preferred_condition=63.0),
-)
+```text
+local_psychophysics_data/
+├── psycolab_data_config.json    # human TUI's last setup; simulations do not replace it
+├── runs_index.csv               # index includes both run kinds
+├── H001/                        # human participant
+│   └── contrast_sensitivity/.../run_001/
+└── synthetic_123/               # virtual observer
+    ├── .psycolab_virtual_participant.json
+    └── contrast_sensitivity/
+        └── legacy_reference_display/.../YYYY-MM-DD/run_001/
+            ├── manifest.json   # data_kind: synthetic
+            ├── SYNTHETIC_DATA.json
+            ├── trial_context.json
+            └── trials.tsv
 ```
 
-The `workspace` directory **must** be named `psycolab_simulations` and
-either not exist or carry the exact synthetic-workspace marker. Never point it
-at human/participant data. The regular human run path refuses synthetic roots.
+The literal `synthetic_` ID prefix is reserved for virtual observers.
+Attempted human acquisition with this prefix is rejected, and existing
+unmarked `synthetic_...` folders are never silently adopted. Synthetic
+participants remain visible in the data browser/index but are hidden from
+the participant selector used for human acquisition. This prevents a
+simulation from updating human preferences or contaminating existing
+human participant folders. It does **not** claim simulated results are
+measurements from a human or a calibrated display.
 
-The CSF observer uses **legacy CSF condition values** (such as 63 and 252):
-they are *not* validated cycles per degree. The observer has an adjustable
-psychometric midpoint, lapse and tuning width. Its midpoint is not guaranteed
-to equal the staircase's recovered reversal estimate.
+## Reproducibility and scientific interpretation
 
-## Reproducibility
+The CSF virtual observer is an experiment-specific psychometric model, not a
+universal model for future experiments. Its frequencies currently refer to
+retained **legacy CSF condition values**, not validated cycles per degree.
+The observer's midpoint does not guarantee the staircase's reversal
+estimator will return the same numerical threshold.
 
-The simulation uses its own seeded `random.Random` instance, without changing
-global random state. Accepted synthetic responses flow through the existing
-legacy staircase/event adapter. Its `event_time_s` is simulated elapsed
-time, and its `recorded_utc` starts at a fixed **virtual epoch**
-(`2000-01-01T00:00:00+00:00`) plus that event time.
+Each run saves random seed, observer parameters, algorithm and simulated
+provenance. Synthetic accepted responses share the normal trial schema,
+but use a deterministic virtual `recorded_utc` generated from
+`2000-01-01T00:00:00+00:00` plus `event_time_s`. Human recordings retain
+real wall-clock timestamps. Virtual time is **not** measured reaction time or
+display photon timing.
 
-For identical seed, observer and configuration, the canonical `trials.tsv`
-is designed to be **byte-for-byte reproducible** across isolated runs.
-Real human acquisition continues to use genuine wall-clock UTC timestamps.
-Virtual timestamps are labeled as synthetic in the run's
-`trial_context.json` and `trial_data_dictionary.tsv`.
+The synthetic run uses the real configuration/event/adaptive/recording pipeline,
+generates threshold analysis when there are enough reversals, and is checked
+with the ordinary run validator. An unestimable short run must not invent a
+threshold: its explanation is saved in that run's `analysis/` directory.
 
-The run also stores `SYNTHETIC_DATA.json`, a synthetic `manifest.json`
-and simulated `runtime_display.json`. Synthetic output is **not scientific
-human-subject evidence**, and no physical display calibration is inferred.
-
-## Add a new experiment-specific observer
-
-Implement an observer and `runtime_factory` in `simulations/`, then register
-a separate `SimulationSpec` in `simulations/registry.py`. Do not impose
-CSF's particular sigmoid, correctness mapping or frequencies on a different
-experimental paradigm.
-
-The observer should define reproducible response probabilities, trial/condition
-mapping, and an unambiguous ground truth. Test recovery across seeds and
-parameter sweeps, including deliberately short/censored runs with **no
-fabricated threshold**.
+To add a different experiment, supply an experiment-specific observer and
+runtime factory in `simulations/` and register a `SimulationSpec` in
+`simulations/registry.py`. Validate recovery against ground truth across
+multiple seeds and stimulus conditions.
 
 ```powershell
 python -m pytest tests/test_simulation_pipeline.py
@@ -71,4 +77,6 @@ python -m pytest
 python scripts/portability_check.py
 ```
 
-Headless success does not replace fullscreen, calibration or photodiode testing.
+Software checks do not validate Pyglet fullscreen display selection, measured
+luminance, visual angle or photon onset; follow the Windows hardware checklist
+before collecting scientific participant data.
