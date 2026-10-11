@@ -1166,8 +1166,8 @@ class PsyCoLabSetupApp(App):
             return
         current = selector.value
         selector.set_options([(item.display_name, item.id) for item in profiles.values()])
-        if _is_blank_select_value(current) or str(current) not in profiles:
-            selector.value = next(iter(profiles))
+        # Textual set_options resets the selection, including valid values.
+        selector.value = current if current in profiles else next(iter(profiles))
         self._refresh_monitor_context()
 
     def _refresh_monitor_context(self) -> None:
@@ -1181,6 +1181,7 @@ class PsyCoLabSetupApp(App):
     def _selected_data_root(self, *, create: bool) -> Path:
         value = self.screen_stack[0].query_one("#data-root", Input).value
         data_root = resolve_data_root(value, self.repo_root)
+        config_root(self.repo_root, data_root)  # Validate separation before creating folders.
         if create:
             data_root.mkdir(parents=True, exist_ok=True)
         return data_root
@@ -1218,7 +1219,8 @@ class PsyCoLabSetupApp(App):
                 self.screen_stack[0].query_one("#experiment", Select).value = last_request.experiment_id
             self._refresh_experiment_context()
             if last_request.monitor_profile_id in self.monitor_profiles:
-                compatible = self._compatible_profiles(get_experiment(last_request.experiment_id))
+                selected_experiment = str(self.screen_stack[0].query_one("#experiment", Select).value)
+                compatible = self._compatible_profiles(get_experiment(selected_experiment))
                 if last_request.monitor_profile_id in compatible:
                     self.screen_stack[0].query_one("#monitor-profile", Select).value = last_request.monitor_profile_id
         else:

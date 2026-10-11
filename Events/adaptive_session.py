@@ -185,8 +185,8 @@ class LegacyStaircaseSession:
     def logger(self, window):
         def log(event, time, trial, args):
             previous_count = self.run.total_trials
-            before = self._capture_pre_response(event, trial, args)
             try:
+                before = self._capture_pre_response(event, trial, args)
                 record_event(event, time, trial, args)
                 if self.run.total_trials != previous_count:
                     if before is None:
@@ -201,8 +201,12 @@ class LegacyStaircaseSession:
             except Exception as exc:
                 try:
                     self.save(status="error", error=exc)
-                finally:
+                except Exception as save_error:
+                    exc.add_note(f"Could not save adaptive error state: {save_error!r}")
+                try:
                     request_window_end(window, "error")
+                except Exception as close_error:
+                    exc.add_note(f"Could not close failed acquisition: {close_error!r}")
                 raise
         return log
 

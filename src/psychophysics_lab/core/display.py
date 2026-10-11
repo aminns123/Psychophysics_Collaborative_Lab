@@ -34,14 +34,26 @@ def resolve_binding(binding: dict, displays: list[DisplayInfo]) -> DisplayInfo:
 
 def select_screen(profile):
     import pyglet
-    screens=pyglet.canvas.get_display().get_screens()
+    display = pyglet.canvas.get_display()
+    screens = display.get_screens()
+    if not screens:
+        raise ValueError('No connected displays were found.')
     infos=[screen_info(screen,i) for i,screen in enumerate(screens)]
     if profile.display_binding:
         info=resolve_binding(profile.display_binding,infos)
     elif profile.id=='legacy_reference_display':
         # Explicit compatibility policy for the existing unbound reference only.
-        screen=pyglet.canvas.get_display().get_default_screen()
-        info=screen_info(screen,screens.index(screen))
+        # Pyglet 1.5 on Windows re-enumerates screens for each call. Match
+        # physical identity, then return a handle from our single snapshot.
+        default = screen_info(display.get_default_screen(), -1)
+        if default.device_id:
+            matches = [item for item in infos if item.device_id == default.device_id]
+        else:
+            matches = [item for item in infos if all(
+                getattr(item, key) == getattr(default, key) for key in ('x', 'y', 'width', 'height'))]
+        if len(matches) != 1:
+            raise ValueError('Default monitor is missing or ambiguous; detect displays again.')
+        info = matches[0]
     else: raise ValueError('Local profiles need an explicit monitor binding.')
     if profile.expected_resolution_px and (info.width,info.height)!=profile.expected_resolution_px:
         raise ValueError('Bound monitor resolution differs from the selected profile.')

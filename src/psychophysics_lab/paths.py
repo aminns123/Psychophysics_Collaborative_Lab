@@ -45,11 +45,10 @@ def find_repo_root(start: Path | None = None) -> Path:
 
 def default_data_root(repo_root: Path | None = None) -> Path:
     """Default to a sibling folder so experimental data stays out of Git."""
+    root = repo_root or find_repo_root()
     override = os.environ.get("PSYCOLAB_DATA_DIR")
     if override:
-        return Path(os.path.expandvars(override)).expanduser().resolve()
-
-    root = repo_root or find_repo_root()
+        return resolve_data_root(override, root)
     return root.parent / "local_psychophysics_data"
 
 

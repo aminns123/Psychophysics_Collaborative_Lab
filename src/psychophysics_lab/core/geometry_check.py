@@ -89,6 +89,8 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
     primary_error = None
     try:
         resolution = (int(window.width), int(window.height))
+        if profile.expected_resolution_px and resolution != profile.expected_resolution_px:
+            raise ValueError("Actual fullscreen resolution differs from the selected profile.")
         bar, plan = resolve_test(profile, request, resolution)
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         left, bottom, right, top = plan["rectangle_px"]
@@ -133,7 +135,7 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
         plan["display_identity"] = identity
         plan["frame_timing"] = interval_summary(timestamps,profile.refresh_rate_hz)
         return resolution,bar,plan
-    except Exception as exc:
+    except BaseException as exc:
         primary_error = exc
         raise
     finally:
@@ -207,7 +209,7 @@ def run_geometry_check(
             ),
         }
         atomic_write_json(report, payload)
-    except Exception as exc:
+    except BaseException as exc:
         try:
             atomic_write_json(
                 report,

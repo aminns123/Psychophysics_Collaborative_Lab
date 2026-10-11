@@ -10,6 +10,14 @@ import warnings
 
 
 def _profile_from_dict(data: dict) -> MonitorProfile:
+    if not isinstance(data, dict):
+        raise ValueError("Monitor profile must contain a JSON object.")
+    calibration_data = data.get("luminance_calibration", [])
+    if not isinstance(calibration_data, list) or any(not isinstance(item, dict) for item in calibration_data):
+        raise ValueError("Luminance calibration must be a list of measurement objects.")
+    qualifications = data.get("qualified_experiments", [])
+    if not isinstance(qualifications, (list, tuple)) or any(not isinstance(item, str) for item in qualifications):
+        raise ValueError("Qualified experiments must be a list of experiment IDs.")
     numeric = ("physical_width_m", "physical_height_m", "refresh_rate_hz", "viewing_distance_m", "pyglet_wakeup_rate_hz")
     if any(isinstance(data.get(key), bool) for key in numeric):
         raise ValueError("Display dimensions and rates must be numbers, not booleans.")

@@ -42,13 +42,14 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     pyglet.options["double_buffer"] = True
     from psychophysics_lab.config.monitor import _profile_from_dict
     from psychophysics_lab.core.display import select_screen
-    selected_screen, display_identity = select_screen(_profile_from_dict(monitor_profile))
-    win = ExpWindow(fullscreen=True, screen=selected_screen)
+    win = None
 
     def wakeup(dt):
         pass
     primary_error = None
     try:
+        selected_screen, display_identity = select_screen(_profile_from_dict(monitor_profile))
+        win = ExpWindow(fullscreen=True, screen=selected_screen)
         pixel_width = win.width
         pixel_height = win.height
         screen_width_pixel = pixel_width
@@ -366,7 +367,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         run(refresh_rate=monitor_refresh_rate)
         if getattr(win, "psycolab_recording_error", None) is not None:
             raise win.psycolab_recording_error
-    except Exception as exc:
+    except BaseException as exc:
         primary_error = exc
         try:
             adaptive_session.save(status="error", error=exc)
@@ -380,7 +381,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             ("finish adaptive session", adaptive_session.finish),
             ("legacy placeholder cleanup", lambda: funcs.removeZeroRow(file_response_record)),
             ("legacy spacing", lambda: funcs.correctFileSpacings(file_response_record)),
-            ("close window", win.close),
+            ("close window", lambda: win.close() if win is not None else None),
         ):
             try:
                 operation()

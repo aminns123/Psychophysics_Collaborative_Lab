@@ -70,6 +70,7 @@ def load_presets(root: Path, experiment_id: str) -> dict[str, dict]:
     for path in sorted(directory.glob('*.json')):
         try:
             value=json.loads(path.read_text())
-            if value.get('experiment_id')==experiment_id: result[path.stem]=value['values']
+            if value.get('experiment_id')==experiment_id and isinstance(value.get('values'), dict):
+                result[path.stem]=value['values']
         except (OSError,ValueError,KeyError,AttributeError): pass
     return result

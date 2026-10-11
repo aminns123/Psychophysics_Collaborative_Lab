@@ -72,7 +72,8 @@ def _load_state() -> dict:
     if not STATE.exists():
         return {}
     try:
-        return json.loads(STATE.read_text(encoding="utf-8"))
+        value = json.loads(STATE.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
     except Exception:
         return {}
 

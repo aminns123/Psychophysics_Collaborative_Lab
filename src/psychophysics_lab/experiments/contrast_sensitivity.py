@@ -64,9 +64,13 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
         errors.append("Maximum luminance must be positive.")
     if float(values["Background_Luminance"]) >= float(values["Max_monitor_Luminance"]):
         errors.append("Background luminance must be below maximum monitor luminance.")
-    for key in ("timeFixate", "timeInterval", "timeAB", "timeT"):
-        if int(values[key]) < 0:
-            errors.append(f"{key} must not be negative.")
+    # In the retained renderer T=0 waits for a key indefinitely. These phases
+    # have no response keys, so reject a setup that cannot advance.
+    for key in ("timeFixate", "timeInterval", "timeAB"):
+        if int(values[key]) <= 0:
+            errors.append(f"{key} must be positive; zero would stall this keyless phase.")
+    if int(values["timeT"]) < 0:
+        errors.append("timeT must not be negative.")
 
     return errors
 

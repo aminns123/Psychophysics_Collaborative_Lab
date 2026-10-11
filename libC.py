@@ -198,7 +198,7 @@ def copy_params(p,params=None,**kwargs): # do indent back, not inside class Para
         if isinstance(params,Params):
             out.update(**params.__dict__)
         else:
-            self.params.update(params)
+            out.update(**params)
     out.update(**kwargs)
     return out
 
@@ -313,7 +313,7 @@ def stim_factory(**kwargs):
                 if isinstance(params,Params):
                     self.params.__dict__.update(params.__dict__)
                 else:
-                    self.params.update(params)
+                    self.params.update(**params)
             self.params.__dict__.update(kw)
     return Stimulus
 

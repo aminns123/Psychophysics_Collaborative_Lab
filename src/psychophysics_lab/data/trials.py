@@ -295,6 +295,12 @@ class TrialLog:
                 handle.flush()
                 os.fsync(handle.fileno())
 
+        else:
+            with self.path.open("r", newline="", encoding="utf-8") as handle:
+                header = next(csv.reader(handle, delimiter="\t"), [])
+            if tuple(header) != TRIAL_COLUMNS:
+                raise ValueError("Existing trial-log header differs from the canonical schema.")
+
     def append(self, row: Mapping[str, Any]) -> None:
         unknown = set(row) - set(TRIAL_COLUMNS)
         if unknown:

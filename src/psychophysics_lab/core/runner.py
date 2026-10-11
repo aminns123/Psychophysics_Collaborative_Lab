@@ -397,7 +397,8 @@ def run_request(
             convenience("workspace", workspace)
             experiment = importlib.import_module(spec.legacy_module)
             experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
-    except Exception as exc:
+    except BaseException as exc:
+        # Preserve interrupts through finalisation without recording success.
         primary_error = exc
         payload["status"] = "error"
         payload["error"] = repr(exc)

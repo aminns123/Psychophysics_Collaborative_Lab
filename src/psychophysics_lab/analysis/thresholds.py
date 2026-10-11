@@ -142,6 +142,8 @@ def analyse_thresholds(
     data_root = data_root.resolve()
     run_directory = _owned_run(data_root, run_directory)
     manifest = _read_manifest(run_directory)
+    if manifest.get("status") in {"configuring", "configured", "running"}:
+        raise ValueError("Wait for the run to finalise before deriving thresholds.")
     rows = _read_trials(run_directory)
     if not rows:
         raise ValueError("This run contains no accepted responses; no threshold can be derived.")

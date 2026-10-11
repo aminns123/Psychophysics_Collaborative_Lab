@@ -54,7 +54,7 @@ def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest |
         "monitor_profile_id",
         "experiment_values",
     }
-    if not required.issubset(raw):
+    if not required.issubset(raw) or not isinstance(raw["experiment_values"], dict):
         return None
     return SetupRequest(
         participant_id=str(raw["participant_id"]),

@@ -7,7 +7,7 @@ from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.widgets import Header, Footer, Button, Static, Input, Label, Select
 from ..config.local import save_profile
 from ..config.monitor import _profile_from_dict
-from ..core.display import enumerate_displays
+from ..core.display import enumerate_displays, resolve_binding
 
 class ProfileScreen(Screen):
     def __init__(self, *, profile):
@@ -66,10 +66,17 @@ class ProfileScreen(Screen):
         status = self.query_one("#profile-status", Static)
         try:
             if event.button.id == "profile-detect":
-                self.displays = enumerate_displays()
                 selector = self.query_one("#profile-binding", Select)
+                previous = next((d for d in self.displays if d.index == selector.value), None)
+                binding = asdict(previous) if previous else self.profile.display_binding
+                self.displays = enumerate_displays()
                 selector.set_options([(f"Display {d.index}: {d.width} × {d.height} at ({d.x}, {d.y}), {d.refresh_hz or 'unknown'} Hz", d.index) for d in self.displays])
-                if self.displays:
+                if binding:
+                    try:
+                        selector.value = resolve_binding(binding, self.displays).index
+                    except ValueError:
+                        selector.value = Select.BLANK
+                elif len(self.displays) == 1:
                     selector.value = self.displays[0].index
                 status.update("Select the correct display; detection does not validate physical dimensions.")
             elif event.button.id == "profile-save":
@@ -84,6 +91,8 @@ class ProfileScreen(Screen):
                 payload["qualified_experiments"] = [x.strip() for x in self.query_one("#profile-qualified_experiments", Input).value.split(",") if x.strip()]
                 payload["origin"] = "local"
                 selection = self.query_one("#profile-binding", Select).value
+                if selection is Select.BLANK and self.displays:
+                    raise ValueError("Select a connected display before saving.")
                 if self.displays and selection is not Select.BLANK:
                     selected = next(d for d in self.displays if d.index == selection)
                     payload["display_binding"] = asdict(selected)

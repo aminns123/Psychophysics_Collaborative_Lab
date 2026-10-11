@@ -65,11 +65,13 @@ def resolve_test(profile, request, resolution):
     distance = profile.viewing_distance_m
     length_extent = profile.physical_width_m if bar.orientation == "horizontal" else profile.physical_height_m
     axis_size = width if bar.orientation == "horizontal" else height
-    centre_mm = x if bar.orientation == "horizontal" else y
+    realised_position_mm = [(cx - width/2)*profile.physical_width_m/width*1000,
+                            (cy - height/2)*profile.physical_height_m/height*1000]
+    centre_mm = realised_position_mm[0 if bar.orientation == "horizontal" else 1]
     low_angle = math.degrees(math.atan((centre_mm / 1000 - bar.realised_length_mm / 2000) / distance))
     high_angle = math.degrees(math.atan((centre_mm / 1000 + bar.realised_length_mm / 2000) / distance))
     plan = {"test_kind": request.test_kind, "bar": bar.to_dict(), "rectangle_px": [left, bottom, right, top],
-            "centre_px": [cx, cy], "position_mm": [x, y], "realised_position_mm": [(cx - width/2)*profile.physical_width_m/width*1000, (cy-height/2)*profile.physical_height_m/height*1000],
+            "centre_px": [cx, cy], "position_mm": [x, y], "realised_position_mm": realised_position_mm,
             "off_axis_extent_deg": high_angle - low_angle,
             "size_semantics": "Size degrees specifies a centred-equivalent physical extent; off-axis extent uses atan of the realised endpoints.",
             "geometry_verified": False, "photometric_verified": False, "photon_timing_verified": False}

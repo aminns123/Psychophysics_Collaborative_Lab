@@ -260,6 +260,9 @@ def validate_run(run_directory: Path) -> list[Check]:
         for name, payload in metadata.items():
             for location, value in leaves(payload):
                 if isinstance(value, str):
+                    # Win32 monitor identity is an OS device name, not a file reference.
+                    if location.endswith(".device_id") and re.fullmatch(r"\\\\\.\\DISPLAY[0-9]+", value):
+                        continue
                     require(not absolute.search(value) and not value.startswith("/"),
                             f"absolute machine path in {name}{location}")
 

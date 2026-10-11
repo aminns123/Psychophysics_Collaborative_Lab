@@ -64,6 +64,8 @@ class MonitorProfile:
             binding = self.display_binding
             if not isinstance(binding, dict) or any(type(binding.get(key)) is not int for key in ("index", "x", "y", "width", "height")):
                 raise ValueError("Display binding needs integer index, position and resolution.")
+            if binding.get("device_id") is not None and not isinstance(binding["device_id"], str):
+                raise ValueError("Display binding device ID must be text.")
             if binding["index"] < 0 or binding["width"] <= 0 or binding["height"] <= 0:
                 raise ValueError("Display binding has invalid index or resolution.")
         if isinstance(self.revision, bool) or not isinstance(self.revision, int) or self.revision < 0:

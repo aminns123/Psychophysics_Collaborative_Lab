@@ -10,6 +10,7 @@ def validate_setup(request, spec, profile):
     participant=validate_participant_id(request.participant_id)
     if request.session_mode not in {'new','reuse'}: raise ValueError('Unknown starting-settings mode.')
     profile.validate()
+    if request.experiment_id != spec.id: raise ValueError('Selected experiment identity differs from request.')
     if not compatible(spec,profile): raise ValueError('This experiment/profile combination has not been qualified.')
     if request.monitor_profile_id!=profile.id: raise ValueError('Selected profile identity differs from request.')
     if request.monitor_profile_hash and request.monitor_profile_hash!=content_hash(profile.to_dict()):
