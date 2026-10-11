@@ -384,9 +384,25 @@ def run_request(
             "profile_uuid": profile.profile_uuid, "profile_revision": profile.revision,
             "runtime_display": "runtime_display.json", "resolved_experiment": "resolved_experiment.json",
             "geometry_status": profile.geometry_status, "timing_status": profile.timing_status,
-            "photon_timing_verified": False})
+            "photon_timing_verified": False,
+            **({"synthetic_clock": {
+                "kind": "deterministic_virtual_utc",
+                "epoch_utc": "2000-01-01T00:00:00+00:00",
+                "source": "synthetic event_time_s",
+                "not_wall_clock": True,
+            }} if simulation is not None else {}),
+        })
         payload["files"]["trial_context"] = "trial_context.json"
-        write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=spec.trial_column_overrides)
+        dictionary_overrides = dict(spec.trial_column_overrides)
+        if simulation is not None:
+            dictionary_overrides["recorded_utc"] = {
+                "meaning": "Deterministic virtual UTC timestamp from the synthetic event clock, NOT when the row was written.",
+                "notes": "Synthetic-only timebase starts 2000-01-01 UTC; never interpret as human acquisition or hardware timing.",
+            }
+            dictionary_overrides["event_time_s"] = {
+                "notes": "Synthetic virtual elapsed seconds, not hardware presentation timing or measured participant latency.",
+            }
+        write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
         convenience("workspace", workspace)
         if simulation is None:
             convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
