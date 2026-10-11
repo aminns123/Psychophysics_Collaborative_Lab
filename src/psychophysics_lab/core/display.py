@@ -1,6 +1,7 @@
 """Lazy Pyglet 1.5 display binding, with a pure resolver for headless tests."""
 from dataclasses import asdict, dataclass
 from typing import Any
+import math
 
 @dataclass(frozen=True)
 class DisplayInfo:
@@ -13,8 +14,13 @@ class DisplayInfo:
     device_id: str | None = None
 
 def screen_info(screen, index):
-    mode=screen.get_mode() if hasattr(screen,'get_mode') else None
+    try:
+        mode=screen.get_mode() if hasattr(screen,'get_mode') else None
+    except (OSError, NotImplementedError):
+        mode = None
     rate=getattr(mode,'rate',None)
+    if rate is not None and (not math.isfinite(float(rate)) or float(rate) <= 0):
+        rate = None
     identity=screen.get_device_name() if hasattr(screen,'get_device_name') else getattr(screen,'device_name',None)
     if isinstance(identity,bytes): identity=identity.decode(errors='replace')
     return DisplayInfo(index,int(screen.x),int(screen.y),int(screen.width),int(screen.height),float(rate) if rate else None,str(identity) if identity else None)

@@ -1,5 +1,6 @@
-"""Future adaptive-method package boundary.
+"""Display-independent adaptive algorithms. Response meaning belongs to experiments."""
+from .staircase import AdaptiveRun, StaircaseConfig, ResponseStreak, Step
+from .registry import AdaptiveAlgorithm, AdaptiveSelection, get_algorithm, register_algorithm
 
-The repaired public-v1 staircase mechanics remain in Events/staircase.py until
-their compatibility layer is fully migrated.
-"""
+__all__ = ["AdaptiveRun", "StaircaseConfig", "ResponseStreak", "Step", "AdaptiveAlgorithm",
+           "AdaptiveSelection", "get_algorithm", "register_algorithm"]

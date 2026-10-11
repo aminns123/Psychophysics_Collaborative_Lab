@@ -7,6 +7,7 @@ import pyglet
 
 import Functions.functionsForUse as funcs
 from Events.adaptive_session import LegacyStaircaseSession
+from psychophysics_lab.experiments.registry import get_experiment
 from Events.stimuliC import Dot_stairCase_centre, Grating_ADM
 from libC import ExpWindow, Params, key, run
 from Events.adaptiveMethods import Trials_read_write_staircase_conditions, Trial_small
@@ -34,6 +35,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         file_response_record,
         max_trials=experiment_params["number_trials"],
         metadata_path=run_directory / "adaptive_session.json",
+        algorithm_id=get_experiment("contrast_sensitivity").adaptive.algorithm_id,
         trial_log_path=run_directory / "trials.tsv",
     )
 

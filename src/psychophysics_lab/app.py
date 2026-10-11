@@ -102,6 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List explicitly registered experiments and exit.",
     )
+    parser.add_argument("--scaffold", metavar="NAME", help="Create stimulus and experiment contributor templates; never overwrites files.")
     return parser
 
 
@@ -114,6 +115,13 @@ def _main(
     repo_root = find_repo_root()
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
+
+    if args.scaffold:
+        from .scaffold import scaffold
+        for path in scaffold(repo_root, args.scaffold):
+            print(path)
+        print("Next: implement the procedure and add its module and stimulus module to src/psychophysics_lab/contributions.py. See docs/RESEARCHER_QUICKSTART.md.")
+        return 0
 
     if args.diagnose:
         return _diagnose(repo_root)

@@ -13,6 +13,34 @@ The current reference experiment is a contrast sensitivity function (CSF)
 experiment. It is an example built with the framework; it is not the definition
 of the framework.
 
+## Researcher-facing development
+
+To create a new stimulus/experiment pair without editing the framework internals:
+
+```powershell
+.venv\\Scripts\\python.exe -m psychophysics_lab --scaffold orientation_task
+```
+
+Implement the generated modules in `src/psychophysics_lab/stimuli/` and
+`src/psychophysics_lab/experiments/`, then register them in
+`src/psychophysics_lab/contributions.py`. The scaffold is deliberately
+incomplete until you implement the actual experimental procedure.
+
+Start with the [researcher quickstart](docs/RESEARCHER_QUICKSTART.md),
+the [adaptive-methods guide](docs/ADAPTIVE_METHODS.md) and the
+[headless simulation guide](docs/SIMULATION_TESTING.md).
+
+Virtual CSF observers can exercise real staircase, recording, run validation
+and threshold-analysis code without a display:
+
+```powershell
+.venv\\Scripts\\python.exe -m simulations --seed 123 --max-trials 400
+```
+
+Synthetic runs are stored only in a separately marked sibling workspace and
+are explicitly labeled **not human acquisition**; virtual timestamps are
+reproducible but do not measure actual presentation or response times.
+
 ## First launch on Windows
 
 1. Clone/download the repository.

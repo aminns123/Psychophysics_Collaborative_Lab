@@ -5,6 +5,8 @@ from typing import Any
 
 from ..config.models import MonitorProfile
 from .spec import ConfigField, ExperimentSpec
+from ..adaptive import AdaptiveSelection
+from .responses import LEFT_RIGHT
 
 LUMINANCE_CHOICES = (19.0, 29.0, 41.0, 49.0, 204.0, 255.0, 300.0, 322.0, 370.0, 403.0, 415.0, 500.0)
 SCREEN_INTENSITY_CHOICES = (0.24, 0.294, 0.34, 0.374, 0.72, 0.8, 0.86, 0.89, 0.95, 0.98, 0.99)
@@ -128,6 +130,10 @@ CSF_SPEC = ExperimentSpec(
             "meaning": "Accepted keyboard key recorded for the current CSF response.",
         },
     },
+    adaptive=AdaptiveSelection("consecutive_up_down",
+        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "reversal_termination", "max_trials"),
+        "garcia_perez_1998", "log10_display_contrast"),
+    response_paradigm=LEFT_RIGHT,
     fields=(
         ConfigField(
             "Max_monitor_Luminance",
@@ -172,10 +178,10 @@ CSF_SPEC = ExperimentSpec(
         ),
         ConfigField("reversal_termination", "Reversals required per staircase", "int", default=10),
         ConfigField("max_trials", "Maximum accepted responses (safety ceiling)", "int", default=30),
-        ConfigField("timeFixate", "Fixation duration (ms)", "int", default=250),
-        ConfigField("timeInterval", "Interval duration (ms)", "int", default=250),
-        ConfigField("timeAB", "Stimulus duration (ms)", "int", default=200),
-        ConfigField("timeT", "Response timeout (ms; 0 = self-paced legacy behaviour)", "int", default=0),
+        ConfigField("timeFixate", "Fixation duration (ms)", "int", default=250, section="Timing (advanced)"),
+        ConfigField("timeInterval", "Interval duration (ms)", "int", default=250, section="Timing (advanced)"),
+        ConfigField("timeAB", "Stimulus duration (ms)", "int", default=200, section="Timing (advanced)"),
+        ConfigField("timeT", "Response timeout (ms; 0 = self-paced legacy behaviour)", "int", default=0, section="Timing (advanced)"),
         ConfigField("starting_probe_intensity", "Starting probe digital intensity", "float", default=1.0),
     ),
     fixed_setup={

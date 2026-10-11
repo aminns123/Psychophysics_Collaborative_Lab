@@ -30,6 +30,7 @@ from ..data.trials import (
     TrialLog,
     write_readable_trial_table,
     write_trial_data_dictionary,
+    trial_dictionary_overrides,
 )
 from ..data.workspace import (
     DATA_LAYOUT_SCHEMA_VERSION,
@@ -125,7 +126,7 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
     each run; data, tooling, tests and local environment files are not sources.
     """
     repo_root = repo_root.resolve()
-    roots = ("src/psychophysics_lab", "Events", "Experiments", "Functions", "Interface")
+    roots = ("src/psychophysics_lab", "Events", "Experiments", "Functions", "Interface", "simulations")
     excluded = {"tests", "test", "__pycache__", "tmp", "temp", "node_modules"}
     paths = []
     for relative_root in roots:
@@ -288,12 +289,19 @@ def _manifest_payload(
 
 def run_request(
     request: SetupRequest, *, repo_root: Path | None = None, data_root: Path | None = None,
+    simulation=None,
 ) -> RunArtifacts:
     """Validate first; allocate a new record; preserve primary and cleanup errors."""
     import random
     root = (repo_root or find_repo_root()).resolve()
     candidate = data_root or (Path(request.data_root).expanduser() if request.data_root else default_data_root(root))
-    data = resolve_data_root(candidate, root)
+    data = resolve_data_root(candidate, root, allow_synthetic=simulation is not None)
+    if simulation is not None:
+        from .synthetic import SimulationRun
+        if not isinstance(simulation, SimulationRun):
+            raise TypeError("Use the dedicated simulations facility for synthetic acquisition.")
+        simulation.validate(data, root, request)
+    data_kind = "synthetic" if simulation is not None else "human"
     config_root(root, data)  # Never mix machine configuration with source/data.
     spec = get_experiment(request.experiment_id)
     profiles = load_monitor_profiles(root)
@@ -319,7 +327,7 @@ def run_request(
     runtime_display_file = run_dir / "runtime_display.json"
     started_utc = datetime.now(timezone.utc).isoformat()
     payload = {"schema_version": 3, "run_uuid": run_uuid, "created_utc": started_utc,
-               "status": "configuring", "participant_id": request.participant_id,
+               "status": "configuring", "data_kind": data_kind, "participant_id": request.participant_id,
                "experiment_id": spec.id, "monitor_profile_id": profile.id}
     primary_error = None
 
@@ -344,6 +352,10 @@ def run_request(
         payload = _manifest_payload(request=request, setup=setup, profile=profile.to_dict(), run_dir=run_dir,
                     data_root=data, repo_root=root, grouping_parts=grouping_parts, run_uuid=run_uuid, status="configuring")
         payload["created_utc"] = started_utc
+        payload["data_kind"] = data_kind
+        if simulation is not None:
+            payload["simulation"] = simulation.metadata
+            atomic_write_json(run_dir / "SYNTHETIC_DATA.json", {"data_kind": "synthetic", **simulation.metadata})
         payload["monitor_profile_sha256"] = content_hash(profile.to_dict())
         registered_sources = {}
         for relative in spec.source_paths:
@@ -352,6 +364,8 @@ def run_request(
                 raise ValueError(f"Registered experiment source is missing or outside the repository: {relative}")
             registered_sources[relative] = _sha256(source)
         payload["registered_source_sha256"] = registered_sources
+        payload["adaptive_algorithm"] = asdict(spec.adaptive) if spec.adaptive else None
+        payload["response_paradigm"] = asdict(spec.response_paradigm) if spec.response_paradigm else None
         payload["random_provenance"] = {"algorithm": "python.random MT19937", "initial_state": random.getstate()}
         payload["trial_schema_version"] = TRIAL_SCHEMA_VERSION
         payload["files"] = {"manifest": "manifest.json", "experiment_config": "experiment_config.json",
@@ -361,21 +375,32 @@ def run_request(
             "adaptive_session": "adaptive_session.json", "legacy_response": "legacy_response.txt", "state_directory": "state/"}
         atomic_write_json(manifest_file, payload)
         atomic_write_json(run_dir / "experiment_config.json", {"schema_version": 2,
-            "request": _portable_request_payload(request), "normalised_experiment_values": values, "legacy_setup": setup})
+            "request": _portable_request_payload(request), "data_kind": data_kind, "normalised_experiment_values": values, "legacy_setup": setup})
         atomic_write_json(run_dir / "monitor_profile.json", profile.to_dict())
         TrialLog(trial_log_file)  # Header remains valid even when no response is accepted.
         atomic_write_json(run_dir / "trial_context.json", {
-            "schema_version": 1, "run_uuid": run_uuid, "trial_schema_version": TRIAL_SCHEMA_VERSION,
+            "schema_version": 1, "data_kind": data_kind, "run_uuid": run_uuid, "trial_schema_version": TRIAL_SCHEMA_VERSION,
             "canonical_trials": "trials.tsv", "applies_to": "all accepted-response rows in this new run",
             "monitor_profile": "monitor_profile.json", "monitor_profile_sha256": content_hash(profile.to_dict()),
             "profile_uuid": profile.profile_uuid, "profile_revision": profile.revision,
             "runtime_display": "runtime_display.json", "resolved_experiment": "resolved_experiment.json",
             "geometry_status": profile.geometry_status, "timing_status": profile.timing_status,
-            "photon_timing_verified": False})
+            "photon_timing_verified": False,
+            **({"synthetic_clock": {
+                "kind": "deterministic_virtual_utc",
+                "epoch_utc": "2000-01-01T00:00:00+00:00",
+                "source": "synthetic event_time_s",
+                "not_wall_clock": True,
+            }} if simulation is not None else {}),
+        })
         payload["files"]["trial_context"] = "trial_context.json"
-        write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=spec.trial_column_overrides)
+        dictionary_overrides = trial_dictionary_overrides(
+            spec.trial_column_overrides, synthetic=simulation is not None
+        )
+        write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
         convenience("workspace", workspace)
-        convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
+        if simulation is None:
+            convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
         convenience("runs_index", update_index)
         with _legacy_runtime_context(root):
             adapter = importlib.import_module(spec.configure_module)
@@ -395,8 +420,14 @@ def run_request(
             payload["status"] = "configured"
             atomic_write_json(manifest_file, payload)
             convenience("workspace", workspace)
-            experiment = importlib.import_module(spec.legacy_module)
-            experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
+            if simulation is not None:
+                simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
+            elif spec.procedure is not None:
+                from ..researcher import RunContext
+                spec.procedure(RunContext(values, profile, spec, run_dir))
+            else:
+                experiment = importlib.import_module(spec.legacy_module)
+                experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
     except BaseException as exc:
         # Preserve interrupts through finalisation without recording success.
         primary_error = exc

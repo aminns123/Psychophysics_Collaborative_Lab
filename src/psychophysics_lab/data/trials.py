@@ -147,6 +147,28 @@ TRIAL_COLUMN_DEFINITIONS: dict[str, TrialColumnDefinition] = {
 
 TRIAL_COLUMNS = tuple(TRIAL_COLUMN_DEFINITIONS)
 
+# Per-run semantics for the isolated virtual-observer pipeline only.
+# Human acquisition retains the ordinary recorded_utc wall-clock definition.
+SYNTHETIC_TRIAL_COLUMN_OVERRIDES = {
+    "recorded_utc": {
+        "meaning": "Deterministic virtual UTC timestamp from the synthetic event clock, NOT when the row was written.",
+        "notes": "Synthetic-only timebase starts 2000-01-01 UTC; never interpret as human acquisition or hardware timing.",
+    },
+    "event_time_s": {
+        "notes": "Synthetic virtual elapsed seconds, not hardware presentation timing or measured participant latency.",
+    },
+}
+
+
+def trial_dictionary_overrides(experiment_overrides, *, synthetic: bool = False):
+    """Resolve the expected run-specific dictionary for writing AND validation."""
+    overrides = {name: dict(fields) for name, fields in (experiment_overrides or {}).items()}
+    if synthetic:
+        for name, fields in SYNTHETIC_TRIAL_COLUMN_OVERRIDES.items():
+            overrides.setdefault(name, {}).update(fields)
+    return overrides
+
+
 
 def _merged_definition(
     column: str,
