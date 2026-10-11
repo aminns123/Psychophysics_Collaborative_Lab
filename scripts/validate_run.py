@@ -20,7 +20,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from psychophysics_lab.data.trials import (  # noqa: E402
-    TRIAL_COLUMNS, TRIAL_COLUMN_DEFINITIONS, TRIAL_SCHEMA_VERSION,
+    TRIAL_COLUMNS, TRIAL_COLUMN_DEFINITIONS, TRIAL_SCHEMA_VERSION, trial_dictionary_overrides,
 )
 from psychophysics_lab.experiments.registry import get_experiment  # noqa: E402
 
@@ -305,11 +305,14 @@ def validate_run(run_directory: Path) -> list[Check]:
                            "logical_type", "units_or_encoding", "meaning", "notes"], "dictionary header differs")
         require([item["column_name"] for item in definitions] == list(TRIAL_COLUMNS), "dictionary columns differ")
         spec = get_experiment(manifest["experiment_id"])
+        expected_overrides = trial_dictionary_overrides(
+            spec.trial_column_overrides, synthetic=manifest.get("data_kind") == "synthetic"
+        )
         for index, item in enumerate(definitions, 1):
             require(item["column_order"] == str(index) and item["trial_schema_version"] == str(TRIAL_SCHEMA_VERSION)
                     and item["experiment_id"] == manifest["experiment_id"], "dictionary identity/order/version differs")
             expected = asdict(TRIAL_COLUMN_DEFINITIONS[item["column_name"]])
-            expected.update(spec.trial_column_overrides.get(item["column_name"], {}))
+            expected.update(expected_overrides.get(item["column_name"], {}))
             require(all(item[key] == value for key, value in expected.items()),
                     f"dictionary definition differs: {item['column_name']}")
 
