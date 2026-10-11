@@ -1,11 +1,32 @@
 """Fail-closed separation between synthetic pipeline runs and human acquisition."""
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import json
+import math
 from pathlib import Path
 from typing import Callable
 
 MARKER = ".psycolab_synthetic.json"
 MARKER_CONTENT = {"schema_version": 1, "data_kind": "synthetic", "human_acquisition_allowed": False}
+
+# Fixed virtual origin for synthetic accepted-response events. Not an acquisition clock.
+SYNTHETIC_CLOCK_EPOCH_UTC = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+
+def synthetic_recorded_utc(event_time_s: float) -> str:
+    """Translate virtual event seconds to stable ISO UTC for synthetic records.
+
+    This helper is opt-in only: the human trial recorder must continue using
+    actual wall-clock timestamps. These values must be labeled synthetic in
+    the manifest, trial context and data dictionary.
+    """
+    if isinstance(event_time_s, bool):
+        raise ValueError("Synthetic event time must be finite and nonnegative.")
+    seconds = float(event_time_s)
+    if not math.isfinite(seconds) or seconds < 0:
+        raise ValueError("Synthetic event time must be finite and nonnegative.")
+    return (SYNTHETIC_CLOCK_EPOCH_UTC + timedelta(seconds=seconds)).isoformat()
+
 
 
 def is_synthetic_path(path: Path) -> bool:
