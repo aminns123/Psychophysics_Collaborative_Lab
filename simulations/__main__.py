@@ -3,7 +3,6 @@ import argparse
 from pathlib import Path
 from .csf import CSFObserver
 from .run import simulate
-from psychophysics_lab.paths import find_repo_root
 
 def main():
     parser = argparse.ArgumentParser(description="SYNTHETIC CSF pipeline simulation; no hardware or participant data")
@@ -12,13 +11,16 @@ def main():
     parser.add_argument("--thresholds", default="0.1", help="Comma-separated observer midpoint thresholds")
     parser.add_argument("--preferred-condition", type=float, default=63.)
     parser.add_argument("--max-trials", type=int, default=400)
-    parser.add_argument("--workspace", type=Path, help="New or marked isolated directory named psycolab_simulations")
+    parser.add_argument("--data-root", type=Path, help="Same external PsyCoLab data repository used for human acquisition")
+    parser.add_argument("--workspace", type=Path, help="Deprecated alias for --data-root")
     args = parser.parse_args()
-    workspace = args.workspace or find_repo_root().parent / "psycolab_simulations"
+    if args.workspace is not None and args.data_root is not None:
+        parser.error("Use --data-root or --workspace, not both.")
+    data_root = args.data_root if args.data_root is not None else args.workspace
     seeds = [int(x) for x in args.seeds.split(",")] if args.seeds else [args.seed]
     for threshold in map(float, args.thresholds.split(",")):
         for seed in seeds:
-            artifacts, analysis = simulate(workspace=workspace, seed=seed,
+            artifacts, analysis = simulate(data_root=data_root, seed=seed,
                 observer=CSFObserver(threshold=threshold, preferred_condition=args.preferred_condition),
                 values={"max_trials": args.max_trials})
             print(f"SYNTHETIC seed={seed} midpoint={threshold}: {artifacts.status}; {artifacts.accepted_trials} responses")
