@@ -25,6 +25,7 @@ class ConfigField:
     minimum: float | None = None
     maximum: float | None = None
     editable: bool = True
+    section: str = "Experiment"
 
     @property
     def target_key(self) -> str:
@@ -84,6 +85,9 @@ class ExperimentSpec:
     configure_module: str = "Interface.config"
     configure_function: str = "run_configure_experiment"
     source_paths: tuple[str, ...] = ()
+    adaptive: Any = None
+    response_paradigm: Any = None
+    procedure: Callable | None = None
 
     def __post_init__(self):
         from pathlib import PurePosixPath
@@ -91,6 +95,10 @@ class ExperimentSpec:
         validate_path_component(self.id, label="experiment")
         if len({item.key for item in self.fields}) != len(self.fields):
             raise ValueError("Experiment fields must have unique keys.")
+        if self.adaptive is not None:
+            self.adaptive.validate({item.key for item in self.fields})
+        if self.procedure is not None and not callable(self.procedure):
+            raise TypeError("Experiment procedure must be callable.")
         for value in self.source_paths:
             path = PurePosixPath(value)
             if path.is_absolute() or ".." in path.parts or "\\" in value or not value.endswith(".py"):

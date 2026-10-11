@@ -1,0 +1,31 @@
+"""Opt-in literature settings, not a universal optimum or a target guarantee.
+
+García-Pérez (1998), Vision Research 38, 1861–1881,
+doi:10.1016/S0042-6989(97)00340-4. Fixed steps in log stimulus strength,
+2AFC with chance 0.5, one-up and one through four-down. See docs/ADAPTIVE_METHODS.md.
+"""
+import math
+
+RATIOS = {1: 0.2845, 2: 0.5488, 3: 0.7393, 4: 0.8415}  # down / up
+NOTICE = ("García-Pérez 1998 fixed log-step 2AFC setting; down/up is a step-size ratio, "
+          "not the response-count ratio. Model-dependent; not a guaranteed target or universal optimum. "
+          "Changing counts never changes your step sizes automatically.")
+
+
+def paired_step(*, known_value, calculate, n_down, n_up, alternatives=2,
+                parameterization="log10_display_contrast") -> float:
+    if type(n_down) is not int or type(n_up) is not int or n_up != 1 or n_down not in RATIOS:
+        raise ValueError("Literature calculation supports only 1-up and 1–4-down; enter steps manually for this rule.")
+    if type(alternatives) is not int or alternatives != 2 or parameterization != "log10_display_contrast":
+        raise ValueError("Unsupported or ambiguous step parameterization: requires 2AFC fixed log10 contrast steps.")
+    if isinstance(known_value, bool):
+        raise ValueError("Step size must be positive and finite.")
+    value = float(known_value)
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError("Step size must be positive and finite.")
+    if calculate not in {"up", "down"}:
+        raise ValueError("Choose up or down as the calculated step.")
+    result = value * RATIOS[n_down] if calculate == "down" else value / RATIOS[n_down]
+    if not math.isfinite(result) or result <= 0:
+        raise ValueError("Calculated step is outside the finite numeric range.")
+    return result

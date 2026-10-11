@@ -259,10 +259,11 @@ def subject_response(trial, args):
     print('probe_choice: ', probe_choice)
     print('subject_response: ', response)
 
-    if probe_choice == response:
-        _beep(1000, duration)
-    else:
-        _beep(300, duration)
+    if getattr(trial, "feedback_enabled", True):
+        if probe_choice == response:
+            _beep(1000, duration)
+        else:
+            _beep(300, duration)
 
     
     # Response state is explicit and independent of the legacy sentinel/history.
@@ -412,7 +413,7 @@ class Trials_read_write_staircase_conditions:
 
         data_conditions = funcs.read_JSON(self.file_experiment_Conditions)
         # Keep condition arrays and identities stable; select only unfinished IDs.
-        new_id = self.adaptive_run.select(random.choice)
+        new_id = self.adaptive_run.select(getattr(self, "choose", random.choice))
         probe_screen_intensity = data_conditions['staircase_intensity_active'][new_id]
 
         state1, state2 = data_conditions['2AFC_choice']
@@ -423,7 +424,8 @@ class Trials_read_write_staircase_conditions:
         elif stimulus_choice_active == state1:
             value_response = LEFT_RESPONSE
 
-        _beep(550, self.T)
+        if getattr(self, "feedback_enabled", True):
+            _beep(550, self.T)
 
         """save updated conditions"""
 

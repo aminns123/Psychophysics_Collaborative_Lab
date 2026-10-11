@@ -229,6 +229,8 @@ def analyse_thresholds(
     summary = {
         "schema_version": 1,
         "analysis": "staircase_threshold_summary",
+        "data_kind": manifest.get("data_kind", "human"),
+        "simulation": manifest.get("simulation"),
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "source_run_relative": source_relative,
         "source_run_uuid": manifest.get("run_uuid"),

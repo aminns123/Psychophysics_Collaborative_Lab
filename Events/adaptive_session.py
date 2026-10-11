@@ -13,6 +13,7 @@ from pathlib import Path
 from Events.adaptiveMethods import record_event
 from Events.display_contrast import normalized_display_contrast
 from Events.staircase import AdaptiveRun, StaircaseConfig
+from psychophysics_lab.adaptive import get_algorithm
 import Functions.functionsForUse as funcs
 from psychophysics_lab.core.lifecycle import request_window_end
 from psychophysics_lab.data.trials import TrialLog
@@ -41,7 +42,14 @@ class LegacyStaircaseSession:
         *,
         metadata_path=None,
         trial_log_path=None,
+        algorithm_id="consecutive_up_down",
+        synthetic=False,
     ):
+        self.synthetic = synthetic
+        algorithm = get_algorithm(algorithm_id)
+        if "legacy_staircase" not in algorithm.capabilities:
+            raise ValueError("This algorithm does not support the legacy CSF adapter.")
+        self.algorithm_id = algorithm_id
         conditions = funcs.read_JSON(conditions_path)
         self.parameters = funcs.read_JSON(parameters_path)
         self.metadata_path = (
@@ -55,7 +63,7 @@ class LegacyStaircaseSession:
             if trial_log_path is not None
             else Path(response_path).parent / "trials.tsv"
         )
-        self.run = AdaptiveRun({
+        self.run = algorithm.factory({
             identity: StaircaseConfig(
                 n_down=self.parameters["n_dw"],
                 n_up=self.parameters["n_up"],
@@ -81,6 +89,8 @@ class LegacyStaircaseSession:
         metadata = self.run.snapshot()
         metadata.update({
             "schema_version": 3,
+            "algorithm_id": self.algorithm_id,
+            "data_kind": "synthetic" if self.synthetic else "human",
             "legacy_parameters": self.parameters,
             "reversal_basis": (
                 "recorded_post_update_screen_intensity; flats ignored; "
@@ -169,7 +179,7 @@ class LegacyStaircaseSession:
             "stimulus_position_px": before["stimulus_position_px"],
             "target_alternative": before["target_alternative"],
             "participant_response": before["participant_response"],
-            "response_key": before["response_key"],
+            "response_key": ("SIMULATED_" if self.synthetic else "") + before["response_key"],
             "correct": int(before["correct"]),
             "presented_display_contrast": before["presented_display_contrast"],
             "presented_screen_intensity": before["presented_screen_intensity"],

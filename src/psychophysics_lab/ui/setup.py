@@ -10,7 +10,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible
 
 from ..analysis.thresholds import analyse_thresholds
 from ..config.models import SetupRequest
@@ -33,12 +33,12 @@ from ..stimuli.geometry import physical_length_for_visual_angle
 
 
 NAV_PAGES = (
-    ("setup", "Setup"),
-    ("experiments", "Experiments"),
+    ("setup", "Run"),
     ("stimuli", "Stimuli"),
+    ("experiments", "Experiments"),
     ("display", "Display"),
     ("data", "Data"),
-    ("help", "Help"),
+    ("help", "Developer"),
 )
 
 
@@ -95,6 +95,9 @@ def _monitor_summary(profile) -> str:
         f"viewing distance {profile.viewing_distance_m:.3f} m",
         f"Resolution: {resolution}",
         f"Calibration: {calibration}",
+        "Physical dimensions and viewing distance: user/reference values; OS detection cannot validate them.",
+        f"Resolution source: {profile.measurement_sources.get('expected_resolution_px', 'unspecified/reference')}; "
+        f"refresh source: {profile.measurement_sources.get('refresh_rate_hz', 'unspecified/reference')}",
     ]
     if notes:
         lines.append(notes)
@@ -141,8 +144,16 @@ def _stimulus_sources(repo_root: Path) -> tuple[Path, ...]:
                  if (repo_root / item.source_path).is_file())
 
 
+class HubNavigation(Horizontal):
+    def on_mount(self):
+        page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
+                "DisplayCheckScreen": "display", "ProfileScreen": "display",
+                "DataScreen": "data", "HelpScreen": "help"}.get(type(self.screen).__name__, "setup")
+        self.query_one("#nav-" + page, Button).variant = "primary"
+
+
 def _nav_bar() -> Horizontal:
-    return Horizontal(
+    return HubNavigation(
         *[Button(label, id=f"nav-{key}") for key, label in NAV_PAGES],
         id="hub-nav",
     )
@@ -597,6 +608,7 @@ class DataScreen(HubPage):
                 f"[b]{run.relative_to(self.app.data_root)}[/b]\n"
                 f"Participant: {manifest.get('participant_id', 'n/a')}\n"
                 f"Experiment: {manifest.get('experiment_id', 'n/a')}\n"
+                f"Data kind: {manifest.get('data_kind', 'human')}\n"
                 f"Display: {manifest.get('monitor_profile_id', 'n/a')}\n"
                 f"Status: {manifest.get('status', 'n/a')}\n"
                 f"Accepted responses: {manifest.get('accepted_trials', 'n/a')}\n"
@@ -670,8 +682,7 @@ class HelpScreen(HubPage):
                 "are combined. Add an ExperimentSpec and register it explicitly in "
                 "src/psychophysics_lab/experiments/registry.py.\n\n"
                 "[b]Adaptive methods[/b] — how parameters change from accepted responses. "
-                "Current CSF staircase mechanics remain in the compatibility layer while that "
-                "boundary is migrated deliberately.\n\n"
+                "Reusable algorithms live in adaptive/. Experiments declare the method and its controls.\n\n"
                 "[b]Framework infrastructure[/b] — configuration, display profiles, lifecycle, "
                 "recording and provenance.\n\n"
                 "[b]Data rule[/b] — participant/acquisition data must stay outside this Git "
@@ -683,15 +694,20 @@ class HelpScreen(HubPage):
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
+            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Synthetic pipeline testing[/b]\nRun: python -m simulations --seed 123\nNo physical display or human participant is used. See simulations/README.md.", classes="info-card")
+            yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id == "edit-contributions":
+            event.stop()
+            self.app.inspect_source(self.app.repo_root / "src/psychophysics_lab/contributions.py")
         if event.button.id == "view-extension-guide":
             event.stop()
-            path = self.app.repo_root / "docs" / "EXTENDING_PSYCOLAB.md"
+            path = self.app.repo_root / "docs" / "RESEARCHER_QUICKSTART.md"
             self.app.push_screen(CodeViewScreen(title="Extending PsyCoLab", path=path))
 
 
@@ -730,29 +746,69 @@ class ExperimentConfigScreen(Screen):
                 + _monitor_summary(profile),
                 id="experiment-description",
             )
+            groups = {}
+            controls = set(self.experiment.adaptive.controls) if self.experiment.adaptive else set()
             for field in self.experiment.fields:
-                yield Label(field.label)
-                value = self.defaults.get(field.key, field.default)
-                widget_id = _field_widget_id(field)
-                if field.kind == "choice":
-                    options = [(str(choice), choice) for choice in field.choices]
-                    kwargs: dict[str, Any] = {"id": widget_id, "allow_blank": field.default is None}
-                    if value is not None:
-                        kwargs["value"] = value
-                    yield Select(options, disabled=not field.editable, **kwargs)
-                else:
-                    yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable)
-                if field.help_text:
-                    yield Static(field.help_text, classes="field-help")
-
-            yield Label("Saved local preset")
-            presets = load_presets(self.app.local_config_root, self.experiment.id)
-            yield Select([(name, name) for name in presets], id="config-preset")
-            yield Button("Load preset", id="load-preset")
-            yield Input(placeholder="New preset name", id="preset-name")
-            yield Button("Save validated preset", id="save-preset")
+                group = "Adaptive settings" if field.key in controls else field.section
+                groups.setdefault(group, []).append(field)
+            for group, fields in groups.items():
+                with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast"}):
+                    if group == "Adaptive settings":
+                        yield Static("The experiment declares its adaptive method; these settings control this run.")
+                    for field in fields:
+                        yield from self._compose_field(field)
+                    if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
+                        from ..adaptive.steps import NOTICE
+                        yield Static(NOTICE, classes="field-help")
+                        yield Static("", id="step-status", markup=False)
+            with Collapsible(title="Local presets", collapsed=True):
+                yield Label("Saved local preset")
+                presets = load_presets(self.app.local_config_root, self.experiment.id)
+                yield Select([(name, name) for name in presets], id="config-preset")
+                yield Button("Load preset", id="load-preset")
+                yield Input(placeholder="New preset name", id="preset-name")
+                yield Button("Save validated preset", id="save-preset")
             yield Static("", id="config-status")
         yield Footer()
+
+    def _compose_field(self, field):
+        yield Label(field.label)
+        value = self.defaults.get(field.key, field.default)
+        widget_id = _field_widget_id(field)
+        if field.kind == "choice":
+            options = [(str(choice), choice) for choice in field.choices]
+            kwargs = {"id": widget_id, "allow_blank": field.default is None}
+            if value is not None:
+                kwargs["value"] = value
+            yield Select(options, disabled=not field.editable, **kwargs)
+        else:
+            with Horizontal(classes="field-row"):
+                yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable)
+                if self.experiment.adaptive and self.experiment.adaptive.step_calculator:
+                    if field.key == "logUNIT_UP":
+                        yield Button("From down", id="calculate-up", disabled=not field.editable)
+                    elif field.key == "logUNIT_DW":
+                        yield Button("From up", id="calculate-down", disabled=not field.editable)
+        if field.help_text:
+            yield Static(field.help_text, classes="field-help")
+
+    def _calculate_step(self, direction):
+        from ..adaptive.steps import paired_step
+        fields = {field.key: field for field in self.experiment.fields}
+        def value(key):
+            return fields[key].coerce(self.query_one("#" + _field_widget_id(fields[key]), Input).value)
+        selection = self.experiment.adaptive
+        target = "logUNIT_UP" if direction == "up" else "logUNIT_DW"
+        known = "logUNIT_DW" if direction == "up" else "logUNIT_UP"
+        if not fields[target].editable:
+            raise ValueError("This experiment fixes the requested step size.")
+        result = paired_step(known_value=value(known), calculate=direction,
+            n_down=value("n_down"), n_up=value("n_up"),
+            alternatives=len(self.experiment.response_paradigm.alternatives) if self.experiment.response_paradigm else None,
+            parameterization=selection.step_parameterization)
+        self.query_one("#" + _field_widget_id(fields[target]), Input).value = repr(result)
+        self.remember_draft()
+        return f"Calculated {direction} = {result:.8g} log10 units. Review this opt-in setting before starting."
 
     def remember_draft(self) -> None:
         raw = {}
@@ -790,6 +846,14 @@ class ExperimentConfigScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"calculate-up", "calculate-down"}:
+            event.stop()
+            try:
+                message = self._calculate_step(event.button.id.removeprefix("calculate-"))
+            except (ValueError, TypeError, KeyError) as exc:
+                message = str(exc)
+            self.query_one("#step-status", Static).update(message)
             return
         if event.button.id in {"save-preset", "load-preset"}:
             event.stop()
@@ -949,6 +1013,10 @@ class PsyCoLabSetupApp(App):
     }
     Label { margin-top: 1; }
     Input, Select { width: 100%; }
+    .field-row { height: 3; width: 100%; }
+    .field-row Input { width: 1fr; }
+    .field-row Button { width: 13; min-width: 0; margin: 0; }
+    Collapsible { padding: 0; margin: 0 0 1 0; }
     .field-help { color: $text-muted; margin-bottom: 1; }
     .info-card { border: solid $surface-lighten-2; padding: 1; margin-top: 1; margin-bottom: 1; }
     .section-title { margin-top: 2; }

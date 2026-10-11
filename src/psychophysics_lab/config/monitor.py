@@ -59,6 +59,7 @@ def _profile_from_dict(data: dict) -> MonitorProfile:
         calibration_date=str(data.get("calibration_date", "")),
         geometry_status=str(data.get("geometry_status", "unverified")),
         timing_status=str(data.get("timing_status", "unverified")),
+        measurement_sources=data.get("measurement_sources", {}),
     )
     profile.validate()
     return profile

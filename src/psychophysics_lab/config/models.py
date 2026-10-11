@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 import math
 from ..data.identifiers import validate_path_component
@@ -44,9 +44,16 @@ class MonitorProfile:
     calibration_date: str = ""
     geometry_status: str = "unverified"
     timing_status: str = "unverified"
+    measurement_sources: dict[str, str] = field(default_factory=dict)
 
     def validate(self) -> None:
         validate_path_component(self.id, label="monitor profile")
+        allowed_sources = {"manual", "os_mode", "reference", "unspecified"}
+        allowed_fields = {"physical_width_m", "physical_height_m", "viewing_distance_m", "refresh_rate_hz", "expected_resolution_px"}
+        if not isinstance(self.measurement_sources, dict) or any(k not in allowed_fields or v not in allowed_sources for k, v in self.measurement_sources.items()):
+            raise ValueError("Unknown display measurement source.")
+        if any(self.measurement_sources.get(k) == "os_mode" for k in ("physical_width_m", "physical_height_m", "viewing_distance_m")):
+            raise ValueError("Physical dimensions and viewing distance cannot be verified from OS mode.")
         for name in ("physical_width_m", "physical_height_m", "viewing_distance_m", "refresh_rate_hz", "pyglet_wakeup_rate_hz"):
             value = getattr(self, name)
             if isinstance(value, bool) or not math.isfinite(value) or value <= 0:

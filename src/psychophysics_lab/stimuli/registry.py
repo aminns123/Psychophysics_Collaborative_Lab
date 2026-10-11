@@ -22,6 +22,8 @@ def register_stimulus(spec: StimulusSpec) -> None:
     _REGISTRY[spec.id] = spec
 
 def list_stimuli() -> tuple[StimulusSpec, ...]:
+    from psychophysics_lab.experiments.contributions import load_contributions
+    load_contributions()
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
 
 register_stimulus(StimulusSpec("geometry_bar", "Geometry bar", "Physical and angular geometry diagnostic.", "src/psychophysics_lab/stimuli/geometry.py"))

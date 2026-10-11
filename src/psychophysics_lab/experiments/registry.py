@@ -9,10 +9,14 @@ _REGISTRY: dict[str, ExperimentSpec] = {
 
 
 def list_experiments() -> tuple[ExperimentSpec, ...]:
+    from psychophysics_lab.experiments.contributions import load_contributions
+    load_contributions()
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
 
 
 def get_experiment(experiment_id: str) -> ExperimentSpec:
+    from psychophysics_lab.experiments.contributions import load_contributions
+    load_contributions()
     try:
         return _REGISTRY[experiment_id]
     except KeyError as exc:

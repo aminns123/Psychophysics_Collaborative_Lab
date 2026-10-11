@@ -52,7 +52,7 @@ def default_data_root(repo_root: Path | None = None) -> Path:
     return root.parent / "local_psychophysics_data"
 
 
-def resolve_data_root(value: str | Path, repo_root: Path) -> Path:
+def resolve_data_root(value: str | Path, repo_root: Path, *, allow_synthetic: bool = False) -> Path:
     """Resolve a TUI-entered data directory without placing it inside the repo."""
     raw = os.path.expandvars(str(value).strip())
     if not raw:
@@ -62,6 +62,10 @@ def resolve_data_root(value: str | Path, repo_root: Path) -> Path:
         path = repo_root.parent / path
     path = path.resolve()
 
+    if not allow_synthetic:
+        from .core.synthetic import is_synthetic_path
+        if is_synthetic_path(path) or (path.exists() and any(path.rglob(".psycolab_synthetic.json"))):
+            raise ValueError("Human acquisition cannot use a synthetic test workspace or its parent.")
     repo = repo_root.resolve()
     if path == repo or path.is_relative_to(repo) or repo.is_relative_to(path):
         raise ValueError(
