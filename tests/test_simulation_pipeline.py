@@ -7,7 +7,7 @@ import random
 import pytest
 from simulations.csf import CSFObserver
 from simulations.run import simulate
-from psychophysics_lab.core.synthetic import simulation_workspace, SimulationRun
+from psychophysics_lab.core.synthetic import simulation_workspace, SimulationRun, synthetic_recorded_utc
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.config.local import config_root
@@ -38,6 +38,10 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
         assert json.loads((a.run_directory/name).read_text())["data_kind"] == "synthetic"
     rows=list(csv.DictReader(a.trial_log_file.open(),delimiter="\t"))
     assert rows and all(row["response_key"].startswith("SIMULATED_") for row in rows)
+    assert rows[0]["recorded_utc"] == "2000-01-01T00:00:00+00:00"
+    assert all(row["recorded_utc"] == synthetic_recorded_utc(float(row["event_time_s"])) for row in rows)
+    assert json.loads((a.run_directory / "trial_context.json").read_text())["synthetic_clock"]["not_wall_clock"]
+    assert "Deterministic virtual UTC" in (a.run_directory / "trial_data_dictionary.tsv").read_text()
     assert json.loads(analysis.summary_json.read_text())["data_kind"] == "synthetic"
     assert not (config_root(ROOT)/"preferences.json").exists()
     assert all(path.is_relative_to(workspace) for path in (a.run_directory,analysis.output_directory))
@@ -107,3 +111,23 @@ def test_simulator_failure_stays_synthetic_and_finalises(tmp_path,monkeypatch):
     manifest=json.loads(next(workspace.rglob("manifest.json")).read_text())
     assert manifest["data_kind"] == "synthetic" and manifest["status"] == "error"
     assert not (config_root(ROOT)/"preferences.json").exists()
+
+
+@pytest.mark.parametrize("value", [-1, True, float("nan"), float("inf"), -float("inf")])
+def test_synthetic_clock_rejects_nonfinite_or_negative_event_time(value):
+    with pytest.raises(ValueError):
+        synthetic_recorded_utc(value)
+
+
+def test_synthetic_clock_fractional_event_time_and_human_fallback(tmp_path):
+    from datetime import datetime, timezone
+    from psychophysics_lab.data.trials import TrialLog
+    assert synthetic_recorded_utc(0) == "2000-01-01T00:00:00+00:00"
+    assert synthetic_recorded_utc(1.25) == "2000-01-01T00:00:01.250000+00:00"
+    human_log = tmp_path / "human.tsv"
+    earliest = datetime.now(timezone.utc)
+    TrialLog(human_log).append({"trial_index": 1, "response_key": "LEFT"})
+    latest = datetime.now(timezone.utc)
+    with human_log.open(newline="", encoding="utf-8") as handle:
+        human_row = next(csv.DictReader(handle, delimiter="\\t"))
+    assert earliest <= datetime.fromisoformat(human_row["recorded_utc"]) <= latest
