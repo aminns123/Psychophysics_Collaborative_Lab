@@ -66,6 +66,11 @@ def resolve_data_root(value: str | Path, repo_root: Path, *, allow_synthetic: bo
         from .core.synthetic import is_synthetic_path
         if is_synthetic_path(path):
             raise ValueError("Human acquisition cannot use a legacy marked synthetic-only workspace.")
+        # A virtual participant folder cannot itself be selected as a new human
+        # data root. Its shared *parent* remains available to both run types.
+        if any((folder / ".psycolab_virtual_participant.json").exists()
+               for folder in (path, *path.parents)):
+            raise ValueError("A synthetic participant folder cannot be used as a human data root.")
     repo = repo_root.resolve()
     if path == repo or path.is_relative_to(repo) or repo.is_relative_to(path):
         raise ValueError(
