@@ -129,5 +129,5 @@ def test_synthetic_clock_fractional_event_time_and_human_fallback(tmp_path):
     TrialLog(human_log).append({"trial_index": 1, "response_key": "LEFT"})
     latest = datetime.now(timezone.utc)
     with human_log.open(newline="", encoding="utf-8") as handle:
-        human_row = next(csv.DictReader(handle, delimiter="\\t"))
+        human_row = next(csv.DictReader(handle, delimiter="\t"))
     assert earliest <= datetime.fromisoformat(human_row["recorded_utc"]) <= latest
