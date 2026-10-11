@@ -170,7 +170,7 @@ class LegacyStaircaseSession:
         )
         state = self.run.states[staircase_id]
 
-        self.trial_log.append({
+        trial_row = {
             "trial_index": self.run.total_trials,
             "event_time_s": event_time,
             "staircase_id": staircase_id,
@@ -190,7 +190,12 @@ class LegacyStaircaseSession:
             "next_screen_intensity": next_intensity,
             "staircase_complete": int(state.complete),
             "run_status": self.run.status,
-        })
+        }
+        if self.synthetic:
+            # Virtual acquisition time, not a wall-clock measurement.
+            from psychophysics_lab.core.synthetic import synthetic_recorded_utc
+            trial_row["recorded_utc"] = synthetic_recorded_utc(event_time)
+        self.trial_log.append(trial_row)
 
     def logger(self, window):
         def log(event, time, trial, args):
