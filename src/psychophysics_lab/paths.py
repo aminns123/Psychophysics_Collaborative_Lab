@@ -64,8 +64,8 @@ def resolve_data_root(value: str | Path, repo_root: Path, *, allow_synthetic: bo
 
     if not allow_synthetic:
         from .core.synthetic import is_synthetic_path
-        if is_synthetic_path(path) or (path.exists() and any(path.rglob(".psycolab_synthetic.json"))):
-            raise ValueError("Human acquisition cannot use a synthetic test workspace or its parent.")
+        if is_synthetic_path(path):
+            raise ValueError("Human acquisition cannot use a legacy marked synthetic-only workspace.")
     repo = repo_root.resolve()
     if path == repo or path.is_relative_to(repo) or repo.is_relative_to(path):
         raise ValueError(
