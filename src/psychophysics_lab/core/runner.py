@@ -30,6 +30,7 @@ from ..data.trials import (
     TrialLog,
     write_readable_trial_table,
     write_trial_data_dictionary,
+    trial_dictionary_overrides,
 )
 from ..data.workspace import (
     DATA_LAYOUT_SCHEMA_VERSION,
@@ -393,15 +394,9 @@ def run_request(
             }} if simulation is not None else {}),
         })
         payload["files"]["trial_context"] = "trial_context.json"
-        dictionary_overrides = dict(spec.trial_column_overrides)
-        if simulation is not None:
-            dictionary_overrides["recorded_utc"] = {
-                "meaning": "Deterministic virtual UTC timestamp from the synthetic event clock, NOT when the row was written.",
-                "notes": "Synthetic-only timebase starts 2000-01-01 UTC; never interpret as human acquisition or hardware timing.",
-            }
-            dictionary_overrides["event_time_s"] = {
-                "notes": "Synthetic virtual elapsed seconds, not hardware presentation timing or measured participant latency.",
-            }
+        dictionary_overrides = trial_dictionary_overrides(
+            spec.trial_column_overrides, synthetic=simulation is not None
+        )
         write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
         convenience("workspace", workspace)
         if simulation is None:
