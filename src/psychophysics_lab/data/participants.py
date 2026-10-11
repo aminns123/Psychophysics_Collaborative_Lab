@@ -28,6 +28,9 @@ def list_participants(data_root: Path) -> tuple[str, ...]:
     for path in data_root.iterdir():
         if not path.is_dir() or path.is_symlink():
             continue
+        # Virtual observers share the data root but are not selectable as human participants.
+        if path.name.lower().startswith("synthetic_") or (path / ".psycolab_virtual_participant.json").exists():
+            continue
         try:
             valid = validate_participant_id(path.name)
         except ValueError:
