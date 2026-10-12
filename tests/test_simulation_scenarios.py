@@ -150,3 +150,42 @@ def test_simulation_scaffold_is_only_two_files_and_never_overwrites(tmp_path):
     for name in ("../escape", "class", "SomeName", "invalid-name", "", "a/b"):
         with pytest.raises(ValueError):
             scaffold_simulation(tmp_path, name)
+
+
+def test_scientific_checks_can_fail_without_corrupting_pipeline(tmp_path, monkeypatch):
+    from simulations.scenarios import registry
+    monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
+    original = get_scenario("contrast_sensitivity", "csf_short_censored")
+    def experiment_rejects(observer, records):
+        return {"checks": [{"name": "experiment-owned recovery requirement",
+                            "passed": False, "detail": "Deliberately failed by the test"}]}
+    monkeypatch.setitem(
+        registry._REGISTRY, ("contrast_sensitivity", "csf_short_censored"),
+        replace(original, evaluate=experiment_rejects),
+    )
+    result = run_scenario(experiment_id="contrast_sensitivity",
+                          scenario_id="csf_short_censored",
+                          data_root=tmp_path / "local_psychophysics_data", repo_root=ROOT)
+    assert result.passed is False
+    assert any(check["name"] == "experiment-owned recovery requirement" and not check["passed"]
+               for check in result.checks)
+    saved = json.loads(result.report_file.read_text())
+    assert saved["passed"] is False
+    assert saved["runs"][0]["relative_run_directory"].startswith("synthetic_")
+
+
+def test_shifted_preference_runs_multiple_seeds_and_reports_true_midpoints(tmp_path):
+    result = run_scenario(experiment_id="contrast_sensitivity",
+                          scenario_id="csf_shifted_preference",
+                          data_root=tmp_path / "local_psychophysics_data", repo_root=ROOT)
+    assert result.passed, [entry for entry in result.checks if not entry["passed"]]
+    assert [run.seed for run in result.runs] == [11, 12]
+    report = json.loads(result.report_file.read_text())
+    assert report["observer_parameters"]["preferred_condition"] == 252.0
+    assert len(report["experiment_evaluation"]["runs"]) == 2
+    for run in report["experiment_evaluation"]["runs"]:
+        assert run["model_preferred_condition"] == 252.0
+        midpoints = {item["condition_legacy_units"]: item["model_midpoint_contrast"]
+                     for item in run["conditions"]}
+        if 63.0 in midpoints and 252.0 in midpoints:
+            assert midpoints[252.0] < midpoints[63.0]
