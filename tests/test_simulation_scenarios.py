@@ -83,7 +83,7 @@ def test_csf_model_comparison_reports_bias_without_fake_pass_criteria():
     evaluation = evaluate_csf(observer, observations)
     result = evaluation["runs"][0]
     assert result["conditions"][0]["model_midpoint_contrast"] == pytest.approx(.1)
-    assert result["conditions"][1]["model_midpoint_contrast"] == pytest.approx(.1 * 2**0) if False else result["conditions"][1]["model_midpoint_contrast"] > .1
+    assert result["conditions"][1]["model_midpoint_contrast"] > .1
     assert result["sampled_preference_direction_matches"] is True
     assert "not a strict numerical recovery guarantee" in evaluation["comparison_interpretation"]
 
