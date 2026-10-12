@@ -89,7 +89,7 @@ def test_staircase_instance_count_is_registered_and_validated_for_both_modes():
     from simulations.csf import DEFAULT_VALUES
     assert spec.normalise_values(dict(DEFAULT_VALUES, staircases_per_condition=4))["staircases_per_condition"] == 4
     for number in (0, 25):
-        with pytest.raises(ValueError, match="Staircases per condition"):
+        with pytest.raises(ValueError, match="outside its permitted range"):
             spec.normalise_values(dict(DEFAULT_VALUES, staircases_per_condition=number))
 
 
@@ -112,13 +112,15 @@ def test_human_finalisation_generates_staircases_from_actual_canonical_records(t
                 "reversal": int(trial_index == 3), "correct": int(correct),
             })
 
+    from simulations.csf import DEFAULT_VALUES
+
     # Emulate a human event source WITHOUT importing physical Pyglet/GLU.
     legacy = ModuleType("Experiments.contrast_sensitivity_function")
     legacy.run_experiment = fake_human_study
     monkeypatch.setitem(sys.modules, "Experiments.contrast_sensitivity_function", legacy)
     artifacts = run_request(
         SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display",
-                     {"max_trials": 10}), repo_root=ROOT, data_root=root,
+                     dict(DEFAULT_VALUES, max_trials=10)), repo_root=ROOT, data_root=root,
     )
     assert artifacts.accepted_trials == 3
     assert (artifacts.run_directory / "trials.tsv").is_file()
