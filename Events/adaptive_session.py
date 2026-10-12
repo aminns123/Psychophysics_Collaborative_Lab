@@ -68,6 +68,7 @@ class LegacyStaircaseSession:
                 n_down=self.parameters["n_dw"],
                 n_up=self.parameters["n_up"],
                 reversal_limit=conditions["reversal_termination"][identity],
+                initial_one_down_limit=int(self.parameters.get("initial_one_down_limit", 0)),
             )
             for identity in conditions["staircase_Identities"]
         }, max_trials)
@@ -98,6 +99,11 @@ class LegacyStaircaseSession:
             ),
             "canonical_trial_log": self._portable_trial_log_reference(),
             "path_policy": "canonical file references are relative to adaptive_session.json",
+            "initial_one_down_semantics": (
+                "Independent per staircase; 1-down until first incorrect response or "
+                "configured N accepted responses, whichever comes first. The first "
+                "incorrect response is processed using configured n-up."
+            ),
             "canonical_trial_semantics": (
                 "presented_* is the stimulus state used for the accepted response; "
                 "next_* is the post-response staircase state for a subsequent presentation"
@@ -132,21 +138,17 @@ class LegacyStaircaseSession:
         state = self.run.states[staircase_id]
         response = _response_value(args[0])
         target = int(conditions["probe_Alternative_Choice"][staircase_id])
-        config = self.run.configurations[staircase_id]
-        if target == response:
-            expected_step = (
-                "down" if state.streak.correct + 1 == config.n_down else "hold"
-            )
-        else:
-            expected_step = (
-                "up" if state.streak.incorrect + 1 == config.n_up else "hold"
-            )
+        from psychophysics_lab.adaptive.staircase import Step
+        decision = self.run.expected_step(staircase_id, target == response)
+        expected_step = {Step.DOWN: "down", Step.UP: "up", Step.HOLD: "hold"}[decision]
+        introductory = self.run.initial_one_down_active(staircase_id)
 
         return {
             "staircase_id": staircase_id,
             "staircase_trial_before": state.trial_count,
             "reversal_before": state.reversal_count,
             "expected_step": expected_step,
+            "initial_one_down_active_before": introductory,
             "stimulus_condition": conditions["condition_list"][staircase_id],
             "stimulus_position_px": conditions.get("stimulus_choice_active", [""])[0],
             "target_alternative": target,
