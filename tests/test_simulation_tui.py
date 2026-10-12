@@ -12,7 +12,7 @@ from psychophysics_lab.core.simulation_request import (
     SimulationLaunchRequest, parse_parameter, parse_seeds,
 )
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp
-from psychophysics_lab.ui.simulations import SimulationsScreen, SimulationReviewScreen
+from psychophysics_lab.ui.simulations import SimulationsScreen, SimulationReviewScreen, AdaptiveAlgorithmScreen
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -169,47 +169,107 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
 
 
 @pytest.mark.parametrize("size", [(80, 24), (100, 30)])
-def test_adaptive_rules_are_prominent_editable_and_reach_review(tmp_path, size):
-    """Regression: Simulate must expose the n-down/n-up controls like Run."""
+def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, size):
+    """Button must open a separate editor, not silently scroll an already-open panel."""
     from psychophysics_lab.experiments.registry import get_experiment
+
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
+        data_root = tmp_path / "local_psychophysics_data"
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
         async with app.run_test(size=size) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await pilot.pause()
             screen = app.screen
+            assert isinstance(screen, SimulationsScreen)
             index, selected = screen._current()
-            adaptive = screen.query_one(f"#sim-adaptive-{index}", Collapsible)
-            assert adaptive.collapsed is False
-            assert "n-down/n-up" in adaptive.title
-            fields = {f.key: (n, f) for n, f in enumerate(get_experiment(selected.experiment_id).fields)}
-            def control(key):
-                n, f = fields[key]
-                return screen.query_one(f"#sim-experiment-value-{index}-{n}", Input)
+            fields = {f.key: n for n, f in enumerate(get_experiment(selected.experiment_id).fields)}
+            def source(key):
+                return screen.query_one(f"#sim-experiment-value-{index}-{fields[key]}", Input)
 
-            assert not control("n_down").disabled
-            assert not control("n_up").disabled
-            assert not control("logUNIT_UP").disabled
-            assert not control("logUNIT_DW").disabled
+            assert screen.query_one("#sim-edit-adaptive", Button).label.plain == "Adaptive algorithm"
             screen.query_one("#sim-edit-adaptive", Button).press()
             await pilot.pause()
-            assert adaptive.collapsed is False
+            editor = app.screen
+            assert isinstance(editor, AdaptiveAlgorithmScreen)
+            assert "consecutive_up_down" in str(editor.query_one("#adaptive-editor-body").render())
 
-            control("n_down").value = "3"
-            control("n_up").value = "1"
-            control("logUNIT_UP").value = "0.22"
-            control("logUNIT_DW").value = "0.16"
-            control("reversal_termination").value = "14"
-            control("max_trials").value = "250"
+            def edit(key):
+                return editor.query_one(f"#adaptive-value-{fields[key]}", Input)
+
+            for key in ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW",
+                        "reversal_termination", "max_trials"):
+                assert not edit(key).disabled
+            edit("n_down").value = "3"
+            edit("n_up").value = "1"
+            edit("logUNIT_UP").value = "0.22"
+            edit("logUNIT_DW").value = "0.16"
+            edit("reversal_termination").value = "14"
+            edit("max_trials").value = "250"
+            editor.query_one("#adaptive-apply", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, SimulationsScreen)
+            assert source("n_down").value == "3"
+            assert source("logUNIT_DW").value == "0.16"
+
             screen.query_one("#sim-review", Button).press()
             await pilot.pause()
             assert isinstance(app.screen, SimulationReviewScreen)
             values = app.screen.request.experiment_values
             assert values["n_down"] == 3
             assert values["n_up"] == 1
-            assert values["logUNIT_UP"] == pytest.approx(0.22)
-            assert values["logUNIT_DW"] == pytest.approx(0.16)
+            assert values["logUNIT_UP"] == pytest.approx(.22)
+            assert values["logUNIT_DW"] == pytest.approx(.16)
             assert values["reversal_termination"] == 14
             assert values["max_trials"] == 250
-            assert not (tmp_path / "local_psychophysics_data").exists()
+            assert not data_root.exists()  # Editing never creates actual data.
+    asyncio.run(scenario())
+
+
+def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
+    from psychophysics_lab.experiments.registry import get_experiment
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
+        async with app.run_test(size=(80, 24)) as pilot:
+            app.query_one("#nav-simulations", Button).press()
+            await pilot.pause()
+            parent = app.screen
+            index, current = parent._current()
+            keys = {field.key: n for n, field in enumerate(get_experiment(current.experiment_id).fields)}
+            def source(key):
+                return parent.query_one(f"#sim-experiment-value-{index}-{keys[key]}", Input)
+
+            old_n_down = source("n_down").value
+            parent.query_one("#sim-edit-adaptive", Button).press()
+            await pilot.pause()
+            editor = app.screen
+            assert isinstance(editor, AdaptiveAlgorithmScreen)
+            editor.query_one(f"#adaptive-value-{keys['n_down']}", Input).value = "3"
+            editor.query_one("#adaptive-cancel", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, SimulationsScreen)
+            assert source("n_down").value == old_n_down
+
+            parent.query_one("#sim-edit-adaptive", Button).press()
+            await pilot.pause()
+            editor = app.screen
+            n_down = editor.query_one(f"#adaptive-value-{keys['n_down']}", Input)
+            n_down.value = "0"
+            editor.query_one("#adaptive-apply", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, AdaptiveAlgorithmScreen)
+            assert "n-down" in str(editor.query_one("#adaptive-editor-status", Static).render())
+            assert source("n_down").value == old_n_down
+
+            n_down.value = "3"
+            editor.query_one(f"#adaptive-value-{keys['logUNIT_UP']}", Input).value = "0.4"
+            editor.query_one("#adaptive-calculate-down", Button).press()
+            await pilot.pause()
+            expected = .4 * .7393
+            calculated = editor.query_one(f"#adaptive-value-{keys['logUNIT_DW']}", Input)
+            assert float(calculated.value) == pytest.approx(expected)
+            editor.query_one("#adaptive-apply", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, SimulationsScreen)
+            assert float(source("logUNIT_DW").value) == pytest.approx(expected)
     asyncio.run(scenario())
