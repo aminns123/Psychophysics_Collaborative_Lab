@@ -330,7 +330,7 @@ class StimuliScreen(HubPage):
 
 
 class DisplayCheckScreen(HubPage):
-    page_title = "Display Geometry Check"
+    page_title = "Display Calibration"
 
     def compose(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
@@ -351,9 +351,22 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Launch display test", id="launch-geometry", variant="success")
         with VerticalScroll(classes="page-body"):
             yield Static(
-                "[b]Display Geometry Check[/b]\n"
-                "Choose size, position, spatial frequency or temporal modulation. Diagnostics are "
-                "saved with local display configuration; laboratory verification remains necessary."
+                "[b]Display calibration — measure before using cycles/degree[/b]\n"
+                "1. Select Edit / copy display profile. Bind the actual monitor; "
+                "enter measured active width/height and eye-to-screen distance, "
+                "and use detected/verified fullscreen pixel resolution.\n"
+                "2. Run a size/ruler check and a spatial-frequency diagnostic. "
+                "Record a physical ruler measurement; confirm the pixel grid and viewing setup.\n"
+                "3. Return to Experiment to enter frequencies in cycles/degree.\n"
+                "Display geometry does NOT measure screen luminance, gamma or photon onset. "
+                "Those need separate photometric/temporal instruments.",
+                classes="info-card",
+            )
+            yield Static("", id="spatial-calibration-summary", classes="info-card")
+            yield Static(
+                "Diagnostic settings below apply to the selected monitor. The physical "
+                "size and distance are manually measured; OS screen dimensions alone "
+                "are insufficient for geometric calibration."
             )
             yield Label("Display profile")
             yield Select(profile_options, value=last_profile, allow_blank=False, id="geometry-monitor")
@@ -453,6 +466,27 @@ class DisplayCheckScreen(HubPage):
                 if request.test_kind.startswith("temporal_"):
                     details += "\n" + json.dumps(temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind), indent=2)
             self.query_one("#geometry-preview", Static).update(_monitor_summary(profile) + "\n\n" + details)
+            from ..stimuli.spatial_calibration import resolve_spatial_geometry
+            if resolution is not None:
+                calibration = resolve_spatial_geometry(profile, resolution)
+                self.query_one("#spatial-calibration-summary", Static).update(
+                    "[b]Geometric frequency calibration (gaze centre)[/b]\n"
+                    f"Physical pixel pitch: X={calibration.pixel_pitch_m[0] * 1000:.4f} mm, "
+                    f"Y={calibration.pixel_pitch_m[1] * 1000:.4f} mm\n"
+                    f"Pixels/degree: X={calibration.pixels_per_degree_at_centre[0]:.3f}, "
+                    f"Y={calibration.pixels_per_degree_at_centre[1]:.3f}\n"
+                    f"Nyquist: X={calibration.nyquist_cpd_at_centre[0]:.3f}, "
+                    f"Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd\n"
+                    f"Geometry verification status: {profile.geometry_status}\n"
+                    "At 1 cpd the local period is approximately the listed pixels/degree. "
+                    "Remeasure if display resolution, viewing distance or active image size changes."
+                )
+            else:
+                self.query_one("#spatial-calibration-summary", Static).update(
+                    "[yellow]This monitor profile has no expected fullscreen pixel resolution. "
+                    "Bind and inspect the monitor in Edit / copy display profile, record its "
+                    "active resolution, then check it with the fullscreen display test.[/yellow]"
+                )
         except (ValueError, TypeError) as exc:
             self.query_one("#geometry-preview", Static).update(str(exc))
 
