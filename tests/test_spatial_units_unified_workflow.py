@@ -32,9 +32,9 @@ def test_frequency_units_preserve_period_and_legacy_semantics():
     assert resolved_condition_frequencies("63,252", "legacy_shader_radians") == (63.,252.)
     assert CSF_SPEC.field_defaults()["condition_unit"] == "cycles_per_degree"
     assert CSF_SPEC.field_defaults()["condition_values"] == "2,8"
-    assert CSF_SPEC.normalise_values({"condition_values":"63,252"})["condition_unit"] == "legacy_shader_radians"
-    assert CSF_SPEC.normalise_values({"condition_values":"2,8",
-                                      "condition_unit":"cycles_per_degree"})["condition_unit"] == "cycles_per_degree"
+    assert CSF_SPEC.normalise_values(dict(DEFAULT_VALUES, condition_values="63,252", condition_unit="legacy_shader_radians"))["condition_unit"] == "legacy_shader_radians"
+    assert CSF_SPEC.normalise_values(dict(DEFAULT_VALUES, condition_values="2,8",
+                                      condition_unit="cycles_per_degree"))["condition_unit"] == "cycles_per_degree"
 
 
 def test_pixel_pitch_and_cpd_to_grating_phase_both_axes():
