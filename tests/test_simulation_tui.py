@@ -191,7 +191,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
             await pilot.pause()
             editor = app.screen
             assert isinstance(editor, AdaptiveAlgorithmScreen)
-            assert "consecutive_up_down" in str(editor.query_one("#adaptive-editor-body").render())
+            assert "consecutive_up_down" in str(editor.query_one("#adaptive-algorithm-heading", Static).render())
 
             def edit(key):
                 return editor.query_one(f"#adaptive-value-{fields[key]}", Input)
