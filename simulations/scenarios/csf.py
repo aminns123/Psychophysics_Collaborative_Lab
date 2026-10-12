@@ -46,7 +46,17 @@ def evaluate_csf(observer, records):
             "sampled_preference_direction_matches": predicted == estimated if points else None,
             "conditions": points,
         })
+    plausible = all(
+        math.isfinite(point["estimated_reversal_contrast"]) and point["estimated_reversal_contrast"] > 0
+        and math.isfinite(point["model_midpoint_contrast"]) and point["model_midpoint_contrast"] > 0
+        for run in cases for point in run["conditions"]
+    )
     return {
+        "checks": [{
+            "name": "CSF observer midpoint and recovered estimates are finite positive values",
+            "passed": plausible,
+            "detail": "Scientific consistency check; does not require exact numerical convergence.",
+        }],
         "units": "legacy CSF condition values, not calibrated cycles/degree",
         "estimator": "mean of final 80% of post-update reversal observations; not a model midpoint estimator",
         "comparison_interpretation": "diagnostic, not a strict numerical recovery guarantee",
