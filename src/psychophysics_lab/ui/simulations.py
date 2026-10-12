@@ -17,6 +17,8 @@ from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, 
 from ..paths import resolve_data_root
 from ..adaptive.steps import paired_step, NOTICE
 from ..experiments.registry import get_experiment
+from ..config.preflight import compatible
+from simulations.registry import get_simulation
 from simulations.controls import effective_experiment_values, effective_observer_values
 from .setup import HubPage, _nav_bar, _handle_nav, _is_blank_select_value
 
@@ -65,6 +67,18 @@ class SimulationsScreen(HubPage):
                 [(exp, exp) for exp in self.experiment_ids]
                 if self.experiment_ids else [("No registered simulations", "__none__")],
                 value=first, allow_blank=False, id="sim-experiment",
+            )
+            yield Label("Display profile (metadata only; no hardware is used)")
+            compatible_profiles = {
+                key: value for key, value in self.app.monitor_profiles.items()
+                if compatible(get_experiment(first), value)
+            } if self.experiment_ids else {}
+            preferred = get_simulation(first).monitor_profile_id if self.experiment_ids else "__none__"
+            profile_selection = preferred if preferred in compatible_profiles else next(iter(compatible_profiles), "__none__")
+            yield Select(
+                [(p.display_name, p.id) for p in compatible_profiles.values()]
+                if compatible_profiles else [("No qualified profiles", "__none__")],
+                value=profile_selection, allow_blank=False, id="sim-profile",
             )
             yield Label("Simulation scenario")
             yield Select(
@@ -143,6 +157,18 @@ class SimulationsScreen(HubPage):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "sim-experiment":
             exp = str(event.value)
+            if exp in self.experiment_ids:
+                available = {
+                    key: value for key, value in self.app.monitor_profiles.items()
+                    if compatible(get_experiment(exp), value)
+                }
+                profile_selector = self.query_one("#sim-profile", Select)
+                profile_selector.set_options(
+                    [(p.display_name, p.id) for p in available.values()]
+                    if available else [("No qualified profiles", "__none__")]
+                )
+                preferred = get_simulation(exp).monitor_profile_id
+                profile_selector.value = preferred if preferred in available else next(iter(available), "__none__")
             scenarios = self._scenarios_for(exp)
             selected = self.query_one("#sim-scenario", Select)
             selected.set_options(
@@ -159,6 +185,11 @@ class SimulationsScreen(HubPage):
 
     def _request(self) -> SimulationLaunchRequest:
         index, scenario = self._current()
+        profile_id = str(self.query_one("#sim-profile", Select).value)
+        if profile_id not in self.app.monitor_profiles:
+            raise ValueError("Select a registered display profile, even for a headless simulation.")
+        if not compatible(get_experiment(scenario.experiment_id), self.app.monitor_profiles[profile_id]):
+            raise ValueError("This display profile is not qualified for that experiment.")
         data = resolve_data_root(self.query_one("#sim-data-root", Input).value,
                                  self.app.repo_root)
         seeds = parse_seeds(self.query_one(f"#sim-seeds-{index}", Input).value)
@@ -188,6 +219,7 @@ class SimulationsScreen(HubPage):
             seeds=seeds,
             observer_parameters=observer,
             experiment_values=values,
+            monitor_profile_id=profile_id,
         )
 
     def _calculate_step(self, button_id: str) -> None:
@@ -260,6 +292,7 @@ class SimulationReviewScreen(Screen):
                 f"Experiment: {request.experiment_id}\n"
                 f"Scenario: {request.scenario_id}\n"
                 f"Data repository: {request.data_root}\n"
+                f"Display profile (unverified headless metadata): {request.monitor_profile_id}\n"
                 f"Seeds: {request.seeds}\n"
                 f"Observer parameters:\n{json.dumps(request.observer_parameters, indent=2)}\n"
                 f"Experiment overrides:\n{json.dumps(request.experiment_values, indent=2)}\n\n"
