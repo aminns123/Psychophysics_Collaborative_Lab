@@ -32,8 +32,13 @@ the [adaptive-methods guide](docs/ADAPTIVE_METHODS.md) and the
 The [simulation laboratory guide](simulations/README.md) explains how each
 experiment owns a separate virtual observer and its own test scenarios.
 
-Virtual CSF observers can exercise real staircase, recording, run validation
-and threshold-analysis code without a display:
+Virtual observers can exercise real staircase, recording, run validation
+and experiment-specific analysis without a display. **In the normal PsyCoLab TUI,
+open the Simulate page**, select an experiment/scenario, edit the model's
+declared parameters, review the configuration and select Run Virtual Experiment.
+The TUI reopens with a pass/fail report after the headless run.
+
+The equivalent command-line access remains available:
 
 ```powershell
 .venv\\Scripts\\python.exe -m simulations --seed 123 --max-trials 400
