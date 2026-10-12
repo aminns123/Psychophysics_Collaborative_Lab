@@ -21,6 +21,7 @@ class SimulationSpec:
     defaults: dict
     monitor_profile_id: str = "legacy_reference_display"
     analysis_factory: Callable | None = None
+    unavailable_analysis_messages: tuple[str, ...] = ()
 
 
 _REGISTRY: dict[str, SimulationSpec] = {}
@@ -38,6 +39,8 @@ def register_simulation(spec: SimulationSpec) -> None:
         raise TypeError("Experiment analyser must be callable or None.")
     if not isinstance(spec.defaults, dict):
         raise TypeError("Simulation defaults must be a dictionary.")
+    if any(not isinstance(message, str) or not message for message in spec.unavailable_analysis_messages):
+        raise TypeError("Unavailable-analysis markers must be nonempty text.")
     _REGISTRY[spec.experiment_id] = spec
 
 
@@ -55,4 +58,5 @@ def list_simulations() -> tuple[SimulationSpec, ...]:
 register_simulation(SimulationSpec(
     "contrast_sensitivity", CSFObserver, runtime, DEFAULT_VALUES,
     analysis_factory=analyse_thresholds,
+    unavailable_analysis_messages=("No reversal observations",),
 ))
