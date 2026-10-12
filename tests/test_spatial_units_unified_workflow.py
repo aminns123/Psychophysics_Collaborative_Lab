@@ -140,3 +140,44 @@ def test_calibration_widget_is_non_photometric_and_numerically_meaningful(tmp_pa
             warning=str(app.screen.query_one("#spatial-calibration-summary",Static).render())
             assert "resolution" in warning
     asyncio.run(scenario())
+
+
+def test_human_cpd_acquisition_blocks_uncalibrated_resolution_but_virtual_path_works(tmp_path, monkeypatch):
+    from psychophysics_lab.ui.unified_run import VirtualObserverOptionsScreen
+    p = load_monitor_profiles(ROOT)["legacy_reference_display"]
+    assert p.expected_resolution_px is None
+    values = CSF_SPEC.normalise_values(dict(DEFAULT_VALUES,
+        condition_unit="cycles_per_degree",condition_values="2,8"))
+    request = SetupRequest("H021","new","contrast_sensitivity",p.id,
+                           values,str(tmp_path/"workspace"))
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"workspace")
+        exited=[]
+        monkeypatch.setattr(app,"exit",lambda result=None: exited.append(result))
+        async with app.run_test(size=(100,30)) as pilot:
+            app.push_screen(ReviewScreen(request=request))
+            await pilot.pause()
+            screen=app.screen
+            screen.query_one("#run",Button).press()
+            await pilot.pause()
+            assert not exited
+            assert "fullscreen pixel resolution" in str(screen.query_one("#review-status",Static).render())
+            screen.query_one("#run-simulation",Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,VirtualObserverOptionsScreen)
+            app.screen.query_one("#virtual-back",Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,ReviewScreen)
+    asyncio.run(scenario())
+
+
+def test_physical_renderer_uses_angular_glsl_phase_and_preserves_legacy():
+    # The actual shader is hardware-dependent and must still be tested on Windows.
+    # Guard the production GLSL source against accidental reversion to the
+    # old uncalibrated fs*(x*cos+y*sin) path for physical frequencies.
+    shader_source=(ROOT/"Events"/"stimuliC.py").read_text()
+    assert "frequency_phase = 2.0 * pi * fs" in shader_source
+    assert "degrees(atan(screen_m / eyeDistance))" in shader_source
+    assert "if (physicalFrequency > 0.5)" in shader_source
+    assert "frequency_phase = fs * (x*cos(theta)+y*sin(theta))" in shader_source
+    assert "glUniform1f(self.uniforms['stimCx'],x)" in shader_source
