@@ -385,10 +385,10 @@ class AdaptiveAlgorithmScreen(Screen):
                 yield Button("Apply adaptive settings", id="adaptive-apply", variant="primary")
         with VerticalScroll(classes="page-body", id="adaptive-editor-body"):
             yield Static(
-                f"[b]Adaptive algorithm[/b]\\n"
-                f"Experiment: {self.experiment.display_name}\\n"
-                f"Algorithm: {algorithm.id}\\n"
-                f"{algorithm.description}\\n\\n"
+                f"[b]Adaptive algorithm[/b]\n"
+                f"Experiment: {self.experiment.display_name}\n"
+                f"Algorithm: {algorithm.id}\n"
+                f"{algorithm.description}\n\n"
                 "Change the same adaptive parameters used for human acquisition. "
                 "No changes are applied to your simulation until you select "
                 "Apply adaptive settings.",
