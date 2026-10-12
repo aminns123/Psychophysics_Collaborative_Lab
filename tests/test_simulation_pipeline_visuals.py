@@ -139,6 +139,7 @@ def test_data_browser_can_open_saved_staircases_without_hardware(tmp_path, monke
     result = run_scenario(experiment_id="contrast_sensitivity",
                           scenario_id="csf_short_censored", data_root=root, repo_root=ROOT)
     opened = []
+    real_open_png = image_viewer.open_analysis_png
     monkeypatch.setattr(image_viewer, "open_analysis_png",
                         lambda data_root, image_path: opened.append(Path(image_path)))
     async def scenario():
@@ -154,4 +155,4 @@ def test_data_browser_can_open_saved_staircases_without_hardware(tmp_path, monke
             assert opened[0].is_relative_to(root)
     asyncio.run(scenario())
     with pytest.raises(ValueError, match="PNG"):
-        image_viewer.open_analysis_png(root, result.runs[0].artifacts.trial_log_file)
+        real_open_png(root, result.runs[0].artifacts.trial_log_file)
