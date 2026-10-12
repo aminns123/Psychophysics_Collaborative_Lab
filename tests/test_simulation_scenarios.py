@@ -14,6 +14,7 @@ from simulations.scenarios import (
 )
 from simulations.scenarios.csf import evaluate_csf
 from simulations.scenarios.run import ScenarioRun
+from simulations.scaffold import scaffold_simulation
 from psychophysics_lab.data.workspace import save_workspace_state
 from psychophysics_lab.config.models import SetupRequest
 
@@ -133,3 +134,19 @@ def test_censored_case_is_not_given_an_invented_threshold(tmp_path):
     report = json.loads(result.report_file.read_text())
     assert report["runs"][0]["relative_analysis_summary"] is None
     assert report["experiment_evaluation"]["runs"][0]["conditions"] == []
+
+
+def test_simulation_scaffold_is_only_two_files_and_never_overwrites(tmp_path):
+    (tmp_path / "simulations" / "scenarios").mkdir(parents=True)
+    paths = scaffold_simulation(tmp_path, "new_spatial_task")
+    before = [path.read_bytes() for path in paths]
+    assert len(paths) == 2
+    assert paths[0].name == paths[1].name == "new_spatial_task.py"
+    for path in paths:
+        compile(path.read_text(encoding="utf-8"), str(path), "exec")
+    with pytest.raises(ValueError, match="new source files"):
+        scaffold_simulation(tmp_path, "new_spatial_task")
+    assert [path.read_bytes() for path in paths] == before
+    for name in ("../escape", "class", "SomeName", "invalid-name", "", "a/b"):
+        with pytest.raises(ValueError):
+            scaffold_simulation(tmp_path, name)
