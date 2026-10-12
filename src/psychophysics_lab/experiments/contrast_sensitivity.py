@@ -167,7 +167,8 @@ CSF_SPEC = ExperimentSpec(
             "notes": (
                 "For cpd and degrees/cycle input, the conditions.runtime.json values are canonical cpd "
                 "and the renderer evaluates physical visual angle per fragment from display geometry. "
-                "Legacy mode preserves the old fs shader phase coefficient. "
+                "Legacy mode preserves the old fs shader phase coefficient from the "
+                "historical 31.5 multiplier (63 and 252 reference values). "
                 "Photometric/temporal calibration remains independent."
             ),
         },
