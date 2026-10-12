@@ -21,6 +21,7 @@ class SimulationLaunchRequest:
     seeds: tuple[int, ...]
     observer_parameters: dict[str, Any] = field(default_factory=dict)
     experiment_values: dict[str, Any] = field(default_factory=dict)
+    monitor_profile_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.experiment_id or not self.scenario_id:
@@ -33,6 +34,8 @@ class SimulationLaunchRequest:
             raise ValueError("Simulation seeds must be unique.")
         if not isinstance(self.observer_parameters, dict) or not isinstance(self.experiment_values, dict):
             raise TypeError("Simulation parameter overrides must be dictionaries.")
+        if self.monitor_profile_id is not None and (not isinstance(self.monitor_profile_id, str) or not self.monitor_profile_id):
+            raise ValueError("Monitor profile selection must be a nonempty profile ID.")
 
 
 def parse_seeds(text: str) -> tuple[int, ...]:
