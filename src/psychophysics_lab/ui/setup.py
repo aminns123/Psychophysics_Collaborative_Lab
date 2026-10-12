@@ -555,8 +555,9 @@ class DataScreen(HubPage):
             yield Static(
                 "[b]Acquisition data[/b]\n"
                 f"Active external workspace: {self.app.data_root}\n"
-                "Run folders are treated as read-only scientific records. Derived threshold "
-                "outputs are written separately under analysis/."
+                "Every run folder contains canonical trial records and its own analysis/ "
+                "subfolder for staircase plots and versioned thresholds. "
+                "Virtual runs also save scenario_report.json beside trials.tsv."
             )
             yield Select(options, value=options[0][1], allow_blank=False, id="data-run")
             yield Static("", id="data-details", classes="info-card")
@@ -564,6 +565,8 @@ class DataScreen(HubPage):
                 yield Button("Manifest", id="inspect-manifest")
                 yield Button("Trials", id="inspect-trials")
                 yield Button("Staircase state", id="inspect-adaptive")
+                yield Button("Scenario report", id="inspect-scenario")
+                yield Button("Open run folder", id="open-run-folder")
             yield Static("[b]Derived staircase threshold[/b]", classes="section-title")
             yield Label("How to select reversal observations (derived analysis only)")
             yield Select([
@@ -635,6 +638,14 @@ class DataScreen(HubPage):
                 f"Accepted responses: {manifest.get('accepted_trials', 'n/a')}\n"
                 f"Run UUID: {manifest.get('run_uuid', 'n/a')}"
             )
+            summary_file = run / "analysis" / "staircase_preview.json"
+            if summary_file.is_file():
+                summary = json.loads(summary_file.read_text(encoding="utf-8"))
+                text += (
+                    f"\nStaircases plotted: {summary.get('staircases_plotted', 0)}"
+                    f"\nStaircases per condition: {summary.get('condition_staircase_counts', {})}"
+                    f"\nQuick-look figures: {run / 'analysis'}"
+                )
         except Exception as exc:
             text = str(exc)
         self.query_one("#data-details", Static).update(text)
@@ -662,6 +673,13 @@ class DataScreen(HubPage):
                 event.stop(); self._inspect("manifest.json", "Run manifest")
             elif event.button.id == "inspect-trials":
                 event.stop(); self._inspect("trials.tsv", "Canonical accepted-response table")
+            elif event.button.id == "inspect-scenario":
+                event.stop(); self._inspect("scenario_report.json", "Synthetic scenario report and checks")
+            elif event.button.id == "open-run-folder":
+                event.stop()
+                from .plots import open_run_directory
+                open_run_directory(self.app.data_root, self._run_dir())
+                status.update("Opened the selected run folder in the system file browser.")
             elif event.button.id == "inspect-adaptive":
                 event.stop(); self._inspect("adaptive_session.json", "Saved staircase/adaptive state")
             elif event.button.id in {"analyse-threshold", "preview-figures"}:
