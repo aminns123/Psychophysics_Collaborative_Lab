@@ -140,3 +140,46 @@ def test_reanalysis_stays_in_the_same_run_and_never_changes_raw_trials(tmp_path)
     assert new.output_directory.is_relative_to(run / "analysis" / "thresholds")
     assert (run / "analysis" / "threshold_vs_condition.png").is_file()
     assert (run / "trials.tsv").read_bytes() == before
+
+
+
+def test_terminal_simulation_heartbeat_prints_activity_dots(capsys):
+    import time
+    from simulations.progress import simulation_heartbeat
+    with simulation_heartbeat("Testing simulated participant", interval=.001):
+        time.sleep(.03)
+    content = capsys.readouterr().out
+    assert "Testing simulated participant" in content
+    assert "." in content
+    assert "finished" in content
+
+
+def test_data_browser_run_folder_and_scenario_report_are_directly_accessible(tmp_path, monkeypatch):
+    import asyncio
+    from textual.widgets import Button, Static
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp
+    from psychophysics_lab.ui import plots as viewer
+
+    root = tmp_path / "local_psychophysics_data"
+    result = run_scenario(experiment_id="contrast_sensitivity",
+                          scenario_id="csf_short_censored",
+                          data_root=root, repo_root=ROOT)
+    opened = []
+    monkeypatch.setattr(viewer, "open_run_directory",
+                        lambda data_root, run_dir: opened.append((data_root, run_dir)))
+
+    async def navigate():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=root)
+        async with app.run_test(size=(100, 30)) as pilot:
+            app.query_one("#nav-data", Button).press()
+            await pilot.pause()
+            screen = app.screen
+            details = str(screen.query_one("#data-details", Static).render())
+            assert "Staircases plotted" in details
+            screen.query_one("#open-run-folder", Button).press()
+            await pilot.pause()
+            assert opened and opened[0][1] == result.runs[0].artifacts.run_directory
+            screen.query_one("#inspect-scenario", Button).press()
+            await pilot.pause()
+            assert app.screen.path == result.report_file
+    asyncio.run(navigate())
