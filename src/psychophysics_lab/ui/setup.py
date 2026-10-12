@@ -1017,11 +1017,33 @@ class ReviewScreen(Screen):
         if self.request.experiment_id == "contrast_sensitivity":
             values = self.request.experiment_values
             down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
-            # Two independent reference staircases. First step + alternating
-            # reversal directions require this optimistic minimum response count.
-            minimum = 2 * (min(down, up) + ((reversals+1)//2)*max(down, up) + (reversals//2)*min(down, up))
-            if values["max_trials"] < minimum:
-                lines.append(f"[yellow]The response ceiling {values['max_trials']} is below the optimistic minimum {minimum} needed for the requested reversals in both staircases. A ceiling stop is expected; defaults are preserved.[/yellow]")
+            count = values["number_conditions"] * values["staircases_per_condition"]
+            lines.append(
+                f"Condition values (legacy units): {values['condition_values']}; "
+                f"{count} independent staircases in total."
+            )
+            lines.append(
+                f"Introductory rule: 1-down until first incorrect response or "
+                f"{values['initial_one_down_limit']} accepted responses per staircase "
+                f"(0 disables)."
+            )
+            # A rough warning, NOT a mathematical lower bound once an
+            # introductory 1-down phase is enabled. The response ceiling is
+            # global; every staircase needs at least one response.
+            if values["max_trials"] < count:
+                lines.append(
+                    f"[yellow]The shared maximum of {values['max_trials']} responses "
+                    f"is below the {count} independent staircase count. At least "
+                    f"one staircase cannot receive any response.[/yellow]"
+                )
+            elif values["initial_one_down_limit"] == 0:
+                estimate = count * (min(down, up) + ((reversals+1)//2)*max(down, up) + (reversals//2)*min(down, up))
+                if values["max_trials"] < estimate:
+                    lines.append(
+                        f"[yellow]The global response ceiling {values['max_trials']} "
+                        f"is below an indicative {estimate}-response alternating-step "
+                        f"budget for {count} staircases. Some may end unfinished.[/yellow]"
+                    )
         if not profile.has_verified_luminance_mapping and {
             "Background_Luminance",
             "Background_Screen_intensity",
