@@ -21,6 +21,7 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--experiment", default="contrast_sensitivity", help="Registered experiment ID")
     parser.add_argument("--list-scenarios", action="store_true", help="List experiment-specific test scenarios")
+    parser.add_argument("--scaffold-simulation", metavar="EXPERIMENT", help="Generate two non-overwriting virtual observer/scenario templates")
     parser.add_argument("--scenario", help="Run a named, experiment-specific scenario through the full pipeline")
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--seeds", help="Comma-separated seeds for direct CSF sweeps")
@@ -37,6 +38,14 @@ def main(argv=None) -> int:
     if args.workspace is not None and args.data_root is not None:
         parser.error("Use --data-root or --workspace, not both.")
     data_root = args.data_root if args.data_root is not None else args.workspace
+
+    if args.scaffold_simulation:
+        from psychophysics_lab.paths import find_repo_root
+        from .scaffold import scaffold_simulation
+        for path in scaffold_simulation(find_repo_root(), args.scaffold_simulation):
+            print(path)
+        print("Implement the model, then register its SimulationSpec and SCENARIOS explicitly.")
+        return 0
 
     if args.list_scenarios:
         from .scenarios import list_scenarios
