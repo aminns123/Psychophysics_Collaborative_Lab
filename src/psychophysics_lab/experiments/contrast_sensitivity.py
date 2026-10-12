@@ -14,7 +14,28 @@ SCREEN_INTENSITY_CHOICES = (0.24, 0.294, 0.34, 0.374, 0.72, 0.8, 0.86, 0.89, 0.9
 
 # These are the original (63,252) CSF renderer condition scalars.
 # Never silently label these values calibrated cycles/degree.
-DEFAULT_CSF_CONDITIONS = "63,252"
+DEFAULT_CSF_CONDITIONS = "2,8"
+FREQUENCY_UNITS = ("cycles_per_degree", "degrees_per_cycle", "legacy_shader_radians")
+
+
+def resolved_condition_frequencies(values: str, units: str) -> tuple[float, ...]:
+    """Convert user-entered periodicity to canonical cpd, or retain explicit legacy."""
+    parsed = parse_condition_values(values)
+    if units not in FREQUENCY_UNITS:
+        raise ValueError("Unknown spatial frequency unit.")
+    if units == "degrees_per_cycle":
+        return tuple(1.0 / period for period in parsed)
+    return parsed
+
+
+def _legacy_condition_defaults(values):
+    # A saved pre-calibration setup with explicit legacy condition scalars
+    # but no units must never be silently reinterpreted as cpd.
+    d = dict(values)
+    if "condition_values" in d and "condition_unit" not in d:
+        d["condition_unit"] = "legacy_shader_radians"
+    return d
+
 
 
 def parse_condition_values(values: str) -> tuple[float, ...]:
@@ -83,7 +104,7 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
     if not 0 <= int(values["initial_one_down_limit"]) <= 1000:
         errors.append("Initial 1-down response limit must be between 0 and 1000 (0 disables).")
     try:
-        parsed_conditions = parse_condition_values(values["condition_values"])
+        parsed_conditions = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
     except ValueError as exc:
         errors.append(str(exc))
     else:
@@ -94,6 +115,10 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
             )
     if not 1 <= int(values["staircases_per_condition"]) <= 24:
         errors.append("Staircases per condition must be between 1 and 24.")
+    if values["condition_unit"] != "legacy_shader_radians":
+        physical = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
+        if any(freq > 1000 for freq in physical):
+            errors.append("Spatial frequency above 1000 cycles/degree is not physically plausible.")
     if not 0 <= float(values["Background_Screen_intensity"]) < 1:
         errors.append("Background screen intensity must be in [0, 1).")
     starting = float(values["starting_probe_intensity"])
@@ -135,14 +160,15 @@ CSF_SPEC = ExperimentSpec(
     data_path_builder=_data_path_parts,
     trial_column_overrides={
         "stimulus_condition": {
-            "units_or_encoding": "legacy CSF condition value; physical units not yet validated",
+            "units_or_encoding": "cycles/degree for cpd/period modes; historical shader radians for explicit legacy mode (check experiment_config.json)",
             "meaning": (
                 "Experiment-configured legacy spatial-frequency scalar associated with the accepted response."
             ),
             "notes": (
-                "The current reference implementation derives these values from the retained "
-                "31.5 spatial scaling (currently 63 and 252). Do not relabel them as cycles/degree "
-                "until the deferred stimulus/spatial-calibration review is completed."
+                "For cpd and degrees/cycle input, the conditions.runtime.json values are canonical cpd "
+                "and the renderer evaluates physical visual angle per fragment from display geometry. "
+                "Legacy mode preserves the old fs shader phase coefficient. "
+                "Photometric/temporal calibration remains independent."
             ),
         },
         "stimulus_position_px": {
@@ -211,10 +237,17 @@ CSF_SPEC = ExperimentSpec(
             help_text="Must equal the number of comma-separated numeric condition values below.",
         ),
         ConfigField(
-            "condition_values", "Condition values (comma-separated)", "text",
+            "condition_unit", "Spatial-frequency units", "choice",
+            default="cycles_per_degree", choices=FREQUENCY_UNITS,
+            section="Stimulus conditions",
+            help_text="cycles/degree (cpd), degrees/cycle (period), or explicit historical uncalibrated shader phase. "
+                      "cpd is calibrated geometrically from screen size, resolution and viewing distance.",
+        ),
+        ConfigField(
+            "condition_values", "Condition values (comma-separated, in selected units)", "text",
             default=DEFAULT_CSF_CONDITIONS, section="Stimulus conditions",
-            help_text="Legacy renderer spatial-frequency scalars, NOT validated cycles/degree. "
-                      "Order is preserved; specify values e.g. 63,126,252. No duplicates.",
+            help_text="Enter spatial frequency in cycles/degree, or period in degrees/cycle. "
+                      "Legacy mode retains historical shader radians for reproducibility.",
         ),
         ConfigField("n_down", "Correct responses required for a downward step", "int", default=2),
         ConfigField("n_up", "Incorrect responses required for an upward step", "int", default=1),
