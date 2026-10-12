@@ -34,6 +34,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         uniform float width;  // Declare width uniform  # <- added
         uniform float SdeX;
         uniform float SdeY;
+        uniform float physicalFrequency;
+        uniform float pitchX, pitchY, eyeDistance;
+        uniform float screenCx, screenCy, stimCx, stimCy;
         
         vec3 lum2image(float c) {
             vec3 vout;
@@ -54,7 +57,25 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
             float Sde = 0.03; // 0.05 or 0.17 | USE: Sde = 0.03, 0.025 for <10cdm2
             //float m = exp(-0.5*(x*x + y*y)/pow(Sde,2)); // <- 2 or 2.5
             float m = exp(-0.5*((x*x)/pow(SdeX,2) + (y*y)/pow(SdeY,2)));
-            float c = m*contr*sin(fs*(x*cos(theta)+y*sin(theta)) + phase);
+            // In cpd mode the phase is computed from the physical angular
+            // coordinate of every fragment, not an uncalibrated legacy scalar.
+            // This also avoids a screen-wide-FOV approximation near eccentricity.
+            vec2 phase_coords = vec2(x, y);
+            float frequency_phase = fs * (x*cos(theta)+y*sin(theta));
+            if (physicalFrequency > 0.5) {
+                vec2 pitch = vec2(pitchX, pitchY);
+                vec2 screen_centre = vec2(screenCx, screenCy);
+                vec2 monitor_px = vec2(stimCx,stimCy) + phase_coords * width;
+                vec2 screen_m = (monitor_px - screen_centre) * pitch;
+                vec2 centre_m = (vec2(stimCx,stimCy)-screen_centre)*pitch;
+                vec2 degrees_relative = degrees(atan(screen_m / eyeDistance))
+                                       - degrees(atan(centre_m / eyeDistance));
+                float pi = 2.0 * acos(0.0);
+                frequency_phase = 2.0 * pi * fs
+                    * (degrees_relative.x * cos(theta)
+                       + degrees_relative.y * sin(theta));
+            }
+            float c = m*contr*sin(frequency_phase + phase);
             if (box == 1.0) {
                 gl_FragColor.rgba = vec4(lum2image(c),1.0);
             } else {
@@ -68,7 +89,16 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
     ##  float Sde = 0.1;
     ##  double pi = 2 * acos(0.0);
     ### m = (1/(2*pi*pow(Sde,2)))*exp(-(pow(x,2)+pow(y,2))/(2*pow(Sde,2)))
-    def __init__(self,pos, file_experiment_Conditions,params=Params()):
+    def __init__(self,pos, file_experiment_Conditions,params=Params(), *, spatial_geometry=None, condition_unit="legacy_shader_radians"):
+        self.spatial_geometry = dict(spatial_geometry or {})
+        self.condition_unit = condition_unit
+        if condition_unit not in {"legacy_shader_radians", "cycles_per_degree"}:
+            raise ValueError("Unknown grating spatial-frequency unit.")
+        if condition_unit == "cycles_per_degree":
+            required = {"pitch_x_m", "pitch_y_m", "viewing_distance_m",
+                        "screen_cx_px", "screen_cy_px"}
+            if not required <= set(self.spatial_geometry):
+                raise ValueError("Cycles/degree renderer requires measured display geometry.")
         self.pos        = pos
         self.params     = copy_params(self._defaults,params)
         self.clock      = pyglet.clock.Clock()
@@ -78,7 +108,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         self.uniforms   = dict(map(self.shader.uniform,
                                  ['fs','phase','contr','theta','bg','box','Lbg',
                                   'Lmin','Lmax','gamma','BTRR'
-                                  ,'SdeX', 'SdeY'])) # <- added
+                                  ,'SdeX', 'SdeY', 'width', 'physicalFrequency',
+                                  'pitchX', 'pitchY', 'eyeDistance',
+                                  'screenCx', 'screenCy', 'stimCx', 'stimCy']))
         
         self.file_experiment_Conditions = file_experiment_Conditions
 
@@ -95,7 +127,16 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         glUniform1f(self.uniforms['gamma'],self.params.gamma)
         glUniform1f(self.uniforms['BTRR'],self.params.BTRR)
         glUniform1f(self.uniforms['SdeX'],self.params.SdeX) # <- added
-        glUniform1f(self.uniforms['SdeY'],self.params.SdeY) # <- added
+        glUniform1f(self.uniforms['SdeY'],self.params.SdeY)
+        glUniform1f(self.uniforms['physicalFrequency'],
+                    1.0 if self.condition_unit == "cycles_per_degree" else 0.0)
+        if self.condition_unit == "cycles_per_degree":
+            geometry = self.spatial_geometry
+            glUniform1f(self.uniforms['pitchX'], geometry["pitch_x_m"])
+            glUniform1f(self.uniforms['pitchY'], geometry["pitch_y_m"])
+            glUniform1f(self.uniforms['eyeDistance'], geometry["viewing_distance_m"])
+            glUniform1f(self.uniforms['screenCx'], geometry["screen_cx_px"])
+            glUniform1f(self.uniforms['screenCy'], geometry["screen_cy_px"])
         glUseProgram(0)
         
     def draw(self):
@@ -128,7 +169,10 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         glUseProgram(self.program)
         ph = p.speed*(self.clock.time()-self.t0)
         glUniform1f(self.uniforms['phase'],ph)
-        #glUniform1f(self.uniforms['width'], p.width)  # Update width uniform  # <- added
+        glUniform1f(self.uniforms['width'],p.width)
+        if self.condition_unit == "cycles_per_degree":
+            glUniform1f(self.uniforms['stimCx'],x)
+            glUniform1f(self.uniforms['stimCy'],self.py)
         
         glPushMatrix()
         glLoadIdentity()
