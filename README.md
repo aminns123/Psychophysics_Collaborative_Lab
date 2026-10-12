@@ -136,6 +136,26 @@ assumptions.
 See [`docs/DATA_LAYOUT.md`](docs/DATA_LAYOUT.md) for the storage contract and
 rules for adding future experiments.
 
+## Configurable CSF conditions and introductory staircase phase
+
+In both **Run** (human participants) and **Simulate** (virtual observers),
+the reference CSF experiment now provides a **Stimulus conditions**
+section to enter the number of conditions and their ordered, comma-separated
+numeric values (for example `63,126,252`). The number must match the list,
+with 1–24 distinct positive values permitted. These are *legacy reference
+stimulus values*, not yet verified cycles/degree. A separate **Adaptive
+algorithm** section controls independent staircases per condition, the normal
+n-down/n-up rule and step sizes, and an optional initial 1-down phase.
+
+By default the first **up to five accepted responses per staircase** use
+1-down for correct choices. The first incorrect answer, or reaching the
+configured response limit, ends this phase separately for that staircase.
+The incorrect answer is handled by the specified n-up rule; normal n-down/n-up
+logic governs later answers. Set the early 1-down limit to `0` to disable
+this feature. The experiment-wide `max_trials` ceiling is shared across
+every condition and staircase. Everything is saved in the same run folder
+for later reproducible analysis.
+
 ## One run = one self-contained scientific record
 
 A run folder contains:
