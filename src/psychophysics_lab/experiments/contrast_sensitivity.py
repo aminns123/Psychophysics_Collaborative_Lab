@@ -227,7 +227,7 @@ CSF_SPEC = ExperimentSpec(
         ),
         ConfigField(
             "initial_one_down_limit", "Initial 1-down maximum accepted responses per staircase (0 = disabled)",
-            "int", default=0, minimum=0, maximum=1000,
+            "int", default=5, minimum=0, maximum=1000,
             help_text="On each staircase, one correct response steps down until the FIRST incorrect "
                       "answer or this many accepted answers, whichever happens first. "
                       "The first incorrect answer uses the normal n-up rule; subsequent "
