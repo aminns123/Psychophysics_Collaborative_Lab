@@ -123,6 +123,7 @@ def analyse_thresholds(
     data_root: Path,
     run_directory: Path,
     retain_fraction: float = 0.80,
+    last_n_reversals: int | None = None,
     reversal_value_column: str = "next_display_contrast",
     create_plot: bool = True,
 ) -> ThresholdAnalysisResult:
@@ -132,13 +133,18 @@ def analyse_thresholds(
     *within each staircase*.  ``ceil`` is used for non-integer counts so that at
     least the requested fraction is retained.  The default reversal value is the
     post-response ``next_display_contrast``, matching the current legacy CSF
-    reversal basis.  This is a configurable analysis convention, not an
-    acquisition/staircase rule.
+    reversal basis.  Alternatively, ``last_n_reversals`` retains up to N
+    final reversals for each staircase. This is a configurable derived analysis
+    convention, not a modification to acquisition or the staircase rule.
     """
     fraction = float(retain_fraction)
     if not math.isfinite(fraction) or not 0 < fraction <= 1:
         raise ValueError("retain_fraction must be in (0, 1].")
 
+    if last_n_reversals is not None and (
+        type(last_n_reversals) is not int or last_n_reversals < 1
+    ):
+        raise ValueError("Last N reversals must be a positive integer.")
     data_root = data_root.resolve()
     run_directory = _owned_run(data_root, run_directory)
     manifest = _read_manifest(run_directory)
@@ -170,7 +176,7 @@ def analyse_thresholds(
 
     staircase_results: list[StaircaseThreshold] = []
     for (condition, staircase_id), values in sorted(grouped.items()):
-        keep = max(1, math.ceil(len(values) * fraction))
+        keep = min(len(values), last_n_reversals) if last_n_reversals is not None else max(1, math.ceil(len(values) * fraction))
         retained = values[-keep:]
         staircase_results.append(
             StaircaseThreshold(
@@ -244,8 +250,13 @@ def analyse_thresholds(
         "monitor_profile_sha256": manifest.get("monitor_profile_sha256"),
         "participant_id": manifest.get("participant_id"),
         "experiment_id": manifest.get("experiment_id"),
-        "retain_fraction": fraction,
-        "retained_subset_rule": "final ceil(N * retain_fraction) reversals per staircase",
+        "retain_fraction": fraction if last_n_reversals is None else None,
+        "last_n_reversals": last_n_reversals,
+        "retained_subset_rule": (
+            f"last min(N, {last_n_reversals}) reversal observations per staircase"
+            if last_n_reversals is not None
+            else "final ceil(N * retain_fraction) reversals per staircase"
+        ),
         "reversal_value_column": reversal_value_column,
         "scientific_note": (
             "Derived analysis only. This convention does not alter acquisition, staircase "
