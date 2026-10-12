@@ -133,7 +133,7 @@ CSF_SPEC = ExperimentSpec(
         },
     },
     adaptive=AdaptiveSelection("consecutive_up_down",
-        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "reversal_termination", "max_trials"),
+        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "staircases_per_condition", "reversal_termination", "max_trials"),
         "garcia_perez_1998", "log10_display_contrast"),
     response_paradigm=LEFT_RIGHT,
     fields=(
