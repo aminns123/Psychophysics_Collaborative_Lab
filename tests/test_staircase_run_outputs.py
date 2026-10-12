@@ -86,16 +86,18 @@ def test_staircase_instance_count_is_registered_and_validated_for_both_modes():
     spec = get_experiment("contrast_sensitivity")
     assert "staircases_per_condition" in {field.key for field in spec.fields}
     assert "staircases_per_condition" in spec.adaptive.controls
-    assert spec.normalise_values({"staircases_per_condition": 4})["staircases_per_condition"] == 4
+    from simulations.csf import DEFAULT_VALUES
+    assert spec.normalise_values(dict(DEFAULT_VALUES, staircases_per_condition=4))["staircases_per_condition"] == 4
     for number in (0, 25):
         with pytest.raises(ValueError, match="Staircases per condition"):
-            spec.normalise_values({"staircases_per_condition": number})
+            spec.normalise_values(dict(DEFAULT_VALUES, staircases_per_condition=number))
 
 
 def test_human_finalisation_generates_staircases_from_actual_canonical_records(tmp_path, monkeypatch):
     from psychophysics_lab.core.runner import run_request
     from psychophysics_lab.data.trials import TrialLog
-    import Experiments.contrast_sensitivity_function as legacy
+    import sys
+    from types import ModuleType
 
     root = tmp_path / "local_psychophysics_data"
 
@@ -110,7 +112,10 @@ def test_human_finalisation_generates_staircases_from_actual_canonical_records(t
                 "reversal": int(trial_index == 3), "correct": int(correct),
             })
 
-    monkeypatch.setattr(legacy, "run_experiment", fake_human_study)
+    # Emulate a human event source WITHOUT importing physical Pyglet/GLU.
+    legacy = ModuleType("Experiments.contrast_sensitivity_function")
+    legacy.run_experiment = fake_human_study
+    monkeypatch.setitem(sys.modules, "Experiments.contrast_sensitivity_function", legacy)
     artifacts = run_request(
         SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display",
                      {"max_trials": 10}), repo_root=ROOT, data_root=root,
