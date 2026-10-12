@@ -110,6 +110,9 @@ class ExperimentSpec:
         return {item.key: item.default for item in self.fields}
 
     def normalise_values(self, values: Mapping[str, Any]) -> dict[str, Any]:
+        if self.id == "contrast_sensitivity":
+            from .contrast_sensitivity import _legacy_condition_defaults
+            values = _legacy_condition_defaults(values)
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:
             raise ValueError(f"Unknown experiment values: {sorted(unknown)}")
