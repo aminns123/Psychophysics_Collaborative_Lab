@@ -101,8 +101,20 @@ class SimulationsScreen(HubPage):
                         for number, field in enumerate(experiment.fields):
                             yield Label(field.label)
                             value = effective_experiment_values(scenario)[field.key]
-                            yield Input(value=_value_text(value), id=f"sim-experiment-value-{index}-{number}",
-                                        disabled=not field.editable)
+                            if field.kind == "choice":
+                                yield Select(
+                                    [(str(choice), choice) for choice in field.choices],
+                                    value=value if value in field.choices else Select.BLANK,
+                                    allow_blank=value is None,
+                                    id=f"sim-experiment-value-{index}-{number}",
+                                    disabled=not field.editable,
+                                )
+                            else:
+                                yield Input(
+                                    value=_value_text(value),
+                                    id=f"sim-experiment-value-{index}-{number}",
+                                    disabled=not field.editable,
+                                )
                             if field.help_text:
                                 yield Static(field.help_text, classes="field-help")
                         if experiment.adaptive and experiment.adaptive.step_calculator:
@@ -200,10 +212,13 @@ class SimulationsScreen(HubPage):
             for number, (key, value) in enumerate(effective_observer_values(scenario).items())
         }
         experiment = get_experiment(scenario.experiment_id)
-        values = {
-            field.key: field.coerce(self.query_one(f"#sim-experiment-value-{index}-{number}", Input).value)
-            for number, field in enumerate(experiment.fields)
-        }
+        values = {}
+        for number, field in enumerate(experiment.fields):
+            widget = self.query_one(f"#sim-experiment-value-{index}-{number}")
+            raw = widget.value
+            if field.kind == "choice" and _is_blank_select_value(raw):
+                raw = None
+            values[field.key] = field.coerce(raw)
         # Validate the model and experiment configuration before offering the
         # final launch confirmation. No run directory is created at this stage.
         from simulations.registry import get_simulation
