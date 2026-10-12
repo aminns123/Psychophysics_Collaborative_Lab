@@ -166,17 +166,22 @@ def _main(
             # Scenario execution uses the real pipeline with a reserved
             # synthetic participant, after the Textual window has closed.
             from simulations.scenarios import run_scenario
+            from simulations.progress import simulation_heartbeat
             try:
-                result = run_scenario(
-                    experiment_id=action.experiment_id,
-                    scenario_id=action.scenario_id,
-                    data_root=selected_data_root,
-                    repo_root=repo_root,
-                    seeds=action.seeds,
-                    observer_parameters=action.observer_parameters,
-                    experiment_values=action.experiment_values,
-                    monitor_profile_id=action.monitor_profile_id,
-                )
+                with simulation_heartbeat(
+                    f"Testing {action.experiment_id} / {action.scenario_id} "
+                    f"({len(action.seeds)} virtual run(s))"
+                ):
+                    result = run_scenario(
+                        experiment_id=action.experiment_id,
+                        scenario_id=action.scenario_id,
+                        data_root=selected_data_root,
+                        repo_root=repo_root,
+                        seeds=action.seeds,
+                        observer_parameters=action.observer_parameters,
+                        experiment_values=action.experiment_values,
+                        monitor_profile_id=action.monitor_profile_id,
+                    )
             except Exception as exc:
                 traceback.print_exception(type(exc), exc, exc.__traceback__)
                 report = write_crash_report(
