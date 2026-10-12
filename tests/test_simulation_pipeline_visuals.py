@@ -117,9 +117,11 @@ def test_tui_exposes_human_config_and_step_calculator(tmp_path):
             down_index = controls["logUNIT_DW"]
             screen.query_one(f"#sim-experiment-value-{index}-{n_index}", Input).value = "3"
             screen.query_one(f"#sim-experiment-value-{index}-{up_index}", Input).value = ".4"
-            collapse = next(c for c in screen.query(Collapsible) if "Experiment settings" in c.title)
-            collapse.collapsed = False
+            adaptive_panel = screen.query_one(f"#sim-adaptive-{index}", Collapsible)
+            assert adaptive_panel.collapsed is False  # no hidden 'Experiment settings' click required
+            screen.query_one("#sim-edit-adaptive", Button).press()
             await pilot.pause()
+            assert adaptive_panel.collapsed is False
             screen.query_one(f"#sim-calculate-down-{index}", Button).press()
             await pilot.pause()
             assert float(screen.query_one(f"#sim-experiment-value-{index}-{down_index}", Input).value) == pytest.approx(.4*.7393)

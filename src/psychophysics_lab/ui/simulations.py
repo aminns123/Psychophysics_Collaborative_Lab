@@ -41,6 +41,25 @@ class SimulationsScreen(HubPage):
     def _scenarios_for(self, experiment_id: str):
         return [item for item in self.scenarios if item.experiment_id == experiment_id]
 
+    def _compose_experiment_field(self, index: int, number: int, field, value) -> ComposeResult:
+        """Render the exact same registered field for human and synthetic runs."""
+        yield Label(field.label)
+        widget_id = f"sim-experiment-value-{index}-{number}"
+        if field.kind == "choice":
+            yield Select(
+                [(str(choice), choice) for choice in field.choices],
+                value=value if value in field.choices else Select.BLANK,
+                allow_blank=value is None,
+                id=widget_id,
+                disabled=not field.editable,
+            )
+        else:
+            yield Input(
+                value=_value_text(value), id=widget_id, disabled=not field.editable
+            )
+        if field.help_text:
+            yield Static(field.help_text, classes="field-help")
+
     def compose(self) -> ComposeResult:
         first = self.experiment_ids[0] if self.experiment_ids else "__none__"
         scenarios = self._scenarios_for(first)
@@ -49,6 +68,8 @@ class SimulationsScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
             with Horizontal(classes="buttons"):
+                yield Button("Edit up/down rules", id="sim-edit-adaptive",
+                             disabled=not any(get_experiment(exp).adaptive for exp in self.experiment_ids))
                 yield Button("Review Simulation", id="sim-review", variant="primary",
                              disabled=not bool(self.scenarios))
         with VerticalScroll(classes="page-body", id="sim-body"):
@@ -92,37 +113,46 @@ class SimulationsScreen(HubPage):
                     yield Label("Random seed(s) — comma-separated; each creates a synthetic run")
                     yield Input(value=",".join(map(str, scenario.seeds)),
                                 id=f"sim-seeds-{index}")
+                    experiment = get_experiment(scenario.experiment_id)
+                    experiment_values = effective_experiment_values(scenario)
+                    adaptive = experiment.adaptive
+                    adaptive_controls = set(adaptive.controls) if adaptive else set()
+                    if adaptive_controls:
+                        with Collapsible(
+                            title="Adaptive staircase — n-down/n-up rules, step sizes and reversals",
+                            collapsed=False, id=f"sim-adaptive-{index}",
+                        ):
+                            yield Static(
+                                "Same controls as Run: consecutive correct answers step DOWN; "
+                                "consecutive incorrect answers step UP. Response counts and "
+                                "log step magnitudes are independent. Changes apply to this "
+                                "virtual run and are saved with its trial records.",
+                                classes="field-help",
+                            )
+                            for number, field in enumerate(experiment.fields):
+                                if field.key in adaptive_controls:
+                                    yield from self._compose_experiment_field(
+                                        index, number, field, experiment_values[field.key]
+                                    )
+                            if adaptive.step_calculator:
+                                yield Static(NOTICE, classes="field-help")
+                                with Horizontal(classes="buttons"):
+                                    yield Button("Calculate down from up", id=f"sim-calculate-down-{index}")
+                                    yield Button("Calculate up from down", id=f"sim-calculate-up-{index}")
+                                yield Static("", id=f"sim-step-status-{index}", markup=False)
+                    with Collapsible(
+                        title="Other experiment settings — same controls as Run",
+                        collapsed=True, id=f"sim-other-{index}",
+                    ):
+                        for number, field in enumerate(experiment.fields):
+                            if field.key not in adaptive_controls:
+                                yield from self._compose_experiment_field(
+                                    index, number, field, experiment_values[field.key]
+                                )
                     with Collapsible(title="Virtual observer (simulation-only properties)", collapsed=False):
                         for number, (key, value) in enumerate(effective_observer_values(scenario).items()):
                             yield Label(key.replace("_", " "))
                             yield Input(value=_value_text(value), id=f"sim-observer-{index}-{number}")
-                    experiment = get_experiment(scenario.experiment_id)
-                    with Collapsible(title="Experiment settings — same controls as human acquisition", collapsed=True):
-                        for number, field in enumerate(experiment.fields):
-                            yield Label(field.label)
-                            value = effective_experiment_values(scenario)[field.key]
-                            if field.kind == "choice":
-                                yield Select(
-                                    [(str(choice), choice) for choice in field.choices],
-                                    value=value if value in field.choices else Select.BLANK,
-                                    allow_blank=value is None,
-                                    id=f"sim-experiment-value-{index}-{number}",
-                                    disabled=not field.editable,
-                                )
-                            else:
-                                yield Input(
-                                    value=_value_text(value),
-                                    id=f"sim-experiment-value-{index}-{number}",
-                                    disabled=not field.editable,
-                                )
-                            if field.help_text:
-                                yield Static(field.help_text, classes="field-help")
-                        if experiment.adaptive and experiment.adaptive.step_calculator:
-                            yield Static(NOTICE, classes="field-help")
-                            with Horizontal(classes="buttons"):
-                                yield Button("Calculate down from up", id=f"sim-calculate-down-{index}")
-                                yield Button("Calculate up from down", id=f"sim-calculate-up-{index}")
-                            yield Static("", id=f"sim-step-status-{index}", markup=False)
             yield Static(
                 "The scenario defines the scientific validation and interpretation. "
                 "Changing its settings may change expected analysis outcomes; "
@@ -156,6 +186,12 @@ class SimulationsScreen(HubPage):
         for index in range(len(self.scenarios)):
             matches = selected is not None and index == selected[0]
             self.query_one(f"#sim-panel-{index}", Vertical).display = matches
+        # An experiment without an adaptive algorithm has no staircase controls.
+        jump = self.query_one("#sim-edit-adaptive", Button)
+        jump.disabled = (
+            selected is None
+            or not bool(getattr(get_experiment(selected[1].experiment_id).adaptive, "controls", ()))
+        )
         if selected:
             _, scenario = selected
             self.query_one("#sim-description", Static).update(
@@ -268,6 +304,16 @@ class SimulationsScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "sim-edit-adaptive":
+            event.stop()
+            try:
+                index, scenario = self._current()
+                panel = self.query_one(f"#sim-adaptive-{index}", Collapsible)
+                panel.collapsed = False
+                panel.scroll_visible(animate=False)
+            except (ValueError, TypeError) as exc:
+                self.query_one("#sim-status", Static).update(str(exc))
             return
         if (event.button.id or "").startswith("sim-calculate-"):
             event.stop()

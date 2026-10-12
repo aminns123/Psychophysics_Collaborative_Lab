@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from textual.widgets import Button, Input, Select, Static
+from textual.widgets import Button, Input, Select, Static, Collapsible
 
 from psychophysics_lab.core.simulation_request import (
     SimulationLaunchRequest, parse_parameter, parse_seeds,
@@ -166,3 +166,50 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
     assert [event[0] for event in calls] == ["tui", "simulate", "tui"]
     assert calls[1][1]["seeds"] == (11,)
     assert "PASSED" in calls[2][1]
+
+
+@pytest.mark.parametrize("size", [(80, 24), (100, 30)])
+def test_adaptive_rules_are_prominent_editable_and_reach_review(tmp_path, size):
+    """Regression: Simulate must expose the n-down/n-up controls like Run."""
+    from psychophysics_lab.experiments.registry import get_experiment
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
+        async with app.run_test(size=size) as pilot:
+            app.query_one("#nav-simulations", Button).press()
+            await pilot.pause()
+            screen = app.screen
+            index, selected = screen._current()
+            adaptive = screen.query_one(f"#sim-adaptive-{index}", Collapsible)
+            assert adaptive.collapsed is False
+            assert "n-down/n-up" in adaptive.title
+            fields = {f.key: (n, f) for n, f in enumerate(get_experiment(selected.experiment_id).fields)}
+            def control(key):
+                n, f = fields[key]
+                return screen.query_one(f"#sim-experiment-value-{index}-{n}", Input)
+
+            assert not control("n_down").disabled
+            assert not control("n_up").disabled
+            assert not control("logUNIT_UP").disabled
+            assert not control("logUNIT_DW").disabled
+            screen.query_one("#sim-edit-adaptive", Button).press()
+            await pilot.pause()
+            assert adaptive.collapsed is False
+
+            control("n_down").value = "3"
+            control("n_up").value = "1"
+            control("logUNIT_UP").value = "0.22"
+            control("logUNIT_DW").value = "0.16"
+            control("reversal_termination").value = "14"
+            control("max_trials").value = "250"
+            screen.query_one("#sim-review", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, SimulationReviewScreen)
+            values = app.screen.request.experiment_values
+            assert values["n_down"] == 3
+            assert values["n_up"] == 1
+            assert values["logUNIT_UP"] == pytest.approx(0.22)
+            assert values["logUNIT_DW"] == pytest.approx(0.16)
+            assert values["reversal_termination"] == 14
+            assert values["max_trials"] == 250
+            assert not (tmp_path / "local_psychophysics_data").exists()
+    asyncio.run(scenario())
