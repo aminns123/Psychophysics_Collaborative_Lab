@@ -111,7 +111,8 @@ def test_full_named_scenario_uses_shared_data_root_and_generates_report(tmp_path
     report = run_scenario(experiment_id="contrast_sensitivity", scenario_id="csf_baseline",
                           data_root=root, repo_root=ROOT)
     assert report.passed, [entry for entry in report.checks if not entry["passed"]]
-    assert report.report_file.is_relative_to(root / "simulation_reports")
+    assert report.report_file.parent == report.runs[0].artifacts.run_directory
+    assert report.report_file.name == "scenario_report.json"
     saved = json.loads(report.report_file.read_text())
     assert saved["data_kind"] == "synthetic"
     assert saved["passed"] is True
