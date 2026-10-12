@@ -74,7 +74,10 @@ class SimulationsScreen(HubPage):
                              disabled=not bool(self.scenarios))
         with VerticalScroll(classes="page-body", id="sim-body"):
             yield Static(
-                "[b]Virtual experiment laboratory[/b]\n"
+                "[b]Advanced scenario testing[/b]\n"
+                "For the shared human/simulation setup choose Experiment → Configure → "
+                "Review → Run simulation. This page remains for advanced legacy scenario "
+                "testing and backward compatibility.\n"
                 "Test the real experiment pipeline using a virtual observer: "
                 "no human participant, physical display or audio. "
                 "Results appear under reserved synthetic_ participant IDs "
