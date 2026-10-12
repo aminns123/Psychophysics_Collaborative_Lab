@@ -40,6 +40,41 @@ simulation-only model controls (threshold, preferred legacy condition, tuning,
 slope, lapse). Changing virtual timing configuration tests its propagation and
 recording, **not physical display duration**.
 
+## Choose conditions and introductory 1-down phase (human and simulation)
+
+For the reference CSF experiment, **Run** and **Simulate** share the exact
+`ExperimentSpec` settings and validation:
+
+- **Number of stimulus conditions**: 1–24.
+- **Condition values**: ordered comma-separated numeric values, e.g.
+  `63,126,252`. The count must agree with the entered list. Values must
+  be distinct positive finite legacy renderer frequency scalars. **These
+  are not calibrated cycles/degree** until the spatial-calibration review.
+- **Independent staircases per condition**: 1–24. For 3 conditions and 4
+  staircases each, the run uses **12 independent staircase identities**.
+- **Initial 1-down maximum accepted responses per staircase**: default
+  5; set `0` to disable and reproduce the previous purely n-down/n-up
+  algorithm from the first trial.
+
+During that first phase, every correct accepted response steps contrast
+**down** immediately. The phase ends *separately for each staircase* at
+the first incorrect response or after N accepted responses (whichever
+comes first). The first incorrect response is evaluated by the configured
+**n-up** rule, then subsequent responses follow the usual configured
+n-down/n-up rule. There is no shared countdown between conditions,
+and no undocumented special update to the step sizes. The usual
+`logUNIT_DW` down-step magnitude applies during this phase.
+
+The input list is consumed by the actual CSF legacy configuration and
+grating renderer in human acquisition, and by the same configuration and
+virtual observer for simulation. Condition identities, adaptive settings,
+first-phase counters/end reasons and per-trial actual condition values
+are saved into each run's configuration, session and `trials.tsv` records.
+Reversal-analysis conventions remain independent of acquisition.
+
+Important: the `max_trials` limit still applies to **all** staircases
+in a run, not to each staircase independently.
+
 ## Saved trial data and quick-look figures
 
 The scenario report is a **software test result**, not a replacement for

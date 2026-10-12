@@ -25,10 +25,14 @@ class StaircaseConfig:
     n_down: int
     n_up: int
     reversal_limit: int
+    initial_one_down_limit: int = 0
 
     def __post_init__(self):
         for name in ("n_down", "n_up", "reversal_limit"):
             positive_integer(name, getattr(self, name))
+        if (type(self.initial_one_down_limit) is not int
+                or not 0 <= self.initial_one_down_limit <= 1000):
+            raise ValueError("initial_one_down_limit must be an integer from 0 to 1000.")
 
 
 @dataclass
@@ -64,6 +68,8 @@ class StaircaseState:
     last_value: float = None
     last_direction: int = 0
     complete: bool = False
+    initial_one_down_responses: int = 0
+    initial_one_down_end_reason: str | None = None
 
     def observe_recorded_value(self, value):
         """Count sign changes in recorded values, ignoring flat steps.
@@ -130,16 +136,47 @@ class AdaptiveRun:
         self.require_active(identity)
         return identity
 
-    def respond(self, identity, correct, update_value):
+    def initial_one_down_active(self, identity):
+        """True until first incorrect response or N accepted responses (per ID)."""
+        config = self.configurations[identity]
+        state = self.states[identity]
+        return (config.initial_one_down_limit > 0
+                and state.initial_one_down_end_reason is None
+                and state.initial_one_down_responses < config.initial_one_down_limit)
+
+    def expected_step(self, identity, correct):
+        """Preview the next decision without mutating response history."""
         self.require_active(identity)
         config = self.configurations[identity]
-        # Failed numeric updates must not partially consume a response.
+        state = self.states[identity]
+        effective_down = 1 if self.initial_one_down_active(identity) and correct else config.n_down
+        if correct:
+            return Step.DOWN if state.streak.correct + 1 >= effective_down else Step.HOLD
+        return Step.UP if state.streak.incorrect + 1 >= config.n_up else Step.HOLD
+
+    def respond(self, identity, correct, update_value):
+        self.require_active(identity)
+        if type(correct) is not bool:
+            raise TypeError("Response correctness must be a boolean.")
+        config = self.configurations[identity]
+        # Failed numeric updates must not partially consume a response or
+        # switch out of the introductory 1-down phase.
         old = self.states[identity]
         state = replace(old, streak=replace(old.streak))
-        step = state.streak.respond(correct, config.n_down, config.n_up)
+        introductory = self.initial_one_down_active(identity)
+        effective_down = 1 if introductory and correct else config.n_down
+        step = state.streak.respond(correct, effective_down, config.n_up)
         value = update_value(step)
         state.observe_recorded_value(value)
         state.trial_count += 1
+        if introductory:
+            state.initial_one_down_responses += 1
+            if not correct:
+                # The first wrong response is evaluated by the user's n-up rule,
+                # and exits 1-down for the NEXT accepted presentation.
+                state.initial_one_down_end_reason = "first_incorrect"
+            elif state.initial_one_down_responses >= config.initial_one_down_limit:
+                state.initial_one_down_end_reason = "response_limit"
         state.complete = state.reversal_count >= config.reversal_limit
         self.states[identity] = state
         self.total_trials += 1

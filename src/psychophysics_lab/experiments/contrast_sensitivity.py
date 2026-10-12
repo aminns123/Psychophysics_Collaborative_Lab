@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 from typing import Any
 
 from ..config.models import MonitorProfile
@@ -10,6 +11,29 @@ from .responses import LEFT_RIGHT
 
 LUMINANCE_CHOICES = (19.0, 29.0, 41.0, 49.0, 204.0, 255.0, 300.0, 322.0, 370.0, 403.0, 415.0, 500.0)
 SCREEN_INTENSITY_CHOICES = (0.24, 0.294, 0.34, 0.374, 0.72, 0.8, 0.86, 0.89, 0.95, 0.98, 0.99)
+
+# These are the original (63,252) CSF renderer condition scalars.
+# Never silently label these values calibrated cycles/degree.
+DEFAULT_CSF_CONDITIONS = "63,252"
+
+
+def parse_condition_values(values: str) -> tuple[float, ...]:
+    """Strict ordered numeric condition list; no empty/duplicate/nonfinite items."""
+    if not isinstance(values, str):
+        raise ValueError("Condition values must be comma-separated numeric text.")
+    parts = [piece.strip() for piece in values.split(",")]
+    if not 1 <= len(parts) <= 24 or any(not part for part in parts):
+        raise ValueError("Provide 1–24 numeric condition values separated by commas, without blanks.")
+    try:
+        result = tuple(float(part) for part in parts)
+    except ValueError as exc:
+        raise ValueError("Each condition must be a numeric legacy stimulus value.") from exc
+    if any(not math.isfinite(value) or value <= 0 or value > 10000 for value in result):
+        raise ValueError("Every legacy stimulus condition must be finite and in (0, 10000].")
+    if len(set(result)) != len(result):
+        raise ValueError("Condition values must be unique; use staircases per condition for repeats.")
+    return result
+
 
 
 def _folder_number(value: float) -> str:
@@ -56,6 +80,18 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
         errors.append("Reversal termination must be at least 1.")
     if int(values["max_trials"]) < 1:
         errors.append("Maximum responses must be at least 1.")
+    if not 0 <= int(values["initial_one_down_limit"]) <= 1000:
+        errors.append("Initial 1-down response limit must be between 0 and 1000 (0 disables).")
+    try:
+        parsed_conditions = parse_condition_values(values["condition_values"])
+    except ValueError as exc:
+        errors.append(str(exc))
+    else:
+        if int(values["number_conditions"]) != len(parsed_conditions):
+            errors.append(
+                f"Number of conditions ({values['number_conditions']}) must match "
+                f"the {len(parsed_conditions)} comma-separated values."
+            )
     if not 1 <= int(values["staircases_per_condition"]) <= 24:
         errors.append("Staircases per condition must be between 1 and 24.")
     if not 0 <= float(values["Background_Screen_intensity"]) < 1:
@@ -101,7 +137,7 @@ CSF_SPEC = ExperimentSpec(
         "stimulus_condition": {
             "units_or_encoding": "legacy CSF condition value; physical units not yet validated",
             "meaning": (
-                "Legacy CSF staircase condition value associated with the accepted response."
+                "Experiment-configured legacy spatial-frequency scalar associated with the accepted response."
             ),
             "notes": (
                 "The current reference implementation derives these values from the retained "
@@ -133,7 +169,7 @@ CSF_SPEC = ExperimentSpec(
         },
     },
     adaptive=AdaptiveSelection("consecutive_up_down",
-        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "staircases_per_condition", "reversal_termination", "max_trials"),
+        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit", "staircases_per_condition", "reversal_termination", "max_trials"),
         "garcia_perez_1998", "log10_display_contrast"),
     response_paradigm=LEFT_RIGHT,
     fields=(
@@ -169,6 +205,17 @@ CSF_SPEC = ExperimentSpec(
                 "manual/unverified until that calibration is supplied."
             ),
         ),
+        ConfigField(
+            "number_conditions", "Number of stimulus conditions", "int", default=2,
+            minimum=1, maximum=24, section="Stimulus conditions",
+            help_text="Must equal the number of comma-separated numeric condition values below.",
+        ),
+        ConfigField(
+            "condition_values", "Condition values (comma-separated)", "text",
+            default=DEFAULT_CSF_CONDITIONS, section="Stimulus conditions",
+            help_text="Legacy renderer spatial-frequency scalars, NOT validated cycles/degree. "
+                      "Order is preserved; specify values e.g. 63,126,252. No duplicates.",
+        ),
         ConfigField("n_down", "Correct responses required for a downward step", "int", default=2),
         ConfigField("n_up", "Incorrect responses required for an upward step", "int", default=1),
         ConfigField("logUNIT_UP", "Up-step size (legacy log units)", "float", default=0.35),
@@ -177,6 +224,14 @@ CSF_SPEC = ExperimentSpec(
             "Down-step size (legacy log units)",
             "float",
             default=0.5488 * 0.35,
+        ),
+        ConfigField(
+            "initial_one_down_limit", "Initial 1-down maximum accepted responses per staircase (0 = disabled)",
+            "int", default=5, minimum=0, maximum=1000,
+            help_text="On each staircase, one correct response steps down until the FIRST incorrect "
+                      "answer or this many accepted answers, whichever happens first. "
+                      "The first incorrect answer uses the normal n-up rule; subsequent "
+                      "trials follow the selected n-down/n-up rules.",
         ),
         ConfigField("staircases_per_condition", "Independent staircases per condition", "int", default=1, minimum=1, maximum=24,
                     help_text="Creates separately indexed adaptive staircases for each condition. The maximum-response ceiling is shared across ALL staircases."),
