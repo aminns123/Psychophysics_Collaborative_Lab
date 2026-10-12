@@ -31,6 +31,21 @@ class VirtualObserverOptionsScreen(Screen):
         self.request = request
         self.scenarios = list_scenarios(request.experiment_id)
 
+    def _observer_defaults(self, scenario):
+        values = effective_observer_values(scenario)
+        experiment_values = self.request.experiment_values
+        # New unified cpd studies must not inherit the old 63/252 legacy
+        # reference observer's uncalibrated preferred-condition default.
+        if ("preferred_condition" in values and
+                self.request.experiment_id == "contrast_sensitivity" and
+                experiment_values.get("condition_unit") in {"cycles_per_degree", "degrees_per_cycle"}):
+            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            conditions = resolved_condition_frequencies(
+                experiment_values["condition_values"], experiment_values["condition_unit"]
+            )
+            values["preferred_condition"] = conditions[0]
+        return values
+
     def compose(self) -> ComposeResult:
         initial = self.scenarios[0] if self.scenarios else None
         with Vertical(id="fixed-shell"):
@@ -63,7 +78,7 @@ class VirtualObserverOptionsScreen(Screen):
                     yield Input(value=",".join(str(x) for x in scenario.seeds),
                                 id=f"virtual-seeds-{i}")
                     yield Static("[b]Observer-only properties[/b]")
-                    for j, (name, value) in enumerate(effective_observer_values(scenario).items()):
+                    for j, (name, value) in enumerate(self._observer_defaults(scenario).items()):
                         yield Label(name.replace("_", " "))
                         yield Input(value=json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value),
                                     id=f"virtual-observer-{i}-{j}")
@@ -94,7 +109,7 @@ class VirtualObserverOptionsScreen(Screen):
         model = get_simulation(self.request.experiment_id)
         observer = {
             key: parse_parameter(self.query_one(f"#virtual-observer-{i}-{j}", Input).value, value)
-            for j, (key, value) in enumerate(effective_observer_values(scenario).items())
+            for j, (key, value) in enumerate(self._observer_defaults(scenario).items())
         }
         model.observer_factory(**observer)  # Validate true psychometric properties.
         seeds = parse_seeds(self.query_one(f"#virtual-seeds-{i}", Input).value)
