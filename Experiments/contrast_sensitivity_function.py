@@ -225,13 +225,13 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
                 pixel_metre_ratio,
             )
         )
-        grating_displacement = int(
-            funcs.convertArcangleTOPixel(
-                kwargs_grating["grating_displacement_deg"],
-                viewing_distance_m,
-                pixel_metre_ratio,
-            )
-        )
+        # Grating size is a symmetric visual-angle extent (2*d*tan(theta/2)).
+        # An offset measured from fixation instead uses x=d*tan(theta).
+        # Do not accidentally use the width formula for position eccentricity.
+        grating_displacement = int(round(
+            viewing_distance_m * np.tan(np.radians(kwargs_grating["grating_displacement_deg"]))
+            / physical_geometry.pixel_pitch_m[0]
+        ))
 
         alternative_forced_choice = {
             "2AFC_choice": [cx - grating_displacement, cx + grating_displacement],
@@ -267,6 +267,14 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             },
             "resolved_geometry": {
                 "grating_width_px": int(grating_width),
+                "grating_width_realised_deg": float(
+                    np.degrees(2*np.arctan(grating_width * physical_geometry.pixel_pitch_m[0]
+                                            / (2*viewing_distance_m)))
+                ),
+                "grating_eccentricity_realised_deg": float(
+                    np.degrees(np.arctan(grating_displacement * physical_geometry.pixel_pitch_m[0]
+                                          / viewing_distance_m))
+                ),
                 "grating_displacement_px": int(grating_displacement),
                 "alternative_positions_px": list(alternative_forced_choice["2AFC_choice"]),
                 "center_px": [int(cx), int(cy)],
