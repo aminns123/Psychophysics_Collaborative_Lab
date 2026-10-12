@@ -42,32 +42,38 @@ recording, **not physical display duration**.
 
 ## Saved trial data and quick-look figures
 
-The standalone `simulation_reports/.../scenario_report.json` is an **index
-and pass/fail report**, not the experiment data. Each scenario report contains
-the paths to its canonical acquisition and exploratory figures:
+The scenario report is a **software test result**, not a replacement for
+the actual trial history. It is saved as `scenario_report.json` IN EACH
+synthetic acquisition folder, beside `trials.tsv` and `adaptive_session.json`.
+No separate top-level reports directory is created.
 
 ```text
 local_psychophysics_data/
-├── synthetic_123/contrast_sensitivity/.../run_NNN/
-│   ├── trials.tsv
-│   ├── trials_readable.txt
-│   ├── adaptive_session.json
-│   ├── manifest.json
-│   ├── experiment_config.json
-│   ├── resolved_experiment.json
-│   └── SYNTHETIC_DATA.json
-├── analysis/
-│   ├── quicklook/<run-uuid>/<timestamp>/staircases.png
-│   └── thresholds/synthetic_123/contrast_sensitivity/<run-uuid>/<timestamp>/
-│       ├── threshold_vs_condition.png
-│       ├── staircase_thresholds.tsv
-│       └── threshold_by_condition.tsv
-└── simulation_reports/contrast_sensitivity/<scenario>/<timestamp>/
-    └── scenario_report.json
+└── synthetic_123/contrast_sensitivity/.../run_NNN/
+    ├── trials.tsv
+    ├── trials_readable.txt
+    ├── adaptive_session.json
+    ├── manifest.json
+    ├── experiment_config.json
+    ├── resolved_experiment.json
+    ├── SYNTHETIC_DATA.json
+    ├── scenario_report.json
+    └── analysis/
+        ├── staircases.png
+        ├── staircase_preview.json
+        ├── threshold_vs_condition.png
+        ├── latest_threshold_analysis.json
+        └── thresholds/<analysis-timestamp>/
+            ├── staircase_thresholds.tsv
+            ├── threshold_by_condition.tsv
+            └── threshold_analysis.json
 ```
 
 The figures plot **presented display contrast for every accepted staircase
-response**, with reversal points marked, and an exploratory threshold-contrast
+response**, with separately marked correct/incorrect responses and reversals.
+Only conditions actually presented get a panel; no empty placeholder axes.
+Each condition's legend shows its independent staircase IDs and response counts.
+An exploratory threshold-contrast
 vs condition curve when reversal data permit. A short/censored run may have
 a staircase image but no valid THC estimate; one is never invented.
 
@@ -75,7 +81,7 @@ In the TUI, open **Data**, choose the synthetic run, and use **Open staircase
 image** or **Open THC image**. Choose **Generate staircase + THC previews** to
 derive a new set. For re-analysis select either final fraction (default 80%)
 or **last N reversals per staircase**, then choose **Generate Threshold Table +
-Plot**. These outputs live under external `analysis/` and never overwrite
+Plot**. These outputs live under that run's `analysis/` folder and never overwrite
 canonical acquisition records. Quick-look THC is not a final scientific
 estimate until your selected estimator and exclusion criteria are justified.
 
@@ -237,21 +243,21 @@ human acquisition. Virtual participant IDs are reserved as `synthetic_123`,
 `manifest.json`, `SYNTHETIC_DATA.json`, `trials.tsv` and a virtual
 timestamp specification.
 
-A named scenario additionally writes a report at:
+Each run's `scenario_report.json` contains the validation checks and links
+to that run's canonical trials and staircase/THC images. With multiple seeds,
+each run receives the aggregate report, so no seed is left without one.
 
-```text
-local_psychophysics_data/
-└── simulation_reports/
-    └── contrast_sensitivity/
-        └── csf_baseline/
-            └── <timestamp>_<unique-id>/
-                └── scenario_report.json
-```
+**Staircases per condition:** CSF now exposes `staircases_per_condition`
+(1–24; default 1) in the Adaptive algorithm settings of both human and
+simulated runs. Setting four creates eight independent staircases across
+the two reference CSF conditions. The `max_trials` safety ceiling is
+**shared across all staircases**; increase it appropriately if you increase
+staircase count. No missing staircase responses or THC estimates are invented.
 
-Each report links to the run directories **using relative paths**, records
-which checks passed, and includes the experiment-specific model diagnostics.
-Reports do not replace or mutate the canonical trial records. An invalid
-human/synthetic participant-folder overlap fails explicitly.
+**Visible progress:** after Textual closes to run the virtual experiment,
+periodic dots appear in the terminal until the pipeline returns. The TUI
+reopens with a success/failure summary afterwards. Dots indicate activity,
+not an estimated time remaining.
 
 ## Three distinct validation levels
 

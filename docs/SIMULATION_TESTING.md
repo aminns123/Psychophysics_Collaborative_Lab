@@ -18,8 +18,8 @@ python -m simulations --scenario csf_shifted_preference
 
 Each scenario runs one or more seeded virtual observers through the actual
 configuration, adaptive staircase, canonical trial recorder, data validator
-and experiment's own post-hoc analysis. It writes a `scenario_report.json`
-under `<shared_data_root>/simulation_reports/<experiment>/<scenario>/...`.
+and experiment's own post-hoc analysis. Each run saves its `scenario_report.json` next to canonical `trials.tsv`,
+and auto-generated staircase/THC figures inside its own `analysis/` subfolder.
 The report contains checks, links to the synthetic runs and the
 experiment-specific comparison with known model behaviour.
 
@@ -37,6 +37,18 @@ The two templates are safe and never overwrite existing files. See
 output paths and scientific interpretation. Software pass/fail concerns
 infrastructure and declared scenario conditions; an observed numerical bias
 must not be confused with a proven psychometric estimator defect.
+
+Each CSF run can request `staircases_per_condition` (1–24; default 1).
+Each copy has its own staircase ID, response streak, contrast sequence,
+reversal count and stopping criterion. The total `max_trials` ceiling
+applies to the whole run, not to each individual staircase. Both human
+and virtual runs get a per-condition staircase PNG at completion; the figure
+marks correct/incorrect responses and reversal positions. In the Data page
+you can open the run folder and scenario report without hunting through the
+external data tree.
+
+Headless runs launched from Simulate display heartbeat dots in the terminal
+while Textual is closed, then reopen the TUI with their report path.
 
 ## Run a CSF virtual observer
 

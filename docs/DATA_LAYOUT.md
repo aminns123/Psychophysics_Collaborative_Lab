@@ -181,20 +181,34 @@ staircase state.
 
 ## Acquisition versus analysis
 
-A run directory is an immutable acquisition record. It should not become a
-dumping ground for:
+A run directory is a self-contained record containing **immutable canonical
+acquisition files** together with a distinct `analysis/` subfolder for
+nonfinal diagnostic figures and versioned derived estimates. Never modify
+`trials.tsv`, the original staircase/session state, or configuration when
+recomputing threshold contrast from a different reversal subset.
 
 ```text
-plots/
-fits/
-bootstrap/
-processed/
-figures/
+run_NNN/
+├── manifest.json
+├── experiment_config.json
+├── trials.tsv
+├── adaptive_session.json
+├── scenario_report.json              # virtual runs only
+├── state/                            # original runtime/snapshot records
+└── analysis/                         # derived, noncanonical output
+    ├── staircases.png                # actual correct/incorrect trial responses
+    ├── staircase_preview.json
+    ├── threshold_vs_condition.png    # only when reversals permit
+    ├── latest_threshold_analysis.json
+    └── thresholds/<timestamp>/       # N-reversal/fraction reanalysis versions
 ```
 
-Analysis and publication repositories should create their own processed/derived
-layers. This follows the useful distinction in the PNAS data archive between raw
-records and processed scientific outputs.
+Both human and virtual experiments generate condition-specific staircase
+figures automatically when the run finishes. Synthetic software test results
+are stored as `scenario_report.json` in the same run folder as the trials.
+Plots are QC/quick-look products, not publication-authorised thresholds.
+Publication repositories can maintain separate fitted models, bootstraps and
+figures while referencing the unaltered source run.
 
 ## Portability
 

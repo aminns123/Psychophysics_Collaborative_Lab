@@ -151,6 +151,12 @@ run_001/
 ├── trials.tsv
 ├── trial_context.json
 ├── trials_readable.txt
+├── scenario_report.json            # virtual observers only
+├── analysis/                        # derived images/tables, not raw acquisition
+│   ├── staircases.png               # correct/incorrect responses and reversals
+│   ├── staircase_preview.json
+│   ├── threshold_vs_condition.png   # only if reversals permit
+│   └── thresholds/<timestamp>/      # independent reanalysis versions
 ├── trial_data_dictionary.tsv
 ├── legacy_response.txt
 └── state/
@@ -331,12 +337,14 @@ See `docs/EXPERIMENT_LIFECYCLE.md` for the detailed lifecycle contract.
 
 ## Acquisition versus analysis
 
-PsyCoLab run folders are immutable acquisition records. Do not put plots,
-bootstrap outputs, fitted models or publication figures into them.
-
-Processed/derived analysis should live in a separate analysis/publication
-structure, following the useful raw-versus-processed distinction used by the
-PNAS data archive.
+PsyCoLab canonical acquisition files (`trials.tsv`, state snapshots,
+manifest and configuration) remain **immutable**. Each human or simulated run
+now also owns a clearly separated `analysis/` subfolder containing automatic
+per-condition staircase plots and exploratory threshold summaries, without
+editing the acquisition records. Reanalysing by a different reversal convention
+creates a versioned analysis under that same run. Publication-ready analyses
+may still be exported to a separate analysis/publication repository; the
+per-run figures are for inspection and quality control.
 
 ## Portability and errors
 

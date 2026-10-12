@@ -66,8 +66,8 @@ def test_default_threshold_uses_final_eighty_percent_and_averages_staircases(tmp
     assert result.staircase_thresholds[0].threshold == pytest.approx(0.155)
     assert result.staircase_thresholds[1].threshold == pytest.approx(0.255)
     assert result.condition_thresholds[0].threshold == pytest.approx(0.205)
-    assert result.output_directory.is_relative_to(data / "analysis")
-    assert not result.output_directory.is_relative_to(run)
+    assert result.output_directory.is_relative_to(run / "analysis")
+    assert result.output_directory.is_relative_to(run)
 
 
 def test_threshold_analysis_never_accepts_run_outside_active_workspace(tmp_path):

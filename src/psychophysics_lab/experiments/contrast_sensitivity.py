@@ -56,6 +56,8 @@ def _validate(values: Mapping[str, Any]) -> list[str]:
         errors.append("Reversal termination must be at least 1.")
     if int(values["max_trials"]) < 1:
         errors.append("Maximum responses must be at least 1.")
+    if not 1 <= int(values["staircases_per_condition"]) <= 24:
+        errors.append("Staircases per condition must be between 1 and 24.")
     if not 0 <= float(values["Background_Screen_intensity"]) < 1:
         errors.append("Background screen intensity must be in [0, 1).")
     starting = float(values["starting_probe_intensity"])
@@ -131,7 +133,7 @@ CSF_SPEC = ExperimentSpec(
         },
     },
     adaptive=AdaptiveSelection("consecutive_up_down",
-        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "reversal_termination", "max_trials"),
+        ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "staircases_per_condition", "reversal_termination", "max_trials"),
         "garcia_perez_1998", "log10_display_contrast"),
     response_paradigm=LEFT_RIGHT,
     fields=(
@@ -176,6 +178,8 @@ CSF_SPEC = ExperimentSpec(
             "float",
             default=0.5488 * 0.35,
         ),
+        ConfigField("staircases_per_condition", "Independent staircases per condition", "int", default=1, minimum=1, maximum=24,
+                    help_text="Creates separately indexed adaptive staircases for each condition. The maximum-response ceiling is shared across ALL staircases."),
         ConfigField("reversal_termination", "Reversals required per staircase", "int", default=10),
         ConfigField("max_trials", "Maximum accepted responses (safety ceiling)", "int", default=30),
         ConfigField("timeFixate", "Fixation duration (ms)", "int", default=250, section="Timing (advanced)"),

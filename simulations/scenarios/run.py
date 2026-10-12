@@ -7,12 +7,10 @@ evaluator decides how to interpret its own model and recovered quantities.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
 import math
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from psychophysics_lab.core.synthetic import simulation_workspace
 from psychophysics_lab.data.session import atomic_write_json
@@ -160,10 +158,10 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
             "detail": str(entry.get("detail", "")),
         })
     succeeded = all(bool(check["passed"]) for check in checks)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
-    report_directory = root / "simulation_reports" / experiment_id / scenario_id / f"{stamp}_{uuid4().hex[:12]}"
-    report_directory.mkdir(parents=True, exist_ok=False)
-    report_file = report_directory / "scenario_report.json"
+    # Every observer run is self-contained: the success report lives beside
+    # trials.tsv, adaptive_session.json and analysis/ in its OWN run directory.
+    # With multiple seeds an identical aggregate report is attached to each run.
+    report_file = records[0].artifacts.run_directory / "scenario_report.json"
 
     def relative(path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
@@ -217,6 +215,7 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
             "thresholds need not coincide with a virtual observer's psychometric midpoint."
         ),
     }
-    atomic_write_json(report_file, report)
+    for record in records:
+        atomic_write_json(record.artifacts.run_directory / "scenario_report.json", report)
     return ScenarioResult(experiment_id, scenario_id, succeeded, report_file,
                           tuple(records), tuple(checks), evaluation)
