@@ -61,6 +61,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     timeAB = int(setupDict.get("timeAB", 200))
     reversal_termination = int(setupDict["reversal_termination"])
     max_trials = int(setupDict.get("max_trials", 10 * 3))
+    staircases_per_condition = int(setupDict.get("staircases_per_condition", 1))
+    if not 1 <= staircases_per_condition <= 24:
+        raise ValueError("staircases_per_condition must be between 1 and 24.")
 
     experiment_params = {
         "background_intensity": float(setupDict["Background_Screen_intensity"]),
@@ -91,6 +94,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         "number_trials": max_trials,
         "max_trials": max_trials,
         "reversal_termination": reversal_termination,
+        "staircases_per_condition": staircases_per_condition,
         "terminationINDEX": 9,
         "logUNIT_UP": float(setupDict.get("logUNIT_UP", 0.35)),
         "logUNIT_DW": float(setupDict.get("logUNIT_DW", ratio2dw1up * 0.35)),
@@ -182,7 +186,10 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     # Deferred stimulus review: this legacy value is intentionally NOT
     # reinterpreted as measured pixels/degree here.
     deg1PCD = 31.5
-    condition_list = [2 * deg1PCD, 8 * deg1PCD]
+    # Separate adaptive identities for independent repeats of each condition.
+    # No shared streak, contrast history, reversal count or termination state.
+    # At the reference defaults this is unchanged (63, 252; one each).
+    condition_list = [2 * deg1PCD, 8 * deg1PCD] * staircases_per_condition
 
     columnsSet = {
         "condition_list": condition_list,
