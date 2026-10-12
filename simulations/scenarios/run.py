@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -62,7 +63,8 @@ def _validator_checks(scenario, run_directory: Path) -> tuple[dict[str, Any], ..
 
 
 def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
-                 repo_root=None) -> ScenarioResult:
+                 repo_root=None, seeds=None, observer_parameters=None,
+                 experiment_values=None) -> ScenarioResult:
     """Execute scenario seeds; save report alongside human and synthetic runs.
 
     Physical display, participant IDs and acquisition defaults are untouched.
@@ -73,16 +75,41 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     source_root = (Path(repo_root) if repo_root is not None else find_repo_root()).resolve()
     scenario = get_scenario(experiment_id, scenario_id)
     model = get_simulation(experiment_id)
+
+    # All configurable keys must have been explicitly exposed by the author
+    # of this scenario. Unknown keys and nonfinite/type-changing overrides
+    # fail before touching any participant or analysis directories.
+    def effective(base, override, label):
+        values = dict(base)
+        for key, value in (override or {}).items():
+            if key not in values:
+                raise ValueError(f"{label} {key!r} is not configurable in this scenario.")
+            expected = values[key]
+            if type(value) is not type(expected):
+                raise ValueError(f"{label} {key!r} must retain its declared type.")
+            if isinstance(value, float) and not math.isfinite(value):
+                raise ValueError(f"{label} {key!r} must be finite.")
+            values[key] = value
+        return values
+
+    observer_values = effective(scenario.observer_parameters, observer_parameters, "Observer setting")
+    experiment_settings = effective(scenario.experiment_values, experiment_values, "Experiment setting")
+    selected_seeds = tuple(scenario.seeds if seeds is None else seeds)
+    if (not selected_seeds or len(selected_seeds) > 128
+            or len(set(selected_seeds)) != len(selected_seeds)
+            or any(type(seed) is not int or seed < 0 for seed in selected_seeds)):
+        raise ValueError("Specify 1–128 unique nonnegative integer seeds.")
+
     selected_data_root = (Path(data_root) if data_root is not None
                           else preferred_data_root(source_root, default_data_root(source_root)))
     root = simulation_workspace(selected_data_root, source_root)
-    observer = model.observer_factory(**dict(scenario.observer_parameters))
+    observer = model.observer_factory(**observer_values)
     records = []
     checks = []
-    for seed in scenario.seeds:
+    for seed in selected_seeds:
         artifacts, analysis = simulate(
             data_root=root, repo_root=source_root, experiment_id=experiment_id,
-            seed=seed, observer=observer, values=dict(scenario.experiment_values),
+            seed=seed, observer=observer, values=experiment_settings,
             analyse=True,
         )
         records.append(ScenarioRun(seed, artifacts, analysis))
@@ -133,10 +160,10 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
         "scenario_id": scenario_id,
         "description": scenario.description,
         "passed": succeeded,
-        "seeds": list(scenario.seeds),
+        "seeds": list(selected_seeds),
         "observer_model": type(observer).__name__,
-        "observer_parameters": dict(scenario.observer_parameters),
-        "experiment_values": dict(scenario.experiment_values),
+        "observer_parameters": observer_values,
+        "experiment_values": experiment_settings,
         "expected_analysis": scenario.expect_analysis,
         "tests": checks,
         "experiment_evaluation": evaluation,

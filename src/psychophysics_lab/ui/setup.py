@@ -37,6 +37,7 @@ NAV_PAGES = (
     ("stimuli", "Stimuli"),
     ("experiments", "Experiments"),
     ("display", "Display"),
+    ("simulations", "Simulate"),
     ("data", "Data"),
     ("help", "Developer"),
 )
@@ -148,7 +149,9 @@ class HubNavigation(Horizontal):
     def on_mount(self):
         page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
                 "DisplayCheckScreen": "display", "ProfileScreen": "display",
-                "DataScreen": "data", "HelpScreen": "help"}.get(type(self.screen).__name__, "setup")
+                "DataScreen": "data", "HelpScreen": "help",
+                "SimulationsScreen": "simulations",
+                "SimulationReviewScreen": "simulations"}.get(type(self.screen).__name__, "setup")
         self.query_one("#nav-" + page, Button).variant = "primary"
 
 
@@ -694,7 +697,7 @@ class HelpScreen(HubPage):
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
-            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Synthetic pipeline testing[/b]\nRun: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Synthetic pipeline testing[/b]\nOpen the Simulate page above. Select an experiment and virtual scenario, edit declared model settings, review, then run.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
             yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
@@ -1024,15 +1027,17 @@ class PsyCoLabSetupApp(App):
     .buttons Button { min-width: 0; max-width: 50%; margin: 0; }
     .wrap-buttons { align-horizontal: left; }
     Button { margin-left: 1; }
-    #setup-status, #config-status, #review-status, #geometry-status, #data-status {
+    #setup-status, #config-status, #review-status, #geometry-status, #data-status, #sim-status {
         min-height: 1;
         margin-top: 1;
     }
     #code-text { width: 100%; }
     """
 
-    def __init__(self, *, repo_root: Path, data_root: Path) -> None:
+    def __init__(self, *, repo_root: Path, data_root: Path,
+                 simulation_summary: str | None = None) -> None:
         super().__init__()
+        self.simulation_summary = simulation_summary
         self.repo_root = repo_root.resolve()
         self.data_root = data_root.resolve()
         self.local_config_root = config_root(self.repo_root, self.data_root)
@@ -1065,7 +1070,10 @@ class PsyCoLabSetupApp(App):
             while len(self.screen_stack) > 1:
                 self.pop_screen()
             return
+        from .simulations import SimulationsScreen
+
         pages = {
+            "simulations": SimulationsScreen,
             "experiments": ExperimentsScreen,
             "stimuli": StimuliScreen,
             "display": DisplayCheckScreen,
@@ -1149,6 +1157,8 @@ class PsyCoLabSetupApp(App):
                 "Configure the external data workspace, participant, experiment and display. "
                 "The Textual hub closes before Pyglet/OpenGL acquisition begins."
             )
+            if self.simulation_summary:
+                yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
             yield Label("External data workspace")
             yield Input(value=str(self.data_root), id="data-root")
@@ -1376,6 +1386,8 @@ class PsyCoLabSetupApp(App):
                 _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 
 
-def run_setup_tui(*, repo_root: Path, data_root: Path) -> SetupRequest | GeometryCheckRequest | None:
-    app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root)
+def run_setup_tui(*, repo_root: Path, data_root: Path,
+                  simulation_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
+    app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
+                           simulation_summary=simulation_summary)
     return app.run()

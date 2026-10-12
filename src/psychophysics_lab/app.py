@@ -139,9 +139,10 @@ def _main(
         initial_data_root = resolve_data_root(fallback_data_root, repo_root)
     initial_data_root.mkdir(parents=True, exist_ok=True)
 
-    # The hub may temporarily close to run a fullscreen display diagnostic and
-    # then reopen.  Participant experiments still close Textual before Pyglet
-    # and return to the terminal when acquisition finishes.
+    # The hub may close for fullscreen display checks or headless scenarios.
+    # Real participants and virtual observers must never execute inside the
+    # active Textual event loop.
+    simulation_summary: str | None = None
     while True:
         if diagnostic_context is not None:
             diagnostic_context["data_root"] = initial_data_root
@@ -149,9 +150,54 @@ def _main(
 
         from .ui.setup import run_setup_tui
 
-        action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root)
+        action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root,
+                               simulation_summary=simulation_summary)
+        simulation_summary = None
         if action is None:
             return 0
+
+        from .core.simulation_request import SimulationLaunchRequest
+        if isinstance(action, SimulationLaunchRequest):
+            selected_data_root = resolve_data_root(action.data_root, repo_root)
+            if diagnostic_context is not None:
+                diagnostic_context["data_root"] = selected_data_root
+                diagnostic_context["phase"] = "synthetic_simulation"
+            # Do NOT update the last human setup or machine monitor preferences.
+            # Scenario execution uses the real pipeline with a reserved
+            # synthetic participant, after the Textual window has closed.
+            from simulations.scenarios import run_scenario
+            try:
+                result = run_scenario(
+                    experiment_id=action.experiment_id,
+                    scenario_id=action.scenario_id,
+                    data_root=selected_data_root,
+                    repo_root=repo_root,
+                    seeds=action.seeds,
+                    observer_parameters=action.observer_parameters,
+                    experiment_values=action.experiment_values,
+                )
+            except Exception as exc:
+                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                report = write_crash_report(
+                    exc, repo_root=repo_root, data_root=selected_data_root,
+                    phase="synthetic_simulation",
+                )
+                simulation_summary = (
+                    f"[red]Simulation failed: {exc}[/red]\n"
+                    + (f"Crash report: {report}" if report else "No crash report could be written.")
+                )
+                print("Synthetic simulation failed; returning to the PsyCoLab TUI.")
+            else:
+                status = "[green]PASSED[/green]" if result.passed else "[red]FAILED CHECKS[/red]"
+                simulation_summary = (
+                    f"Latest simulation: {status}\n"
+                    f"Scenario: {result.experiment_id} / {result.scenario_id}\n"
+                    f"Synthetic runs: {len(result.runs)}\n"
+                    f"Report: {result.report_file}"
+                )
+                print(f"Simulation {'PASSED' if result.passed else 'FAILED CHECKS'}: {result.report_file}")
+            initial_data_root = selected_data_root
+            continue
 
         from .core.geometry_check import GeometryCheckRequest
 
