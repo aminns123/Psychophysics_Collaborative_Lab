@@ -211,7 +211,9 @@ def analyse_thresholds(
     participant = _safe_component(manifest.get("participant_id", "unknown_participant"))
     experiment = _safe_component(manifest.get("experiment_id", "unknown_experiment"))
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H%M%S_%f")
-    output = data_root / "analysis" / "thresholds" / participant / experiment / run_uuid / stamp
+    # Keep all analyses WITH the acquisition they describe. Each change of
+    # reversal convention creates a version, never overwriting canonical trials.
+    output = run_directory / "analysis" / "thresholds" / stamp
     output.mkdir(parents=True, exist_ok=False)
 
     staircase_table = output / "staircase_thresholds.tsv"
@@ -231,6 +233,10 @@ def analyse_thresholds(
     )
 
     plot_file = _plot(condition_results, plot_path) if create_plot else None
+    if plot_file:
+        import shutil
+        latest = run_directory / "analysis" / "threshold_vs_condition.png"
+        shutil.copy2(plot_file, latest)
     source_relative = run_directory.relative_to(data_root).as_posix()
     summary = {
         "schema_version": 1,
@@ -271,6 +277,15 @@ def analyse_thresholds(
         },
     }
     summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    from ..data.session import atomic_write_json
+    atomic_write_json(run_directory / "analysis" / "latest_threshold_analysis.json", {
+        "analysis_version": output.relative_to(run_directory).as_posix(),
+        "last_n_reversals": last_n_reversals,
+        "retain_fraction": summary["retain_fraction"],
+        "reversal_value_column": reversal_value_column,
+        "plot": "threshold_vs_condition.png" if plot_file else None,
+        "scientific_warning": "Exploratory threshold analysis, not an authorised final THC.",
+    })
 
     return ThresholdAnalysisResult(
         output_directory=output,
