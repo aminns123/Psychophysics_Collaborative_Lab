@@ -11,10 +11,15 @@ from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible
 
 from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, parse_seeds
 from ..paths import resolve_data_root
+from ..adaptive.steps import paired_step, NOTICE
+from ..experiments.registry import get_experiment
+from ..config.preflight import compatible
+from simulations.registry import get_simulation
+from simulations.controls import effective_experiment_values, effective_observer_values
 from .setup import HubPage, _nav_bar, _handle_nav, _is_blank_select_value
 
 
@@ -63,6 +68,18 @@ class SimulationsScreen(HubPage):
                 if self.experiment_ids else [("No registered simulations", "__none__")],
                 value=first, allow_blank=False, id="sim-experiment",
             )
+            yield Label("Display profile (metadata only; no hardware is used)")
+            compatible_profiles = {
+                key: value for key, value in self.app.monitor_profiles.items()
+                if compatible(get_experiment(first), value)
+            } if self.experiment_ids else {}
+            preferred = get_simulation(first).monitor_profile_id if self.experiment_ids else "__none__"
+            profile_selection = preferred if preferred in compatible_profiles else next(iter(compatible_profiles), "__none__")
+            yield Select(
+                [(p.display_name, p.id) for p in compatible_profiles.values()]
+                if compatible_profiles else [("No qualified profiles", "__none__")],
+                value=profile_selection, allow_blank=False, id="sim-profile",
+            )
             yield Label("Simulation scenario")
             yield Select(
                 [(scenario.id, scenario.id) for scenario in scenarios]
@@ -75,16 +92,37 @@ class SimulationsScreen(HubPage):
                     yield Label("Random seed(s) — comma-separated; each creates a synthetic run")
                     yield Input(value=",".join(map(str, scenario.seeds)),
                                 id=f"sim-seeds-{index}")
-                    if scenario.observer_parameters:
-                        yield Static("[b]Virtual observer — known model properties[/b]")
-                        for number, (key, value) in enumerate(scenario.observer_parameters.items()):
+                    with Collapsible(title="Virtual observer (simulation-only properties)", collapsed=False):
+                        for number, (key, value) in enumerate(effective_observer_values(scenario).items()):
                             yield Label(key.replace("_", " "))
                             yield Input(value=_value_text(value), id=f"sim-observer-{index}-{number}")
-                    if scenario.experiment_values:
-                        yield Static("[b]Experiment procedure overrides[/b]")
-                        for number, (key, value) in enumerate(scenario.experiment_values.items()):
-                            yield Label(key.replace("_", " "))
-                            yield Input(value=_value_text(value), id=f"sim-experiment-value-{index}-{number}")
+                    experiment = get_experiment(scenario.experiment_id)
+                    with Collapsible(title="Experiment settings — same controls as human acquisition", collapsed=True):
+                        for number, field in enumerate(experiment.fields):
+                            yield Label(field.label)
+                            value = effective_experiment_values(scenario)[field.key]
+                            if field.kind == "choice":
+                                yield Select(
+                                    [(str(choice), choice) for choice in field.choices],
+                                    value=value if value in field.choices else Select.BLANK,
+                                    allow_blank=value is None,
+                                    id=f"sim-experiment-value-{index}-{number}",
+                                    disabled=not field.editable,
+                                )
+                            else:
+                                yield Input(
+                                    value=_value_text(value),
+                                    id=f"sim-experiment-value-{index}-{number}",
+                                    disabled=not field.editable,
+                                )
+                            if field.help_text:
+                                yield Static(field.help_text, classes="field-help")
+                        if experiment.adaptive and experiment.adaptive.step_calculator:
+                            yield Static(NOTICE, classes="field-help")
+                            with Horizontal(classes="buttons"):
+                                yield Button("Calculate down from up", id=f"sim-calculate-down-{index}")
+                                yield Button("Calculate up from down", id=f"sim-calculate-up-{index}")
+                            yield Static("", id=f"sim-step-status-{index}", markup=False)
             yield Static(
                 "The scenario defines the scientific validation and interpretation. "
                 "Changing its settings may change expected analysis outcomes; "
@@ -131,6 +169,18 @@ class SimulationsScreen(HubPage):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "sim-experiment":
             exp = str(event.value)
+            if exp in self.experiment_ids:
+                available = {
+                    key: value for key, value in self.app.monitor_profiles.items()
+                    if compatible(get_experiment(exp), value)
+                }
+                profile_selector = self.query_one("#sim-profile", Select)
+                profile_selector.set_options(
+                    [(p.display_name, p.id) for p in available.values()]
+                    if available else [("No qualified profiles", "__none__")]
+                )
+                preferred = get_simulation(exp).monitor_profile_id
+                profile_selector.value = preferred if preferred in available else next(iter(available), "__none__")
             scenarios = self._scenarios_for(exp)
             selected = self.query_one("#sim-scenario", Select)
             selected.set_options(
@@ -147,6 +197,11 @@ class SimulationsScreen(HubPage):
 
     def _request(self) -> SimulationLaunchRequest:
         index, scenario = self._current()
+        profile_id = str(self.query_one("#sim-profile", Select).value)
+        if profile_id not in self.app.monitor_profiles:
+            raise ValueError("Select a registered display profile, even for a headless simulation.")
+        if not compatible(get_experiment(scenario.experiment_id), self.app.monitor_profiles[profile_id]):
+            raise ValueError("This display profile is not qualified for that experiment.")
         data = resolve_data_root(self.query_one("#sim-data-root", Input).value,
                                  self.app.repo_root)
         seeds = parse_seeds(self.query_one(f"#sim-seeds-{index}", Input).value)
@@ -154,18 +209,19 @@ class SimulationsScreen(HubPage):
             key: parse_parameter(
                 self.query_one(f"#sim-observer-{index}-{number}", Input).value, value
             )
-            for number, (key, value) in enumerate(scenario.observer_parameters.items())
+            for number, (key, value) in enumerate(effective_observer_values(scenario).items())
         }
-        values = {
-            key: parse_parameter(
-                self.query_one(f"#sim-experiment-value-{index}-{number}", Input).value, value
-            )
-            for number, (key, value) in enumerate(scenario.experiment_values.items())
-        }
+        experiment = get_experiment(scenario.experiment_id)
+        values = {}
+        for number, field in enumerate(experiment.fields):
+            widget = self.query_one(f"#sim-experiment-value-{index}-{number}")
+            raw = widget.value
+            if field.kind == "choice" and _is_blank_select_value(raw):
+                raw = None
+            values[field.key] = field.coerce(raw)
         # Validate the model and experiment configuration before offering the
         # final launch confirmation. No run directory is created at this stage.
         from simulations.registry import get_simulation
-        from ..experiments.registry import get_experiment
         model = get_simulation(scenario.experiment_id)
         model.observer_factory(**observer)
         get_experiment(scenario.experiment_id).normalise_values(
@@ -178,10 +234,48 @@ class SimulationsScreen(HubPage):
             seeds=seeds,
             observer_parameters=observer,
             experiment_values=values,
+            monitor_profile_id=profile_id,
+        )
+
+    def _calculate_step(self, button_id: str) -> None:
+        _, _, direction, text_index = button_id.split("-", 3)
+        index, scenario = self._current()
+        if int(text_index) != index:
+            raise ValueError("Choose an active scenario before calculating steps.")
+        experiment = get_experiment(scenario.experiment_id)
+        fields = list(experiment.fields)
+        by_key = {field.key: (number, field) for number, field in enumerate(fields)}
+        if not experiment.adaptive or not experiment.adaptive.step_calculator:
+            raise ValueError("This experiment has not declared a step-size calculator.")
+        def setting(key):
+            number, field = by_key[key]
+            return field.coerce(self.query_one(f"#sim-experiment-value-{index}-{number}", Input).value)
+        target = "logUNIT_DW" if direction == "down" else "logUNIT_UP"
+        known = "logUNIT_UP" if direction == "down" else "logUNIT_DW"
+        new_value = paired_step(
+            known_value=setting(known), calculate=direction,
+            n_down=setting("n_down"), n_up=setting("n_up"),
+            alternatives=len(experiment.response_paradigm.alternatives) if experiment.response_paradigm else None,
+            parameterization=experiment.adaptive.step_parameterization,
+        )
+        number, field = by_key[target]
+        if not field.editable:
+            raise ValueError("The experiment fixes this step magnitude.")
+        self.query_one(f"#sim-experiment-value-{index}-{number}", Input).value = repr(new_value)
+        self.query_one(f"#sim-step-status-{index}", Static).update(
+            f"Calculated {target} = {new_value:.8g}. This is an optional relation, not an automatic optimum."
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if (event.button.id or "").startswith("sim-calculate-"):
+            event.stop()
+            try:
+                self._calculate_step(event.button.id)
+            except (ValueError, TypeError, KeyError) as exc:
+                index, _ = self._current()
+                self.query_one(f"#sim-step-status-{index}", Static).update(str(exc))
             return
         if event.button.id != "sim-review":
             return
@@ -213,6 +307,7 @@ class SimulationReviewScreen(Screen):
                 f"Experiment: {request.experiment_id}\n"
                 f"Scenario: {request.scenario_id}\n"
                 f"Data repository: {request.data_root}\n"
+                f"Display profile (unverified headless metadata): {request.monitor_profile_id}\n"
                 f"Seeds: {request.seeds}\n"
                 f"Observer parameters:\n{json.dumps(request.observer_parameters, indent=2)}\n"
                 f"Experiment overrides:\n{json.dumps(request.experiment_values, indent=2)}\n\n"

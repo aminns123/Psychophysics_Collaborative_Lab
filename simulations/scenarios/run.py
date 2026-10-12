@@ -20,6 +20,8 @@ from psychophysics_lab.paths import default_data_root, find_repo_root
 from psychophysics_lab.data.workspace import preferred_data_root
 
 from ..registry import get_simulation
+from ..controls import effective_experiment_values, effective_observer_values
+from psychophysics_lab.experiments.registry import get_experiment
 from ..run import simulate
 from .registry import get_scenario
 
@@ -64,7 +66,7 @@ def _validator_checks(scenario, run_directory: Path) -> tuple[dict[str, Any], ..
 
 def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                  repo_root=None, seeds=None, observer_parameters=None,
-                 experiment_values=None) -> ScenarioResult:
+                 experiment_values=None, monitor_profile_id=None) -> ScenarioResult:
     """Execute scenario seeds; save report alongside human and synthetic runs.
 
     Physical display, participant IDs and acquisition defaults are untouched.
@@ -76,29 +78,42 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     scenario = get_scenario(experiment_id, scenario_id)
     model = get_simulation(experiment_id)
 
-    # All configurable keys must have been explicitly exposed by the author
-    # of this scenario. Unknown keys and nonfinite/type-changing overrides
-    # fail before touching any participant or analysis directories.
-    def effective(base, override, label):
-        values = dict(base)
-        for key, value in (override or {}).items():
-            if key not in values:
-                raise ValueError(f"{label} {key!r} is not configurable in this scenario.")
-            expected = values[key]
-            if type(value) is not type(expected):
-                raise ValueError(f"{label} {key!r} must retain its declared type.")
-            if isinstance(value, float) and not math.isfinite(value):
-                raise ValueError(f"{label} {key!r} must be finite.")
-            values[key] = value
-        return values
+    # A simulation inherits EVERY normal human-experiment configuration field,
+    # including adaptive up/down counts, steps, stopping, display and timing.
+    # The model contributes separate observer-only parameters.
+    experiment_spec = get_experiment(experiment_id)
+    base_experiment = effective_experiment_values(scenario)
+    base_observer = effective_observer_values(scenario)
+    observer_values = dict(base_observer)
+    for key, value in (observer_parameters or {}).items():
+        if key not in base_observer:
+            raise ValueError(f"Observer setting {key!r} is not declared by this model.")
+        original = base_observer[key]
+        if type(value) is not type(original) or (isinstance(value, float) and not math.isfinite(value)):
+            raise ValueError(f"Observer setting {key!r} has an invalid type or nonfinite value.")
+        observer_values[key] = value
 
-    observer_values = effective(scenario.observer_parameters, observer_parameters, "Observer setting")
-    experiment_settings = effective(scenario.experiment_values, experiment_values, "Experiment setting")
+    fields = {field.key: field for field in experiment_spec.fields}
+    experiment_settings = dict(base_experiment)
+    for key, value in (experiment_values or {}).items():
+        if key not in fields:
+            raise ValueError(f"Experiment setting {key!r} is not a registered human configuration field.")
+        if not fields[key].editable and value != base_experiment[key]:
+            raise ValueError(f"Experiment setting {key!r} is fixed and cannot be edited.")
+        experiment_settings[key] = fields[key].coerce(value)
+    experiment_settings = experiment_spec.normalise_values(experiment_settings)
     selected_seeds = tuple(scenario.seeds if seeds is None else seeds)
     if (not selected_seeds or len(selected_seeds) > 128
             or len(set(selected_seeds)) != len(selected_seeds)
             or any(type(seed) is not int or seed < 0 for seed in selected_seeds)):
         raise ValueError("Specify 1–128 unique nonnegative integer seeds.")
+
+    if monitor_profile_id is not None:
+        from psychophysics_lab.config.monitor import load_monitor_profiles
+        from psychophysics_lab.config.preflight import compatible
+        profiles = load_monitor_profiles(source_root)
+        if monitor_profile_id not in profiles or not compatible(experiment_spec, profiles[monitor_profile_id]):
+            raise ValueError("Selected monitor profile is unavailable or not qualified for the experiment.")
 
     selected_data_root = (Path(data_root) if data_root is not None
                           else preferred_data_root(source_root, default_data_root(source_root)))
@@ -110,7 +125,7 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
         artifacts, analysis = simulate(
             data_root=root, repo_root=source_root, experiment_id=experiment_id,
             seed=seed, observer=observer, values=experiment_settings,
-            analyse=True,
+            monitor_profile_id=monitor_profile_id, analyse=True,
         )
         records.append(ScenarioRun(seed, artifacts, analysis))
         manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
@@ -153,6 +168,11 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     def relative(path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
 
+    from psychophysics_lab.analysis.previews import latest_staircase_plot
+    def preview_path(record):
+        plot = latest_staircase_plot(data_root=root, run_directory=record.artifacts.run_directory)
+        return relative(plot) if plot else None
+
     report = {
         "schema_version": 1,
         "data_kind": "synthetic",
@@ -164,6 +184,8 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
         "observer_model": type(observer).__name__,
         "observer_parameters": observer_values,
         "experiment_values": experiment_settings,
+        "monitor_profile_id": monitor_profile_id or model.monitor_profile_id,
+        "display_hardware_used": False,
         "expected_analysis": scenario.expect_analysis,
         "tests": checks,
         "experiment_evaluation": evaluation,
@@ -173,6 +195,14 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                 "relative_run_directory": relative(record.artifacts.run_directory),
                 "status": record.artifacts.status,
                 "accepted_responses": record.artifacts.accepted_trials,
+                "canonical_trials": relative(record.artifacts.trial_log_file),
+                "canonical_manifest": relative(record.artifacts.manifest_file),
+                "staircase_plot": preview_path(record),
+                "threshold_plot": (
+                    relative(Path(record.analysis.plot_file))
+                    if record.analysis is not None and getattr(record.analysis, "plot_file", None) is not None
+                    else None
+                ),
                 "relative_analysis_summary": (
                     relative(Path(record.analysis.summary_json))
                     if record.analysis is not None and getattr(record.analysis, "summary_json", None) is not None

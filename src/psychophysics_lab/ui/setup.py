@@ -565,8 +565,15 @@ class DataScreen(HubPage):
                 yield Button("Trials", id="inspect-trials")
                 yield Button("Staircase state", id="inspect-adaptive")
             yield Static("[b]Derived staircase threshold[/b]", classes="section-title")
-            yield Label("Fraction of final reversal observations to retain")
+            yield Label("How to select reversal observations (derived analysis only)")
+            yield Select([
+                ("Final fraction of reversals within each staircase", "fraction"),
+                ("Last N reversals within each staircase", "count"),
+            ], value="fraction", allow_blank=False, id="threshold-retention-mode")
+            yield Label("Fraction (when fraction mode selected)")
             yield Input(value="0.80", id="threshold-fraction")
+            yield Label("N final reversals (when count mode selected)")
+            yield Input(value="8", id="threshold-last-n")
             yield Label("Reversal contrast value")
             yield Select(
                 [
@@ -578,6 +585,17 @@ class DataScreen(HubPage):
                 id="threshold-column",
             )
             yield Button("Generate Threshold Table + Plot", id="analyse-threshold", variant="primary")
+            yield Static("[b]Inspect saved trial staircases and quick-look figures[/b]", classes="section-title")
+            with Horizontal(classes="buttons wrap-buttons"):
+                yield Button("Generate staircase + THC previews", id="preview-figures")
+                yield Button("Open staircase image", id="open-staircase-image")
+                yield Button("Open THC image", id="open-threshold-image")
+            yield Static(
+                "Quick-look plots are derived from the canonical human or synthetic trial files. "
+                "They do not change any accepted response, staircase value or original run. "
+                "THC can be recalculated using final fraction or last N reversals.",
+                classes="field-help",
+            )
             yield Static(
                 "Default convention: retain the final 80% of reversal values within each "
                 "staircase, average those values to get a staircase threshold, then average "
@@ -646,25 +664,55 @@ class DataScreen(HubPage):
                 event.stop(); self._inspect("trials.tsv", "Canonical accepted-response table")
             elif event.button.id == "inspect-adaptive":
                 event.stop(); self._inspect("adaptive_session.json", "Saved staircase/adaptive state")
-            elif event.button.id == "analyse-threshold":
+            elif event.button.id in {"analyse-threshold", "preview-figures"}:
                 event.stop()
-                fraction = float(self.query_one("#threshold-fraction", Input).value)
+                from ..analysis.previews import create_staircase_preview
+                preview = None
+                if event.button.id == "preview-figures":
+                    preview = create_staircase_preview(
+                        data_root=self.app.data_root, run_directory=self._run_dir(),
+                    )
+                mode = str(self.query_one("#threshold-retention-mode", Select).value)
+                last_n = int(self.query_one("#threshold-last-n", Input).value) if mode == "count" else None
+                fraction = float(self.query_one("#threshold-fraction", Input).value) if mode == "fraction" else .80
                 column = str(self.query_one("#threshold-column", Select).value)
-                result = analyse_thresholds(
-                    data_root=self.app.data_root,
-                    run_directory=self._run_dir(),
-                    retain_fraction=fraction,
-                    reversal_value_column=column,
-                    create_plot=True,
-                )
-                plot_text = str(result.plot_file) if result.plot_file else (
-                    "plot not produced (matplotlib unavailable); tables were still saved"
-                )
+                try:
+                    result = analyse_thresholds(
+                        data_root=self.app.data_root,
+                        run_directory=self._run_dir(),
+                        retain_fraction=fraction,
+                        last_n_reversals=last_n,
+                        reversal_value_column=column,
+                        create_plot=True,
+                    )
+                except ValueError as exc:
+                    if preview is None or "No reversal observations" not in str(exc):
+                        raise
+                    status.update(
+                        "[yellow]Staircases plotted; no threshold estimate is possible yet.[/yellow]\n"
+                        f"Staircase image: {preview.plot_file}\nReason: {exc}"
+                    )
+                    return
+                plot_text = str(result.plot_file) if result.plot_file else "plot unavailable"
                 status.update(
-                    "[green]Derived analysis created.[/green]\n"
-                    f"Folder: {result.output_directory}\n"
-                    f"Condition table: {result.condition_table}\nPlot: {plot_text}"
+                    "[green]Exploratory derived figures created.[/green]\n"
+                    + (f"Staircase image: {preview.plot_file}\n" if preview else "")
+                    + f"THC plot: {plot_text}\n"
+                    + f"Derived condition table: {result.condition_table}\n"
+                    + f"Retention: {'last ' + str(last_n) + ' reversals' if last_n is not None else str(fraction) + ' fraction'}"
                 )
+            elif event.button.id in {"open-staircase-image", "open-threshold-image"}:
+                event.stop()
+                from ..analysis.previews import latest_staircase_plot, latest_threshold_plot
+                from .plots import open_analysis_png
+                plot = (latest_staircase_plot if event.button.id == "open-staircase-image"
+                        else latest_threshold_plot)(
+                    data_root=self.app.data_root, run_directory=self._run_dir(),
+                )
+                if plot is None:
+                    raise ValueError("No saved PNG for this run. Choose Generate staircase + THC previews first.")
+                open_analysis_png(self.app.data_root, plot)
+                status.update(f"Opened derived figure: {plot}")
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
 

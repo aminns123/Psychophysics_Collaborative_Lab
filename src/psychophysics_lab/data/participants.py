@@ -6,6 +6,7 @@ from pathlib import Path
 from .identifiers import validate_path_component
 
 _PARTICIPANT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+_RESERVED_DATA_FOLDERS = frozenset({"analysis", "simulation_reports"})
 
 
 def validate_participant_id(participant_id: str) -> str:
@@ -29,7 +30,7 @@ def list_participants(data_root: Path) -> tuple[str, ...]:
         if not path.is_dir() or path.is_symlink():
             continue
         # Virtual observers share the data root but are not selectable as human participants.
-        if path.name.lower().startswith("synthetic_"):
+        if path.name.lower().startswith("synthetic_") or path.name.lower() in _RESERVED_DATA_FOLDERS:
             continue
         try:
             valid = validate_participant_id(path.name)

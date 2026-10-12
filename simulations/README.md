@@ -9,6 +9,67 @@ No single observer or estimator is assumed to work for every psychophysical
 experiment. **Each experiment supplies its own virtual model and its own
 scientific evaluation.**
 
+## Simulation is a pipeline test, not a replacement for human psychophysics
+
+A virtual participant is used only where a real person, graphical display or
+external instrument would otherwise be required. The CSF case reuses the real
+experiment setup, legacy staircase transition code, canonical `trials.tsv`,
+reversal records, run finalisation, validator, indexing and post-hoc analysis.
+The simulated observer replaces human response generation; virtual clock and
+screen coordinates are **synthetic**, not measured reaction time or physical
+luminance. Neither Pyglet fullscreen rendering nor display photon timing is
+certified by a headless pipeline test.
+
+**The Simulate page now offers ALL experiment configuration fields that the
+human Run page offers**, including n-up/n-down response counts, independent
+logarithmic up/down step magnitudes, reversal stopping, maximum accepted trials,
+starting probe intensity, luminance settings and timing values. It reuses the
+same experiment `ConfigField` validation and optional step-size calculator.
+A qualified monitor profile may be selected as recorded metadata; no display
+hardware is driven. The separate Virtual Observer section supplies
+simulation-only model controls (threshold, preferred legacy condition, tuning,
+slope, lapse). Changing virtual timing configuration tests its propagation and
+recording, **not physical display duration**.
+
+## Saved trial data and quick-look figures
+
+The standalone `simulation_reports/.../scenario_report.json` is an **index
+and pass/fail report**, not the experiment data. Each scenario report contains
+the paths to its canonical acquisition and exploratory figures:
+
+```text
+local_psychophysics_data/
+├── synthetic_123/contrast_sensitivity/.../run_NNN/
+│   ├── trials.tsv
+│   ├── trials_readable.txt
+│   ├── adaptive_session.json
+│   ├── manifest.json
+│   ├── experiment_config.json
+│   ├── resolved_experiment.json
+│   └── SYNTHETIC_DATA.json
+├── analysis/
+│   ├── quicklook/<run-uuid>/<timestamp>/staircases.png
+│   └── thresholds/synthetic_123/contrast_sensitivity/<run-uuid>/<timestamp>/
+│       ├── threshold_vs_condition.png
+│       ├── staircase_thresholds.tsv
+│       └── threshold_by_condition.tsv
+└── simulation_reports/contrast_sensitivity/<scenario>/<timestamp>/
+    └── scenario_report.json
+```
+
+The figures plot **presented display contrast for every accepted staircase
+response**, with reversal points marked, and an exploratory threshold-contrast
+vs condition curve when reversal data permit. A short/censored run may have
+a staircase image but no valid THC estimate; one is never invented.
+
+In the TUI, open **Data**, choose the synthetic run, and use **Open staircase
+image** or **Open THC image**. Choose **Generate staircase + THC previews** to
+derive a new set. For re-analysis select either final fraction (default 80%)
+or **last N reversals per staircase**, then choose **Generate Threshold Table +
+Plot**. These outputs live under external `analysis/` and never overwrite
+canonical acquisition records. Quick-look THC is not a final scientific
+estimate until your selected estimator and exclusion criteria are justified.
+
 ## Folder structure
 
 ```text
