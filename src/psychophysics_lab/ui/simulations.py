@@ -392,7 +392,7 @@ class AdaptiveAlgorithmScreen(Screen):
                 "Change the same adaptive parameters used for human acquisition. "
                 "No changes are applied to your simulation until you select "
                 "Apply adaptive settings.",
-                classes="info-card",
+                classes="info-card", id="adaptive-algorithm-heading",
             )
             for number, field in self.fields:
                 source_widget = self.source.query_one(
