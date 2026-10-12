@@ -161,6 +161,11 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     def relative(path: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
 
+    from psychophysics_lab.analysis.previews import latest_staircase_plot
+    def preview_path(record):
+        plot = latest_staircase_plot(data_root=root, run_directory=record.artifacts.run_directory)
+        return relative(plot) if plot else None
+
     report = {
         "schema_version": 1,
         "data_kind": "synthetic",
@@ -181,6 +186,14 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                 "relative_run_directory": relative(record.artifacts.run_directory),
                 "status": record.artifacts.status,
                 "accepted_responses": record.artifacts.accepted_trials,
+                "canonical_trials": relative(record.artifacts.trial_log_file),
+                "canonical_manifest": relative(record.artifacts.manifest_file),
+                "staircase_plot": preview_path(record),
+                "threshold_plot": (
+                    relative(Path(record.analysis.plot_file))
+                    if record.analysis is not None and getattr(record.analysis, "plot_file", None) is not None
+                    else None
+                ),
                 "relative_analysis_summary": (
                     relative(Path(record.analysis.summary_json))
                     if record.analysis is not None and getattr(record.analysis, "summary_json", None) is not None
