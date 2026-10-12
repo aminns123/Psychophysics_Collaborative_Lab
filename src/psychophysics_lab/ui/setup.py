@@ -1045,10 +1045,6 @@ class PsyCoLabSetupApp(App):
         self.config_drafts = {}
         self.display_draft = {}
 
-    def on_mount(self) -> None:
-        if self.simulation_summary:
-            self.call_after_refresh(lambda: self.open_hub_page("simulations"))
-
     def inspect_source(self, path: Path) -> None:
         try:
             open_source(self.repo_root, path, executable=preferences(self.local_config_root).get("editor_executable"))
@@ -1161,6 +1157,8 @@ class PsyCoLabSetupApp(App):
                 "Configure the external data workspace, participant, experiment and display. "
                 "The Textual hub closes before Pyglet/OpenGL acquisition begins."
             )
+            if self.simulation_summary:
+                yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
             yield Label("External data workspace")
             yield Input(value=str(self.data_root), id="data-root")
