@@ -37,6 +37,7 @@ NAV_PAGES = (
     ("stimuli", "Stimuli"),
     ("experiments", "Experiments"),
     ("display", "Display"),
+    ("simulations", "Simulate"),
     ("data", "Data"),
     ("help", "Developer"),
 )
@@ -148,7 +149,9 @@ class HubNavigation(Horizontal):
     def on_mount(self):
         page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
                 "DisplayCheckScreen": "display", "ProfileScreen": "display",
-                "DataScreen": "data", "HelpScreen": "help"}.get(type(self.screen).__name__, "setup")
+                "DataScreen": "data", "HelpScreen": "help",
+                "SimulationsScreen": "simulations",
+                "SimulationReviewScreen": "simulations"}.get(type(self.screen).__name__, "setup")
         self.query_one("#nav-" + page, Button).variant = "primary"
 
 
@@ -1024,21 +1027,27 @@ class PsyCoLabSetupApp(App):
     .buttons Button { min-width: 0; max-width: 50%; margin: 0; }
     .wrap-buttons { align-horizontal: left; }
     Button { margin-left: 1; }
-    #setup-status, #config-status, #review-status, #geometry-status, #data-status {
+    #setup-status, #config-status, #review-status, #geometry-status, #data-status, #sim-status {
         min-height: 1;
         margin-top: 1;
     }
     #code-text { width: 100%; }
     """
 
-    def __init__(self, *, repo_root: Path, data_root: Path) -> None:
+    def __init__(self, *, repo_root: Path, data_root: Path,
+                 simulation_summary: str | None = None) -> None:
         super().__init__()
+        self.simulation_summary = simulation_summary
         self.repo_root = repo_root.resolve()
         self.data_root = data_root.resolve()
         self.local_config_root = config_root(self.repo_root, self.data_root)
         self.monitor_profiles = load_monitor_profiles(repo_root)
         self.config_drafts = {}
         self.display_draft = {}
+
+    def on_mount(self) -> None:
+        if self.simulation_summary:
+            self.call_after_refresh(lambda: self.open_hub_page("simulations"))
 
     def inspect_source(self, path: Path) -> None:
         try:
@@ -1065,7 +1074,10 @@ class PsyCoLabSetupApp(App):
             while len(self.screen_stack) > 1:
                 self.pop_screen()
             return
+        from .simulations import SimulationsScreen
+
         pages = {
+            "simulations": SimulationsScreen,
             "experiments": ExperimentsScreen,
             "stimuli": StimuliScreen,
             "display": DisplayCheckScreen,
@@ -1376,6 +1388,8 @@ class PsyCoLabSetupApp(App):
                 _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 
 
-def run_setup_tui(*, repo_root: Path, data_root: Path) -> SetupRequest | GeometryCheckRequest | None:
-    app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root)
+def run_setup_tui(*, repo_root: Path, data_root: Path,
+                  simulation_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
+    app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
+                           simulation_summary=simulation_summary)
     return app.run()
