@@ -33,6 +33,33 @@ The first group belongs to the researcher building an experiment; the second
 `tests/` group is automated software regression coverage. Neither writes
 participant data into the Git repository.
 
+## Run from the PsyCoLab TUI (no command line required)
+
+Start PsyCoLab normally with `run_psycolab.bat`, then select **Simulate**
+in the top navigation. Choose the experiment and its registered scenario.
+The panel shows exactly the model parameters that scenario declares: for
+example CSF contrast midpoint, preferred stimulus condition, tuning width,
+slope and lapse rate. You can adjust the permitted experiment settings
+(such as maximum accepted responses) and enter a single seed or a comma-separated
+seed list.
+
+Select **Review Simulation** to validate and inspect the effective settings,
+chosen external data root, expected analysis and synthetic-data warning.
+Select **Run Virtual Experiment** on the review screen to proceed.
+
+The TUI then **closes**, executes the real experiment-specific headless
+simulation/recording/analysis pipeline, and **reopens**, displaying the latest
+pass/fail result and the saved report path. This avoids running a CPU-intensive
+virtual experiment in Textual's event loop. The separate Data page can inspect
+canonical synthetic run manifests and trial tables like other runs.
+
+The default external data repository is shared with human acquisition, while
+simulation records are assigned reserved `synthetic_...` participant IDs.
+Running a simulation never changes the selected human participant's saved
+setup or starts a physical display. The TUI is only the user interface for
+the existing experiment/scenario registries; future experiments need no
+special TUI-specific code.
+
 ## Run scenarios
 
 From the checkout using its installed Python 3.11 environment:
