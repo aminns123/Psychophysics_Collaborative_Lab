@@ -28,7 +28,10 @@ at final review.
    example `cycles_per_degree` with `2,4,8`, or `degrees_per_cycle` with
    `0.5,0.25,0.125`. Both specify the same physical spatial frequencies.
 4. Adjust staircase count, n-down/n-up, step sizes, initial 1-down and stopping
-   rules once. The **Review** page shows the canonical cpd frequencies,
+   rules once. **Human cpd acquisition requires a saved expected fullscreen
+   pixel resolution.** If that is missing the Run human experiment action is
+   blocked with a calibration instruction; virtual pipeline tests remain
+   available without physical presentation. The **Review** page shows the canonical cpd frequencies,
    selected display geometry, Nyquist bounds and the verification status.
 5. Choose **Run human experiment** to launch the fullscreen renderer, or
    **Run simulation** to supply observer thresholds/slope/preference/seeds.
