@@ -85,6 +85,20 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         ppd_x = screen_width_pixel / fov_x_deg
         ppd_y = screen_height_pixel / fov_y_deg
 
+        from psychophysics_lab.stimuli.spatial_calibration import (
+            resolve_spatial_geometry, validate_requested_cpd,
+        )
+        physical_geometry = resolve_spatial_geometry(
+            _profile_from_dict(monitor_profile), (int(win.width), int(win.height))
+        )
+        current_conditions = funcs.read_JSON(filename_Conditions)
+        condition_unit = current_conditions.get("condition_unit", "legacy_shader_radians")
+        if condition_unit == "cycles_per_degree":
+            validate_requested_cpd(tuple(set(current_conditions["condition_list"])),
+                                   physical_geometry, orientation_rad=0.0)
+        elif condition_unit != "legacy_shader_radians":
+            raise ValueError(f"Unrecognised spatial frequency unit: {condition_unit}")
+
         monitor_screen_params = {
             "monitor_profile_id": experiment_params.get("monitor_profile_id", "legacy_unprofiled"),
             "monitor_calibration_status": experiment_params.get("monitor_calibration_status", "unverified"),
@@ -102,6 +116,15 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             "fov_y_deg": float(fov_y_deg),
             "ppd_x": float(ppd_x),
             "ppd_y": float(ppd_y),
+            "local_ppd_at_gaze_centre": list(physical_geometry.pixels_per_degree_at_centre),
+            "pixel_pitch_m": list(physical_geometry.pixel_pitch_m),
+            "nyquist_cpd_at_centre": list(physical_geometry.nyquist_cpd_at_centre),
+            "spatial_frequency_unit": condition_unit,
+            "geometric_calibration": physical_geometry.to_dict(),
+            "geometry_provenance": (
+                "Profile geometry plus actual fullscreen dimensions; physical size "
+                "and distance must be independently measured. No photometric claim."
+            ),
             "center_x_pixel": cx,
             "center_y_pixel": cy,
             "window_width_pixel": win.width,
@@ -231,6 +254,17 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             "fixation_stimulus": dict(kwargs_fixate),
             "blank_fixation_stimulus": dict(kwargs_fake_Fixate),
             "grating_stimulus": dict(kwargs_grating),
+            "spatial_frequency_calibration": {
+                "condition_unit": condition_unit,
+                "condition_values": list(current_conditions["condition_list"]),
+                "pixel_pitch_m": list(physical_geometry.pixel_pitch_m),
+                "local_pixels_per_degree": list(physical_geometry.pixels_per_degree_at_centre),
+                "viewing_distance_m": viewing_distance_m,
+                "renderer": "visual_angle_per_fragment" if condition_unit == "cycles_per_degree"
+                            else "historical_shader_phase",
+                "geometry_status": physical_geometry.geometry_status,
+                "note": "Physical size/viewing distance must be manually measured; not luminance calibrated.",
+            },
             "resolved_geometry": {
                 "grating_width_px": int(grating_width),
                 "grating_displacement_px": int(grating_displacement),
@@ -307,6 +341,13 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             (cx, cy),
             filename_Conditions,
             Params(**kwargs_grating),
+            condition_unit=condition_unit,
+            spatial_geometry={
+                "pitch_x_m": physical_geometry.pixel_pitch_m[0],
+                "pitch_y_m": physical_geometry.pixel_pitch_m[1],
+                "viewing_distance_m": viewing_distance_m,
+                "screen_cx_px": float(cx), "screen_cy_px": float(cy),
+            },
         )
 
         fake_probe_trial = [fakeProbe]
