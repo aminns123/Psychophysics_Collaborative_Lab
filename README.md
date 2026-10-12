@@ -29,12 +29,17 @@ incomplete until you implement the actual experimental procedure.
 Start with the [researcher quickstart](docs/RESEARCHER_QUICKSTART.md),
 the [adaptive-methods guide](docs/ADAPTIVE_METHODS.md) and the
 [headless simulation guide](docs/SIMULATION_TESTING.md).
+The [simulation laboratory guide](simulations/README.md) explains how each
+experiment owns a separate virtual observer and its own test scenarios.
 
 Virtual CSF observers can exercise real staircase, recording, run validation
 and threshold-analysis code without a display:
 
 ```powershell
 .venv\\Scripts\\python.exe -m simulations --seed 123 --max-trials 400
+.venv\\Scripts\\python.exe -m simulations --list-scenarios
+.venv\\Scripts\\python.exe -m simulations --scenario csf_baseline
+.venv\\Scripts\\python.exe -m simulations --scaffold-simulation orientation_task
 ```
 
 Synthetic runs are saved in the **same external data repository as human
