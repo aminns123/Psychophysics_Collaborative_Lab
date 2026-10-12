@@ -822,9 +822,16 @@ class ExperimentConfigScreen(Screen):
                 group = "Adaptive settings" if field.key in controls else field.section
                 groups.setdefault(group, []).append(field)
             for group, fields in groups.items():
-                with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast"}):
+                with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"}):
                     if group == "Adaptive settings":
                         yield Static("The experiment declares its adaptive method; these settings control this run.")
+                    elif group == "Stimulus conditions":
+                        yield Static(
+                            "Enter the number of conditions and their comma-separated values. "
+                            "They must match. For reference CSF, numeric values are legacy "
+                            "stimulus scalars, not verified cycles/degree.",
+                            classes="field-help",
+                        )
                     for field in fields:
                         yield from self._compose_field(field)
                     if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
