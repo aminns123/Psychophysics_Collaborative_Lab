@@ -162,6 +162,15 @@ class SimulationsScreen(HubPage):
             )
             for number, (key, value) in enumerate(scenario.experiment_values.items())
         }
+        # Validate the model and experiment configuration before offering the
+        # final launch confirmation. No run directory is created at this stage.
+        from simulations.registry import get_simulation
+        from ..experiments.registry import get_experiment
+        model = get_simulation(scenario.experiment_id)
+        model.observer_factory(**observer)
+        get_experiment(scenario.experiment_id).normalise_values(
+            dict(model.defaults) | values
+        )
         return SimulationLaunchRequest(
             experiment_id=scenario.experiment_id,
             scenario_id=scenario.id,
