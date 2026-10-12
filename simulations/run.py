@@ -46,7 +46,7 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
                 data_root=test_root, run_directory=artifacts.run_directory, create_plot=False
             )
         except ValueError as exc:
-            if "No reversal observations" not in str(exc):
+            if not any(message in str(exc) for message in spec.unavailable_analysis_messages):
                 raise
             from psychophysics_lab.data.session import atomic_write_json
             missing_analysis = artifacts.run_directory / "analysis" / "threshold_unavailable.json"
