@@ -1157,6 +1157,16 @@ class ReviewScreen(Screen):
                 else:
                     if self.request.participant_id == "synthetic_preview":
                         raise ValueError("Provide a real pseudonymous participant ID in the previous screen before human acquisition.")
+                    if (spec.id == "contrast_sensitivity"
+                            and self.request.experiment_values.get("condition_unit") != "legacy_shader_radians"
+                            and current.expected_resolution_px is None):
+                        raise ValueError(
+                            "Cannot run physically specified cpd gratings without an expected "
+                            "fullscreen pixel resolution. In Calibrate, bind your display, "
+                            "save a measured local profile with its pixel dimensions and "
+                            "confirm the fullscreen geometry. The virtual simulation mode "
+                            "remains available without hardware calibration."
+                        )
                     self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
