@@ -107,7 +107,9 @@ def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
             screen = app.screen
             screen.query_one("#sim-scenario", Select).value = "csf_short_censored"
             await pilot.pause()
-            assert screen.query_one("#sim-panel-1").display
+            index = next(i for i, item in enumerate(screen.scenarios)
+                         if item.id == "csf_short_censored")
+            assert screen.query_one(f"#sim-panel-{index}").display
             assert not screen.query_one("#sim-panel-0").display
             screen.query_one("#sim-review", Button).press()
             await pilot.pause()
