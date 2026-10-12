@@ -43,9 +43,13 @@ class CSFObserver:
         return .5 + (.5 - self.lapse) * fraction
 
 
+# Preserve historical seeded reference scenarios. New experiments configured via
+# Run -> Review -> Simulation use the new cpd/period unit choices instead.
 DEFAULT_VALUES = {"Max_monitor_Luminance": 500., "Background_Luminance": 49.,
                   "Background_Screen_intensity": .374, "max_trials": 400,
-                  "reversal_termination": 12}
+                  "reversal_termination": 12,
+                  "condition_unit": "legacy_shader_radians",
+                  "condition_values": "63,252"}
 
 
 def runtime(observer, seed, algorithm_id):
