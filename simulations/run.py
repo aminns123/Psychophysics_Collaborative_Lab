@@ -39,11 +39,16 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     algorithm_id = experiment.adaptive.algorithm_id if experiment.adaptive else None
     simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id))
     artifacts = run_request(request, repo_root=root, data_root=test_root, simulation=simulation)
+    # This is a pipeline test: keep complete canonical run records and create
+    # independent exploratory figures, not merely a pass/fail scenario JSON.
+    from psychophysics_lab.analysis.previews import create_staircase_preview
+    if artifacts.status != "error":
+        create_staircase_preview(data_root=test_root, run_directory=artifacts.run_directory)
     analysis = None
     if analyse and spec.analysis_factory is not None:
         try:
             analysis = spec.analysis_factory(
-                data_root=test_root, run_directory=artifacts.run_directory, create_plot=False
+                data_root=test_root, run_directory=artifacts.run_directory, create_plot=True
             )
         except ValueError as exc:
             if not any(message in str(exc) for message in spec.unavailable_analysis_messages):
