@@ -5,6 +5,39 @@ The simulation API reads the selected data root (or the usual
 `PSYCOLAB_DATA_DIR` override), and both types use the existing
 `participant/experiment/display/conditions/date/run_NNN` hierarchy.
 
+## Experiment-specific scenarios and full pipeline verification
+
+For a named, reproducible acceptance scenario:
+
+```powershell
+python -m simulations --list-scenarios
+python -m simulations --scenario csf_baseline
+python -m simulations --scenario csf_short_censored
+python -m simulations --scenario csf_shifted_preference
+```
+
+Each scenario runs one or more seeded virtual observers through the actual
+configuration, adaptive staircase, canonical trial recorder, data validator
+and experiment's own post-hoc analysis. It writes a `scenario_report.json`
+under `<shared_data_root>/simulation_reports/<experiment>/<scenario>/...`.
+The report contains checks, links to the synthetic runs and the
+experiment-specific comparison with known model behaviour.
+
+**Not all experiments need a CSF-style threshold estimator.** Implement
+different virtual-observer models and acceptance procedures in
+`simulations/<experiment>.py` and `simulations/scenarios/<experiment>.py`.
+Start with:
+
+```powershell
+python -m simulations --scaffold-simulation orientation_task
+```
+
+The two templates are safe and never overwrite existing files. See
+[simulations/README.md](../simulations/README.md) for registration, examples,
+output paths and scientific interpretation. Software pass/fail concerns
+infrastructure and declared scenario conditions; an observed numerical bias
+must not be confused with a proven psychometric estimator defect.
+
 ## Run a CSF virtual observer
 
 From the repository root, after installing Python 3.11 and PsyCoLab:
