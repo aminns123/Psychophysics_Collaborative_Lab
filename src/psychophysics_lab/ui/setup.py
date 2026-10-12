@@ -565,6 +565,7 @@ class DataScreen(HubPage):
                 yield Button("Manifest", id="inspect-manifest")
                 yield Button("Trials", id="inspect-trials")
                 yield Button("Staircase state", id="inspect-adaptive")
+            with Horizontal(classes="buttons wrap-buttons"):
                 yield Button("Scenario report", id="inspect-scenario")
                 yield Button("Open run folder", id="open-run-folder")
             yield Static("[b]Derived staircase threshold[/b]", classes="section-title")
