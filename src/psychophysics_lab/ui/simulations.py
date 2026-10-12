@@ -186,6 +186,12 @@ class SimulationsScreen(HubPage):
         for index in range(len(self.scenarios)):
             matches = selected is not None and index == selected[0]
             self.query_one(f"#sim-panel-{index}", Vertical).display = matches
+        # An experiment without an adaptive algorithm has no staircase controls.
+        jump = self.query_one("#sim-edit-adaptive", Button)
+        jump.disabled = (
+            selected is None
+            or not bool(getattr(get_experiment(selected[1].experiment_id).adaptive, "controls", ()))
+        )
         if selected:
             _, scenario = selected
             self.query_one("#sim-description", Static).update(
