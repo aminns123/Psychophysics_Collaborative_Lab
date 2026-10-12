@@ -106,6 +106,17 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
             checks.append({"seed": seed, **check})
 
     evaluation = dict(scenario.evaluate(observer, tuple(records))) if scenario.evaluate else {}
+    # An experiment may declare its own scientific acceptance checks. These
+    # are distinct from the universal provenance and file-integrity checks.
+    for entry in evaluation.get("checks", []):
+        if not isinstance(entry, dict) or not isinstance(entry.get("name"), str) or type(entry.get("passed")) is not bool:
+            raise TypeError("Experiment-specific evaluation checks need name:str and passed:bool.")
+        checks.append({
+            "seed": "scenario",
+            "name": entry["name"],
+            "passed": entry["passed"],
+            "detail": str(entry.get("detail", "")),
+        })
     succeeded = all(bool(check["passed"]) for check in checks)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
     report_directory = root / "simulation_reports" / experiment_id / scenario_id / f"{stamp}_{uuid4().hex[:12]}"
