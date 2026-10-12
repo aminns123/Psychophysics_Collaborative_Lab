@@ -1,7 +1,6 @@
 """Public simulation entry point: real configure -> event adapter -> canonical data -> analysis."""
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from psychophysics_lab.analysis.thresholds import analyse_thresholds
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun, simulation_workspace
@@ -20,10 +19,16 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     experiment = get_experiment(experiment_id)
     observer = observer or spec.observer_factory()
     selected_values = experiment.normalise_values(dict(spec.defaults) | (values or {}))
+    if is_dataclass(observer) and not isinstance(observer, type):
+        observer_parameters = asdict(observer)
+    elif callable(getattr(observer, "simulation_parameters", None)):
+        observer_parameters = dict(observer.simulation_parameters())
+    else:
+        raise TypeError("Observer must be a dataclass or expose simulation_parameters() for provenance.")
     metadata = {"seed": seed, "rng": "python.random.Random MT19937",
-        "observer_model": type(observer).__name__, "observer_parameters": asdict(observer),
+        "observer_model": type(observer).__name__, "observer_parameters": observer_parameters,
         "physical_display_used": False, "human_participant": False,
-        "note": "Synthetic pipeline test; observer midpoint is not a validated human threshold."}
+        "note": "Synthetic pipeline test; model ground truth is not necessarily the adaptive estimator's target."}
     if workspace is not None and data_root is not None:
         raise ValueError("Specify data_root only; workspace is a retained compatibility alias.")
     selected_root = data_root if data_root is not None else workspace
@@ -35,11 +40,13 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id))
     artifacts = run_request(request, repo_root=root, data_root=test_root, simulation=simulation)
     analysis = None
-    if analyse:
+    if analyse and spec.analysis_factory is not None:
         try:
-            analysis = analyse_thresholds(data_root=test_root, run_directory=artifacts.run_directory, create_plot=False)
+            analysis = spec.analysis_factory(
+                data_root=test_root, run_directory=artifacts.run_directory, create_plot=False
+            )
         except ValueError as exc:
-            if "No reversal observations" not in str(exc):
+            if not any(message in str(exc) for message in spec.unavailable_analysis_messages):
                 raise
             from psychophysics_lab.data.session import atomic_write_json
             missing_analysis = artifacts.run_directory / "analysis" / "threshold_unavailable.json"

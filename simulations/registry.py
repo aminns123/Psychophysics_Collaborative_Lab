@@ -1,7 +1,17 @@
-"""Register one observer/driver per experiment, never in the human TUI."""
+"""Experiment-owned observer/acquisition/analysis registrations.
+
+The CSF model is one implementation, not a universal simulation algorithm.
+Future experiments register their own runtime and optional analyser without
+changing the human acquisition framework.
+"""
 from dataclasses import dataclass
 from typing import Callable
+
+from psychophysics_lab.data.identifiers import validate_path_component
+from psychophysics_lab.analysis.thresholds import analyse_thresholds
+
 from .csf import CSFObserver, DEFAULT_VALUES, runtime
+
 
 @dataclass(frozen=True)
 class SimulationSpec:
@@ -10,18 +20,43 @@ class SimulationSpec:
     runtime_factory: Callable
     defaults: dict
     monitor_profile_id: str = "legacy_reference_display"
+    analysis_factory: Callable | None = None
+    unavailable_analysis_messages: tuple[str, ...] = ()
 
-_REGISTRY = {}
 
-def register_simulation(spec):
+_REGISTRY: dict[str, SimulationSpec] = {}
+
+
+def register_simulation(spec: SimulationSpec) -> None:
+    if not isinstance(spec, SimulationSpec):
+        raise TypeError("Expected SimulationSpec.")
+    validate_path_component(spec.experiment_id, label="simulated experiment")
     if spec.experiment_id in _REGISTRY:
         raise ValueError("Duplicate experiment simulation.")
+    if not callable(spec.observer_factory) or not callable(spec.runtime_factory):
+        raise TypeError("Each simulation needs an observer factory and a runtime factory.")
+    if spec.analysis_factory is not None and not callable(spec.analysis_factory):
+        raise TypeError("Experiment analyser must be callable or None.")
+    if not isinstance(spec.defaults, dict):
+        raise TypeError("Simulation defaults must be a dictionary.")
+    if any(not isinstance(message, str) or not message for message in spec.unavailable_analysis_messages):
+        raise TypeError("Unavailable-analysis markers must be nonempty text.")
     _REGISTRY[spec.experiment_id] = spec
 
-def get_simulation(experiment_id):
+
+def get_simulation(experiment_id: str) -> SimulationSpec:
     try:
         return _REGISTRY[experiment_id]
     except KeyError as exc:
         raise ValueError(f"No experiment-specific observer registered for {experiment_id}.") from exc
 
-register_simulation(SimulationSpec("contrast_sensitivity", CSFObserver, runtime, DEFAULT_VALUES))
+
+def list_simulations() -> tuple[SimulationSpec, ...]:
+    return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
+
+
+register_simulation(SimulationSpec(
+    "contrast_sensitivity", CSFObserver, runtime, DEFAULT_VALUES,
+    analysis_factory=analyse_thresholds,
+    unavailable_analysis_messages=("No reversal observations",),
+))
