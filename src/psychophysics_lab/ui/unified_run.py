@@ -71,7 +71,6 @@ class VirtualObserverOptionsScreen(Screen):
                 allow_blank=False,
             )
             for i, scenario in enumerate(self.scenarios):
-                from textual.containers import Vertical
                 with Vertical(id=f"virtual-scenario-{i}"):
                     yield Static(f"[b]{scenario.id}[/b]\n{scenario.description}", classes="info-card")
                     yield Label("Random seeds (comma-separated)")
