@@ -135,7 +135,11 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                 "relative_run_directory": relative(record.artifacts.run_directory),
                 "status": record.artifacts.status,
                 "accepted_responses": record.artifacts.accepted_trials,
-                "relative_analysis_summary": relative(record.analysis.summary_json) if record.analysis else None,
+                "relative_analysis_summary": (
+                    relative(Path(record.analysis.summary_json))
+                    if record.analysis is not None and getattr(record.analysis, "summary_json", None) is not None
+                    else None
+                ),
             }
             for record in records
         ],
