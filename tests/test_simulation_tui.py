@@ -124,6 +124,9 @@ def test_tui_receives_and_displays_last_simulation_report(tmp_path):
                                simulation_summary="Latest simulation: PASSED")
         async with app.run_test(size=(100, 30)) as pilot:
             await pilot.pause()
+            assert "PASSED" in str(app.query_one("#last-simulation", Static).render())
+            app.query_one("#nav-simulations", Button).press()
+            await pilot.pause()
             assert isinstance(app.screen, SimulationsScreen)
             assert "PASSED" in str(app.screen.query_one("#sim-latest", Static).render())
     asyncio.run(scenario())
