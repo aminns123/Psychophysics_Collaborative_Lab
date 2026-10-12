@@ -36,7 +36,7 @@ NAV_PAGES = (
     ("setup", "Run"),
     ("stimuli", "Stimuli"),
     ("experiments", "Experiments"),
-    ("display", "Display"),
+    ("display", "Calibrate"),
     ("simulations", "Simulate"),
     ("data", "Data"),
     ("help", "Developer"),
@@ -799,6 +799,11 @@ class ExperimentConfigScreen(Screen):
         self.experiment = experiment
         self.monitor_profile_id = monitor_profile_id
         self.defaults = dict(defaults)
+        # Preserve historical pre-cpd workspaces explicitly when reusing.
+        if (self.experiment.id == "contrast_sensitivity"
+                and "condition_values" in self.defaults
+                and "condition_unit" not in self.defaults):
+            self.defaults["condition_unit"] = "legacy_shader_radians"
 
     def compose(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
@@ -1018,10 +1023,27 @@ class ReviewScreen(Screen):
             values = self.request.experiment_values
             down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
             count = values["number_conditions"] * values["staircases_per_condition"]
+            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            frequencies = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
             lines.append(
-                f"Condition values (legacy units): {values['condition_values']}; "
-                f"{count} independent staircases in total."
+                f"Entered conditions: {values['condition_values']} "
+                f"({values['condition_unit']}); {count} independent staircases in total."
             )
+            if values["condition_unit"] != "legacy_shader_radians":
+                lines.append(f"Resolved spatial frequencies: {', '.join(f'{x:g}' for x in frequencies)} cycles/degree.")
+                from ..stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
+                if profile.expected_resolution_px:
+                    calibration = resolve_spatial_geometry(profile, profile.expected_resolution_px)
+                    validate_requested_cpd(frequencies, calibration)
+                    lines.extend([
+                        f"Local pixels/degree at gaze: X={calibration.pixels_per_degree_at_centre[0]:.3f}, Y={calibration.pixels_per_degree_at_centre[1]:.3f}",
+                        f"Nyquist limit: X={calibration.nyquist_cpd_at_centre[0]:.3f}, Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd",
+                        f"Display geometric verification: {profile.geometry_status}",
+                    ])
+                else:
+                    lines.append("[yellow]The profile has no saved expected pixel resolution. "
+                                 "Set it in Calibrate → Edit profile before relying on physical units. "
+                                 "The renderer will check actual fullscreen resolution at launch.[/yellow]")
             lines.append(
                 f"Introductory rule: 1-down until first incorrect response or "
                 f"{values['initial_one_down_limit']} accepted responses per staircase "
@@ -1071,7 +1093,8 @@ class ReviewScreen(Screen):
             yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
-                yield Button("Run Experiment", id="run", variant="success")
+                yield Button("Run human experiment", id="run", variant="success")
+                yield Button("Run simulation", id="run-simulation", variant="primary")
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
             yield Static("", id="review-status")
@@ -1081,7 +1104,7 @@ class ReviewScreen(Screen):
         if _handle_nav(self, event):
             return
         button_id = event.button.id
-        if button_id not in {"back", "run"}:
+        if button_id not in {"back", "run", "run-simulation"}:
             return
         event.stop()
         try:
@@ -1091,7 +1114,16 @@ class ReviewScreen(Screen):
                 spec = get_experiment(self.request.experiment_id)
                 current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
                 validate_setup(self.request, spec, current)
-                self.app.exit(self.request)
+                if button_id == "run-simulation":
+                    from .unified_run import VirtualObserverOptionsScreen
+                    from simulations.scenarios import list_scenarios
+                    if not list_scenarios(self.request.experiment_id):
+                        raise ValueError("This experiment has no registered virtual-observer scenarios.")
+                    self.app.push_screen(VirtualObserverOptionsScreen(self.request))
+                else:
+                    if self.request.participant_id == "synthetic_preview":
+                        raise ValueError("Provide a real pseudonymous participant ID in the previous screen before human acquisition.")
+                    self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
             _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
@@ -1249,9 +1281,10 @@ class PsyCoLabSetupApp(App):
                 yield Button("Configure Experiment", id="configure", variant="primary")
         with VerticalScroll(id="setup-body"):
             yield Static(
-                "[b]Run an experiment[/b]\n"
-                "Configure the external data workspace, participant, experiment and display. "
-                "The Textual hub closes before Pyglet/OpenGL acquisition begins."
+                "[b]Configure an experiment — human or simulated[/b]\n"
+                "Set up one experiment with the same conditions, physical units and adaptive "
+                "rules. At final review choose a human participant or a virtual observer. "
+                "The TUI closes before acquisition begins."
             )
             if self.simulation_summary:
                 yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
@@ -1275,8 +1308,8 @@ class PsyCoLabSetupApp(App):
                 id="participant",
             )
             yield Static(
-                "Use a pseudonymous laboratory identifier. Selecting an existing participant "
-                "fills this field; choose '+ New participant' to enter another ID.",
+                "A pseudonymous participant ID is required only if you choose Run human experiment "
+                "on the final review. Leave blank for a virtual observer.",
                 classes="field-help",
             )
 
@@ -1438,7 +1471,10 @@ class PsyCoLabSetupApp(App):
             data_root = self._selected_data_root(create=True)
             self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
-            participant = validate_participant_id(self.screen_stack[0].query_one("#participant", Input).value)
+            entered_participant = self.screen_stack[0].query_one("#participant", Input).value.strip()
+            # The final review chooses human or synthetic mode. Only the human
+            # path requires a participant identifier; no virtual run uses it.
+            participant = validate_participant_id(entered_participant or "synthetic_preview")
             session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
             experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
             monitor_id = self.screen_stack[0].query_one("#monitor-profile", Select).value
