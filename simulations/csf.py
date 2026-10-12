@@ -70,7 +70,19 @@ def runtime(observer, seed, algorithm_id):
         atomic_write_json(root / "resolved_experiment.json", {"experiment_id": "contrast_sensitivity",
             "data_kind": "synthetic", "observer": asdict(observer), "seed": seed,
             "condition_units": "legacy CSF units; not calibrated cycles/degree",
-            "adaptive_parameters": {"max_accepted_responses": session.run.max_trials}})
+            "adaptive_parameters": {
+                "n_down": params["n_dw"], "n_up": params["n_up"],
+                "logUNIT_UP": params["logUNIT_UP"], "logUNIT_DW": params["logUNIT_DW"],
+                "reversal_termination": params["reversal_termination"],
+                "max_accepted_responses": session.run.max_trials,
+            },
+            "virtual_substitutions": {
+                "observer_responses": "seeded psychometric choice probabilities",
+                "input_device": "simulated accepted response events, not physical keyboard",
+                "stimulus_position": "two mocked choices at 10/20 pixels, not a rendered grating",
+                "clock": "deterministic virtual time, not measured photon onset or reaction time",
+                "timing_values": "experiment settings recorded but NOT physically played by Pyglet",
+            }})
         window = SimpleNamespace(trials=[], exit=lambda: None)
         logger = session.logger(window)
         try:
