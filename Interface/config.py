@@ -61,6 +61,10 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     timeAB = int(setupDict.get("timeAB", 200))
     reversal_termination = int(setupDict["reversal_termination"])
     max_trials = int(setupDict.get("max_trials", 10 * 3))
+    from psychophysics_lab.experiments.contrast_sensitivity import parse_condition_values
+    source_conditions = parse_condition_values(setupDict.get("condition_values", "63,252"))
+    if int(setupDict.get("number_conditions", len(source_conditions))) != len(source_conditions):
+        raise ValueError("Number of conditions must match the supplied condition values.")
     staircases_per_condition = int(setupDict.get("staircases_per_condition", 1))
     if not 1 <= staircases_per_condition <= 24:
         raise ValueError("staircases_per_condition must be between 1 and 24.")
@@ -94,6 +98,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         "number_trials": max_trials,
         "max_trials": max_trials,
         "reversal_termination": reversal_termination,
+        "initial_one_down_limit": int(setupDict.get("initial_one_down_limit", 0)),
+        "number_conditions": len(source_conditions),
+        "condition_values": list(source_conditions),
         "staircases_per_condition": staircases_per_condition,
         "terminationINDEX": 9,
         "logUNIT_UP": float(setupDict.get("logUNIT_UP", 0.35)),
@@ -183,13 +190,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         }
     )
 
-    # Deferred stimulus review: this legacy value is intentionally NOT
-    # reinterpreted as measured pixels/degree here.
-    deg1PCD = 31.5
-    # Separate adaptive identities for independent repeats of each condition.
-    # No shared streak, contrast history, reversal count or termination state.
-    # At the reference defaults this is unchanged (63, 252; one each).
-    condition_list = [2 * deg1PCD, 8 * deg1PCD] * staircases_per_condition
+    # Preserve the experiment-configured legacy stimulus value for each
+    # independent staircase. These values are NOT calibrated cycles/degree.
+    condition_list = list(source_conditions) * staircases_per_condition
 
     columnsSet = {
         "condition_list": condition_list,
