@@ -33,11 +33,11 @@ from ..stimuli.geometry import physical_length_for_visual_angle
 
 
 NAV_PAGES = (
-    ("setup", "Run"),
+    ("setup", "Experiment"),
     ("stimuli", "Stimuli"),
     ("experiments", "Experiments"),
     ("display", "Calibrate"),
-    ("simulations", "Simulate"),
+    ("simulations", "Scenarios"),
     ("data", "Data"),
     ("help", "Developer"),
 )
@@ -798,7 +798,7 @@ class HelpScreen(HubPage):
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
-            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Synthetic pipeline testing[/b]\nOpen the Simulate page above. Select an experiment and virtual scenario, edit declared model settings, review, then run.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
             yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
