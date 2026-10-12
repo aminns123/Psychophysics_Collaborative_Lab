@@ -36,6 +36,19 @@ def latest_staircase_plot(*, data_root: Path, run_directory: Path) -> Path | Non
                  if p.is_file() and not p.is_symlink()), None)
 
 
+def latest_threshold_plot(*, data_root: Path, run_directory: Path) -> Path | None:
+    """Locate latest derived THC plot for exactly this canonical run UUID."""
+    run = _owned_run(data_root, run_directory)
+    manifest = _read_manifest(run)
+    from .thresholds import _safe_component
+    folder = (Path(data_root).resolve() / "analysis" / "thresholds"
+              / _safe_component(manifest.get("participant_id"))
+              / _safe_component(manifest.get("experiment_id"))
+              / _safe_component(manifest.get("run_uuid")))
+    return next((p for p in sorted(folder.glob("*/threshold_vs_condition.png"), reverse=True)
+                 if p.is_file() and not p.is_symlink()), None)
+
+
 def create_staircase_preview(*, data_root: Path, run_directory: Path) -> StaircasePreview:
     data = Path(data_root).resolve()
     run = _owned_run(data, Path(run_directory))
