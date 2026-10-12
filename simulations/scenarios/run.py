@@ -20,6 +20,8 @@ from psychophysics_lab.paths import default_data_root, find_repo_root
 from psychophysics_lab.data.workspace import preferred_data_root
 
 from ..registry import get_simulation
+from ..controls import effective_experiment_values, effective_observer_values
+from psychophysics_lab.experiments.registry import get_experiment
 from ..run import simulate
 from .registry import get_scenario
 
@@ -76,24 +78,30 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     scenario = get_scenario(experiment_id, scenario_id)
     model = get_simulation(experiment_id)
 
-    # All configurable keys must have been explicitly exposed by the author
-    # of this scenario. Unknown keys and nonfinite/type-changing overrides
-    # fail before touching any participant or analysis directories.
-    def effective(base, override, label):
-        values = dict(base)
-        for key, value in (override or {}).items():
-            if key not in values:
-                raise ValueError(f"{label} {key!r} is not configurable in this scenario.")
-            expected = values[key]
-            if type(value) is not type(expected):
-                raise ValueError(f"{label} {key!r} must retain its declared type.")
-            if isinstance(value, float) and not math.isfinite(value):
-                raise ValueError(f"{label} {key!r} must be finite.")
-            values[key] = value
-        return values
+    # A simulation inherits EVERY normal human-experiment configuration field,
+    # including adaptive up/down counts, steps, stopping, display and timing.
+    # The model contributes separate observer-only parameters.
+    experiment_spec = get_experiment(experiment_id)
+    base_experiment = effective_experiment_values(scenario)
+    base_observer = effective_observer_values(scenario)
+    observer_values = dict(base_observer)
+    for key, value in (observer_parameters or {}).items():
+        if key not in base_observer:
+            raise ValueError(f"Observer setting {key!r} is not declared by this model.")
+        original = base_observer[key]
+        if type(value) is not type(original) or (isinstance(value, float) and not math.isfinite(value)):
+            raise ValueError(f"Observer setting {key!r} has an invalid type or nonfinite value.")
+        observer_values[key] = value
 
-    observer_values = effective(scenario.observer_parameters, observer_parameters, "Observer setting")
-    experiment_settings = effective(scenario.experiment_values, experiment_values, "Experiment setting")
+    fields = {field.key: field for field in experiment_spec.fields}
+    experiment_settings = dict(base_experiment)
+    for key, value in (experiment_values or {}).items():
+        if key not in fields:
+            raise ValueError(f"Experiment setting {key!r} is not a registered human configuration field.")
+        if not fields[key].editable and value != base_experiment[key]:
+            raise ValueError(f"Experiment setting {key!r} is fixed and cannot be edited.")
+        experiment_settings[key] = fields[key].coerce(value)
+    experiment_settings = experiment_spec.normalise_values(experiment_settings)
     selected_seeds = tuple(scenario.seeds if seeds is None else seeds)
     if (not selected_seeds or len(selected_seeds) > 128
             or len(set(selected_seeds)) != len(selected_seeds)
