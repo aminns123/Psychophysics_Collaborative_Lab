@@ -117,6 +117,25 @@ class SimulationsScreen(HubPage):
                     experiment_values = effective_experiment_values(scenario)
                     adaptive = experiment.adaptive
                     adaptive_controls = set(adaptive.controls) if adaptive else set()
+                    condition_controls = {field.key for field in experiment.fields
+                                          if field.section == "Stimulus conditions"}
+                    if condition_controls:
+                        with Collapsible(
+                            title="Stimulus conditions — number and numeric values",
+                            collapsed=False, id=f"sim-conditions-{index}",
+                        ):
+                            yield Static(
+                                "Specify the condition count and comma-separated values. "
+                                "The two must agree. These are experiment-defined values "
+                                "used by the real stimulus pipeline; the reference CSF "
+                                "legacy scale is NOT validated cycles/degree.",
+                                classes="field-help",
+                            )
+                            for number, field in enumerate(experiment.fields):
+                                if field.key in condition_controls:
+                                    yield from self._compose_experiment_field(
+                                        index, number, field, experiment_values[field.key]
+                                    )
                     if adaptive_controls:
                         with Collapsible(
                             title="Adaptive algorithm — n-down/n-up rules, step sizes and reversals",
@@ -145,7 +164,7 @@ class SimulationsScreen(HubPage):
                         collapsed=True, id=f"sim-other-{index}",
                     ):
                         for number, field in enumerate(experiment.fields):
-                            if field.key not in adaptive_controls:
+                            if field.key not in adaptive_controls and field.key not in condition_controls:
                                 yield from self._compose_experiment_field(
                                     index, number, field, experiment_values[field.key]
                                 )
