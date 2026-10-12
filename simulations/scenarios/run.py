@@ -66,7 +66,7 @@ def _validator_checks(scenario, run_directory: Path) -> tuple[dict[str, Any], ..
 
 def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                  repo_root=None, seeds=None, observer_parameters=None,
-                 experiment_values=None) -> ScenarioResult:
+                 experiment_values=None, monitor_profile_id=None) -> ScenarioResult:
     """Execute scenario seeds; save report alongside human and synthetic runs.
 
     Physical display, participant IDs and acquisition defaults are untouched.
@@ -108,6 +108,13 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
             or any(type(seed) is not int or seed < 0 for seed in selected_seeds)):
         raise ValueError("Specify 1–128 unique nonnegative integer seeds.")
 
+    if monitor_profile_id is not None:
+        from psychophysics_lab.config.monitor import load_monitor_profiles
+        from psychophysics_lab.config.preflight import compatible
+        profiles = load_monitor_profiles(source_root)
+        if monitor_profile_id not in profiles or not compatible(experiment_spec, profiles[monitor_profile_id]):
+            raise ValueError("Selected monitor profile is unavailable or not qualified for the experiment.")
+
     selected_data_root = (Path(data_root) if data_root is not None
                           else preferred_data_root(source_root, default_data_root(source_root)))
     root = simulation_workspace(selected_data_root, source_root)
@@ -118,7 +125,7 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
         artifacts, analysis = simulate(
             data_root=root, repo_root=source_root, experiment_id=experiment_id,
             seed=seed, observer=observer, values=experiment_settings,
-            analyse=True,
+            monitor_profile_id=monitor_profile_id, analyse=True,
         )
         records.append(ScenarioRun(seed, artifacts, analysis))
         manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
@@ -177,6 +184,8 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
         "observer_model": type(observer).__name__,
         "observer_parameters": observer_values,
         "experiment_values": experiment_settings,
+        "monitor_profile_id": monitor_profile_id or model.monitor_profile_id,
+        "display_hardware_used": False,
         "expected_analysis": scenario.expect_analysis,
         "tests": checks,
         "experiment_evaluation": evaluation,
