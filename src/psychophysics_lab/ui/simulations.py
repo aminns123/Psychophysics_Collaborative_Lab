@@ -68,7 +68,7 @@ class SimulationsScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
             with Horizontal(classes="buttons"):
-                yield Button("Edit up/down rules", id="sim-edit-adaptive",
+                yield Button("Adaptive algorithm", id="sim-edit-adaptive",
                              disabled=not any(get_experiment(exp).adaptive for exp in self.experiment_ids))
                 yield Button("Review Simulation", id="sim-review", variant="primary",
                              disabled=not bool(self.scenarios))
@@ -119,7 +119,7 @@ class SimulationsScreen(HubPage):
                     adaptive_controls = set(adaptive.controls) if adaptive else set()
                     if adaptive_controls:
                         with Collapsible(
-                            title="Adaptive staircase — n-down/n-up rules, step sizes and reversals",
+                            title="Adaptive algorithm — n-down/n-up rules, step sizes and reversals",
                             collapsed=False, id=f"sim-adaptive-{index}",
                         ):
                             yield Static(
@@ -309,9 +309,12 @@ class SimulationsScreen(HubPage):
             event.stop()
             try:
                 index, scenario = self._current()
-                panel = self.query_one(f"#sim-adaptive-{index}", Collapsible)
-                panel.collapsed = False
-                panel.scroll_visible(animate=False)
+                experiment = get_experiment(scenario.experiment_id)
+                if experiment.adaptive is None or not experiment.adaptive.controls:
+                    raise ValueError("The selected experiment has no adaptive algorithm controls.")
+                # An explicit editor is discoverable and works even when the
+                # inline settings are far below the viewport or already open.
+                self.app.push_screen(AdaptiveAlgorithmScreen(self, index, scenario.experiment_id))
             except (ValueError, TypeError) as exc:
                 self.query_one("#sim-status", Static).update(str(exc))
             return
@@ -330,6 +333,164 @@ class SimulationsScreen(HubPage):
             self.app.push_screen(SimulationReviewScreen(self._request()))
         except (ValueError, TypeError, OverflowError) as exc:
             self.query_one("#sim-status", Static).update(f"[red]{exc}[/red]")
+
+
+
+class AdaptiveAlgorithmScreen(Screen):
+    """Focused editor for the current experiment's adaptive parameters.
+
+    The selection is controlled by ExperimentSpec. This editor does not
+    silently switch algorithms or write experiment files: Apply copies
+    validated values into the same widgets used by simulation Review/Run.
+    Cancel retains the previous settings.
+    """
+
+    def __init__(self, source: SimulationsScreen, scenario_index: int, experiment_id: str):
+        super().__init__()
+        self.source = source
+        self.scenario_index = scenario_index
+        self.experiment = get_experiment(experiment_id)
+        if not self.experiment.adaptive or not self.experiment.adaptive.controls:
+            raise ValueError("The selected experiment has no adaptive settings.")
+        controls = set(self.experiment.adaptive.controls)
+        self.fields = tuple(
+            (number, field)
+            for number, field in enumerate(self.experiment.fields)
+            if field.key in controls
+        )
+
+    def _input(self, number: int):
+        return self.query_one(f"#adaptive-value-{number}")
+
+    def _values(self) -> dict:
+        values = {}
+        for number, field in self.fields:
+            widget = self._input(number)
+            raw = widget.value
+            if field.kind == "choice" and _is_blank_select_value(raw):
+                raw = None
+            values[field.key] = field.coerce(raw)
+        return values
+
+    def compose(self) -> ComposeResult:
+        from ..adaptive.registry import get_algorithm
+
+        selection = self.experiment.adaptive
+        algorithm = get_algorithm(selection.algorithm_id)
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Cancel", id="adaptive-cancel")
+                yield Button("Apply adaptive settings", id="adaptive-apply", variant="primary")
+        with VerticalScroll(classes="page-body", id="adaptive-editor-body"):
+            yield Static(
+                f"[b]Adaptive algorithm[/b]\n"
+                f"Experiment: {self.experiment.display_name}\n"
+                f"Algorithm: {algorithm.id}\n"
+                f"{algorithm.description}\n\n"
+                "Change the same adaptive parameters used for human acquisition. "
+                "No changes are applied to your simulation until you select "
+                "Apply adaptive settings.",
+                classes="info-card", id="adaptive-algorithm-heading",
+            )
+            for number, field in self.fields:
+                source_widget = self.source.query_one(
+                    f"#sim-experiment-value-{self.scenario_index}-{number}"
+                )
+                yield Label(field.label)
+                if field.kind == "choice":
+                    yield Select(
+                        [(str(choice), choice) for choice in field.choices],
+                        value=source_widget.value,
+                        id=f"adaptive-value-{number}",
+                        allow_blank=field.default is None,
+                        disabled=not field.editable,
+                    )
+                else:
+                    yield Input(
+                        value=str(source_widget.value),
+                        id=f"adaptive-value-{number}",
+                        disabled=not field.editable,
+                    )
+                if field.help_text:
+                    yield Static(field.help_text, classes="field-help")
+            if selection.step_calculator:
+                yield Static(NOTICE, classes="field-help")
+                with Horizontal(classes="buttons"):
+                    yield Button("Calculate down from up", id="adaptive-calculate-down")
+                    yield Button("Calculate up from down", id="adaptive-calculate-up")
+            yield Static("", id="adaptive-editor-status", markup=False)
+        yield Footer()
+
+    def _calculate(self, direction: str) -> None:
+        selection = self.experiment.adaptive
+        fields = {field.key: (number, field) for number, field in self.fields}
+        def setting(key):
+            number, field = fields[key]
+            return field.coerce(self._input(number).value)
+        target = "logUNIT_DW" if direction == "down" else "logUNIT_UP"
+        known = "logUNIT_UP" if direction == "down" else "logUNIT_DW"
+        number, field = fields[target]
+        if not field.editable:
+            raise ValueError("The selected experiment fixes that step magnitude.")
+        value = paired_step(
+            known_value=setting(known), calculate=direction,
+            n_down=setting("n_down"), n_up=setting("n_up"),
+            alternatives=len(self.experiment.response_paradigm.alternatives)
+            if self.experiment.response_paradigm else None,
+            parameterization=selection.step_parameterization,
+        )
+        self._input(number).value = repr(value)
+        self.query_one("#adaptive-editor-status", Static).update(
+            f"Calculated {target} = {value:.8g}; this is an optional literature relation."
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if _handle_nav(self, event):
+            return
+        if event.button.id == "adaptive-cancel":
+            event.stop()
+            self.app.pop_screen()
+            return
+        if event.button.id in {"adaptive-calculate-down", "adaptive-calculate-up"}:
+            event.stop()
+            try:
+                direction = event.button.id.removeprefix("adaptive-calculate-")
+                self._calculate(direction)
+            except (ValueError, TypeError, KeyError) as exc:
+                self.query_one("#adaptive-editor-status", Static).update(str(exc))
+            return
+        if event.button.id == "adaptive-apply":
+            event.stop()
+            try:
+                changed = self._values()
+                # Same experiment-level validation as the human Run page.
+                # Preserve ALL other fields of the selected simulation.
+                proposal = {}
+                for number, field in enumerate(self.experiment.fields):
+                    source_field = self.source.query_one(
+                        f"#sim-experiment-value-{self.scenario_index}-{number}"
+                    )
+                    raw = source_field.value
+                    if field.kind == "choice" and _is_blank_select_value(raw):
+                        raw = None
+                    proposal[field.key] = field.coerce(raw)
+                proposal.update(changed)
+                self.experiment.normalise_values(proposal)
+            except (ValueError, TypeError, KeyError) as exc:
+                self.query_one("#adaptive-editor-status", Static).update(str(exc))
+                return
+            for number, field in self.fields:
+                widget = self.source.query_one(
+                    f"#sim-experiment-value-{self.scenario_index}-{number}"
+                )
+                value = changed[field.key]
+                widget.value = value if field.kind == "choice" else str(value)
+            self.source.query_one("#sim-status", Static).update(
+                "Adaptive algorithm updated. Review Simulation to confirm the saved rules."
+            )
+            self.app.pop_screen()
 
 
 class SimulationReviewScreen(Screen):

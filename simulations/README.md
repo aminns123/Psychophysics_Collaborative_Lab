@@ -24,10 +24,15 @@ certified by a headless pipeline test.
 human Run page offers**, including n-up/n-down response counts, independent
 logarithmic up/down step magnitudes, reversal stopping, maximum accepted trials,
 starting probe intensity, luminance settings and timing values. In Simulate,
-select the **Edit up/down rules** shortcut at the top to jump to the
-**Adaptive staircase — n-down/n-up rules, step sizes and reversals** section,
-which is expanded by default. Other human experiment settings and
-simulation-only virtual-observer settings are grouped separately. It reuses the
+select **Adaptive algorithm** at the top to open a dedicated editor for the
+currently selected experiment's staircase rules and stopping criteria.
+Change n-down/n-up counts, log-step magnitudes, reversal termination and
+maximum trials. Select **Apply adaptive settings** to copy validated changes
+back to the simulation setup, or **Cancel** to discard edits. You can
+then inspect all effective settings in **Review Simulation** before running.
+The inline Adaptive algorithm section also displays these parameters.
+Other human experiment settings and simulation-only virtual-observer
+settings are grouped separately. It reuses the
 same experiment `ConfigField` validation and optional step-size calculator.
 A qualified monitor profile may be selected as recorded metadata; no display
 hardware is driven. The separate Virtual Observer section supplies
