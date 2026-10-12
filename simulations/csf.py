@@ -43,9 +43,13 @@ class CSFObserver:
         return .5 + (.5 - self.lapse) * fraction
 
 
+# Preserve historical seeded reference scenarios. New experiments configured via
+# Run -> Review -> Simulation use the new cpd/period unit choices instead.
 DEFAULT_VALUES = {"Max_monitor_Luminance": 500., "Background_Luminance": 49.,
                   "Background_Screen_intensity": .374, "max_trials": 400,
-                  "reversal_termination": 12}
+                  "reversal_termination": 12,
+                  "condition_unit": "legacy_shader_radians",
+                  "condition_values": "63,252"}
 
 
 def runtime(observer, seed, algorithm_id):
@@ -69,7 +73,8 @@ def runtime(observer, seed, algorithm_id):
             "hardware": "none", "timing_status": "unverified", "photon_timing_verified": False})
         atomic_write_json(root / "resolved_experiment.json", {"experiment_id": "contrast_sensitivity",
             "data_kind": "synthetic", "observer": asdict(observer), "seed": seed,
-            "condition_units": "legacy CSF units; not calibrated cycles/degree",
+            "condition_units": params.get("condition_unit", "legacy_shader_radians"),
+            "entered_condition_units": params.get("entered_condition_unit", "legacy_shader_radians"),
             "adaptive_parameters": {
                 "n_down": params["n_dw"], "n_up": params["n_up"],
                 "initial_one_down_limit": params["initial_one_down_limit"],

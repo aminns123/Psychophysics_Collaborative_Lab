@@ -33,11 +33,11 @@ from ..stimuli.geometry import physical_length_for_visual_angle
 
 
 NAV_PAGES = (
-    ("setup", "Run"),
+    ("setup", "Experiment"),
     ("stimuli", "Stimuli"),
     ("experiments", "Experiments"),
-    ("display", "Display"),
-    ("simulations", "Simulate"),
+    ("display", "Calibrate"),
+    ("simulations", "Scenarios"),
     ("data", "Data"),
     ("help", "Developer"),
 )
@@ -330,7 +330,7 @@ class StimuliScreen(HubPage):
 
 
 class DisplayCheckScreen(HubPage):
-    page_title = "Display Geometry Check"
+    page_title = "Display Calibration"
 
     def compose(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
@@ -351,9 +351,22 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Launch display test", id="launch-geometry", variant="success")
         with VerticalScroll(classes="page-body"):
             yield Static(
-                "[b]Display Geometry Check[/b]\n"
-                "Choose size, position, spatial frequency or temporal modulation. Diagnostics are "
-                "saved with local display configuration; laboratory verification remains necessary."
+                "[b]Display calibration — measure before using cycles/degree[/b]\n"
+                "1. Select Edit / copy display profile. Bind the actual monitor; "
+                "enter measured active width/height and eye-to-screen distance, "
+                "and use detected/verified fullscreen pixel resolution.\n"
+                "2. Run a size/ruler check and a spatial-frequency diagnostic. "
+                "Record a physical ruler measurement; confirm the pixel grid and viewing setup.\n"
+                "3. Return to Experiment to enter frequencies in cycles/degree.\n"
+                "Display geometry does NOT measure screen luminance, gamma or photon onset. "
+                "Those need separate photometric/temporal instruments.",
+                classes="info-card",
+            )
+            yield Static("", id="spatial-calibration-summary", classes="info-card")
+            yield Static(
+                "Diagnostic settings below apply to the selected monitor. The physical "
+                "size and distance are manually measured; OS screen dimensions alone "
+                "are insufficient for geometric calibration."
             )
             yield Label("Display profile")
             yield Select(profile_options, value=last_profile, allow_blank=False, id="geometry-monitor")
@@ -453,6 +466,27 @@ class DisplayCheckScreen(HubPage):
                 if request.test_kind.startswith("temporal_"):
                     details += "\n" + json.dumps(temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind), indent=2)
             self.query_one("#geometry-preview", Static).update(_monitor_summary(profile) + "\n\n" + details)
+            from ..stimuli.spatial_calibration import resolve_spatial_geometry
+            if resolution is not None:
+                calibration = resolve_spatial_geometry(profile, resolution)
+                self.query_one("#spatial-calibration-summary", Static).update(
+                    "[b]Geometric frequency calibration (gaze centre)[/b]\n"
+                    f"Physical pixel pitch: X={calibration.pixel_pitch_m[0] * 1000:.4f} mm, "
+                    f"Y={calibration.pixel_pitch_m[1] * 1000:.4f} mm\n"
+                    f"Pixels/degree: X={calibration.pixels_per_degree_at_centre[0]:.3f}, "
+                    f"Y={calibration.pixels_per_degree_at_centre[1]:.3f}\n"
+                    f"Nyquist: X={calibration.nyquist_cpd_at_centre[0]:.3f}, "
+                    f"Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd\n"
+                    f"Geometry verification status: {profile.geometry_status}\n"
+                    "At 1 cpd the local period is approximately the listed pixels/degree. "
+                    "Remeasure if display resolution, viewing distance or active image size changes."
+                )
+            else:
+                self.query_one("#spatial-calibration-summary", Static).update(
+                    "[yellow]This monitor profile has no expected fullscreen pixel resolution. "
+                    "Bind and inspect the monitor in Edit / copy display profile, record its "
+                    "active resolution, then check it with the fullscreen display test.[/yellow]"
+                )
         except (ValueError, TypeError) as exc:
             self.query_one("#geometry-preview", Static).update(str(exc))
 
@@ -764,7 +798,7 @@ class HelpScreen(HubPage):
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
-            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Synthetic pipeline testing[/b]\nOpen the Simulate page above. Select an experiment and virtual scenario, edit declared model settings, review, then run.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
             yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
@@ -799,6 +833,11 @@ class ExperimentConfigScreen(Screen):
         self.experiment = experiment
         self.monitor_profile_id = monitor_profile_id
         self.defaults = dict(defaults)
+        # Preserve historical pre-cpd workspaces explicitly when reusing.
+        if (self.experiment.id == "contrast_sensitivity"
+                and "condition_values" in self.defaults
+                and "condition_unit" not in self.defaults):
+            self.defaults["condition_unit"] = "legacy_shader_radians"
 
     def compose(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
@@ -1018,10 +1057,27 @@ class ReviewScreen(Screen):
             values = self.request.experiment_values
             down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
             count = values["number_conditions"] * values["staircases_per_condition"]
+            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            frequencies = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
             lines.append(
-                f"Condition values (legacy units): {values['condition_values']}; "
-                f"{count} independent staircases in total."
+                f"Entered conditions: {values['condition_values']} "
+                f"({values['condition_unit']}); {count} independent staircases in total."
             )
+            if values["condition_unit"] != "legacy_shader_radians":
+                lines.append(f"Resolved spatial frequencies: {', '.join(f'{x:g}' for x in frequencies)} cycles/degree.")
+                from ..stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
+                if profile.expected_resolution_px:
+                    calibration = resolve_spatial_geometry(profile, profile.expected_resolution_px)
+                    validate_requested_cpd(frequencies, calibration)
+                    lines.extend([
+                        f"Local pixels/degree at gaze: X={calibration.pixels_per_degree_at_centre[0]:.3f}, Y={calibration.pixels_per_degree_at_centre[1]:.3f}",
+                        f"Nyquist limit: X={calibration.nyquist_cpd_at_centre[0]:.3f}, Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd",
+                        f"Display geometric verification: {profile.geometry_status}",
+                    ])
+                else:
+                    lines.append("[yellow]The profile has no saved expected pixel resolution. "
+                                 "Set it in Calibrate → Edit profile before relying on physical units. "
+                                 "The renderer will check actual fullscreen resolution at launch.[/yellow]")
             lines.append(
                 f"Introductory rule: 1-down until first incorrect response or "
                 f"{values['initial_one_down_limit']} accepted responses per staircase "
@@ -1071,7 +1127,8 @@ class ReviewScreen(Screen):
             yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
-                yield Button("Run Experiment", id="run", variant="success")
+                yield Button("Run human experiment", id="run", variant="success")
+                yield Button("Run simulation", id="run-simulation", variant="primary")
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
             yield Static("", id="review-status")
@@ -1081,7 +1138,7 @@ class ReviewScreen(Screen):
         if _handle_nav(self, event):
             return
         button_id = event.button.id
-        if button_id not in {"back", "run"}:
+        if button_id not in {"back", "run", "run-simulation"}:
             return
         event.stop()
         try:
@@ -1091,7 +1148,26 @@ class ReviewScreen(Screen):
                 spec = get_experiment(self.request.experiment_id)
                 current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
                 validate_setup(self.request, spec, current)
-                self.app.exit(self.request)
+                if button_id == "run-simulation":
+                    from .unified_run import VirtualObserverOptionsScreen
+                    from simulations.scenarios import list_scenarios
+                    if not list_scenarios(self.request.experiment_id):
+                        raise ValueError("This experiment has no registered virtual-observer scenarios.")
+                    self.app.push_screen(VirtualObserverOptionsScreen(self.request))
+                else:
+                    if self.request.participant_id == "synthetic_preview":
+                        raise ValueError("Provide a real pseudonymous participant ID in the previous screen before human acquisition.")
+                    if (spec.id == "contrast_sensitivity"
+                            and self.request.experiment_values.get("condition_unit") != "legacy_shader_radians"
+                            and current.expected_resolution_px is None):
+                        raise ValueError(
+                            "Cannot run physically specified cpd gratings without an expected "
+                            "fullscreen pixel resolution. In Calibrate, bind your display, "
+                            "save a measured local profile with its pixel dimensions and "
+                            "confirm the fullscreen geometry. The virtual simulation mode "
+                            "remains available without hardware calibration."
+                        )
+                    self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
             _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
@@ -1249,9 +1325,10 @@ class PsyCoLabSetupApp(App):
                 yield Button("Configure Experiment", id="configure", variant="primary")
         with VerticalScroll(id="setup-body"):
             yield Static(
-                "[b]Run an experiment[/b]\n"
-                "Configure the external data workspace, participant, experiment and display. "
-                "The Textual hub closes before Pyglet/OpenGL acquisition begins."
+                "[b]Configure an experiment — human or simulated[/b]\n"
+                "Set up one experiment with the same conditions, physical units and adaptive "
+                "rules. At final review choose a human participant or a virtual observer. "
+                "The TUI closes before acquisition begins."
             )
             if self.simulation_summary:
                 yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
@@ -1275,8 +1352,8 @@ class PsyCoLabSetupApp(App):
                 id="participant",
             )
             yield Static(
-                "Use a pseudonymous laboratory identifier. Selecting an existing participant "
-                "fills this field; choose '+ New participant' to enter another ID.",
+                "A pseudonymous participant ID is required only if you choose Run human experiment "
+                "on the final review. Leave blank for a virtual observer.",
                 classes="field-help",
             )
 
@@ -1438,7 +1515,10 @@ class PsyCoLabSetupApp(App):
             data_root = self._selected_data_root(create=True)
             self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
-            participant = validate_participant_id(self.screen_stack[0].query_one("#participant", Input).value)
+            entered_participant = self.screen_stack[0].query_one("#participant", Input).value.strip()
+            # The final review chooses human or synthetic mode. Only the human
+            # path requires a participant identifier; no virtual run uses it.
+            participant = validate_participant_id(entered_participant or "synthetic_preview")
             session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
             experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
             monitor_id = self.screen_stack[0].query_one("#monitor-profile", Select).value

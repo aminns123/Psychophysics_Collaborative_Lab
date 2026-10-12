@@ -40,6 +40,28 @@ simulation-only model controls (threshold, preferred legacy condition, tuning,
 slope, lapse). Changing virtual timing configuration tests its propagation and
 recording, **not physical display duration**.
 
+## One shared experiment setup, with real spatial frequency units
+
+For new experiments use **Experiment → Configure Experiment → Review**.
+The same configuration is used by either **Run human experiment** or
+**Run simulation**. The simulation option then asks only for scenario, seeds
+and **virtual-observer-only** parameters. The old *Scenarios* page remains an
+advanced direct testing route, useful for old seeded legacy reference cases.
+
+Before presenting human gratings, visit **Calibrate** to bind a monitor, measure
+active physical width/height and eye distance, detect/confirm actual fullscreen
+pixel dimensions and run a geometric check. The cpd renderer uses the resulting
+physical visual-angle transformation for each fragment. Saving display
+dimensions does **not** prove the luminance transfer function or frame timing
+is calibrated. See [spatial calibration](../docs/SPATIAL_FREQUENCY_CALIBRATION.md).
+
+For reference CSF, specify `condition_unit=cycles_per_degree` with conditions
+such as `2,4,8` (cpd), or `degrees_per_cycle` with `0.5,0.25,0.125`
+(spatial period in degrees/cycle, reciprocated into canonical cpd).
+The `legacy_shader_radians` choice intentionally reproduces earlier
+uncalibrated phase scalars such as `63,252`, **not** cpd. Existing standalone
+scenario defaults retain this legacy mode for reproducibility.
+
 ## Choose conditions and introductory 1-down phase (human and simulation)
 
 For the reference CSF experiment, **Run** and **Simulate** share the exact
@@ -47,9 +69,9 @@ For the reference CSF experiment, **Run** and **Simulate** share the exact
 
 - **Number of stimulus conditions**: 1–24.
 - **Condition values**: ordered comma-separated numeric values, e.g.
-  `63,126,252`. The count must agree with the entered list. Values must
-  be distinct positive finite legacy renderer frequency scalars. **These
-  are not calibrated cycles/degree** until the spatial-calibration review.
+  `2,4,8` with `cycles_per_degree`. The count must match. Frequencies are
+  canonical physical cycles/degree in cpd/period modes. The explicitly
+  selected legacy phase-coefficient mode is *not* physical cpd.
 - **Independent staircases per condition**: 1–24. For 3 conditions and 4
   staircases each, the run uses **12 independent staircase identities**.
 - **Initial 1-down maximum accepted responses per staircase**: default
@@ -146,8 +168,10 @@ participant data into the Git repository.
 
 ## Run from the PsyCoLab TUI (no command line required)
 
-Start PsyCoLab normally with `run_psycolab.bat`, then select **Simulate**
-in the top navigation. Choose the experiment and its registered scenario.
+Start PsyCoLab normally with `run_psycolab.bat`, then choose
+**Experiment → Configure Experiment → Review → Run simulation**. The same
+configured run can instead be launched as a human experiment. For advanced
+direct scenario tests, open the separate **Scenarios** page.
 The panel shows exactly the model parameters that scenario declares: for
 example CSF contrast midpoint, preferred stimulus condition, tuning width,
 slope and lapse rate. You can adjust the permitted experiment settings
@@ -194,8 +218,9 @@ The original direct CSF sweep is still supported:
 .venv\Scripts\python.exe -m simulations --thresholds 0.05,0.1,0.2 --seeds 1,2,3 --preferred-condition 63 --tuning-width-octaves 2
 ```
 
-**Units:** The current CSF condition values (such as 63 and 252) are legacy
-internal units, not scientifically verified cycles per degree.
+**Units:** The direct legacy reference commands deliberately use `63,252`
+as historical shader phase coefficients. The unified workflow defaults to
+physical `cycles_per_degree` and `2,8`; do not conflate the two.
 
 ## Set an observer's known properties
 

@@ -61,8 +61,13 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     timeAB = int(setupDict.get("timeAB", 200))
     reversal_termination = int(setupDict["reversal_termination"])
     max_trials = int(setupDict.get("max_trials", 10 * 3))
-    from psychophysics_lab.experiments.contrast_sensitivity import parse_condition_values
-    source_conditions = parse_condition_values(setupDict.get("condition_values", "63,252"))
+    from psychophysics_lab.experiments.contrast_sensitivity import resolved_condition_frequencies
+    # Existing older configurations had no unit and must retain historical
+    # phase coefficients. Newly configured studies supply explicit units.
+    input_unit = setupDict.get("condition_unit", "legacy_shader_radians")
+    entered_values = setupDict.get("condition_values", "63,252")
+    source_conditions = resolved_condition_frequencies(entered_values, input_unit)
+    runtime_unit = "legacy_shader_radians" if input_unit == "legacy_shader_radians" else "cycles_per_degree"
     if int(setupDict.get("number_conditions", len(source_conditions))) != len(source_conditions):
         raise ValueError("Number of conditions must match the supplied condition values.")
     staircases_per_condition = int(setupDict.get("staircases_per_condition", 1))
@@ -101,6 +106,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         "initial_one_down_limit": int(setupDict.get("initial_one_down_limit", 0)),
         "number_conditions": len(source_conditions),
         "condition_values": list(source_conditions),
+        "condition_unit": runtime_unit,
+        "entered_condition_unit": input_unit,
+        "entered_condition_values": entered_values,
         "staircases_per_condition": staircases_per_condition,
         "terminationINDEX": 9,
         "logUNIT_UP": float(setupDict.get("logUNIT_UP", 0.35)),
@@ -193,9 +201,23 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     # Preserve the experiment-configured legacy stimulus value for each
     # independent staircase. These values are NOT calibrated cycles/degree.
     condition_list = list(source_conditions) * staircases_per_condition
+    # Condition semantics are canonical cpd for physical input units,
+    # and old phase coefficients ONLY if the explicit legacy mode is selected.
+    if runtime_unit == "cycles_per_degree":
+        from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry
+        from psychophysics_lab.config.monitor import _profile_from_dict
+        monitor = _profile_from_dict(monitor_profile)
+        if monitor.expected_resolution_px is not None:
+            from psychophysics_lab.stimuli.spatial_calibration import validate_requested_cpd
+            geometry = resolve_spatial_geometry(monitor, monitor.expected_resolution_px)
+            validate_requested_cpd(tuple(source_conditions), geometry)
+
 
     columnsSet = {
         "condition_list": condition_list,
+        "condition_unit": runtime_unit,
+        "entered_condition_unit": input_unit,
+        "entered_condition_values": entered_values,
         "staircase_Identities": list(range(len(condition_list))),
         "probe_Alternative_Choice": [0 for _ in range(len(condition_list))],
         "human_Alternative_Choice": [0 for _ in range(len(condition_list))],

@@ -34,7 +34,7 @@ experiment owns a separate virtual observer and its own test scenarios.
 
 Virtual observers can exercise real staircase, recording, run validation
 and experiment-specific analysis without a display. **In the normal PsyCoLab TUI,
-open the Simulate page**, select an experiment/scenario, edit the model's
+open the Scenarios page** (advanced/direct scenarios); for unified studies use **Experiment → Review → Run simulation**, select an experiment/scenario, edit the model's
 declared parameters, review the configuration and select Run Virtual Experiment.
 The TUI reopens with a pass/fail report after the headless run.
 
@@ -64,7 +64,7 @@ presentation or response times.
 7. Choose experiment and display profile.
 8. Configure experiment-specific values.
 9. Review the run.
-10. Choose **Run Experiment**.
+10. At Review choose **Run human experiment** or **Run simulation**.
 11. The Textual TUI closes before Pyglet/OpenGL launches.
 
 Useful direct commands:
@@ -81,7 +81,7 @@ The six navigation buttons stay at the top of every page. Configure, Review and
 Run actions remain outside the scrolling forms. **Inspect** opens the real file
 in VS Code with the repository folder supplied as the project context.
 
-Use **Display → Edit / copy display profile** to create a machine-local profile,
+Use **Calibrate → Edit / copy display profile** to create a machine-local profile,
 detect/select its monitor and save a numbered revision. Shared profiles under
 `configs/monitors/` remain reference specifications. The default local folder is
 `../local_psychophysics_config/`, separate from source and participant data.
@@ -136,14 +136,41 @@ assumptions.
 See [`docs/DATA_LAYOUT.md`](docs/DATA_LAYOUT.md) for the storage contract and
 rules for adding future experiments.
 
+## Unified human/simulated experiment setup and spatial calibration
+
+Use **Experiment → Configure Experiment → Review** for both modes.
+Choose **Run human experiment** or **Run simulation** *only at final review*.
+The virtual branch adds a scenario, observer threshold/preferred frequency and
+random seeds; it inherits **the exact same condition list, stimulus units,
+monitor profile, adaptive algorithm and timing settings** as human acquisition.
+The separate **Scenarios** page is retained for older advanced direct tests.
+
+For physically meaningful conditions, first visit **Calibrate**. Measure the
+monitor's active width/height, eye distance and real fullscreen resolution in
+a local display profile; run the ruler and spatial-frequency diagnostic.
+PsyCoLab derives separate horizontal/vertical pixel pitches, local
+pixels-per-degree and Nyquist sampling bounds. These are **geometric**
+calculations; photometric calibration and photon timing are separate.
+
+New reference CSF experiments default to **cycles_per_degree** with `2,8`
+cpd. Alternatively enter **degrees_per_cycle** (e.g. `0.5,0.125`) to specify
+the reciprocal spatial period. Historical runs with uncalibrated phase
+coefficients use explicitly labelled **legacy_shader_radians** mode; their
+settings are not silently reinterpreted. The human grating shader converts
+cpd to per-pixel angular phase using measured monitor geometry.
+
+See [Spatial frequency and display calibration](docs/SPATIAL_FREQUENCY_CALIBRATION.md)
+for mathematical formulas, measurements and reproducibility limitations.
+
 ## Configurable CSF conditions and introductory staircase phase
 
 In both **Run** (human participants) and **Simulate** (virtual observers),
 the reference CSF experiment now provides a **Stimulus conditions**
 section to enter the number of conditions and their ordered, comma-separated
 numeric values (for example `63,126,252`). The number must match the list,
-with 1–24 distinct positive values permitted. These are *legacy reference
-stimulus values*, not yet verified cycles/degree. A separate **Adaptive
+with 1–24 distinct positive values permitted. Select **cycles_per_degree**
+or **degrees_per_cycle** for physical units, or explicit **legacy_shader_radians**
+to reproduce old reference stimuli. A separate **Adaptive
 algorithm** section controls independent staircases per condition, the normal
 n-down/n-up rule and step sizes, and an optional initial 1-down phase.
 
