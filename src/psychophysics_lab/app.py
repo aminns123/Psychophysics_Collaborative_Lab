@@ -183,16 +183,16 @@ def _main(
                     phase="synthetic_simulation",
                 )
                 simulation_summary = (
-                    f"[red]Simulation failed: {exc}[/red]\\n"
+                    f"[red]Simulation failed: {exc}[/red]\n"
                     + (f"Crash report: {report}" if report else "No crash report could be written.")
                 )
                 print("Synthetic simulation failed; returning to the PsyCoLab TUI.")
             else:
                 status = "[green]PASSED[/green]" if result.passed else "[red]FAILED CHECKS[/red]"
                 simulation_summary = (
-                    f"Latest simulation: {status}\\n"
-                    f"Scenario: {result.experiment_id} / {result.scenario_id}\\n"
-                    f"Synthetic runs: {len(result.runs)}\\n"
+                    f"Latest simulation: {status}\n"
+                    f"Scenario: {result.experiment_id} / {result.scenario_id}\n"
+                    f"Synthetic runs: {len(result.runs)}\n"
                     f"Report: {result.report_file}"
                 )
                 print(f"Simulation {'PASSED' if result.passed else 'FAILED CHECKS'}: {result.report_file}")
