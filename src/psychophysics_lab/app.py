@@ -175,6 +175,7 @@ def _main(
                     seeds=action.seeds,
                     observer_parameters=action.observer_parameters,
                     experiment_values=action.experiment_values,
+                    monitor_profile_id=action.monitor_profile_id,
                 )
             except Exception as exc:
                 traceback.print_exception(type(exc), exc, exc.__traceback__)
