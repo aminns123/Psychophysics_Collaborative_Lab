@@ -72,6 +72,10 @@ def runtime(observer, seed, algorithm_id):
             "condition_units": "legacy CSF units; not calibrated cycles/degree",
             "adaptive_parameters": {
                 "n_down": params["n_dw"], "n_up": params["n_up"],
+                "initial_one_down_limit": params["initial_one_down_limit"],
+                "number_conditions": params["number_conditions"],
+                "condition_values": params["condition_values"],
+                "staircases_per_condition": params["staircases_per_condition"],
                 "logUNIT_UP": params["logUNIT_UP"], "logUNIT_DW": params["logUNIT_DW"],
                 "reversal_termination": params["reversal_termination"],
                 "max_accepted_responses": session.run.max_trials,
