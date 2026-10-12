@@ -479,7 +479,33 @@ def run_request(
         except Exception as exc:
             if primary_error is None: primary_error = exc
             else: primary_error.add_note(f"Final manifest could not be written: {exc!r}")
-    if primary_error is not None: raise primary_error
+    if primary_error is not None:
+        raise primary_error
+
+    # Post-acquisition figures belong to the SAME run directory for humans
+    # and simulations. They are derived AFTER the immutable trial log and
+    # final manifest are written, and never affect acquisition success.
+    if payload.get("accepted_trials", 0) and payload.get("status") != "error":
+        from ..analysis.previews import create_staircase_preview
+        try:
+            create_staircase_preview(data_root=data, run_directory=run_dir)
+        except Exception as exc:
+            import warnings
+            warnings.warn(f"Staircase quick-look unavailable for {run_dir.name}: {exc}", RuntimeWarning)
+        # The legacy CSF threshold analyser is valid for this named experiment
+        # only; other experiments may have completely different estimators.
+        if simulation is None and spec.id == "contrast_sensitivity":
+            from ..analysis.thresholds import analyse_thresholds
+            try:
+                analyse_thresholds(data_root=data, run_directory=run_dir, create_plot=True)
+            except ValueError as exc:
+                if "No reversal observations" not in str(exc):
+                    import warnings
+                    warnings.warn(f"Quick-look THC unavailable: {exc}", RuntimeWarning)
+            except Exception as exc:
+                import warnings
+                warnings.warn(f"Quick-look THC unavailable: {exc}", RuntimeWarning)
+
     adaptive = payload.get("adaptive_session") or {}
     return RunArtifacts(run_directory=run_dir, trial_log_file=trial_log_file, response_file=response_file,
         conditions_file=conditions_file, parameters_file=parameters_file, manifest_file=manifest_file,
