@@ -351,7 +351,8 @@ class DisplayCheckScreen(HubPage):
         if guided in self.app.monitor_profiles:
             selected = guided
         self.app.display_guide_target_profile_id = None
-        self.active_calibration_stage = "bind"
+        remembered = preferences(self.app.local_config_root).get("calibration_active_stage", "bind")
+        self.active_calibration_stage = remembered if remembered in dict(STAGES) else "bind"
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
@@ -366,7 +367,7 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Refresh calibration status", id="calibration-refresh")
             yield Static("", id="geometry-status")
 
-        with ContentSwitcher(initial="cal-panel-bind", id="calibration-pages"):
+        with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
             with VerticalScroll(id="cal-panel-bind", classes="page-body calibration-panel"):
                 yield Static(
                     "[b]PAGE 1 / 6 · Display profile and physical screen[/b]\n"
@@ -750,6 +751,11 @@ class DisplayCheckScreen(HubPage):
                 event.stop()
                 self.active_calibration_stage = stage
                 self.query_one("#calibration-pages", ContentSwitcher).current = f"cal-panel-{stage}"
+                try:
+                    save_preferences(self.app.local_config_root, calibration_active_stage=stage)
+                except (OSError, ValueError) as exc:
+                    self.app.notify(f"Page changed but could not remember selection: {exc}",
+                                    severity="warning", timeout=8)
                 self._refresh_stage_status()
             return
         if event.button.id == "calibration-refresh":
