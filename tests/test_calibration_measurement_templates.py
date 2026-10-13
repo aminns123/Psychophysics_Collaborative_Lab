@@ -46,7 +46,7 @@ def test_luminance_example_is_unusable_until_measured_and_never_overwritten(tmp_
     document = json.loads(example.read_text())
     assert document["monitor_profile_id"] == "legacy_reference_display_local"
     assert all(row["luminance_cdm2"] is None for row in document["measurements"])
-    with pytest.raises(ValueError, match="photometer"):
+    with pytest.raises(ValueError, match="At least two REAL"):
         parse_luminance_measurements(document, p)
 
     recorded = finished_document(p)
@@ -60,9 +60,8 @@ def test_luminance_example_is_unusable_until_measured_and_never_overwritten(tmp_
 
 
 @pytest.mark.parametrize("change,pattern", [
-    (lambda d:d.update(measurement_date="YYYY-MM-DD"), "date"),
-    (lambda d:d.update(photometer_model_and_method="REPLACE"), "photometer"),
-    (lambda d:d["measurements"][0].update(luminance_cdm2=None), "measured JSON number"),
+    (lambda d:d.update(measurement_date="not-a-date"), "date"),
+    (lambda d:d["measurements"][0].update(luminance_cdm2="not-numeric"), "measured JSON number"),
     (lambda d:d["measurements"][0].update(screen_intensity=2.0), "intensity"),
     (lambda d:d["measurements"][0].update(luminance_cdm2=999.), "increase monotonically"),
     (lambda d:d["measurements"][1].update(screen_intensity=0.), "distinct"),
@@ -178,3 +177,27 @@ def test_invalid_tui_load_cannot_mutate_existing_draft(tmp_path,monkeypatch):
             assert editor.query_one("#profile-luminance",Input).value==original
             assert "NOT loaded" in str(editor.query_one("#profile-save-feedback",Static).render())
     asyncio.run(scenario())
+
+
+def test_real_values_import_with_no_method_notes_or_date_and_unused_blank_rows():
+    p = reference()
+    document = example_luminance_document(p)
+    document["measurements"][0]["luminance_cdm2"] = 1.2
+    document["measurements"][3]["luminance_cdm2"] = 87.1
+    result = parse_luminance_measurements(document, p)
+    assert len(result["luminance_calibration"]) == 2
+    assert result["luminance_calibration"][1]["screen_intensity"] == .75
+    assert result["calibration_method"] == ""
+    assert result["calibration_notes"] == ""
+    assert result["calibration_date"] == ""
+    assert result["calibration_status"] == "manual_unverified"
+    assert len(result["warnings"]) >= 3
+
+
+def test_one_observed_pair_is_not_a_usable_luminance_mapping():
+    p = reference()
+    document = example_luminance_document(p)
+    document["measurements"][0]["luminance_cdm2"] = .5
+    with pytest.raises(ValueError, match="At least two REAL"):
+        parse_luminance_measurements(document, p)
+

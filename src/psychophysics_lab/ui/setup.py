@@ -354,6 +354,13 @@ class DisplayCheckScreen(HubPage):
         self.app.display_guide_target_profile_id = None
         remembered = preferences(self.app.local_config_root).get("calibration_active_stage", "bind")
         self.active_calibration_stage = remembered if remembered in dict(STAGES) else "bind"
+        from ..core.luminance_session import latest_luminance_pilot
+        try:
+            pilot_json = latest_luminance_pilot(self.app.local_config_root, selected)
+        except (OSError, ValueError):
+            # A damaged or locked prior pilot must not prevent the entire
+            # calibration hub from opening. The researcher can pick a file.
+            pilot_json = None
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
@@ -365,7 +372,10 @@ class DisplayCheckScreen(HubPage):
             with Horizontal(classes="buttons"):
                 if getattr(self, "return_to_configuration", False):
                     yield Button("Return to display choice", id="calibration-return")
-                yield Button("Refresh calibration status", id="calibration-refresh")
+                yield Button("Start at page 1", id="calibration-start")
+                yield Button("Previous", id="calibration-previous")
+                yield Button("Next stage", id="calibration-next", variant="primary")
+                yield Button("Refresh status", id="calibration-refresh")
             yield Static("", id="geometry-status")
 
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
@@ -472,7 +482,9 @@ class DisplayCheckScreen(HubPage):
                     "Method A: Import JSON containing REAL measured pairs of normalized "
                     "screen intensity and cd/m². Method B: Present a fullscreen 6-degree "
                     "square and type meter readings repeatedly at each intensity. "
-                    "Without a photometer, keep this stage red.",
+                    "Import and SAVE at least two real pairs to complete this stage. "
+                    "Method, date and notes are optional. Physical verification "
+                    "remains a separate researcher declaration.",
                     classes="info-card",
                 )
                 yield Label("Single-patch normalized digital command (0 to 1)")
@@ -492,8 +504,14 @@ class DisplayCheckScreen(HubPage):
                              id="open-luminance-pilot")
                 yield Button("Open completed FAKE example JSON (education only)",
                              id="open-luminance-demo")
-                yield Button("Import real JSON and save profile revision",
-                             id="edit-luminance-profile", variant="success")
+                yield Label("Absolute path to your real measurement JSON (pilot file or your own JSON)")
+                yield Input(value=str(pilot_json) if pilot_json else "",
+                            placeholder="C:\\...\\pilot_luminance.json", id="cal-luminance-json-path")
+                yield Button("Import + SAVE real readings → Continue to Timing",
+                             id="calibration-import-luminance", variant="success")
+                yield Static("", id="cal-luminance-import-feedback")
+                yield Button("Advanced: edit all monitor fields / manual entry",
+                             id="edit-luminance-profile")
                 with Collapsible(title="Further help · Real and example JSON", collapsed=True):
                     yield Static(
                         "Real JSON row: screen_intensity=0.50, luminance_cdm2=(your real meter reading). "
@@ -502,9 +520,13 @@ class DisplayCheckScreen(HubPage):
                         "For interactive measurement: Left/Right changes intensity; type the meter "
                         "reading (cd/m²) and Enter records one value. Repeat Enter with another "
                         "reading at the same command for repetitions. Esc ends the session.\n"
-                        "Open pilot/test JSON, add the photometer model, method, date and notes. "
-                        "Then open the profile editor, enter the full file path, load into draft "
-                        "and Save local revision. Import NEVER auto-verifies the monitor."
+                        "Open pilot/test JSON, fill at least TWO real cd/m² readings. "
+                        "Method/date/notes may be blank (shown as warnings). "
+                        "Paste the file path above, then click Import + SAVE to commit "
+                        "your real pairs directly into a new local monitor profile revision. "
+                        "The Luminance tab turns GREEN and the wizard moves to Timing. "
+                        "The Advanced editor remains available for manual edits. "
+                        "Saving does NOT auto-verify physical photometry."
                     )
 
             with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
@@ -530,15 +552,18 @@ class DisplayCheckScreen(HubPage):
                         "monitor refresh rate. Neither the Windows refresh setting nor "
                         "software flip timestamps measure photon onset. Take independent "
                         "instrument measurements and document them before declaring "
-                        "Timing status Verified in the monitor editor. Otherwise stay red."
+                        "Timing status Verified in the monitor editor. The timing tab "
+                        "turns green when a diagnostic is saved, even if physical "
+                        "photon-onset verification remains pending."
                     )
 
             with VerticalScroll(id="cal-panel-review", classes="page-body calibration-panel"):
                 yield Static(
                     "[b]PAGE 6 / 6 · Review, verify and qualify experiments[/b]\n"
-                    "Green means specific evidence or an explicit verified declaration is "
-                    "saved for this profile revision. Red means incomplete. A green tab "
-                    "does not bypass the final human-acquisition preflight.",
+                    "GREEN means this stage's observation/data were saved. "
+                    "RED means its workflow data remain incomplete. "
+                    "Laboratory verification is SEPARATE and is never inferred "
+                    "from a green page. Human-acquisition preflight remains authoritative.",
                     classes="info-card",
                 )
                 yield Static("", id="calibration-review-detail", classes="info-card")
@@ -558,6 +583,21 @@ class DisplayCheckScreen(HubPage):
                     )
         yield Footer()
 
+    def _go_to_stage(self, stage: str, *, remember: bool = True) -> None:
+        if stage not in dict(STAGES):
+            return
+        self.active_calibration_stage = stage
+        self.query_one("#calibration-pages", ContentSwitcher).current = f"cal-panel-{stage}"
+        if remember:
+            try:
+                save_preferences(self.app.local_config_root, calibration_active_stage=stage)
+            except (OSError, ValueError) as exc:
+                self.app.notify(
+                    f"Page changed, but remembering it failed: {exc}",
+                    severity="warning", timeout=7,
+                )
+        self._refresh_stage_status()
+
     def _refresh_stage_status(self) -> None:
         if not self.is_mounted:
             return
@@ -573,6 +613,8 @@ class DisplayCheckScreen(HubPage):
             button.label = f"{title} {'✓' if ready else '✕'}"
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         self.query_one("#calibration-stage-summary", Static).update(
+            "[b]GREEN = stage records saved; NOT necessarily laboratory verified.[/b] "
+            "RED = no saved stage record. Previous/Next may be used at any time.\n"
             f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
             + "   ".join(
                 f"[{'green' if states[k][0] else 'red'}]"
@@ -593,6 +635,19 @@ class DisplayCheckScreen(HubPage):
             )
             + "\n\nQualified experiment IDs: "
             + (", ".join(profile.qualified_experiments) or "none")
+            + "\n\nPhotometry: "
+            + ("[green]EXPLICITLY VERIFIED[/green]" if profile.has_verified_luminance_mapping
+               else "[yellow]NOT PHYSICALLY VERIFIED[/yellow]")
+            + f" | Saved pairs: {len(profile.luminance_calibration)}"
+            + (" | Missing optional method/date/notes: "
+               + ", ".join(key for key, value in (
+                   ("method", profile.calibration_method),
+                   ("date", profile.calibration_date),
+                   ("notes", profile.calibration_notes),
+               ) if not value.strip())
+               if any(not value.strip() for value in (
+                   profile.calibration_method, profile.calibration_date,
+                   profile.calibration_notes)) else "")
             + "\nA laboratory expert must validate the recorded evidence."
         )
 
@@ -621,7 +676,10 @@ class DisplayCheckScreen(HubPage):
         selector.value = preferred if preferred in self.app.monitor_profiles else current
         self._refresh_preview()
         self._refresh_latest()
-        self._refresh_stage_status()
+        remembered = preferences(self.app.local_config_root).get(
+            "calibration_active_stage", self.active_calibration_stage
+        )
+        self._go_to_stage(remembered, remember=False)
 
     def _profile(self):
         value = self.query_one("#geometry-monitor", Select).value
@@ -735,6 +793,18 @@ class DisplayCheckScreen(HubPage):
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
                 self._refresh_stage_status()
+                from ..core.luminance_session import latest_luminance_pilot
+                chosen = str(event.select.value)
+                if chosen in self.app.monitor_profiles:
+                    try:
+                        pilot = latest_luminance_pilot(self.app.local_config_root, chosen)
+                    except (OSError, ValueError) as exc:
+                        pilot = None
+                        self.app.notify(
+                            f"Could not load latest pilot automatically: {exc}. Enter the JSON path manually.",
+                            severity="warning", timeout=8,
+                        )
+                    self.query_one("#cal-luminance-json-path", Input).value = str(pilot) if pilot else ""
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id and event.input.id.startswith("geometry-") and event.input.id != "geometry-measured":
@@ -748,17 +818,27 @@ class DisplayCheckScreen(HubPage):
             self.app.pop_screen()
             return
         if (event.button.id or "").startswith("cal-stage-"):
-            stage = event.button.id.removeprefix("cal-stage-")
-            if stage in dict(STAGES):
-                event.stop()
-                self.active_calibration_stage = stage
-                self.query_one("#calibration-pages", ContentSwitcher).current = f"cal-panel-{stage}"
-                try:
-                    save_preferences(self.app.local_config_root, calibration_active_stage=stage)
-                except (OSError, ValueError) as exc:
-                    self.app.notify(f"Page changed but could not remember selection: {exc}",
-                                    severity="warning", timeout=8)
-                self._refresh_stage_status()
+            event.stop()
+            self._go_to_stage(event.button.id.removeprefix("cal-stage-"))
+            return
+        if event.button.id in {"calibration-start", "calibration-previous", "calibration-next"}:
+            event.stop()
+            stages = [key for key, _ in STAGES]
+            position = stages.index(self.active_calibration_stage)
+            if event.button.id == "calibration-start":
+                destination = "bind"
+            elif event.button.id == "calibration-previous":
+                destination = stages[max(0, position - 1)]
+            else:
+                destination = stages[min(len(stages) - 1, position + 1)]
+                from ..config.calibration_progress import calibration_progress
+                current = calibration_progress(self._profile(), self.app.local_config_root)[self.active_calibration_stage]
+                if not current["completed"]:
+                    self.query_one("#geometry-status", Static).update(
+                        f"[yellow]Continuing past an INCOMPLETE {self.active_calibration_stage} stage; "
+                        "you can return later. This does not certify the monitor.[/yellow]"
+                    )
+            self._go_to_stage(destination)
             return
         if event.button.id == "calibration-refresh":
             event.stop()
@@ -779,6 +859,51 @@ class DisplayCheckScreen(HubPage):
             self.app.push_screen(ProfileScreen(profile=self._profile(), focus_field=focus))
             return
         status = self.query_one("#geometry-status", Static)
+        if event.button.id == "calibration-import-luminance":
+            event.stop()
+            try:
+                from ..config.calibration_workflow import (
+                    import_and_save_luminance, advance_if_completed,
+                )
+                path = self.query_one("#cal-luminance-json-path", Input).value
+                saved, warnings = import_and_save_luminance(
+                    self._profile(), self.app.local_config_root, path
+                )
+                self.app.reload_profiles()
+                persisted = self.app.monitor_profiles.get(saved.id)
+                if persisted != saved:
+                    raise RuntimeError("Saved luminance profile failed to reload from disk.")
+                selector = self.query_one("#geometry-monitor", Select)
+                selector.set_options([
+                    (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id)
+                    for p in self.app.monitor_profiles.values()
+                ])
+                selector.value = saved.id
+                self._refresh_preview()
+                self._refresh_latest()
+                self._refresh_stage_status()
+                message = (
+                    f"[green]SAVED {len(saved.luminance_calibration)} REAL intensity / cd/m² pairs "
+                    f"to monitor {saved.id}, revision {saved.revision}.[/green] "
+                    "Measurement stage COMPLETE; physical certification is still UNVERIFIED."
+                )
+                if warnings:
+                    message += "\n[yellow]Optional information: " + "; ".join(warnings) + "[/yellow]"
+                following = advance_if_completed(saved, self.app.local_config_root, "luminance")
+                if following and self.active_calibration_stage == "luminance":
+                    self._go_to_stage(following, remember=False)
+                    message += "\nContinuing to Timing. Return to Luminance to review the saved data."
+                status.update(message)
+                self.query_one("#cal-luminance-import-feedback", Static).update(message)
+                self.app.notify("Real luminance measurements saved to profile. No automatic certification.",
+                                timeout=10)
+            except (ValueError, TypeError, OSError, RuntimeError, KeyError) as exc:
+                message = f"[red]Luminance NOT imported or confirmed: {exc}[/red]"
+                status.update(message)
+                self.query_one("#cal-luminance-import-feedback", Static).update(message)
+                self.app.notify(str(exc), title="Luminance import failed",
+                                severity="error", timeout=12)
+            return
         if event.button.id == "launch-luminance-session":
             event.stop()
             try:
@@ -820,7 +945,7 @@ class DisplayCheckScreen(HubPage):
                 profile = self._profile()
                 path = (latest_luminance_pilot(self.app.local_config_root, profile.id)
                         or write_luminance_example(self.app.local_config_root, profile))
-                note = f"Editable luminance JSON: {path}. Complete meter/date/notes, then import via Bind/edit monitor profile."
+                note = f"Editable luminance JSON: {path}. Fill at least TWO genuine intensity/cd/m² pairs. Method, date and notes are optional. Load into profile editor, then SAVE."
                 if sys.platform == "win32":
                     try:
                         os.startfile(str(path))
@@ -878,6 +1003,17 @@ class DisplayCheckScreen(HubPage):
                 self.app.notify(f"Measurement saved; error {error:+.2f}%.", timeout=7)
                 self._refresh_latest()
                 self._refresh_stage_status()
+                from ..config.calibration_workflow import advance_if_completed
+                following = advance_if_completed(
+                    self._profile(), self.app.local_config_root, "geometry"
+                )
+                if following and self.active_calibration_stage == "geometry":
+                    self._go_to_stage(following, remember=False)
+                    self.app.notify(
+                        "Ruler measurement saved. Continuing to Spatial. "
+                        "Physical geometry verification can still be reviewed.",
+                        timeout=9,
+                    )
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
                 self.app.notify(str(exc), title="Calibration action failed", severity="error", timeout=8)
