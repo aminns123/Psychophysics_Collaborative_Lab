@@ -70,7 +70,7 @@ def calibration_progress(profile, root: Path):
             message += "; latest attempt failed, prior compatible evidence retained"
         # Completion means the required workflow observation was SAVED.
         # Readiness remains a separate, stricter physical verification flag.
-        completed = bool(measurements) if stage == "geometry" else bool(valid)
+        completed = (bool(measurements) if stage == "geometry" else bool(valid)) or ready
         result[stage] = {"ready": ready, "completed": completed,
                          "verified": ready, "state": state, "message": message,
                          "software_completed": bool(valid), "measurement_recorded": bool(measurements),
