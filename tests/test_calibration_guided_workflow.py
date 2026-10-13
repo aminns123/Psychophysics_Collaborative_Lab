@@ -88,3 +88,36 @@ def test_profile_save_advances_luminance_to_timing_without_metadata(tmp_path, mo
             await pilot.pause()
             assert screen.active_calibration_stage == "bind"
     asyncio.run(scenario())
+
+
+def test_direct_json_import_one_click_saves_local_revision_and_advances(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
+    from psychophysics_lab.config.calibration_templates import example_luminance_document
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "participants")
+        async with app.run_test(size=(115, 37)) as pilot:
+            app.query_one("#nav-display", Button).press()
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, DisplayCheckScreen)
+            screen.query_one("#cal-stage-luminance", Button).press()
+            await pilot.pause()
+            p = app.monitor_profiles["legacy_reference_display"]
+            document = example_luminance_document(p)
+            document["measurements"][0]["luminance_cdm2"] = 1.7
+            document["measurements"][4]["luminance_cdm2"] = 192.1
+            file = tmp_path / "my_actual_photometry.json"
+            file.write_text(json.dumps(document))
+            screen.query_one("#cal-luminance-json-path", Input).value = str(file)
+            screen.query_one("#calibration-import-luminance", Button).press()
+            await pilot.pause()
+            assert screen.active_calibration_stage == "timing"
+            saved = app.monitor_profiles["legacy_reference_display_local"]
+            assert len(saved.luminance_calibration) == 2
+            assert saved.calibration_status == "manual_unverified"
+            assert saved.calibration_method == ""
+            assert not saved.has_verified_luminance_mapping
+            assert stage_states(saved, app.local_config_root)["luminance"][0]
+            assert "SAVED" in str(screen.query_one("#cal-luminance-import-feedback").render())
+    asyncio.run(scenario())
