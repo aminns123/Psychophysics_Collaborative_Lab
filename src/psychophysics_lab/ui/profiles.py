@@ -81,6 +81,7 @@ class ProfileScreen(Screen):
             self.app.pop_screen()
             return
         status = self.query_one("#profile-status", Static)
+        saved_result = None
         try:
             if event.button.id == "profile-detect":
                 selector = self.query_one("#profile-binding", Select)
@@ -174,6 +175,7 @@ class ProfileScreen(Screen):
                     payload["profile_uuid"] = ""
                     payload["revision"] = 0
                 result = save_profile(self.app.local_config_root, _profile_from_dict(payload), expected_revision=self.profile.revision if same else 0)
+                saved_result = result
                 # Do not report success until the on-disk revision is visible
                 # through the same loader used by future experiment sessions.
                 self.app.reload_profiles()
@@ -198,7 +200,8 @@ class ProfileScreen(Screen):
             operation = {
                 "profile-detect": "Display detection failed",
                 "profile-use-detected": "Detected values not copied",
-                "profile-save": "Display NOT saved",
+                "profile-save": ("Display file saved, but refresh FAILED"
+                                 if saved_result is not None else "Display NOT saved"),
             }.get(action, "Display action failed")
             message = f"{operation}: {exc}"
             status.update(message)
