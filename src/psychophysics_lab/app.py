@@ -315,8 +315,8 @@ def _main(
                             if action.test_kind in {"size", "position"} else
                             "Review the saved diagnostic; software presentation does not verify physical timing or contrast.")
                 geometry_summary = (
-                    f"[green]Fullscreen calibration finished.[/green]\\n"
-                    f"Report: {artifacts.report_file}\\n"
+                    f"[green]Fullscreen calibration finished.[/green]\n"
+                    f"Report: {artifacts.report_file}\n"
                     + guidance
                 )
                 # Fullscreen closes Textual and the launcher starts a new TUI.
@@ -334,14 +334,14 @@ def _main(
                             following = advance_if_completed(profile, local_root, step)
                             if following:
                                 geometry_summary += (
-                                    f"\\n[green]{step.capitalize()} record saved. "
+                                    f"\n[green]{step.capitalize()} record saved. "
                                     f"Continuing to {following.capitalize()}.[/green]"
                                 )
                     except (OSError, ValueError, KeyError) as exc:
                         # The diagnostic succeeded; a wizard-navigation failure
                         # must not misreport the measurement as a failed test.
                         geometry_summary += (
-                            f"\\n[yellow]Could not auto-advance calibration page: {exc}[/yellow]"
+                            f"\n[yellow]Could not auto-advance calibration page: {exc}[/yellow]"
                         )
             initial_data_root = selected_data_root
             continue
