@@ -225,7 +225,9 @@ def test_tui_shows_completed_and_measured_progress_after_refresh(tmp_path,monkey
             screen.query_one('#record-geometry-measurement',Button).press()
             await pilot.pause()
             assert 'AWAITING REVIEW' in str(screen.query_one('#calibration-review-detail',Static).render())
-            assert screen.query_one('#cal-stage-geometry',Button).variant=='error'
+            # The ruler measurement is now recorded: the workflow tab turns
+            # green without claiming independent geometry verification.
+            assert screen.query_one('#cal-stage-geometry',Button).variant=='success'
             assert '1.00%' in str(screen.query_one('#latest-geometry',Static).render())
     asyncio.run(scenario())
 
