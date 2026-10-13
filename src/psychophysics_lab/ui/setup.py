@@ -724,6 +724,7 @@ class DisplayCheckScreen(HubPage):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
+                self._refresh_stage_status()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id and event.input.id.startswith("geometry-") and event.input.id != "geometry-measured":
@@ -736,7 +737,21 @@ class DisplayCheckScreen(HubPage):
             event.stop()
             self.app.pop_screen()
             return
-        if event.button.id == "edit-profile":
+        if (event.button.id or "").startswith("cal-stage-"):
+            stage = event.button.id.removeprefix("cal-stage-")
+            if stage in dict(STAGES):
+                event.stop()
+                self.active_calibration_stage = stage
+                self.query_one("#calibration-pages", ContentSwitcher).current = f"cal-panel-{stage}"
+                self._refresh_stage_status()
+            return
+        if event.button.id == "calibration-refresh":
+            event.stop()
+            self._refresh_preview()
+            self._refresh_latest()
+            self._refresh_stage_status()
+            return
+        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile"}:
             event.stop()
             from .profiles import ProfileScreen
             self.app.push_screen(ProfileScreen(profile=self._profile()))
@@ -755,6 +770,24 @@ class DisplayCheckScreen(HubPage):
             except (ValueError, TypeError, OSError) as exc:
                 status.update(f"[red]Luminance test NOT launched: {exc}[/red]")
                 self.app.notify(str(exc), title="Luminance test blocked", severity="error", timeout=12)
+        elif event.button.id == "open-luminance-demo":
+            event.stop()
+            try:
+                import os
+                import sys
+                from ..config.calibration_templates import write_luminance_demo
+                path = write_luminance_demo(self.app.local_config_root, self._profile())
+                note = (f"FAKE EXAMPLE ONLY: {path}. The data were invented for learning. "
+                        "They are NOT photometer observations and cannot be imported.")
+                if sys.platform == "win32":
+                    try:
+                        os.startfile(str(path))
+                    except OSError as exc:
+                        note += f" Open the path manually: {exc}"
+                status.update(f"[yellow]{note}[/yellow]")
+                self.app.notify("Synthetic example opened — NOT calibration.", timeout=8)
+            except (OSError, ValueError) as exc:
+                status.update(f"[red]Could not create demo JSON: {exc}[/red]")
         elif event.button.id == "open-luminance-pilot":
             event.stop()
             try:
@@ -778,9 +811,16 @@ class DisplayCheckScreen(HubPage):
             except (OSError, ValueError) as exc:
                 status.update(f"[red]Could not open luminance JSON: {exc}[/red]")
                 self.app.notify(str(exc), title="Luminance JSON not opened", severity="error", timeout=10)
-        elif event.button.id == "launch-geometry":
+        elif event.button.id in {"launch-geometry", "launch-spatial", "launch-temporal", "launch-patch"}:
             event.stop()
             try:
+                requested_kind = {
+                    "launch-spatial": "spatial",
+                    "launch-temporal": str(self.query_one("#cal-temporal-mode", Select).value),
+                    "launch-patch": "luminance_patch",
+                }.get(event.button.id)
+                if requested_kind:
+                    self.query_one("#geometry-test", Select).value = requested_kind
                 request = self._request()
                 profile = self._profile()
                 # Check the physical binding and actual OS mode while the
@@ -814,6 +854,7 @@ class DisplayCheckScreen(HubPage):
                 status.update(f"[green]Measurement recorded and saved. Error: {error:+.2f}%[/green]")
                 self.app.notify(f"Measurement saved; error {error:+.2f}%.", timeout=7)
                 self._refresh_latest()
+                self._refresh_stage_status()
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
                 self.app.notify(str(exc), title="Calibration action failed", severity="error", timeout=8)
