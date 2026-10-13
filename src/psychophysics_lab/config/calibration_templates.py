@@ -1,8 +1,8 @@
 """Researcher-editable luminance measurement files, not automatic calibration.
 
-Templates contain no fabricated photometer readings. Importing a completed
-file supplies *unverified draft* fields to the profile editor; the researcher
-must explicitly save, review and separately certify the laboratory results.
+Templates contain no fabricated photometer readings. Real intensity/luminance
+pairs can be imported without optional instrument notes. Import always creates
+an unverified draft; laboratory verification remains explicit.
 """
 from __future__ import annotations
 
@@ -48,13 +48,12 @@ def example_luminance_document(profile: MonitorProfile) -> dict:
             for command in (0.0, 0.25, 0.5, 0.75, 1.0)
         ],
         "instructions": (
-            "Set each null luminance_cdm2 to YOUR measured cd/m² for the "
-            "corresponding normalized grayscale screen_intensity. You may "
-            "add/remove measurement rows. Keep at least two distinct commands; "
-            "the measured luminance must increase with command. Enter meter "
-            "model/method and measurement date. Import in PsyCoLab, inspect "
-            "the draft and Save local revision. Import does NOT verify or "
-            "qualify your physical display."
+            "Replace at least TWO null luminance_cdm2 values with REAL cd/m² "
+            "measurements at distinct digital commands. Unfilled null rows are "
+            "ignored. Method, date and notes are recommended but OPTIONAL: "
+            "leaving placeholders produces warnings, not an import failure. "
+            "Inspect the imported draft, Save local revision and review "
+            "laboratory verification separately. Never copy fake example data."
         ),
     }
 
@@ -97,31 +96,52 @@ def parse_luminance_measurements(data: object, profile: MonitorProfile) -> dict:
         )
     if data.get("example_only") is True:
         raise ValueError("FAKE demonstration values cannot be imported as photometer measurements.")
+    warnings = []
     method = data.get("photometer_model_and_method")
-    if not isinstance(method, str) or not method.strip() or "REPLACE" in method.upper():
-        raise ValueError("Provide the real photometer model and measurement method.")
+    method = method.strip() if isinstance(method, str) else ""
+    if not method or "REPLACE" in method.upper():
+        method = ""
+        warnings.append("Photometer/method not recorded; add it later for reproducibility.")
+
     date_text = data.get("measurement_date")
-    if not isinstance(date_text, str):
-        raise ValueError("Enter measurement_date as YYYY-MM-DD.")
-    try:
-        date.fromisoformat(date_text)
-    except ValueError as exc:
-        raise ValueError("Enter a real measurement_date in YYYY-MM-DD format.") from exc
+    date_text = date_text.strip() if isinstance(date_text, str) else ""
+    if date_text in ("YYYY-MM-DD", "REPLACE") or not date_text:
+        date_text = ""
+        warnings.append("Measurement date not recorded; add it later if known.")
+    else:
+        try:
+            date.fromisoformat(date_text)
+        except ValueError as exc:
+            raise ValueError("Measurement date must be YYYY-MM-DD, or left blank.") from exc
+
     notes = data.get("notes")
-    if not isinstance(notes, str) or not notes.strip() or "REPLACE" in notes.upper():
-        raise ValueError("Enter real measurement notes, including setup and uncertainty or its limitations.")
+    notes = notes.strip() if isinstance(notes, str) else ""
+    if not notes or "REPLACE" in notes.upper():
+        notes = ""
+        warnings.append("Measurement notes not recorded; add setup details later if available.")
+
     pairs = data.get("measurements")
     if not isinstance(pairs, list) or len(pairs) < 2:
         raise ValueError("Provide at least two measured digital-command/luminance pairs.")
     points = []
+    ignored = 0
     for index, row in enumerate(pairs, 1):
         if not isinstance(row, dict):
             raise ValueError(f"Measurement row {index} must be an object.")
+        # Blank rows from the starter template are not observations. They
+        # should not prevent importing the OTHER, actually measured rows.
+        if row.get("luminance_cdm2") is None:
+            ignored += 1
+            continue
         command = _measured_number(row.get("screen_intensity"), f"Row {index} screen_intensity")
         luminance = _measured_number(row.get("luminance_cdm2"), f"Row {index} luminance_cdm2")
         point = LuminanceCalibrationPoint(command, luminance)
         point.validate()
         points.append(point)
+    if len(points) < 2:
+        raise ValueError("At least two REAL intensity/luminance measurements are required; blank template rows do not count.")
+    if ignored:
+        warnings.append(f"Ignored {ignored} blank template row(s) without a luminance reading.")
     commands = [p.screen_intensity for p in points]
     measured = [p.luminance_cdm2 for p in points]
     if len(set(commands)) != len(commands) or len(set(measured)) != len(measured):
@@ -137,8 +157,9 @@ def parse_luminance_measurements(data: object, profile: MonitorProfile) -> dict:
         ],
         "calibration_method": method.strip(),
         "calibration_date": date_text,
-        "calibration_notes": notes.strip(),
+        "calibration_notes": notes,
         "calibration_status": "manual_unverified",
+        "warnings": warnings,
     }
 
 
