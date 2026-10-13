@@ -258,9 +258,9 @@ def _main(
                     f"at {artifacts.measured_commands} digital commands.\n"
                     f"Raw readings: {artifacts.session_file}\n"
                     f"Editable mean JSON: {artifacts.pilot_json_file}\n"
-                    "Open pilot/test JSON, enter real photometer method and notes, "
-                    "and import into the monitor profile when ready. "
-                    "The results remain UNVERIFIED."
+                    "Open pilot/test JSON, then import at least two real intensity/cd/m² "
+                    "pairs into the monitor profile and SAVE. Method, date and notes "
+                    "are optional. Measurements remain physically UNVERIFIED until reviewed."
                 )
                 if artifacts.export_warning:
                     geometry_summary += f"\n[yellow]{artifacts.export_warning}[/yellow]"
@@ -311,11 +311,38 @@ def _main(
                 print("Fullscreen calibration failed; returning to Calibrate.")
             else:
                 _print_geometry_summary(artifacts)
+                guidance = ("Measure the displayed ruler and record its physical length in Calibrate."
+                            if action.test_kind in {"size", "position"} else
+                            "Review the saved diagnostic; software presentation does not verify physical timing or contrast.")
                 geometry_summary = (
-                    f"[green]Fullscreen calibration finished.[/green]\n"
-                    f"Report: {artifacts.report_file}\n"
-                    "Measure the displayed ruler and record its length in Calibrate."
+                    f"[green]Fullscreen calibration finished.[/green]\\n"
+                    f"Report: {artifacts.report_file}\\n"
+                    + guidance
                 )
+                # Fullscreen closes Textual and the launcher starts a new TUI.
+                # Advance only if the successful output belongs to the currently
+                # selected chronological stage; never advance on failure.
+                if action.test_kind in {"spatial", "temporal_binary", "temporal_sine"}:
+                    try:
+                        from .config.local import config_root, preferences
+                        from .config.monitor import load_monitor_profiles
+                        from .config.calibration_workflow import advance_if_completed
+                        local_root = config_root(repo_root)
+                        step = ("spatial" if action.test_kind == "spatial" else "timing")
+                        if preferences(local_root).get("calibration_active_stage") == step:
+                            profile = load_monitor_profiles(repo_root)[action.monitor_profile_id]
+                            following = advance_if_completed(profile, local_root, step)
+                            if following:
+                                geometry_summary += (
+                                    f"\\n[green]{step.capitalize()} record saved. "
+                                    f"Continuing to {following.capitalize()}.[/green]"
+                                )
+                    except (OSError, ValueError, KeyError) as exc:
+                        # The diagnostic succeeded; a wizard-navigation failure
+                        # must not misreport the measurement as a failed test.
+                        geometry_summary += (
+                            f"\\n[yellow]Could not auto-advance calibration page: {exc}[/yellow]"
+                        )
             initial_data_root = selected_data_root
             continue
 
