@@ -99,6 +99,11 @@ def resolve_test(profile, request, resolution):
 
     return bar, plan
 
+def diagnostic_timeout_reached(duration_s, elapsed_s):
+    """Never auto-close a manual diagnostic (duration 0); only Esc/Enter ends it."""
+    return duration_s > 0 and elapsed_s >= duration_s
+
+
 def interval_summary(timestamps, refresh_hz):
     import statistics
     intervals = [b-a for a,b in zip(timestamps,timestamps[1:])]
