@@ -42,6 +42,7 @@ class LuminanceSessionArtifacts:
     readings_count: int
     measured_commands: int
     status: str
+    export_warning: str | None = None
 
 
 def validate_luminance_session(request: LuminanceSessionRequest, profile) -> dict:
@@ -166,11 +167,23 @@ class LocalLuminanceSession:
         }
 
     def _persist(self) -> None:
+        self.raw_persisted = False
         with file_lock(self.folder / ".measurement.lock"):
             atomic_write_json(self.session_file, self.session)
-            atomic_write_json(self.pilot_json_file, self._pilot())
+            self.raw_persisted = True
+            # Raw observations are authoritative. An export failure must not
+            # roll back a reading already durably saved to session.json.
+            self.export_warning = None
+            try:
+                atomic_write_json(self.pilot_json_file, self._pilot())
+            except Exception as exc:
+                self.export_warning = f"Raw readings saved, but mean JSON export failed: {exc}. Re-export from session.json."
+                import warnings
+                warnings.warn(self.export_warning, RuntimeWarning, stacklevel=2)
 
     def record(self, command: float, raw_reading: str) -> dict:
+        if self.session["status"] != "in_progress":
+            raise ValueError("This measurement session has ended; start a new session.")
         command = finite(command, "Screen intensity command")
         if command < self.plan["minimum_command"] - 1e-8 or command > 1 + 1e-8:
             raise ValueError("Measured command is outside the configured luminance sweep.")
@@ -183,21 +196,52 @@ class LocalLuminanceSession:
         try:
             self._persist()
         except Exception:
-            self.session["readings"].pop()
+            if not self.raw_persisted:
+                self.session["readings"].pop()
             raise
         return entry
 
     def finish(self) -> LuminanceSessionArtifacts:
-        self.session["status"] = "completed"
+        old_status, old_finish = self.session["status"], self.session["finished_utc"]
+        self.session["status"] = ("completed" if len(summarise_readings(self.session["readings"])) >= 2 else "incomplete")
         self.session["finished_utc"] = now_utc()
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self.session["status"], self.session["finished_utc"] = old_status, old_finish
+            raise
         return LuminanceSessionArtifacts(
             session_file=self.session_file,
             pilot_json_file=self.pilot_json_file,
             readings_count=len(self.session["readings"]),
             measured_commands=len(summarise_readings(self.session["readings"])),
             status=self.session["status"],
+            export_warning=self.export_warning,
         )
+
+
+def recover_luminance_pilot(session_file: Path) -> Path:
+    """Rebuild a missing derived pilot from authoritative raw observations.
+
+    Existing editable pilot files are never overwritten. Raw records stay intact.
+    """
+    import json
+    from ..config.monitor import _profile_from_dict
+    path = session_file.resolve()
+    if path.name != "session.json":
+        raise ValueError("Select a luminance session.json raw record.")
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if raw.get("kind") != "physical_luminance_measurement_session" or content_hash(raw["monitor_profile"]) != raw.get("monitor_profile_sha256"):
+        raise ValueError("Invalid luminance session snapshot.")
+    session = LocalLuminanceSession.__new__(LocalLuminanceSession)
+    session.profile = _profile_from_dict(raw["monitor_profile"])
+    session.session, session.plan = raw, raw["resolved_test"]
+    session.session_file = path
+    pilot = path.parent / "pilot_luminance.json"
+    with file_lock(path.parent / ".measurement.lock"):
+        if not pilot.exists():
+            atomic_write_json(pilot, session._pilot())
+    return pilot
 
 
 def latest_luminance_pilot(root: Path, profile_id: str) -> Path | None:
@@ -207,8 +251,12 @@ def latest_luminance_pilot(root: Path, profile_id: str) -> Path | None:
         return None
     for folder in sorted(base.iterdir(), reverse=True):
         pilot = folder / "pilot_luminance.json"
-        if folder.is_dir() and not folder.is_symlink() and pilot.is_file() and not pilot.is_symlink():
-            return pilot
+        if folder.is_dir() and not folder.is_symlink():
+            if pilot.is_file() and not pilot.is_symlink():
+                return pilot
+            raw = folder / "session.json"
+            if raw.is_file() and not raw.is_symlink():
+                return recover_luminance_pilot(raw)
     return None
 
 
@@ -226,5 +274,15 @@ def run_interactive_luminance(
                           else Path(request.data_root) if request.data_root else None)
     root = config_root(repo_root, selected_data_root)
     session = LocalLuminanceSession(root, profile, request)
-    _draw_luminance_session(profile, request, session)
-    return session.finish()
+    try:
+        _draw_luminance_session(profile, request, session)
+        return session.finish()
+    except BaseException as exc:
+        session.session["status"] = "error"
+        session.session["finished_utc"] = now_utc()
+        session.session["error"] = repr(exc)
+        try:
+            session._persist()
+        except Exception as record_error:
+            exc.add_note(f"Could not save interrupted session status: {record_error!r}")
+        raise

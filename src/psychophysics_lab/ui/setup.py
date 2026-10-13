@@ -32,6 +32,7 @@ from ..experiments.spec import ConfigField, ExperimentSpec
 from ..paths import resolve_data_root
 from ..stimuli.geometry import physical_length_for_visual_angle
 from .calibration_stages import STAGES, stage_states
+from ..config.readiness import diagnostic_matches_profile
 
 
 NAV_PAGES = (
@@ -578,6 +579,7 @@ class DisplayCheckScreen(HubPage):
                 f"{'✓' if states[k][0] else '✕'} {title.split(' · ')[1]}[/]"
                 for k, title in STAGES
             )
+            + "\n" + states[self.active_calibration_stage][1]
         )
         self.query_one("#calibration-bind-detail", Static).update(
             _monitor_summary(profile) + "\n\n[b]Display status:[/b] " + states["bind"][1]
@@ -585,7 +587,7 @@ class DisplayCheckScreen(HubPage):
         self.query_one("#calibration-review-detail", Static).update(
             "\n".join(
                 f"[{'green' if states[k][0] else 'red'}]"
-                f"{'COMPLETE' if states[k][0] else 'INCOMPLETE'}[/] "
+                f"{'COMPLETE' if states[k][0] else 'INCOMPLETE / IN PROGRESS'}[/] "
                 f"{title}: {states[k][1]}"
                 for k, title in STAGES
             )
@@ -702,7 +704,7 @@ class DisplayCheckScreen(HubPage):
 
     def _refresh_latest(self) -> None:
         profile_id = str(self.query_one("#geometry-monitor", Select).value)
-        report = latest_geometry_report(self.app.local_config_root, profile_id)
+        report = latest_geometry_report(self.app.local_config_root, profile_id, ruler_only=True)
         if report is None:
             text = "No geometry check has been saved for this display in the active workspace."
         else:
@@ -718,7 +720,7 @@ class DisplayCheckScreen(HubPage):
                     f"{report.relative_to(self.app.local_config_root)}\n"
                     f"Status: {payload.get('status', 'unknown')}\n"
                     f"Profile revision in report: {payload.get('monitor_profile', {}).get('revision', 'unknown')}"
-                    f" — {'CURRENT' if payload.get('monitor_profile_sha256') == content_hash(self._profile().to_dict()) else 'STALE: check current revision'}\n"
+                    f" — {'CURRENT' if diagnostic_matches_profile(payload, self._profile()) else 'STALE: check current revision'}\n"
                     f"Expected: {bar.get('intended_length_mm', 'n/a')} mm\n"
                     f"Rendered: {bar.get('length_px', 'n/a')} px\n"
                     f"Ruler measurement: {measured_text}"
@@ -858,17 +860,18 @@ class DisplayCheckScreen(HubPage):
             event.stop()
             try:
                 profile_id = str(self.query_one("#geometry-monitor", Select).value)
-                report = latest_geometry_report(self.app.local_config_root, profile_id)
+                report = latest_geometry_report(self.app.local_config_root, profile_id, ruler_only=True)
                 if report is None:
                     raise ValueError("Run a fullscreen geometry check first.")
                 recorded = json.loads(report.read_text(encoding="utf-8"))
-                if recorded.get("monitor_profile_sha256") != content_hash(self._profile().to_dict()):
+                if not diagnostic_matches_profile(recorded, self._profile()):
                     raise ValueError("Latest diagnostic belongs to a different profile revision. Launch a check for the selected revision before recording its measurement.")
                 measured = float(self.query_one("#geometry-measured", Input).value)
                 payload = record_geometry_measurement(
                     data_root=self.app.local_config_root,
                     report_file=report,
                     measured_length_mm=measured,
+                    profile=self._profile(),
                 )
                 error = payload["measurement"]["error_percent"]
                 status.update(f"[green]Measurement recorded and saved. Error: {error:+.2f}%[/green]")

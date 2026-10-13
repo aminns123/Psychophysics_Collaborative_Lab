@@ -83,7 +83,7 @@ def _print_geometry_summary(artifacts: Any) -> None:
     print(f"Realised pixel-rounded length: {artifacts.realised_length_mm:.3f} mm")
     print(f"Realised visual angle: {artifacts.realised_visual_angle_deg:.5f} deg")
     print(f"Diagnostic report: {artifacts.report_file}")
-    print("Return to the Display Check page to record the ruler measurement.")
+    print("Return to Calibrate to inspect stage progress; ruler tests accept a physical measurement. Software completion never certifies the display.")
     print("=" * 60)
 
 
@@ -144,6 +144,7 @@ def _main(
     # active Textual event loop.
     simulation_summary: str | None = None
     geometry_summary: str | None = None
+    recoverable_failures = 0
     while True:
         if diagnostic_context is not None:
             diagnostic_context["data_root"] = initial_data_root
@@ -159,6 +160,10 @@ def _main(
         simulation_summary = None
         geometry_summary = None
         if action is None:
+            if recoverable_failures:
+                print(f"PsyCoLab exited after recovery from {recoverable_failures} failed operation(s); those attempts did not complete successfully.")
+            else:
+                print("PsyCoLab exited normally.")
             return 0
 
         from .core.simulation_request import SimulationLaunchRequest
@@ -189,11 +194,14 @@ def _main(
                         monitor_profile_hash=action.monitor_profile_hash,
                     )
             except Exception as exc:
-                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                recoverable_failures += 1
+                # Full trace is preserved once in the diagnostic file.
+                print(f"Operation did not complete: {exc}")
                 report = write_crash_report(
                     exc, repo_root=repo_root, data_root=selected_data_root,
                     phase="synthetic_simulation",
                 )
+                print(f"Diagnostic report: {report}" if report else "No diagnostic report could be written.")
                 simulation_summary = (
                     f"[red]Simulation failed: {exc}[/red]\n"
                     + (f"Crash report: {report}" if report else "No crash report could be written.")
@@ -230,11 +238,14 @@ def _main(
             except Exception as exc:
                 # Partial observations already entered are retained locally
                 # even when the GPU/window closes unexpectedly.
-                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                recoverable_failures += 1
+                # Full trace is preserved once in the diagnostic file.
+                print(f"Operation did not complete: {exc}")
                 report = write_crash_report(
                     exc, repo_root=repo_root, data_root=selected_data_root,
                     phase="interactive_luminance_measurement"
                 )
+                print(f"Diagnostic report: {report}" if report else "No diagnostic report could be written.")
                 geometry_summary = (
                     f"[red]Luminance session interrupted: {exc}[/red]\n"
                     + (f"Diagnostic error report: {report}" if report
@@ -242,7 +253,7 @@ def _main(
                 )
             else:
                 geometry_summary = (
-                    "[green]Interactive luminance session completed.[/green]\n"
+                    f"[{'green' if artifacts.status == 'completed' else 'yellow'}]Interactive luminance session {artifacts.status}.[/]\n"
                     f"Recorded individual measurements: {artifacts.readings_count} "
                     f"at {artifacts.measured_commands} digital commands.\n"
                     f"Raw readings: {artifacts.session_file}\n"
@@ -251,6 +262,8 @@ def _main(
                     "and import into the monitor profile when ready. "
                     "The results remain UNVERIFIED."
                 )
+                if artifacts.export_warning:
+                    geometry_summary += f"\n[yellow]{artifacts.export_warning}[/yellow]"
                 print(f"Luminance measurements: {artifacts.session_file}")
                 print(f"Editable pilot JSON: {artifacts.pilot_json_file}")
             initial_data_root = selected_data_root
@@ -282,11 +295,14 @@ def _main(
                 # Display drivers, monitor bindings or actual fullscreen modes
                 # can change between preview and launch. These are recoverable
                 # diagnostic failures, not reasons to terminate the launcher.
-                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                recoverable_failures += 1
+                # Full trace is preserved once in the diagnostic file.
+                print(f"Operation did not complete: {exc}")
                 report = write_crash_report(
                     exc, repo_root=repo_root, data_root=selected_data_root,
                     phase="display_geometry_check",
                 )
+                print(f"Diagnostic report: {report}" if report else "No diagnostic report could be written.")
                 geometry_summary = (
                     f"[red]Fullscreen calibration did not start or complete: {exc}[/red]\n"
                     + (f"Diagnostic report: {report}" if report

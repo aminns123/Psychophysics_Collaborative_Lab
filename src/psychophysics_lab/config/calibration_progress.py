@@ -1,0 +1,93 @@
+"""Shared factual calibration progress; laboratory declarations remain explicit."""
+from __future__ import annotations
+import json
+from pathlib import Path
+
+
+def diagnostic_evidence(profile, root: Path):
+    from .readiness import diagnostic_matches_profile
+    base = root / "diagnostics" / "display_geometry" / profile.id
+    found = []
+    for path in base.rglob("geometry_check.json") if base.exists() else ():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                found.append((path.stat().st_mtime_ns, path, payload))
+        except (OSError, ValueError):
+            continue
+    found.sort(key=lambda row: row[0], reverse=True)
+    groups = {"geometry": [], "spatial": [], "timing": []}
+    kinds = {"size": "geometry", "position": "geometry", "spatial": "spatial",
+             "temporal_binary": "timing", "temporal_sine": "timing"}
+    for _, path, payload in found:
+        request = payload.get("request")
+        if not isinstance(request, dict):
+            continue
+        stage = kinds.get(request.get("test_kind", "size"))
+        if stage:
+            groups[stage].append({"path": path.relative_to(root).as_posix(), "payload": payload,
+                                  "compatible": diagnostic_matches_profile(payload, profile)})
+    return groups
+
+
+def calibration_progress(profile, root: Path):
+    """Text states expose progress independently of red/green verification."""
+    evidence = diagnostic_evidence(profile, root)
+    manual = all(profile.measurement_sources.get(k) == "manual" for k in
+                 ("physical_width_m", "physical_height_m", "viewing_distance_m"))
+    bound = profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px) and manual
+    result = {"bind": {"ready": bound, "state": "complete" if bound else "incomplete",
+                       "message": "Saved binding, pixel resolution and manually entered physical dimensions" if bound else "Bind the actual display and enter measured screen size/distance"}}
+    for stage in ("geometry", "spatial", "timing"):
+        rows = evidence[stage]
+        valid = [row for row in rows if row["compatible"]]
+        measurements = [row for row in valid if isinstance(row["payload"].get("measurement"), dict)
+                        and row["payload"]["measurement"].get("measured_length_mm") is not None]
+        declaration = profile.geometry_status if stage in ("geometry", "spatial") else profile.timing_status
+        if stage == "geometry":
+            ready = bound and bool(measurements) and declaration == "verified"
+            state = "complete" if ready else "awaiting_review" if measurements else "awaiting_measurement" if valid else "incomplete"
+            message = ("Ruler measurement and explicit geometry verification recorded" if ready else
+                       "Ruler measurement/error saved; review error and explicitly verify under laboratory criteria" if measurements else
+                       "Software ruler presentation completed; enter the physical ruler measurement" if valid else
+                       "Run a ruler presentation, record its physical length, then review the error")
+        elif stage == "spatial":
+            ready = result["geometry"]["ready"] and bool(valid)
+            state = "complete" if ready else "awaiting_review" if valid else "incomplete"
+            message = ("Software spatial diagnostic completed; inspect cycles/orientation independently. "
+                       + ("Geometry explicitly verified; grating output is not physically certified" if ready else "Complete geometry measurement/review") if valid else "Present and inspect a spatial grating")
+        else:
+            ready = bound and declaration == "verified"
+            state = "complete" if ready else "awaiting_measurement" if valid else "incomplete"
+            message = ("Independent physical timing explicitly declared verified" if ready else
+                       "Software timing diagnostic completed; photon timing requires independent photodiode measurement/review" if valid else
+                       "Run software timing diagnostics; physical photon timing remains unverified")
+        if not valid and rows and not ready:
+            state = "failed" if rows[0]["payload"].get("status") == "error" else "stale"
+            message = "Latest attempt failed; rerun and inspect diagnostic error" if state == "failed" else "Earlier evidence is stale or invalid for this physical setup; run a fresh test"
+        if valid and rows and rows[0]["payload"].get("status") == "error":
+            message += "; latest attempt failed, prior compatible evidence retained"
+        result[stage] = {"ready": ready, "state": state, "message": message,
+                         "software_completed": bool(valid), "measurement_recorded": bool(measurements),
+                         "verification_declared": declaration == "verified",
+                         "reports": [row["path"] for row in valid]}
+    measured = len(profile.luminance_calibration) >= 2
+    session_message = ""
+    if not measured:
+        from .readiness import diagnostic_matches_profile
+        sessions = root / "calibration_sessions" / profile.id
+        for path in sorted(sessions.glob("*/session.json"), reverse=True):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if diagnostic_matches_profile(dict(payload, status="completed"), profile) and payload.get("readings"):
+                    session_message = "Photometer readings saved locally; complete method/notes, import means and save profile"
+                    break
+            except (OSError, ValueError, TypeError):
+                continue
+    ready = bound and profile.has_verified_luminance_mapping
+    result["luminance"] = {"ready": ready, "state": "complete" if ready else "awaiting_review" if measured else "awaiting_import" if session_message else "awaiting_measurement",
+                           "message": "Measured photometer mapping explicitly verified" if ready else "Measured mapping saved; laboratory review and explicit verification required" if measured else session_message or "Genuine photometer observations required; synthetic demonstration data cannot be imported"}
+    ready = bound and bool(profile.qualified_experiments)
+    result["review"] = {"ready": ready, "state": "complete" if ready else "awaiting_review",
+                        "message": f"Explicit qualification for: {', '.join(profile.qualified_experiments)}; experiment preflight remains authoritative" if ready else "Review experiment requirements before explicitly qualifying this display"}
+    return result
