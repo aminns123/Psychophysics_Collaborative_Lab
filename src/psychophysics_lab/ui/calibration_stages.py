@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..config.local import content_hash
+from ..config.readiness import diagnostic_matches_profile
 
 
 STAGES = (
@@ -32,16 +32,13 @@ def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]
         profile.origin == "local" and bool(profile.display_binding)
         and profile.expected_resolution_px is not None and manual_geometry
     )
-    profile_hash = content_hash(profile.to_dict())
     root = local_config_root / "diagnostics" / "display_geometry" / profile.id
     ruler = spatial = temporal = False
     if root.exists():
         for path in root.rglob("geometry_check.json"):
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
-                if payload.get("status") != "completed":
-                    continue
-                if payload.get("monitor_profile_sha256") != profile_hash:
+                if not diagnostic_matches_profile(payload, profile):
                     continue
                 kind = payload.get("request", {}).get("test_kind")
                 if (kind in {"size", "position"}
