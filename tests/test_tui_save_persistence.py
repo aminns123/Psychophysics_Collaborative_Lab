@@ -162,10 +162,22 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
             assert screen.query_one("#field-condition-values", Input).value == "1,4,8"
             assert "loaded successfully" in str(screen.query_one("#config-status", Static).render())
             assert screen._collect()["number_conditions"] == 3
+            # The explicit Update action archives an old version and saves
+            # the new values, rather than silently overwriting on Save new.
+            screen.query_one("#field-condition-values", Input).value = "1,5,9"
+            screen.query_one("#update-preset", Button).press()
+            await pilot.pause()
+            assert "updated successfully" in str(screen.query_one("#config-status", Static).render())
+            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["condition_values"] == "1,5,9"
+            backups = list((tmp_path / "machine" / "presets" /
+                            experiment.id / ".history").glob("three_conditions_*.json"))
+            assert len(backups) == 1
+            import json
+            assert json.loads(backups[0].read_text())["values"]["condition_values"] == "1,4,8"
             screen.query_one("#review", Button).press()
             await pilot.pause()
-            assert app.screen.request.experiment_values["condition_values"] == "1,4,8"
+            assert app.screen.request.experiment_values["condition_values"] == "1,5,9"
             app.pop_screen()
             await pilot.pause()
-            assert screen.query_one("#field-condition-values", Input).value == "1,4,8"
+            assert screen.query_one("#field-condition-values", Input).value == "1,5,9"
     asyncio.run(scenario())
