@@ -31,19 +31,32 @@ def evaluate_csf(observer, records):
         if record.analysis is not None:
             for item in record.analysis.condition_thresholds:
                 condition = float(item.condition)
-                offset = math.log2(condition / observer.preferred_condition) / observer.tuning_width_octaves
-                true_midpoint = observer.threshold * math.exp(0.5 * offset * offset)
+                offset = (math.log2(condition) - math.log2(observer.preferred_condition)) / observer.tuning_width_octaves
+                log_midpoint = math.log(observer.threshold) + 0.5 * offset * offset
+                try:
+                    true_midpoint = math.exp(log_midpoint)
+                except OverflowError:
+                    true_midpoint = None
+                if true_midpoint is not None and not math.isfinite(true_midpoint):
+                    true_midpoint = None
                 found = item.threshold
+                log_ratio = math.log(found) - log_midpoint if found > 0 else None
+                try:
+                    ratio = math.exp(log_ratio) if log_ratio is not None else 0.0
+                except OverflowError:
+                    ratio = None
                 points.append({
                     "condition_value": condition,
                     "condition_units": unit,
                     **({"condition_legacy_units": condition} if unit == "legacy_shader_radians" else {}),
                     "model_midpoint_contrast": true_midpoint,
                     "estimated_reversal_contrast": found,
-                    "estimated_to_model_midpoint_ratio": found / true_midpoint,
-                    "absolute_log10_ratio": abs(math.log10(found / true_midpoint)) if found > 0 else None,
+                    "model_log_midpoint_contrast": log_midpoint if math.isfinite(log_midpoint) else None,
+                    "model_midpoint_representable": true_midpoint is not None and true_midpoint > 0,
+                    "estimated_to_model_midpoint_ratio": ratio,
+                    "absolute_log10_ratio": abs(log_ratio / math.log(10)) if log_ratio is not None and math.isfinite(log_ratio) else None,
                 })
-        predicted = min(points, key=lambda item: item["model_midpoint_contrast"])["condition_value"] if points else None
+        predicted = min(points, key=lambda item: item["model_log_midpoint_contrast"] if item["model_log_midpoint_contrast"] is not None else math.inf)["condition_value"] if points else None
         estimated = min(points, key=lambda item: item["estimated_reversal_contrast"])["condition_value"] if points else None
         cases.append({
             "seed": record.seed,
@@ -58,14 +71,14 @@ def evaluate_csf(observer, records):
         })
     plausible = all(
         math.isfinite(point["estimated_reversal_contrast"]) and point["estimated_reversal_contrast"] > 0
-        and math.isfinite(point["model_midpoint_contrast"]) and point["model_midpoint_contrast"] > 0
+        and point["model_midpoint_contrast"] is not None and math.isfinite(point["model_midpoint_contrast"]) and point["model_midpoint_contrast"] > 0
         for run in cases for point in run["conditions"]
     )
     return {
         "checks": [{
             "name": "CSF observer midpoint and recovered estimates are finite positive values",
             "passed": plausible,
-            "detail": "Scientific consistency check; does not require exact numerical convergence.",
+            "detail": "Scientific consistency check; unrepresentable model midpoints fail explicitly without stopping data preservation. Does not require exact numerical convergence.",
         }],
         "units": sorted({case["condition_units"] for case in cases}),
         "evaluated_estimate_count": sum(len(case["conditions"]) for case in cases),
