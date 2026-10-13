@@ -349,6 +349,7 @@ class DisplayCheckScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Edit / copy display profile", id="edit-profile")
                 yield Button("Launch display test", id="launch-geometry", variant="success")
+            yield Static("", id="geometry-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Display calibration — measure before using cycles/degree[/b]\n"
@@ -406,7 +407,6 @@ class DisplayCheckScreen(HubPage):
             yield Label("Measured bar length (mm, optional after the fullscreen check)")
             yield Input(value="", placeholder="e.g. 87.4", id="geometry-measured")
             yield Button("Record Measurement in Latest Diagnostic", id="record-geometry-measurement")
-            yield Static("", id="geometry-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -849,6 +849,7 @@ class ExperimentConfigScreen(Screen):
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Review", id="review", variant="primary")
+            yield Static("", id="config-status")
         with VerticalScroll(id="config-body"):
             yield Static(
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n"
@@ -884,7 +885,6 @@ class ExperimentConfigScreen(Screen):
                 yield Button("Load preset", id="load-preset")
                 yield Input(placeholder="New preset name", id="preset-name")
                 yield Button("Save validated preset", id="save-preset")
-            yield Static("", id="config-status")
         yield Footer()
 
     def _compose_field(self, field):
@@ -970,24 +970,52 @@ class ExperimentConfigScreen(Screen):
             except (ValueError, TypeError, KeyError) as exc:
                 message = str(exc)
             self.query_one("#step-status", Static).update(message)
+            self.query_one("#config-status", Static).update(message)
             return
         if event.button.id in {"save-preset", "load-preset"}:
             event.stop()
             try:
                 if event.button.id == "save-preset":
                     name = self.query_one("#preset-name", Input).value
-                    save_preset(self.app.local_config_root, name, self.experiment.id, self._collect())
+                    # Never silently destroy another saved choice with
+                    # the same name; require the researcher to choose a new
+                    # name for a new immutable preset.
+                    existing = load_presets(self.app.local_config_root, self.experiment.id)
+                    if name in existing:
+                        raise ValueError(f"Preset '{name}' already exists. Choose a new name before saving.")
+                    snapshot = self._collect()
+                    saved_path = save_preset(self.app.local_config_root, name, self.experiment.id, snapshot)
+                    # Validate that the saved values survive a fresh loader.
+                    stored = load_presets(self.app.local_config_root, self.experiment.id).get(name)
+                    if stored != snapshot:
+                        raise RuntimeError(f"Preset file was not reloaded correctly: {saved_path}")
                     selector = self.query_one("#config-preset", Select)
-                    selector.set_options([(name, name) for name in load_presets(self.app.local_config_root, self.experiment.id)])
+                    selector.set_options([(item, item) for item in load_presets(self.app.local_config_root, self.experiment.id)])
                     selector.value = name
+                    self.app.notify(f"Saved preset '{name}' for {self.experiment.display_name}.",
+                                    title="Preset saved", timeout=6)
                 else:
                     name = str(self.query_one("#config-preset", Select).value)
                     values = self.experiment.normalise_values(load_presets(self.app.local_config_root, self.experiment.id)[name])
+                    # Check the COMPLETE preset against current experiment
+                    # rules and selected monitor before touching any widget.
+                    if self.experiment.monitor_validator:
+                        self.experiment.monitor_validator(
+                            values, self.app.monitor_profiles[self.monitor_profile_id]
+                        )
                     for field in self.experiment.fields:
-                        self.query_one("#" + _field_widget_id(field)).value = values[field.key] if field.kind == "choice" else str(values[field.key])
-                self.query_one("#config-status", Static).update("Preset saved / loaded.")
-            except (ValueError, KeyError, OSError) as exc:
-                self.query_one("#config-status", Static).update(str(exc))
+                        self.query_one("#" + _field_widget_id(field)).value = (
+                            values[field.key] if field.kind == "choice" else str(values[field.key])
+                        )
+                    self.remember_draft()
+                    self.app.notify(f"Loaded preset '{name}'.", title="Preset loaded", timeout=6)
+                self.query_one("#config-status", Static).update(
+                    f"[green]Preset '{name}' {'saved' if event.button.id == 'save-preset' else 'loaded'} successfully.[/green]"
+                )
+            except (ValueError, KeyError, OSError, RuntimeError, TypeError) as exc:
+                message = f"Preset NOT {'saved' if event.button.id == 'save-preset' else 'loaded'}: {exc}"
+                self.query_one("#config-status", Static).update(f"[red]{message}[/red]")
+                self.app.notify(message, severity="error", timeout=8)
             return
         button_id = event.button.id
         if button_id not in {"back", "review"}:
@@ -1013,6 +1041,7 @@ class ExperimentConfigScreen(Screen):
             self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
+            self.app.notify(str(exc), title="Review blocked: check inputs", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
 
