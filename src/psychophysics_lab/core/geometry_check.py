@@ -361,6 +361,7 @@ def run_geometry_check(
             ),
         }
         atomic_write_json(report, payload)
+        update_active_diagnostic(external_root,payload)
     except BaseException as exc:
         try:
             atomic_write_json(
@@ -452,4 +453,18 @@ def record_geometry_measurement(
         latest.setdefault("measurement_history", []).append(dict(latest.get("measurement", {})))
         latest["measurement"] = payload["measurement"]
         atomic_write_json(report, latest)
+    update_active_diagnostic(root,latest)
     return latest
+
+
+def update_active_diagnostic(root,payload):
+    from ..config.monitor import _profile_from_dict
+    from ..config.calibration_dataset import active_directory
+    profile=_profile_from_dict(payload['monitor_profile'])
+    kind=payload.get('request',{}).get('test_kind','size')
+    category='timing' if kind.startswith('temporal_') else 'spatial' if kind=='spatial' else 'luminance_diagnostic' if kind=='luminance_patch' else 'geometry'
+    path=active_directory(root,profile)/(category+'.json')
+    with file_lock(root/'profiles.lock'):
+        current=json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'profile_revision':profile.revision}
+        current.setdefault('diagnostics',{})[kind]=payload
+        atomic_write_json(path,current)

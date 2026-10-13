@@ -251,8 +251,8 @@ CSF_SPEC = ExperimentSpec(
             help_text="Enter spatial frequency in cycles/degree, or period in degrees/cycle. "
                       "Legacy mode retains historical shader radians for reproducibility.",
         ),
-        ConfigField("n_down", "Correct responses required for a downward step", "int", default=2),
-        ConfigField("n_up", "Incorrect responses required for an upward step", "int", default=1),
+        ConfigField("n_down", "Correct responses required for a downward step", "int", default=2, minimum=1),
+        ConfigField("n_up", "Incorrect responses required for an upward step", "int", default=1, minimum=1),
         ConfigField("logUNIT_UP", "Up-step size (legacy log units)", "float", default=0.35),
         ConfigField(
             "logUNIT_DW",
@@ -270,8 +270,8 @@ CSF_SPEC = ExperimentSpec(
         ),
         ConfigField("staircases_per_condition", "Independent staircases per condition", "int", default=1, minimum=1, maximum=24,
                     help_text="Creates separately indexed adaptive staircases for each condition. The maximum-response ceiling is shared across ALL staircases."),
-        ConfigField("reversal_termination", "Reversals required per staircase", "int", default=10),
-        ConfigField("max_trials", "Maximum accepted responses (safety ceiling)", "int", default=30),
+        ConfigField("reversal_termination", "Reversals required per staircase", "int", default=10, minimum=1),
+        ConfigField("max_trials", "Maximum accepted responses (safety ceiling)", "int", default=30, minimum=1),
         ConfigField("timeFixate", "Fixation duration (ms)", "int", default=250, section="Timing (advanced)"),
         ConfigField("timeInterval", "Interval duration (ms)", "int", default=250, section="Timing (advanced)"),
         ConfigField("timeAB", "Stimulus duration (ms)", "int", default=200, section="Timing (advanced)"),

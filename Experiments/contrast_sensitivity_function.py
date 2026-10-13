@@ -28,6 +28,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     with (state_directory / "user_experiment_config.json").open("r", encoding="utf-8") as f:
         dict_all_dicts = json.load(f)
 
+    presentation_test = dict_all_dicts.get('data_kind')=='uncalibrated_presentation_test'
     experiment_params = dict_all_dicts["experiment_params"]
     monitor_profile = dict(dict_all_dicts.get("monitor_profile", {}))
     adaptive_session = LegacyStaircaseSession(
@@ -53,6 +54,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
     try:
         selected_screen, display_identity = select_screen(_profile_from_dict(monitor_profile))
         win = ExpWindow(fullscreen=True, screen=selected_screen)
+        if presentation_test:
+            win.set_caption('PsyCoLab — UNCALIBRATED PRESENTATION TEST — NOT HUMAN DATA')
         pixel_width = win.width
         pixel_height = win.height
         screen_width_pixel = pixel_width
@@ -136,6 +139,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             "pyglet_wakeup_rate_check": pyglet_wakeup_rate_check,
         }
 
+        if presentation_test: monitor_screen_params['data_kind']='uncalibrated_presentation_test'
         runtime_display_path = run_directory / "runtime_display.json"
         temporary_display = runtime_display_path.with_name(runtime_display_path.name + ".tmp")
         temporary_display.write_text(json.dumps(monitor_screen_params, indent=2), encoding="utf-8")
@@ -335,9 +339,10 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         )
 
         # ------------------------------ Stimuli ------------------------------
-        experiment_title = [_make_text_label("Contrast Sensitivity Function\n", (cx, cy))]
+        heading='UNCALIBRATED PRESENTATION TEST — NOT HUMAN DATA' if presentation_test else 'Contrast Sensitivity Function'
+        experiment_title = [_make_text_label(heading+"\n", (cx, cy))]
         welcome_line = [_make_text_label("Press SPACE when ready.", (cx, cy - 50))]
-        farewell_line = [_make_text_label("Experiment over!", (cx, cy - 50))]
+        farewell_line = [_make_text_label("Uncalibrated test over — not human data" if presentation_test else "Experiment over!", (cx, cy - 50))]
 
         trials = [
             Trial_small("Start", experiment_title, 5 * 1000, keys_default, mouse=False),

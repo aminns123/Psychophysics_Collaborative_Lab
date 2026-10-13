@@ -166,6 +166,13 @@ def _main(
                 print("PsyCoLab exited normally.")
             return 0
 
+        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
+        if isinstance(action,PresentationTestRequest):
+            artifacts=run_presentation_test(action,repo_root=repo_root)
+            _print_run_summary(artifacts)
+            simulation_summary='UNCALIBRATED presentation test finished. Output: '+str(artifacts.run_directory)+'. These are not human experimental records.'
+            continue
+
         from .core.simulation_request import SimulationLaunchRequest
         if isinstance(action, SimulationLaunchRequest):
             selected_data_root = resolve_data_root(action.data_root, repo_root)

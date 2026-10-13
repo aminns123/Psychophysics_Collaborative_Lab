@@ -63,6 +63,9 @@ def resolve_data_root(value: str | Path, repo_root: Path, *, allow_synthetic: bo
     path = path.resolve()
 
     if not allow_synthetic:
+        from .core.presentation_testing import MARKER as TEST_MARKER
+        if any((p/TEST_MARKER).exists() for p in (path,*path.parents)):
+            raise ValueError("Presentation-test folders cannot be used for certified human acquisition.")
         from .core.synthetic import is_synthetic_path
         if is_synthetic_path(path):
             raise ValueError("Human acquisition cannot use a legacy marked synthetic-only workspace.")

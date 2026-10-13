@@ -139,6 +139,8 @@ rules for adding future experiments.
 ## Unified human/simulated experiment setup and spatial calibration
 
 Use **Experiment → Configure Experiment → Review** for both modes.
+See [Calibration data management](docs/CALIBRATION_DATA_MANAGEMENT.md) for active raw measurements, live input domains, linked backgrounds and isolated uncalibrated presentation tests.
+
 See [Human Experiment Readiness](docs/HUMAN_EXPERIMENT_READINESS.md) for the laboratory walkthrough, direct resolution actions and current contrast boundary policy.
 Choose **Run human experiment** or **Run simulation** *only at final review*.
 The virtual branch adds a scenario, observer threshold/preferred frequency and

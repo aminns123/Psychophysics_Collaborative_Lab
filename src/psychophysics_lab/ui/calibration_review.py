@@ -88,6 +88,8 @@ class ExperimentQualificationScreen(Screen):
             specs=list_experiments()
             yield Select([(spec.display_name,spec.id) for spec in specs],value=self.experiment_id or specs[0].id,allow_blank=False,id='qualification-experiment')
             yield Static('',id='qualification-checks',markup=False)
+            for key,label in [('binding','Bind display / resolution'),('geometry','Review geometry evidence'),('luminance','Open luminance measurements and verification'),('timing','Review photon timing evidence'),('contrast','Edit starting probe intensity / current range')]:
+                yield Button(label,id='qualification-resolve-'+key)
             yield Checkbox('The laboratory reviewed this experiment on this display, including its stimulus/protocol requirements and supporting physical evidence.',id='qualification-reviewed')
         yield Footer()
 
@@ -106,10 +108,16 @@ class ExperimentQualificationScreen(Screen):
             text+='\n\nNo experiment parameter draft is available. Qualification covers declared hardware requirements; configure and Review the experiment before acquisition.'
         if spec.id in self.profile.qualified_experiments:
             text+='\n\nQualification is already declared; unchanged Save will not create a revision.'
+        for key in ('binding','geometry','luminance','timing','contrast'):
+            self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='contrast_sensitivity'
         self.query_one('#qualification-checks',Static).update(text)
         self.query_one('#qualification-save',Button).disabled=not all(item['passed'] for item in checks)
 
     def on_mount(self): self._refresh()
+
+    def on_screen_resume(self):
+        if self.is_mounted:
+            self.app.reload_profiles(); self.profile=self.app.monitor_profiles[self.profile.id]; self._refresh()
 
     def on_select_changed(self,event):
         if event.select.id=='qualification-experiment':
@@ -117,6 +125,23 @@ class ExperimentQualificationScreen(Screen):
             self._refresh()
 
     def on_button_pressed(self,event):
+        if (event.button.id or '').startswith('qualification-resolve-'):
+            key=event.button.id.removeprefix('qualification-resolve-')
+            spec,values=self._spec_values()
+            from .setup import ReviewScreen,ExperimentConfigScreen
+            parent=self.app.screen_stack[-2]
+            if isinstance(parent,ReviewScreen) and parent.request.experiment_id==spec.id:
+                self.app.pop_screen(); parent.resolve_requirement(key); return
+            if key=='luminance':
+                from .luminance_data import LuminanceDataScreen
+                self.app.push_screen(LuminanceDataScreen(self.profile,experiment_id=spec.id))
+            elif key=='binding':
+                from .profiles import ProfileScreen
+                self.app.push_screen(ProfileScreen(profile=self.profile,focus_field='profile-binding'))
+            elif key=='contrast':
+                self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,participant_id='synthetic_preview',session_mode='new',experiment=spec,monitor_profile_id=self.profile.id,defaults=values or spec.field_defaults(),focus_field='starting_probe_intensity' if spec.id=='contrast_sensitivity' else None))
+            else: self.app.push_screen(PhysicalVerificationScreen(self.profile,experiment_id=spec.id,focus_category=key+'_status'))
+            return
         if event.button.id=='qualification-back':
             self.app.pop_screen()
         elif event.button.id=='qualification-save':

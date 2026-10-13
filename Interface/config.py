@@ -124,6 +124,9 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
         "monitor_profile": monitor_profile,
     }
 
+    if setupDict.get('data_kind')=='uncalibrated_presentation_test':
+        dict_all_dicts['data_kind']='uncalibrated_presentation_test'
+
     # ------------------------------ Files and timing ------------------------------
     if run_directory is not None:
         run_dir = Path(run_directory).expanduser().resolve()

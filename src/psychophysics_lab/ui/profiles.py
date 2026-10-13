@@ -23,12 +23,19 @@ class ProfileScreen(Screen):
         self.focus_field = focus_field
 
     def on_mount(self) -> None:
+        from .domain_feedback import profile_domains
+        profile_domains(self)
         # A calibration-guide deep link opens the exact required input
         # instead of leaving the researcher hunting through a long form.
         if self.focus_field:
             target = self.query_one("#" + self.focus_field)
             self.call_after_refresh(target.scroll_visible)
             self.call_after_refresh(target.focus)
+
+    def on_input_changed(self,event):
+        if self.is_mounted:
+            from .domain_feedback import profile_domains
+            profile_domains(self)
 
     def compose(self) -> ComposeResult:
         from .setup import _nav_bar
@@ -70,6 +77,7 @@ class ProfileScreen(Screen):
                 "Saving a draft without binding is allowed but fullscreen calibration "
                 "will be blocked until a display is bound."
             )
+            yield Static("",id="live-input-domains",markup=False,classes="info-card")
             values = {
                 "id": p.id if p.origin == "local" else p.id + "_local",
                 "display_name": p.display_name,
@@ -228,6 +236,8 @@ class ProfileScreen(Screen):
                 self.app.notify("Luminance example ready; edit the file before loading.", timeout=8)
             elif event.button.id == "profile-luminance-load":
                 measurement_path = self.query_one("#profile-luminance-path", Input).value
+                from ..config.calibration_dataset import import_observations
+                self.imported_raw, _ = import_observations(measurement_path,self.profile,self.app.local_config_root)
                 draft = read_luminance_measurements(
                     measurement_path, self.profile,
                     local_config_root=self.app.local_config_root
@@ -345,6 +355,12 @@ class ProfileScreen(Screen):
                     payload["revision"] = 0
                 unchanged_revision = self.profile.revision
                 result = save_profile(self.app.local_config_root, _profile_from_dict(payload), expected_revision=self.profile.revision if same else 0)
+                if hasattr(self,"imported_raw"):
+                    from ..config.calibration_dataset import load_active,merge_observations,save_active
+                    active=load_active(self.app.local_config_root,result)
+                    data=merge_observations(active,self.imported_raw,mode='replace_all',confirmed=True)
+                    data.update(method=result.calibration_method,date=result.calibration_date,notes=result.calibration_notes)
+                    result,_=save_active(self.app.local_config_root,result,data,expected_version=active['version'])
                 no_changes = same and result.revision == unchanged_revision
                 saved_result = result
                 # Do not report success until the on-disk revision is visible

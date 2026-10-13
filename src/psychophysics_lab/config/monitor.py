@@ -57,6 +57,8 @@ def _profile_from_dict(data: dict) -> MonitorProfile:
         qualified_experiments=tuple(data.get("qualified_experiments", [])),
         calibration_method=str(data.get("calibration_method", "")),
         calibration_date=str(data.get("calibration_date", "")),
+        luminance_data_kind=str(data.get("luminance_data_kind", "unspecified")),
+        luminance_source_hash=str(data.get("luminance_source_hash", "")),
         geometry_status=str(data.get("geometry_status", "unverified")),
         timing_status=str(data.get("timing_status", "unverified")),
         measurement_sources=data.get("measurement_sources", {}),

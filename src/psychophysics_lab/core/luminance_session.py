@@ -134,11 +134,23 @@ class LocalLuminanceSession:
                 "hardware luminance measurement or physical verification."
             ),
         }
+        from ..config.calibration_dataset import load_active,physical_snapshot
+        active=load_active(self.root,profile)
+        if active['physical_snapshot']!=physical_snapshot(profile):
+            raise ValueError('Active measurements belong to an earlier physical configuration. Confirm replacement in the luminance editor first.')
+        self.session['readings']=[dict(r) for r in active['observations'] if r.get('source')!='legacy_summary_only']
+        self.session['retained_legacy_summaries']=bool(any(r.get('source')=='legacy_summary_only' for r in active['observations']))
+        self.session['continued_active_version']=active['version']
         self._persist()
 
     def _pilot(self) -> dict:
         profile_id, revision = template_identity(self.profile)
         rows = summarise_readings(self.session["readings"])
+        for row in rows:
+            observations=[r for r in self.session['readings'] if float(r['screen_intensity'])==row['screen_intensity']]
+            row['observation_ids']=[r.get('observation_id') or content_hash({'session':self.session['session_uuid'],'index':i,'reading':r}) for i,r in enumerate(observations)]
+            row['reading_data_kinds']=[r.get('data_kind','unspecified') for r in observations]
+            row['reading_recorded_utc']=[r.get('recorded_utc') for r in observations]
         if not rows:
             rows = [
                 {"screen_intensity": command, "luminance_cdm2": None}
@@ -155,6 +167,7 @@ class LocalLuminanceSession:
                 "repeat uncertainty and any deviations from measurement protocol."
             ),
             "measurements": rows,
+            "data_kind": "synthetic" if any(r.get('data_kind')=='synthetic' for r in self.session['readings']) else "unspecified",
             "source_luminance_session_uuid": self.session["session_uuid"],
             "source_session_file": str(self.session_file),
             "instructions": (
@@ -190,7 +203,7 @@ class LocalLuminanceSession:
         reading = parse_photometer_reading(raw_reading)
         entry = {
             "screen_intensity": round(command, 6), "luminance_cdm2": reading,
-            "recorded_utc": now_utc(),
+            "recorded_utc": now_utc(), "observation_id":str(uuid4()), "data_kind":"unspecified", "source":"operator_session",
         }
         self.session["readings"].append(entry)
         try:

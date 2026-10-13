@@ -289,13 +289,22 @@ def _manifest_payload(
 
 def run_request(
     request: SetupRequest, *, repo_root: Path | None = None, data_root: Path | None = None,
-    simulation=None,
+    simulation=None, presentation=None,
 ) -> RunArtifacts:
     """Validate first; allocate a new record; preserve primary and cleanup errors."""
     import random
     root = (repo_root or find_repo_root()).resolve()
     candidate = data_root or (Path(request.data_root).expanduser() if request.data_root else default_data_root(root))
-    data = resolve_data_root(candidate, root, allow_synthetic=simulation is not None)
+    data = resolve_data_root(candidate, root, allow_synthetic=simulation is not None or presentation is not None)
+    if presentation is not None:
+        from .presentation_testing import PresentationTestRequest,MARKER
+        if not isinstance(presentation,PresentationTestRequest) or simulation is not None:
+            raise TypeError("Use the dedicated presentation-test facility.")
+        expected=(config_root(root).parent/'psycolab_presentation_tests').resolve()
+        if data!=expected or not (data/MARKER).is_file() or not request.participant_id.startswith('presentation_test_'):
+            raise ValueError("Presentation testing requires its isolated marked root and reserved identity.")
+    elif request.participant_id.startswith('presentation_test_'):
+        raise ValueError("Presentation-test identities cannot be used for human or simulated acquisition.")
     if simulation is None and request.participant_id.lower().startswith("synthetic_"):
         raise ValueError("Participant IDs beginning synthetic_ are reserved for virtual observers.")
     if simulation is not None:
@@ -303,17 +312,22 @@ def run_request(
         if not isinstance(simulation, SimulationRun):
             raise TypeError("Use the dedicated simulations facility for synthetic acquisition.")
         simulation.validate(data, root, request)
-    data_kind = "synthetic" if simulation is not None else "human"
+    data_kind = "uncalibrated_presentation_test" if presentation is not None else "synthetic" if simulation is not None else "human"
     config_root(root, data)  # Never mix machine configuration with source/data.
     spec = get_experiment(request.experiment_id)
     profiles = load_monitor_profiles(root)
     if request.monitor_profile_id not in profiles:
         raise ValueError(f"Unknown monitor profile: {request.monitor_profile_id}")
     profile = profiles[request.monitor_profile_id]
-    request = validate_setup(request, spec, profile, mode="simulation" if simulation is not None else "human")
+    if presentation is not None:
+        from .presentation_testing import validate_presentation
+        request = validate_presentation(request,spec,profile)
+    else:
+        request = validate_setup(request, spec, profile, mode="simulation" if simulation is not None else "human")
     values = request.experiment_values
     grouping_parts = spec.data_path_parts(values, profile)
     setup = spec.build_legacy_setup(participant_id=request.participant_id, values=values, monitor_profile=profile)
+    if presentation is not None: setup['data_kind']='uncalibrated_presentation_test'
     run_dir = create_run_directory(data, participant_id=request.participant_id, experiment_id=spec.id,
                                    monitor_profile_id=profile.id, grouping_parts=grouping_parts,
                                    now=datetime.now().astimezone())
@@ -355,6 +369,9 @@ def run_request(
                     data_root=data, repo_root=root, grouping_parts=grouping_parts, run_uuid=run_uuid, status="configuring")
         payload["created_utc"] = started_utc
         payload["data_kind"] = data_kind
+        if presentation is not None:
+            payload['presentation_test']={'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST — NOT HUMAN EXPERIMENTAL DATA'}
+            atomic_write_json(run_dir/'UNCALIBRATED_TEST_DATA.json',payload['presentation_test']|{'data_kind':data_kind})
         if simulation is not None:
             payload["simulation"] = simulation.metadata
             atomic_write_json(run_dir / "SYNTHETIC_DATA.json", {"data_kind": "synthetic", **simulation.metadata})
@@ -402,7 +419,7 @@ def run_request(
             spec.trial_column_overrides, synthetic=simulation is not None
         )
         write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
-        if simulation is None:
+        if simulation is None and presentation is None:
             convenience("workspace", workspace)
             convenience("local_preferences", lambda: save_preferences(config_root(root, data), active_monitor_profile_id=profile.id))
         convenience("runs_index", update_index)
@@ -423,13 +440,13 @@ def run_request(
                 "snapshots": {key: _relative(run_dir, value) for key, value in snapshots.items()}})
             payload["status"] = "configured"
             atomic_write_json(manifest_file, payload)
-            if simulation is None:
+            if simulation is None and presentation is None:
                 convenience("workspace", workspace)
             if simulation is not None:
                 simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
             elif spec.procedure is not None:
                 from ..researcher import RunContext
-                spec.procedure(RunContext(values, profile, spec, run_dir))
+                spec.procedure(RunContext(values, profile, spec, run_dir, data_kind=data_kind))
             else:
                 experiment = importlib.import_module(spec.legacy_module)
                 experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
@@ -475,7 +492,7 @@ def run_request(
         if payload["status"] == "error" and "error" not in payload:
             payload["error"] = "Acquisition or finalisation reported an error; see recorded diagnostics."
         convenience("runs_index", update_index)
-        if simulation is None:
+        if simulation is None and presentation is None:
             convenience("workspace", workspace)
         try: atomic_write_json(manifest_file, payload)
         except Exception as exc:
@@ -487,7 +504,7 @@ def run_request(
     # Post-acquisition figures belong to the SAME run directory for humans
     # and simulations. They are derived AFTER the immutable trial log and
     # final manifest are written, and never affect acquisition success.
-    if payload.get("accepted_trials", 0) and payload.get("status") != "error":
+    if presentation is None and payload.get("accepted_trials", 0) and payload.get("status") != "error":
         from ..analysis.previews import create_staircase_preview
         try:
             create_staircase_preview(data_root=data, run_directory=run_dir)
