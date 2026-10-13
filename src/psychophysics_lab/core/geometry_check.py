@@ -277,6 +277,12 @@ def record_geometry_measurement(
     if not report.is_relative_to(diagnostics_root):
         raise ValueError("Geometry report is not inside this workspace's diagnostics area.")
     payload = json.loads(report.read_text(encoding="utf-8"))
+    if payload.get("request", {}).get("test_kind", "size") not in {"size", "position"}:
+        raise ValueError(
+            "A ruler measurement can only be recorded for a Size or Position "
+            "bar test. Run a ruler diagnostic first; do not record photometer "
+            "values or grating measurements in this field."
+        )
     intended = float(payload["resolved_bar"]["intended_length_mm"])
     measured = finite(measured_length_mm, "Measured ruler length", positive=True)
     error = measured - intended
