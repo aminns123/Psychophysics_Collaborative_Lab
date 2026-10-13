@@ -17,6 +17,7 @@ from ..config.models import SetupRequest
 from ..config.monitor import load_monitor_profiles
 from ..config.local import config_root, content_hash, preferences, save_preferences, load_presets, save_preset
 from ..config.preflight import compatible, validate_setup
+from ..config.readiness import readiness_text
 from .editor import open_source
 from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
@@ -352,6 +353,8 @@ class DisplayCheckScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
             with Horizontal(classes="buttons"):
+                if getattr(self, "return_to_configuration", False):
+                    yield Button("Return to display choice", id="calibration-return")
                 yield Button("Bind / edit monitor profile", id="edit-profile")
                 yield Button("Launch fullscreen calibration", id="launch-geometry", variant="success")
             yield Static("", id="geometry-status")
@@ -527,6 +530,8 @@ class DisplayCheckScreen(HubPage):
                 text = (
                     f"{report.relative_to(self.app.local_config_root)}\n"
                     f"Status: {payload.get('status', 'unknown')}\n"
+                    f"Profile revision in report: {payload.get('monitor_profile', {}).get('revision', 'unknown')}"
+                    f" — {'CURRENT' if payload.get('monitor_profile_sha256') == content_hash(self._profile().to_dict()) else 'STALE: check current revision'}\n"
                     f"Expected: {bar.get('intended_length_mm', 'n/a')} mm\n"
                     f"Rendered: {bar.get('length_px', 'n/a')} px\n"
                     f"Ruler measurement: {measured_text}"
@@ -547,6 +552,10 @@ class DisplayCheckScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "calibration-return":
+            event.stop()
+            self.app.pop_screen()
             return
         if event.button.id == "edit-profile":
             event.stop()
@@ -577,6 +586,9 @@ class DisplayCheckScreen(HubPage):
                 report = latest_geometry_report(self.app.local_config_root, profile_id)
                 if report is None:
                     raise ValueError("Run a fullscreen geometry check first.")
+                recorded = json.loads(report.read_text(encoding="utf-8"))
+                if recorded.get("monitor_profile_sha256") != content_hash(self._profile().to_dict()):
+                    raise ValueError("Latest diagnostic belongs to a different profile revision. Launch a check for the selected revision before recording its measurement.")
                 measured = float(self.query_one("#geometry-measured", Input).value)
                 payload = record_geometry_measurement(
                     data_root=self.app.local_config_root,
@@ -696,7 +708,8 @@ class DataScreen(HubPage):
                 f"Participant: {manifest.get('participant_id', 'n/a')}\n"
                 f"Experiment: {manifest.get('experiment_id', 'n/a')}\n"
                 f"Data kind: {manifest.get('data_kind', 'human')}\n"
-                f"Display: {manifest.get('monitor_profile_id', 'n/a')}\n"
+                f"Display: {manifest.get('monitor_profile_id', 'n/a')} · revision {manifest.get('monitor_profile', {}).get('revision', 'unknown')}\n"
+                f"Profile SHA256: {manifest.get('monitor_profile_sha256', 'unrecorded')}\n"
                 f"Status: {manifest.get('status', 'n/a')}\n"
                 f"Accepted responses: {manifest.get('accepted_trials', 'n/a')}\n"
                 f"Run UUID: {manifest.get('run_uuid', 'n/a')}"
@@ -876,6 +889,7 @@ class ExperimentConfigScreen(Screen):
             yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
+                yield Button("Change display / Calibrate", id="change-display")
                 yield Button("Review", id="review", variant="primary")
             yield Static("", id="config-status")
         with VerticalScroll(id="config-body"):
@@ -896,9 +910,8 @@ class ExperimentConfigScreen(Screen):
                     elif group == "Stimulus conditions":
                         yield Static(
                             "Enter the number of conditions and their comma-separated values. "
-                            "They must match. For reference CSF, numeric values are legacy "
-                            "stimulus scalars, not verified cycles/degree.",
-                            classes="field-help",
+                            "They must match. Units are shown below and follow your selected mode.",
+                            id="condition-unit-help", classes="field-help",
                         )
                     for field in fields:
                         yield from self._compose_field(field)
@@ -915,6 +928,45 @@ class ExperimentConfigScreen(Screen):
                 yield Button("Save new preset", id="save-preset")
                 yield Button("Update selected preset", id="update-preset")
         yield Footer()
+
+    def on_mount(self):
+        self._refresh_unit_help()
+
+    def _refresh_unit_help(self):
+        if self.experiment.id != "contrast_sensitivity" or not self.is_mounted:
+            return
+        unit = self.query_one("#field-condition-unit", Select).value
+        messages = {"cycles_per_degree": "Conditions are spatial frequencies in cycles/degree (cpd), e.g. 2,4,8. Derived from measured display geometry; not photometrically verified.",
+            "degrees_per_cycle": "Conditions are periods in degrees/cycle, e.g. 0.5,0.25,0.125. Stored trial frequencies are their reciprocals in cycles/degree.",
+            "legacy_shader_radians": "Explicit historical shader phase values, e.g. 63,252. These are uncalibrated scalars and must never be relabelled cycles/degree."}
+        self.query_one("#condition-unit-help", Static).update(messages.get(str(unit), "Select spatial-frequency units."))
+
+    def on_screen_resume(self):
+        if not hasattr(self, "draft_key"):
+            return
+        current = self.app.monitor_profiles.get(self.monitor_profile_id)
+        if current is not None:
+            self.query_one("#experiment-description", Static).update(
+                f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n" +
+                _monitor_summary(current) + "\n" + readiness_text(self.experiment, current, self.app.repo_root))
+        self._refresh_unit_help()
+
+    def _save_calibration_draft(self):
+        save_preferences(self.app.local_config_root, active_monitor_profile_id=self.monitor_profile_id, calibration_experiment_draft={
+            "participant": self.participant_id, "experiment": self.experiment.id,
+            "profile": self.monitor_profile_id, "values": dict(self.app.config_drafts[self.draft_key])})
+
+    def _apply_display(self, profile_id):
+        if profile_id not in self.app.monitor_profiles:
+            raise ValueError("Selected display is no longer available; reload profiles.")
+        self.remember_draft()
+        draft = dict(self.app.config_drafts[self.draft_key])
+        self.monitor_profile_id = profile_id
+        self.draft_key = (self.participant_id, self.experiment.id, profile_id)
+        self.app.config_drafts[self.draft_key] = draft
+        self._save_calibration_draft()
+        self.on_screen_resume()
+        self.query_one("#config-status", Static).update("Display changed. Draft experiment values retained; Review revalidates against this profile.")
 
     def _compose_field(self, field):
         yield Label(field.label)
@@ -970,6 +1022,7 @@ class ExperimentConfigScreen(Screen):
     def on_select_changed(self, event: Select.Changed) -> None:
         if hasattr(self, "draft_key"):
             self.remember_draft()
+            self._refresh_unit_help()
 
     def _collect(self) -> dict[str, Any]:
         values: dict[str, Any] = {}
@@ -985,12 +1038,18 @@ class ExperimentConfigScreen(Screen):
         values = self.experiment.normalise_values(values)
 
         profile = self.app.monitor_profiles[self.monitor_profile_id]
-        if self.experiment.monitor_validator:
-            self.experiment.monitor_validator(values, profile)
-        return values
+        request = SetupRequest(self.participant_id, self.session_mode, self.experiment.id,
+            self.monitor_profile_id, values)
+        return validate_setup(request, self.experiment, profile, mode="configuration").experiment_values
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "change-display":
+            event.stop()
+            self.remember_draft()
+            self._save_calibration_draft()
+            self.app.push_screen(ChangeDisplayScreen(self))
             return
         if event.button.id in {"calculate-up", "calculate-down"}:
             event.stop()
@@ -1044,10 +1103,9 @@ class ExperimentConfigScreen(Screen):
                     if name not in all_presets:
                         raise ValueError("The selected preset no longer exists. Reload the screen.")
                     values = self.experiment.normalise_values(all_presets[name])
-                    if self.experiment.monitor_validator:
-                        self.experiment.monitor_validator(
-                            values, self.app.monitor_profiles[self.monitor_profile_id]
-                        )
+                    values = validate_setup(SetupRequest(self.participant_id, self.session_mode,
+                        self.experiment.id, self.monitor_profile_id, values), self.experiment,
+                        self.app.monitor_profiles[self.monitor_profile_id], mode="configuration").experiment_values
                     for field in self.experiment.fields:
                         self.query_one("#" + _field_widget_id(field)).value = (
                             values[field.key] if field.kind == "choice" else str(values[field.key])
@@ -1080,7 +1138,7 @@ class ExperimentConfigScreen(Screen):
                 experiment_values=values,
                 data_root=str(self.data_root),
             )
-            request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id])
+            request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.remember_draft()
             self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
@@ -1088,6 +1146,68 @@ class ExperimentConfigScreen(Screen):
             self.app.notify(str(exc), title="Review blocked: check inputs", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
+
+
+class ChangeDisplayScreen(Screen):
+    """A reversible display choice; calibration edits are explicitly saved revisions."""
+    def __init__(self, configuration):
+        super().__init__()
+        self.configuration = configuration
+
+    def compose(self):
+        with Vertical(id="fixed-shell"):
+            yield Header()
+            with Horizontal(classes="buttons"):
+                yield Button("Cancel", id="display-cancel")
+                yield Button("Refresh profiles", id="display-refresh")
+                yield Button("Calibrate", id="display-calibrate")
+                yield Button("Apply display", id="display-apply", variant="primary")
+            yield Static("", id="display-choice-status")
+        with VerticalScroll(classes="page-body"):
+            yield Label("Available display profiles (qualification does not hide a profile)")
+            yield Select([(f"{p.display_name} [{p.id} · rev {p.revision}]", p.id)
+                for p in self.app.monitor_profiles.values()], value=self.configuration.monitor_profile_id,
+                allow_blank=False, id="display-choice")
+            yield Static("", id="display-choice-summary")
+            yield Static("Apply retains your experiment draft and requires a new Review. Cancel leaves the selected display unchanged. Profile revisions saved in Calibrate persist independently.")
+        yield Footer()
+
+    def on_mount(self):
+        self._refresh()
+
+    def _refresh(self):
+        selected = self.query_one("#display-choice", Select).value
+        if selected in self.app.monitor_profiles:
+            p = self.app.monitor_profiles[selected]
+            self.query_one("#display-choice-summary", Static).update(
+                _monitor_summary(p) + "\n" + readiness_text(self.configuration.experiment, p, self.app.repo_root))
+
+    def on_screen_resume(self):
+        selected = preferences(self.app.local_config_root).get("active_monitor_profile_id")
+        selector = self.query_one("#display-choice", Select)
+        previous = selector.value
+        selector.set_options([(f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in self.app.monitor_profiles.values()])
+        selector.value = selected if selected in self.app.monitor_profiles else previous
+        self._refresh()
+
+    def on_select_changed(self, event):
+        if self.is_mounted:
+            self._refresh()
+
+    def on_button_pressed(self, event):
+        event.stop()
+        if event.button.id == "display-cancel":
+            self.app.pop_screen()
+        elif event.button.id == "display-apply":
+            self.configuration._apply_display(str(self.query_one("#display-choice", Select).value))
+            self.app.pop_screen()
+        elif event.button.id == "display-refresh":
+            self.app.reload_profiles()
+            self.on_screen_resume()
+        elif event.button.id == "display-calibrate":
+            page = DisplayCheckScreen()
+            page.return_to_configuration = True
+            self.app.push_screen(page)
 
 
 class ReviewScreen(Screen):
@@ -1111,7 +1231,9 @@ class ReviewScreen(Screen):
                 else "Setup: Start from experiment defaults / new settings"
             ),
             f"Experiment: {experiment.display_name}",
-            f"Display: {profile.display_name}",
+            f"Display: {profile.display_name} [{profile.id}]",
+            _monitor_summary(profile),
+            readiness_text(experiment, profile, self.app.repo_root, self.request.experiment_values),
             f"Calibration status: {profile.calibration_status}",
             f"Profile revision: {profile.revision} · SHA256: {content_hash(profile.to_dict())}",
             f"Display binding: {profile.display_binding or 'legacy primary display; verify before acquisition'}",
@@ -1220,7 +1342,7 @@ class ReviewScreen(Screen):
             else:
                 spec = get_experiment(self.request.experiment_id)
                 current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
-                validate_setup(self.request, spec, current)
+                validate_setup(self.request, spec, current, mode="simulation" if button_id == "run-simulation" else "human")
                 if button_id == "run-simulation":
                     from .unified_run import VirtualObserverOptionsScreen
                     from simulations.scenarios import list_scenarios
@@ -1247,11 +1369,14 @@ class ReviewScreen(Screen):
                             "confirm the fullscreen geometry. The virtual simulation mode "
                             "remains available without hardware calibration."
                         )
+                    from ..core.display import preflight_fullscreen_display
+                    preflight_fullscreen_display(current)
                     self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
             self.app.notify(str(exc), title="Run not started", severity="error", timeout=10)
-            _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
+            if not isinstance(exc, (ValueError, KeyError)):
+                _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
 
 class PsyCoLabSetupApp(App):
@@ -1298,6 +1423,11 @@ class PsyCoLabSetupApp(App):
         self.local_config_root = config_root(self.repo_root, self.data_root)
         self.monitor_profiles = load_monitor_profiles(repo_root)
         self.config_drafts = {}
+        saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft")
+        if isinstance(saved_draft, dict) and isinstance(saved_draft.get("values"), dict):
+            keys = tuple(saved_draft.get(k) for k in ("participant", "experiment", "profile"))
+            if all(isinstance(k, str) for k in keys):
+                self.config_drafts[keys] = saved_draft["values"]
         self.display_draft = {}
 
     def inspect_source(self, path: Path) -> None:
@@ -1359,7 +1489,10 @@ class PsyCoLabSetupApp(App):
         experiment_options = [(spec.display_name, spec.id) for spec in experiments]
 
         last_request, state, warning = self._initial_values()
-        participant_default = last_request.participant_id if last_request else ""
+        saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft", {})
+        participant_default = last_request.participant_id if last_request else saved_draft.get("participant", "")
+        if participant_default == "synthetic_preview":
+            participant_default = ""
         session_default = "reuse" if last_request else "new"
         experiment_default = (
             last_request.experiment_id
@@ -1380,6 +1513,9 @@ class PsyCoLabSetupApp(App):
             monitor_options = [
                 (f"{profile.display_name} [{profile.id} · rev {profile.revision}]", profile.id) for profile in allowed_profiles.values()
             ]
+            if preferred and preferred not in allowed_profiles:
+                monitor_options.append((f"Unavailable saved profile: {preferred} — restore in Calibrate", preferred))
+                monitor_default = preferred
         else:
             monitor_default = "__none__"
             monitor_options = [("No compatible monitor profiles", "__none__")]
@@ -1471,14 +1607,12 @@ class PsyCoLabSetupApp(App):
         self._refresh_experiment_context()
 
     def _compatible_profiles(self, experiment: ExperimentSpec) -> dict[str, Any]:
-        if not experiment.compatible_monitor_profiles:
-            return dict(self.monitor_profiles)
-        return {
-            key: profile for key, profile in self.monitor_profiles.items()
-            if compatible(experiment, profile)
-        }
+        # Availability is independent of human qualification.
+        return dict(self.monitor_profiles)
 
     def _refresh_experiment_context(self) -> None:
+        if not self.screen_stack:
+            return
         experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
         if _is_blank_select_value(experiment_id):
             return
@@ -1499,20 +1633,29 @@ class PsyCoLabSetupApp(App):
             )
             return
         current = selector.value
-        selector.set_options([
-            (f"{item.display_name} [{item.id} · rev {item.revision}]", item.id)
-            for item in profiles.values()
-        ])
-        # Textual set_options resets the selection, including valid values.
-        selector.value = current if current in profiles else next(iter(profiles))
+        options = [(f"{item.display_name} [{item.id} · rev {item.revision}]", item.id) for item in profiles.values()]
+        missing = not _is_blank_select_value(current) and current not in profiles and current != "__none__"
+        if missing:
+            options.append((f"Unavailable saved profile: {current} — restore in Calibrate", current))
+        selector.set_options(options)
+        # Preserve a requested missing profile visibly, never silently choose the reference.
+        selector.value = current if current in profiles or missing else next(iter(profiles))
         self._refresh_monitor_context()
 
     def _refresh_monitor_context(self) -> None:
+        if not self.screen_stack:
+            return  # Ignore queued Select messages during shutdown.
         value = self.screen_stack[0].query_one("#monitor-profile", Select).value
-        if _is_blank_select_value(value) or str(value) not in self.monitor_profiles:
+        if _is_blank_select_value(value):
+            return
+        if str(value) not in self.monitor_profiles:
+            self.screen_stack[0].query_one("#monitor-summary", Static).update(
+                f"[red]Requested display '{value}' is unavailable. Restore/reload it in Calibrate or explicitly select another profile. No reference fallback was applied.[/red]")
             return
         self.screen_stack[0].query_one("#monitor-summary", Static).update(
-            _monitor_summary(self.monitor_profiles[str(value)])
+            _monitor_summary(self.monitor_profiles[str(value)]) + "\n" + readiness_text(
+                get_experiment(str(self.screen_stack[0].query_one("#experiment", Select).value)),
+                self.monitor_profiles[str(value)], self.repo_root)
         )
 
     def _selected_data_root(self, *, create: bool) -> Path:
@@ -1614,8 +1757,8 @@ class PsyCoLabSetupApp(App):
 
             experiment = get_experiment(str(experiment_id))
             monitor_id = str(monitor_id)
-            if not compatible(experiment, self.monitor_profiles[monitor_id]):
-                raise ValueError("The selected experiment is not validated for that display profile.")
+            if monitor_id not in self.monitor_profiles:
+                raise ValueError("Requested display profile is unavailable. Restore it in Calibrate or explicitly choose another display; no fallback was applied.")
 
             defaults = experiment.field_defaults()
             if session_mode == "reuse":

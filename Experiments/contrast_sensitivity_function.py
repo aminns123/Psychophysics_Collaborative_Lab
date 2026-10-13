@@ -8,6 +8,7 @@ import pyglet
 import Functions.functionsForUse as funcs
 from Events.adaptive_session import LegacyStaircaseSession
 from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.config.local import content_hash
 from Events.stimuliC import Dot_stairCase_centre, Grating_ADM
 from libC import ExpWindow, Params, key, run
 from Events.adaptiveMethods import Trials_read_write_staircase_conditions, Trial_small
@@ -101,6 +102,9 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
         monitor_screen_params = {
             "monitor_profile_id": experiment_params.get("monitor_profile_id", "legacy_unprofiled"),
+            "profile_uuid": monitor_profile.get("profile_uuid", ""),
+            "profile_revision": monitor_profile.get("revision", 0),
+            "monitor_profile_sha256": content_hash(monitor_profile),
             "monitor_calibration_status": experiment_params.get("monitor_calibration_status", "unverified"),
             "monitor_refresh_rate": monitor_refresh_rate,
             "display_identity": display_identity,
@@ -278,6 +282,13 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
                 "grating_displacement_px": int(grating_displacement),
                 "alternative_positions_px": list(alternative_forced_choice["2AFC_choice"]),
                 "center_px": [int(cx), int(cy)],
+            },
+            "monitor_profile": monitor_profile,
+            "contrast_rendering": {
+                "definition": "C_disp = (I_n - I_b)/(1 - I_b); I_n is an adaptive surrogate, not a fragment RGB command",
+                "box_false_shader": "RGB = background + Gaussian_envelope*C_disp*sin(phase)/2",
+                "out_of_range_policy": "fail before human draw; never clamp staircase updates",
+                "physical_luminance_verified": False,
             },
             "conditions": {
                 "condition_list": list(data_conditions.get("condition_list", [])),

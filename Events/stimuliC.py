@@ -156,6 +156,9 @@ class Grating_ADM(stim(width=200.0,fs=10.0,ph=0.0,speed=0.0,contr=1.0,theta=0.0,
         #print('--------- STIMULUS ------------')
         #print('probe_screen_intensity: ', cL)
         #print('stimulus_choice_active: ', stimulus_choice_active)
+        if not self.params.box:
+            from psychophysics_lab.stimuli.contrast_validation import validate_grating_command
+            validate_grating_command(float(probe_weber_contrast), float(self.params.bg))
         self.params.contr   = probe_weber_contrast # <-- actually give contrast value
         
         glUseProgram(self.program)

@@ -17,7 +17,10 @@ from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, 
 from ..paths import resolve_data_root
 from ..adaptive.steps import paired_step, NOTICE
 from ..experiments.registry import get_experiment
-from ..config.preflight import compatible
+from ..config.preflight import compatible, validate_setup
+from ..config.models import SetupRequest
+from ..config.monitor import load_monitor_profiles
+from ..config.local import content_hash, preferences
 from simulations.registry import get_simulation
 from simulations.controls import effective_experiment_values, effective_observer_values
 from .setup import HubPage, _nav_bar, _handle_nav, _is_blank_select_value
@@ -96,13 +99,13 @@ class SimulationsScreen(HubPage):
             yield Label("Display profile (metadata only; no hardware is used)")
             compatible_profiles = {
                 key: value for key, value in self.app.monitor_profiles.items()
-                if compatible(get_experiment(first), value)
+
             } if self.experiment_ids else {}
-            preferred = get_simulation(first).monitor_profile_id if self.experiment_ids else "__none__"
+            preferred = (preferences(self.app.local_config_root).get("active_monitor_profile_id") or get_simulation(first).monitor_profile_id) if self.experiment_ids else "__none__"
             profile_selection = preferred if preferred in compatible_profiles else next(iter(compatible_profiles), "__none__")
             yield Select(
                 [(p.display_name, p.id) for p in compatible_profiles.values()]
-                if compatible_profiles else [("No qualified profiles", "__none__")],
+                if compatible_profiles else [("No available profiles", "__none__")],
                 value=profile_selection, allow_blank=False, id="sim-profile",
             )
             yield Label("Simulation scenario")
@@ -225,19 +228,21 @@ class SimulationsScreen(HubPage):
             self.query_one("#sim-description", Static).update("No matching simulation scenario available.")
 
     def on_select_changed(self, event: Select.Changed) -> None:
+        if _is_blank_select_value(event.value):
+            return
         if event.select.id == "sim-experiment":
             exp = str(event.value)
             if exp in self.experiment_ids:
                 available = {
                     key: value for key, value in self.app.monitor_profiles.items()
-                    if compatible(get_experiment(exp), value)
+
                 }
                 profile_selector = self.query_one("#sim-profile", Select)
                 profile_selector.set_options(
                     [(p.display_name, p.id) for p in available.values()]
-                    if available else [("No qualified profiles", "__none__")]
+                    if available else [("No available profiles", "__none__")]
                 )
-                preferred = get_simulation(exp).monitor_profile_id
+                preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id") or get_simulation(exp).monitor_profile_id
                 profile_selector.value = preferred if preferred in available else next(iter(available), "__none__")
             scenarios = self._scenarios_for(exp)
             selected = self.query_one("#sim-scenario", Select)
@@ -258,8 +263,6 @@ class SimulationsScreen(HubPage):
         profile_id = str(self.query_one("#sim-profile", Select).value)
         if profile_id not in self.app.monitor_profiles:
             raise ValueError("Select a registered display profile, even for a headless simulation.")
-        if not compatible(get_experiment(scenario.experiment_id), self.app.monitor_profiles[profile_id]):
-            raise ValueError("This display profile is not qualified for that experiment.")
         data = resolve_data_root(self.query_one("#sim-data-root", Input).value,
                                  self.app.repo_root)
         seeds = parse_seeds(self.query_one(f"#sim-seeds-{index}", Input).value)
@@ -282,9 +285,10 @@ class SimulationsScreen(HubPage):
         from simulations.registry import get_simulation
         model = get_simulation(scenario.experiment_id)
         model.observer_factory(**observer)
-        get_experiment(scenario.experiment_id).normalise_values(
-            dict(model.defaults) | values
-        )
+        checked = validate_setup(SetupRequest("synthetic_preview", "new", scenario.experiment_id,
+            profile_id, dict(model.defaults) | values), experiment,
+            load_monitor_profiles(self.app.repo_root)[profile_id], mode="simulation")
+        values = checked.experiment_values
         return SimulationLaunchRequest(
             experiment_id=scenario.experiment_id,
             scenario_id=scenario.id,
@@ -293,6 +297,7 @@ class SimulationsScreen(HubPage):
             observer_parameters=observer,
             experiment_values=values,
             monitor_profile_id=profile_id,
+            monitor_profile_hash=checked.monitor_profile_hash,
         )
 
     def _calculate_step(self, button_id: str) -> None:
@@ -560,4 +565,13 @@ class SimulationReviewScreen(Screen):
             self.app.pop_screen()
         elif event.button.id == "sim-run":
             event.stop()
-            self.app.exit(self.request)
+            try:
+                if self.request.monitor_profile_id:
+                    spec = get_experiment(self.request.experiment_id)
+                    profile = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
+                    validate_setup(SetupRequest("synthetic_preview", "new", spec.id, profile.id,
+                        self.request.experiment_values, monitor_profile_hash=self.request.monitor_profile_hash),
+                        spec, profile, mode="simulation")
+                self.app.exit(self.request)
+            except (ValueError, KeyError, OSError) as exc:
+                self.app.notify(str(exc), title="Simulation not started", severity="error", timeout=10)

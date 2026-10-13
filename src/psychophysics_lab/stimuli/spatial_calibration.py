@@ -50,6 +50,8 @@ def validate_requested_cpd(frequencies: tuple[float, ...], geometry: SpatialGeom
     """Reject impossible frequencies by a conservative 2D pixel Nyquist bound."""
     # A grating oriented at theta changes phase by 2*pi*f*(cos(theta)*deg_x+
     # sin(theta)*deg_y). Each screen coordinate has an independent sampling bound.
+    if isinstance(orientation_rad, bool) or not math.isfinite(orientation_rad):
+        raise ValueError("Grating orientation must be finite radians.")
     x_projection, y_projection = abs(math.cos(orientation_rad)), abs(math.sin(orientation_rad))
     for frequency in frequencies:
         if not math.isfinite(frequency) or frequency <= 0:

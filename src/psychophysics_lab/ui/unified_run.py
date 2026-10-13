@@ -14,6 +14,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
 from ..config.preflight import validate_setup
+from ..config.monitor import load_monitor_profiles
 from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, parse_seeds
 from ..experiments.registry import get_experiment
 from ..paths import resolve_data_root
@@ -113,13 +114,14 @@ class VirtualObserverOptionsScreen(Screen):
         model.observer_factory(**observer)  # Validate true psychometric properties.
         seeds = parse_seeds(self.query_one(f"#virtual-seeds-{i}", Input).value)
         spec = get_experiment(self.request.experiment_id)
-        profile = self.app.monitor_profiles[self.request.monitor_profile_id]
-        values = validate_setup(self.request, spec, profile).experiment_values
+        profile = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
+        values = validate_setup(self.request, spec, profile, mode="simulation").experiment_values
         root = resolve_data_root(self.request.data_root or self.app.data_root, self.app.repo_root)
         return SimulationLaunchRequest(
             experiment_id=self.request.experiment_id, scenario_id=scenario.id,
             data_root=root, seeds=seeds, observer_parameters=observer,
             experiment_values=values, monitor_profile_id=self.request.monitor_profile_id,
+            monitor_profile_hash=self.request.monitor_profile_hash,
         )
 
     def on_button_pressed(self, event: Button.Pressed):

@@ -69,10 +69,23 @@ def runtime(observer, seed, algorithm_id):
         session = LegacyStaircaseSession(conditions, parameters, response,
             max_trials=params["max_trials"], metadata_path=root / "adaptive_session.json",
             algorithm_id=algorithm_id, synthetic=True)
+        user_config = funcs.read_JSON(Path(state) / "user_experiment_config.json")
+        profile = user_config.get("monitor_profile", {})
+        geometry = None
+        if profile.get("expected_resolution_px"):
+            from psychophysics_lab.config.monitor import _profile_from_dict
+            from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry
+            geometry = resolve_spatial_geometry(_profile_from_dict(profile), tuple(profile["expected_resolution_px"])).to_dict()
+        from psychophysics_lab.config.local import content_hash
         atomic_write_json(root / "runtime_display.json", {"data_kind": "synthetic",
-            "hardware": "none", "timing_status": "unverified", "photon_timing_verified": False})
+            "hardware": "none", "timing_status": "unverified", "photon_timing_verified": False,
+            "monitor_profile_id": profile.get("id"), "profile_revision": profile.get("revision"),
+            "monitor_profile_sha256": content_hash(profile), "assumed_geometry": geometry,
+            "physical_geometry_verified_by_simulation": False})
         atomic_write_json(root / "resolved_experiment.json", {"experiment_id": "contrast_sensitivity",
             "data_kind": "synthetic", "observer": asdict(observer), "seed": seed,
+            "monitor_profile": profile, "assumed_geometry": geometry,
+            "physical_geometry_verified_by_simulation": False,
             "condition_units": params.get("condition_unit", "legacy_shader_radians"),
             "entered_condition_units": params.get("entered_condition_unit", "legacy_shader_radians"),
             "adaptive_parameters": {

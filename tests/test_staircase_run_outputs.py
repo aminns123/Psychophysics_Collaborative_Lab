@@ -120,7 +120,7 @@ def test_human_finalisation_generates_staircases_from_actual_canonical_records(t
     monkeypatch.setitem(sys.modules, "Experiments.contrast_sensitivity_function", legacy)
     artifacts = run_request(
         SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display",
-                     dict(DEFAULT_VALUES, max_trials=10)), repo_root=ROOT, data_root=root,
+                     dict(DEFAULT_VALUES, max_trials=10, starting_probe_intensity=.7)), repo_root=ROOT, data_root=root,
     )
     assert artifacts.accepted_trials == 3
     assert (artifacts.run_directory / "trials.tsv").is_file()
