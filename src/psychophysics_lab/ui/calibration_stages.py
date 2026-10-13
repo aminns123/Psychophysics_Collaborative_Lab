@@ -22,5 +22,14 @@ STAGES = (
 
 def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]]:
     from ..config.calibration_progress import calibration_progress
-    return {key: (value["ready"], f"{value['state'].upper().replace('_', ' ')}: {value['message']}")
-            for key, value in calibration_progress(profile, local_config_root).items()}
+    progress = calibration_progress(profile, local_config_root)
+    return {
+        key: (
+            item["completed"],
+            ("STAGE SAVED; VERIFICATION PENDING" if item["completed"] and not item["ready"]
+             else "SAVED AND VERIFIED" if item["completed"] and item["ready"]
+             else item["state"].upper().replace("_", " "))
+            + ": " + item["message"]
+        )
+        for key, item in progress.items()
+    }
