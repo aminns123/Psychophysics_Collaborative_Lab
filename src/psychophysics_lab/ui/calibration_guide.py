@@ -256,6 +256,9 @@ class CalibrationGuideScreen(ModalScreen[None]):
                 self.app.open_hub_page("setup")
             return
         self.app.display_guide_target_profile_id = profile_id
+        # The cached Calibrate form must not override this explicit guide
+        # selection when DisplayCheckScreen.on_mount restores its input draft.
+        self.app.display_draft["geometry-monitor"] = profile_id
         self.app.open_hub_page("display")
         if key in {"display", "luminance", "qualification"}:
             from .profiles import ProfileScreen
