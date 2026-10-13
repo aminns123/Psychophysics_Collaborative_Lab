@@ -201,3 +201,67 @@ def test_tui_buttons_launch_request_and_show_editable_pilot_path(tmp_path,monkey
             assert launched.command_step==pytest.approx(.05)
             assert launched.patch_degrees==6.
     asyncio.run(scenario())
+
+
+def test_launcher_reopens_tui_after_interactive_photometry(tmp_path,monkeypatch):
+    import psychophysics_lab.app as launcher
+    import psychophysics_lab.core.luminance_session as lum
+    root=tmp_path/"checkout"
+    root.mkdir()
+    workspace=tmp_path/"external_subject_data"
+    prompts=[]
+    measurement_request=LuminanceSessionRequest(
+        "legacy_reference_display", background_command=.25,
+        data_root=str(workspace)
+    )
+    def fake_tui(**kwargs):
+        prompts.append(kwargs)
+        return measurement_request if len(prompts)==1 else None
+    monkeypatch.setattr(launcher,"find_repo_root",lambda:root)
+    monkeypatch.setattr(launcher,"default_data_root",lambda _:workspace)
+    monkeypatch.setattr(launcher,"preferred_data_root",lambda _r,default:default)
+    monkeypatch.setattr("psychophysics_lab.ui.setup.run_setup_tui",fake_tui)
+    pilot=tmp_path/"machine_config"/"pilot_luminance.json"
+    raw=tmp_path/"machine_config"/"session.json"
+    def fake_hardware(req, *, repo_root, data_root):
+        assert req is measurement_request
+        assert repo_root==root
+        assert data_root==workspace.resolve()
+        return LuminanceSessionArtifacts(raw,pilot,4,2,"completed")
+    monkeypatch.setattr(lum,"run_interactive_luminance",fake_hardware)
+    result=launcher._main([])
+    assert result==0
+    assert len(prompts)==2
+    summary=prompts[1]["geometry_summary"]
+    assert "completed" in summary
+    assert "4" in summary and "2" in summary
+    assert str(pilot) in summary
+    assert "\\n" not in summary
+    assert not workspace.joinpath("trials.tsv").exists()
+
+
+def test_luminance_hardware_failure_reopens_tui_and_keeps_diagnostics(tmp_path,monkeypatch):
+    import psychophysics_lab.app as launcher
+    import psychophysics_lab.core.luminance_session as lum
+    root=tmp_path/"checkout"
+    root.mkdir()
+    workspace=tmp_path/"workspace"
+    prompts=[]
+    req=LuminanceSessionRequest(
+        "legacy_reference_display", background_command=.1, data_root=str(workspace)
+    )
+    def fake_tui(**kwargs):
+        prompts.append(kwargs)
+        return req if len(prompts)==1 else None
+    monkeypatch.setattr(launcher,"find_repo_root",lambda:root)
+    monkeypatch.setattr(launcher,"default_data_root",lambda _:workspace)
+    monkeypatch.setattr(launcher,"preferred_data_root",lambda _r,default:default)
+    monkeypatch.setattr("psychophysics_lab.ui.setup.run_setup_tui",fake_tui)
+    monkeypatch.setattr(launcher,"write_crash_report",lambda *args,**kwargs:tmp_path/"error.log")
+    def fail(*args,**kwargs):
+        raise ValueError("Display driver interrupted")
+    monkeypatch.setattr(lum,"run_interactive_luminance",fail)
+    assert launcher._main([])==0
+    assert len(prompts)==2
+    assert "Display driver interrupted" in prompts[1]["geometry_summary"]
+    assert str(tmp_path/"error.log") in prompts[1]["geometry_summary"]
