@@ -10,11 +10,20 @@ from ..config.monitor import _profile_from_dict
 from ..core.display import enumerate_displays, resolve_binding
 
 class ProfileScreen(Screen):
-    def __init__(self, *, profile):
+    def __init__(self, *, profile, focus_field: str | None = None):
         super().__init__()
         self.profile = profile
         self.displays = ()
         self.detected_values = {}
+        self.focus_field = focus_field
+
+    def on_mount(self) -> None:
+        # A calibration-guide deep link opens the exact required input
+        # instead of leaving the researcher hunting through a long form.
+        if self.focus_field:
+            target = self.query_one("#" + self.focus_field)
+            self.call_after_refresh(target.scroll_visible)
+            self.call_after_refresh(target.focus)
 
     def compose(self) -> ComposeResult:
         from .setup import _nav_bar

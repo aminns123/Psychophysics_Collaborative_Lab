@@ -20,7 +20,7 @@ from ..config.local import config_root, content_hash
 from ..data.identifiers import validate_path_component
 from ..data.locking import file_lock
 from .display import select_screen
-from .display_tests import resolve_test, frame_command, interval_summary, finite
+from .display_tests import resolve_test, frame_command, interval_summary, finite, diagnostic_timeout_reached
 from ..stimuli.geometry import geometry_reference_table, physical_length_for_visual_angle
 
 
@@ -38,7 +38,7 @@ class GeometryCheckRequest:
     position_units: str = "mm"
     spatial_cpd: float = 1.0
     temporal_hz: float = 7.5
-    duration_s: float = 10.0
+    duration_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -70,10 +70,13 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
     """Selected-screen, vsynced diagnostic; software timing is not a photodiode."""
     import math
     import time
+    from collections import deque
     import pyglet
     from pyglet import gl
     screen, identity = select_screen(profile)
-    timestamps = []
+    # Unlimited manual sessions must not retain one timestamp per frame forever.
+    # Keep a bounded recent window for timing diagnostics and count all flips.
+    timestamps = deque(maxlen=6000)
     class DiagnosticWindow(pyglet.window.Window):
         frame_index = 0
         def flip(self):
@@ -82,7 +85,7 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             self.frame_index += 1
     window = DiagnosticWindow(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab Display Test")
     def invalidate(dt):
-        if time.perf_counter() - start >= request.duration_s:
+        if diagnostic_timeout_reached(request.duration_s, time.perf_counter() - start):
             window.close()
         else:
             window.invalid = True
@@ -134,6 +137,12 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
         pyglet.app.run()
         plan["display_identity"] = identity
         plan["frame_timing"] = interval_summary(timestamps,profile.refresh_rate_hz)
+        plan["frame_timing"]["total_flips"] = window.frame_index
+        plan["frame_timing"]["sampled_recent_flips"] = len(timestamps)
+        plan["frame_timing"]["sampling_note"] = (
+            "Timing intervals cover at most the last 6000 software flips; "
+            "not measured photon-onset times."
+        )
         return resolution,bar,plan
     except BaseException as exc:
         primary_error = exc

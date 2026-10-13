@@ -348,6 +348,12 @@ class DisplayCheckScreen(HubPage):
             last_profile = preferred
         elif state and state.monitor_profile_id in self.app.monitor_profiles:
             last_profile = state.monitor_profile_id
+        # A guidance link from Review must open Calibrate on the exact
+        # profile that was reviewed, even if preferences differ.
+        guided = getattr(self.app, "display_guide_target_profile_id", None)
+        if guided in self.app.monitor_profiles:
+            last_profile = guided
+        self.app.display_guide_target_profile_id = None
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
@@ -404,7 +410,7 @@ class DisplayCheckScreen(HubPage):
             yield Input(value="5", id="geometry-thickness")
             yield Label("Position units (offset from screen centre)")
             yield Select([("Millimetres", "mm"), ("Degrees", "degrees")], value="mm", allow_blank=False, id="geometry-position-units")
-            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Duration (seconds, maximum 60)", "10")):
+            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Display test duration (seconds; 0 = until ESC/ENTER)", "0")):
                 yield Label(label)
                 yield Input(value=value, id="geometry-" + key)
             yield Static("", id="geometry-preview", classes="info-card")
@@ -1324,6 +1330,9 @@ class ReviewScreen(Screen):
                 yield Button("Back", id="back")
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
+            with Horizontal(classes="buttons"):
+                yield Button("Resolve blockers / Calibration guide →",
+                             id="review-calibration-guide", variant="primary")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
@@ -1333,11 +1342,22 @@ class ReviewScreen(Screen):
         if _handle_nav(self, event):
             return
         button_id = event.button.id
-        if button_id not in {"back", "run", "run-simulation"}:
+        if button_id not in {"back", "run", "run-simulation", "review-calibration-guide"}:
             return
         event.stop()
         try:
-            if button_id == "back":
+            if button_id == "review-calibration-guide":
+                from .calibration_guide import CalibrationGuideScreen
+                from ..config.preflight import human_blockers
+                profile = self.app.monitor_profiles[self.request.monitor_profile_id]
+                spec = get_experiment(self.request.experiment_id)
+                reasons = human_blockers(spec, profile, self.request.experiment_values)
+                stage = ("qualification" if any("not been qualified" in x for x in reasons)
+                         else "contrast" if any("Grating command may clip" in x for x in reasons)
+                         else "display" if not profile.display_binding else "geometry")
+                self.app.push_screen(CalibrationGuideScreen(
+                    self.request, initial_stage=stage))
+            elif button_id == "back":
                 self.app.pop_screen()
             else:
                 spec = get_experiment(self.request.experiment_id)
@@ -1429,6 +1449,7 @@ class PsyCoLabSetupApp(App):
             if all(isinstance(k, str) for k in keys):
                 self.config_drafts[keys] = saved_draft["values"]
         self.display_draft = {}
+        self.display_guide_target_profile_id = None
 
     def inspect_source(self, path: Path) -> None:
         try:
