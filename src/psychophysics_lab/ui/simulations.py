@@ -72,6 +72,7 @@ class SimulationsScreen(HubPage):
                              disabled=not any(get_experiment(exp).adaptive for exp in self.experiment_ids))
                 yield Button("Review Simulation", id="sim-review", variant="primary",
                              disabled=not bool(self.scenarios))
+            yield Static("", id="sim-status")
         with VerticalScroll(classes="page-body", id="sim-body"):
             yield Static(
                 "[b]Advanced scenario testing[/b]\n"
@@ -183,7 +184,6 @@ class SimulationsScreen(HubPage):
             )
             if getattr(self.app, "simulation_summary", None):
                 yield Static(self.app.simulation_summary, id="sim-latest", classes="info-card")
-            yield Static("", id="sim-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -355,6 +355,7 @@ class SimulationsScreen(HubPage):
             self.app.push_screen(SimulationReviewScreen(self._request()))
         except (ValueError, TypeError, OverflowError) as exc:
             self.query_one("#sim-status", Static).update(f"[red]{exc}[/red]")
+            self.app.notify(str(exc), title="Simulation review blocked", severity="error", timeout=8)
 
 
 
@@ -405,6 +406,7 @@ class AdaptiveAlgorithmScreen(Screen):
             with Horizontal(classes="buttons"):
                 yield Button("Cancel", id="adaptive-cancel")
                 yield Button("Apply adaptive settings", id="adaptive-apply", variant="primary")
+            yield Static("", id="adaptive-editor-status", markup=False)
         with VerticalScroll(classes="page-body", id="adaptive-editor-body"):
             yield Static(
                 f"[b]Adaptive algorithm[/b]\n"
@@ -442,7 +444,6 @@ class AdaptiveAlgorithmScreen(Screen):
                 with Horizontal(classes="buttons"):
                     yield Button("Calculate down from up", id="adaptive-calculate-down")
                     yield Button("Calculate up from down", id="adaptive-calculate-up")
-            yield Static("", id="adaptive-editor-status", markup=False)
         yield Footer()
 
     def _calculate(self, direction: str) -> None:
@@ -501,7 +502,8 @@ class AdaptiveAlgorithmScreen(Screen):
                 proposal.update(changed)
                 self.experiment.normalise_values(proposal)
             except (ValueError, TypeError, KeyError) as exc:
-                self.query_one("#adaptive-editor-status", Static).update(str(exc))
+                self.query_one("#adaptive-editor-status", Static).update(f"[red]Changes NOT applied: {exc}[/red]")
+                self.app.notify(str(exc), title="Adaptive settings not applied", severity="error", timeout=8)
                 return
             for number, field in self.fields:
                 widget = self.source.query_one(
@@ -510,9 +512,11 @@ class AdaptiveAlgorithmScreen(Screen):
                 value = changed[field.key]
                 widget.value = value if field.kind == "choice" else str(value)
             self.source.query_one("#sim-status", Static).update(
-                "Adaptive algorithm updated. Review Simulation to confirm the saved rules."
+                "[green]Adaptive algorithm applied to this simulation. "
+                "Review Simulation to confirm the chosen rules.[/green]"
             )
             self.app.pop_screen()
+            self.app.notify("Adaptive rules applied to the current scenario.", timeout=6)
 
 
 class SimulationReviewScreen(Screen):

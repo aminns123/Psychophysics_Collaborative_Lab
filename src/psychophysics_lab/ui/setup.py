@@ -92,6 +92,9 @@ def _monitor_summary(profile) -> str:
     calibration_notes = profile.calibration_notes.strip()
     lines = [
         f"[b]{profile.display_name}[/b]",
+        f"Profile ID: {profile.id} · origin: {profile.origin} · revision {profile.revision}",
+        f"Display binding: {'saved' if profile.display_binding else 'NOT BOUND (draft; cannot run human acquisition)' if profile.origin == 'local' else 'legacy reference/verify at launch'}",
+        f"Qualified experiments: {', '.join(profile.qualified_experiments) or 'none explicitly qualified'}",
         f"{width_mm:.0f} × {height_mm:.0f} mm · {profile.refresh_rate_hz} Hz · "
         f"viewing distance {profile.viewing_distance_m:.3f} m",
         f"Resolution: {resolution}",
@@ -334,7 +337,9 @@ class DisplayCheckScreen(HubPage):
 
     def compose(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
-        profile_options = [(item.display_name, item.id) for item in profiles]
+        profile_options = [
+            (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles
+        ]
         last_profile = next(iter(self.app.monitor_profiles))
         state = _workspace_request(self.app.data_root)
         preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
@@ -349,6 +354,7 @@ class DisplayCheckScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Edit / copy display profile", id="edit-profile")
                 yield Button("Launch display test", id="launch-geometry", variant="success")
+            yield Static("", id="geometry-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Display calibration — measure before using cycles/degree[/b]\n"
@@ -406,7 +412,6 @@ class DisplayCheckScreen(HubPage):
             yield Label("Measured bar length (mm, optional after the fullscreen check)")
             yield Input(value="", placeholder="e.g. 87.4", id="geometry-measured")
             yield Button("Record Measurement in Latest Diagnostic", id="record-geometry-measurement")
-            yield Static("", id="geometry-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -425,7 +430,10 @@ class DisplayCheckScreen(HubPage):
             return
         selector = self.query_one("#geometry-monitor", Select)
         current = selector.value
-        selector.set_options([(p.display_name,p.id) for p in self.app.monitor_profiles.values()])
+        selector.set_options([
+            (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id)
+            for p in self.app.monitor_profiles.values()
+        ])
         preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
         selector.value = preferred if preferred in self.app.monitor_profiles else current
         self._refresh_preview()
@@ -558,10 +566,12 @@ class DisplayCheckScreen(HubPage):
                     measured_length_mm=measured,
                 )
                 error = payload["measurement"]["error_percent"]
-                status.update(f"[green]Measurement recorded. Error: {error:+.2f}%[/green]")
+                status.update(f"[green]Measurement recorded and saved. Error: {error:+.2f}%[/green]")
+                self.app.notify(f"Measurement saved; error {error:+.2f}%.", timeout=7)
                 self._refresh_latest()
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
+                self.app.notify(str(exc), title="Calibration action failed", severity="error", timeout=8)
 
 
 class DataScreen(HubPage):
@@ -585,6 +595,7 @@ class DataScreen(HubPage):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            yield Static("", id="data-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Acquisition data[/b]\n"
@@ -640,7 +651,6 @@ class DataScreen(HubPage):
                 "staircase thresholds that share a condition. This is derived analysis only.",
                 classes="field-help",
             )
-            yield Static("", id="data-status")
         yield Footer()
 
     def _rows(self) -> list[dict[str, str]]:
@@ -849,6 +859,7 @@ class ExperimentConfigScreen(Screen):
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Review", id="review", variant="primary")
+            yield Static("", id="config-status")
         with VerticalScroll(id="config-body"):
             yield Static(
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n"
@@ -883,8 +894,8 @@ class ExperimentConfigScreen(Screen):
                 yield Select([(name, name) for name in presets], id="config-preset")
                 yield Button("Load preset", id="load-preset")
                 yield Input(placeholder="New preset name", id="preset-name")
-                yield Button("Save validated preset", id="save-preset")
-            yield Static("", id="config-status")
+                yield Button("Save new preset", id="save-preset")
+                yield Button("Update selected preset", id="update-preset")
         yield Footer()
 
     def _compose_field(self, field):
@@ -970,24 +981,67 @@ class ExperimentConfigScreen(Screen):
             except (ValueError, TypeError, KeyError) as exc:
                 message = str(exc)
             self.query_one("#step-status", Static).update(message)
+            self.query_one("#config-status", Static).update(message)
             return
-        if event.button.id in {"save-preset", "load-preset"}:
+        if event.button.id in {"save-preset", "load-preset", "update-preset"}:
             event.stop()
+            operation = event.button.id
+            verb = {"save-preset": "saved", "load-preset": "loaded",
+                    "update-preset": "updated"}[operation]
             try:
-                if event.button.id == "save-preset":
+                all_presets = load_presets(self.app.local_config_root, self.experiment.id)
+                if operation == "save-preset":
                     name = self.query_one("#preset-name", Input).value
-                    save_preset(self.app.local_config_root, name, self.experiment.id, self._collect())
+                    if name in all_presets:
+                        raise ValueError(
+                            f"Preset '{name}' already exists. Choose a new name or "
+                            "select it and press Update selected preset."
+                        )
+                    snapshot = self._collect()
+                    saved_path = save_preset(self.app.local_config_root, name, self.experiment.id, snapshot)
+                    loaded = load_presets(self.app.local_config_root, self.experiment.id).get(name)
+                    if loaded != snapshot:
+                        raise RuntimeError(f"Preset save could not be verified: {saved_path}")
                     selector = self.query_one("#config-preset", Select)
-                    selector.set_options([(name, name) for name in load_presets(self.app.local_config_root, self.experiment.id)])
+                    selector.set_options([(item, item) for item in load_presets(
+                        self.app.local_config_root, self.experiment.id
+                    )])
                     selector.value = name
+                elif operation == "update-preset":
+                    raw = self.query_one("#config-preset", Select).value
+                    if _is_blank_select_value(raw) or str(raw) not in all_presets:
+                        raise ValueError("Select an existing preset before updating it.")
+                    name = str(raw)
+                    snapshot = self._collect()
+                    from ..config.local import update_preset
+                    saved_path = update_preset(self.app.local_config_root, name,
+                                               self.experiment.id, snapshot)
+                    if load_presets(self.app.local_config_root, self.experiment.id).get(name) != snapshot:
+                        raise RuntimeError(f"Updated preset could not be verified: {saved_path}")
                 else:
-                    name = str(self.query_one("#config-preset", Select).value)
-                    values = self.experiment.normalise_values(load_presets(self.app.local_config_root, self.experiment.id)[name])
+                    raw = self.query_one("#config-preset", Select).value
+                    if _is_blank_select_value(raw):
+                        raise ValueError("Select a saved preset first.")
+                    name = str(raw)
+                    if name not in all_presets:
+                        raise ValueError("The selected preset no longer exists. Reload the screen.")
+                    values = self.experiment.normalise_values(all_presets[name])
+                    if self.experiment.monitor_validator:
+                        self.experiment.monitor_validator(
+                            values, self.app.monitor_profiles[self.monitor_profile_id]
+                        )
                     for field in self.experiment.fields:
-                        self.query_one("#" + _field_widget_id(field)).value = values[field.key] if field.kind == "choice" else str(values[field.key])
-                self.query_one("#config-status", Static).update("Preset saved / loaded.")
-            except (ValueError, KeyError, OSError) as exc:
-                self.query_one("#config-status", Static).update(str(exc))
+                        self.query_one("#" + _field_widget_id(field)).value = (
+                            values[field.key] if field.kind == "choice" else str(values[field.key])
+                        )
+                    self.remember_draft()
+                notice = f"Preset '{name}' {verb} successfully."
+                self.query_one("#config-status", Static).update(f"[green]{notice}[/green]")
+                self.app.notify(notice, title=f"Preset {verb}", timeout=6)
+            except (ValueError, KeyError, OSError, RuntimeError, TypeError) as exc:
+                message = f"Preset NOT {verb}: {exc}"
+                self.query_one("#config-status", Static).update(f"[red]{message}[/red]")
+                self.app.notify(message, severity="error", timeout=8)
             return
         button_id = event.button.id
         if button_id not in {"back", "review"}:
@@ -1013,6 +1067,7 @@ class ExperimentConfigScreen(Screen):
             self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
+            self.app.notify(str(exc), title="Review blocked: check inputs", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
 
@@ -1129,9 +1184,9 @@ class ReviewScreen(Screen):
                 yield Button("Back", id="back")
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
+            yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
-            yield Static("", id="review-status")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -1157,6 +1212,13 @@ class ReviewScreen(Screen):
                 else:
                     if self.request.participant_id == "synthetic_preview":
                         raise ValueError("Provide a real pseudonymous participant ID in the previous screen before human acquisition.")
+                    if current.origin == "local" and not current.display_binding:
+                        raise ValueError(
+                            "This saved local monitor profile is an UNBOUND DRAFT. "
+                            "Open Calibrate → Edit / copy display profile, Detect connected displays, "
+                            "select the physical monitor, save a new revision and verify its geometry "
+                            "before launching a human experiment."
+                        )
                     if (spec.id == "contrast_sensitivity"
                             and self.request.experiment_values.get("condition_unit") != "legacy_shader_radians"
                             and current.expected_resolution_px is None):
@@ -1170,6 +1232,7 @@ class ReviewScreen(Screen):
                     self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
+            self.app.notify(str(exc), title="Run not started", severity="error", timeout=10)
             _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
 
@@ -1295,7 +1358,7 @@ class PsyCoLabSetupApp(App):
             if preferred in allowed_profiles:
                 monitor_default = preferred
             monitor_options = [
-                (profile.display_name, profile.id) for profile in allowed_profiles.values()
+                (f"{profile.display_name} [{profile.id} · rev {profile.revision}]", profile.id) for profile in allowed_profiles.values()
             ]
         else:
             monitor_default = "__none__"
@@ -1323,6 +1386,7 @@ class PsyCoLabSetupApp(App):
             with Horizontal(classes="buttons"):
                 yield Button("Exit", id="exit")
                 yield Button("Configure Experiment", id="configure", variant="primary")
+            yield Static("", id="setup-status")
         with VerticalScroll(id="setup-body"):
             yield Static(
                 "[b]Configure an experiment — human or simulated[/b]\n"
@@ -1381,7 +1445,6 @@ class PsyCoLabSetupApp(App):
             )
             yield Static("", id="monitor-summary", classes="info-card")
 
-            yield Static("", id="setup-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -1416,7 +1479,10 @@ class PsyCoLabSetupApp(App):
             )
             return
         current = selector.value
-        selector.set_options([(item.display_name, item.id) for item in profiles.values()])
+        selector.set_options([
+            (f"{item.display_name} [{item.id} · rev {item.revision}]", item.id)
+            for item in profiles.values()
+        ])
         # Textual set_options resets the selection, including valid values.
         selector.value = current if current in profiles else next(iter(profiles))
         self._refresh_monitor_context()
@@ -1558,6 +1624,7 @@ class PsyCoLabSetupApp(App):
             )
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
+            self.notify(str(exc), title="Experiment setup blocked", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 

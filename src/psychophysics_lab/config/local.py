@@ -64,6 +64,37 @@ def save_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path
     atomic_write_json(path,{'schema_version':1,'experiment_id':exp,'values':values,'saved_utc':datetime.now(timezone.utc).isoformat()})
     return path
 
+def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path:
+    """Explicitly update one existing preset, retaining its previous JSON.
+
+    Saving a new preset and replacing the currently selected preset are
+    distinct UI operations. Every update archives the old document first,
+    allowing researchers to recover parameters used previously.
+    """
+    name = validate_path_component(name, label="preset")
+    experiment = validate_path_component(experiment_id, label="experiment")
+    base = (root / "presets" / experiment).resolve()
+    path = (base / f"{name}.json").resolve()
+    if not path.is_relative_to(root.resolve()):
+        raise ValueError("Preset path escapes local configuration.")
+    with file_lock(root / "presets.lock"):
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"Preset '{name}' does not exist. Use Save new preset.")
+        previous = json.loads(path.read_text(encoding="utf-8"))
+        if (previous.get("experiment_id") != experiment
+                or not isinstance(previous.get("values"), dict)):
+            raise ValueError("Existing preset has unexpected content; it was not overwritten.")
+        history_dir = base / ".history"
+        history_dir.mkdir(parents=True, exist_ok=True)
+        backup = history_dir / f"{name}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')}_{uuid4().hex[:8]}.json"
+        atomic_write_json(backup, previous)
+        atomic_write_json(path, {
+            "schema_version": 1, "experiment_id": experiment,
+            "values": values, "saved_utc": datetime.now(timezone.utc).isoformat(),
+        })
+    return path
+
+
 def load_presets(root: Path, experiment_id: str) -> dict[str, dict]:
     result={}
     directory=root/'presets'/validate_path_component(experiment_id,label='experiment')
