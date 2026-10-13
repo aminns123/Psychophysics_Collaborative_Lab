@@ -84,19 +84,19 @@ def test_review_guide_is_persistent_navigable_and_user_dismissible(tmp_path,monk
             await pilot.pause()
             guide=app.screen
             assert isinstance(guide,CalibrationGuideScreen)
-            assert "qualification" == GUIDE_STEPS[guide.stage_index][0] or "contrast" == GUIDE_STEPS[guide.stage_index][0]
+            assert GUIDE_STEPS[guide.stage_index][0] == "contrast"
             assert "Step " in str(guide.query_one("#guide-progress",Static).render())
             assert "not an automatic" in str(guide.query_one("#guide-content",Static).render()).lower() or "NOT" in str(guide.query_one("#guide-content",Static).render())
-            assert guide.query_one("#guide-next",Button).disabled
+            assert not guide.query_one("#guide-next",Button).disabled
             guide.query_one("#guide-prev",Button).press()
             await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
+            assert GUIDE_STEPS[guide.stage_index][0]=="timing"
             await pilot.press("left")
             await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="timing"
+            assert GUIDE_STEPS[guide.stage_index][0]=="luminance"
             await pilot.press("right")
             await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
+            assert GUIDE_STEPS[guide.stage_index][0]=="timing"
             guide.query_one("#guide-close",Button).press()
             await pilot.pause()
             assert app.screen is review
