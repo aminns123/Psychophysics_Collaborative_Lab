@@ -15,7 +15,7 @@ that any particular workstation meets scientific acceptance standards.
 | Luminance/photometry | digital commands [0,1], meter readings (cd/m²), meter/method/date/notes | Calibrate -> Luminance / grayscale patch; Bind/edit profile -> Create example JSON -> Load JSON from path -> Save | calibrated photometer/spectroradiometer, controlled conditions | grayscale command and OS brightness aren't cd/m²; import is unverified |
 | Timing | nominal refresh (Hz), diagnostic temporal frequency (Hz), independently measured photon onset/durations | Calibrate -> binary flicker / frame-sampled sine; profile timing status/provenance | photodiode, oscilloscope/data acquisition as appropriate | frame callbacks do not measure light onset |
 | Contrast/adaptive | background command [0,1), starting probe intensity [background,1], steps, staircase policy | Experiment -> Configure -> Display and contrast / Adaptive | reviewed scientific contrast definition and actual display command range | a safe starting value does not constrain later staircase steps |
-| Experiment qualification | registered experiment ID(s), e.g. `contrast_sensitivity` | Bind/edit profile -> Explicitly qualified experiments | lab sign-off of relevant checks for exact profile revision and experiment | neither geometry nor importing a JSON file automatically qualifies a monitor |
+| Experiment qualification | registered experiment name | Calibrate -> Review -> Check / qualify experiment | lab sign-off of relevant checks for exact profile revision and experiment | neither geometry nor importing a JSON file automatically qualifies a monitor |
 
 **Status meanings:** `manual_unverified` means input or readings are saved as
 a draft. `verified` means the operator explicitly asserts verification; the
@@ -219,3 +219,10 @@ automatically qualifies the monitor.
 
 For instrument and Windows pilot acceptance criteria see
 `docs/WINDOWS_HARDWARE_ACCEPTANCE.md`.
+
+## Finishing setup and deliberate laboratory review
+
+Page 6 now separates Finish setup, physical verification and registered
+experiment qualification. Finish returns to Experiment without requiring
+qualification or creating a profile revision. See
+[Calibration Review and completion](CALIBRATION_REVIEW_COMPLETION.md).
