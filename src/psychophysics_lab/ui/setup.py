@@ -1386,6 +1386,7 @@ class PsyCoLabSetupApp(App):
             with Horizontal(classes="buttons"):
                 yield Button("Exit", id="exit")
                 yield Button("Configure Experiment", id="configure", variant="primary")
+            yield Static("", id="setup-status")
         with VerticalScroll(id="setup-body"):
             yield Static(
                 "[b]Configure an experiment — human or simulated[/b]\n"
@@ -1444,7 +1445,6 @@ class PsyCoLabSetupApp(App):
             )
             yield Static("", id="monitor-summary", classes="info-card")
 
-            yield Static("", id="setup-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -1624,6 +1624,7 @@ class PsyCoLabSetupApp(App):
             )
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
+            self.notify(str(exc), title="Experiment setup blocked", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
 
