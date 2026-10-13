@@ -95,7 +95,10 @@ class ProfileScreen(Screen):
                         selector.value = Select.BLANK
                 elif len(self.displays) == 1:
                     selector.value = self.displays[0].index
-                status.update("Select the correct display; detection does not validate physical dimensions.")
+                notice = "Connected displays detected. Select the correct physical display; OS mode does not measure active width, height or eye distance."
+                status.update(notice)
+                self.query_one("#profile-save-feedback", Static).update(notice)
+                self.app.notify(notice, timeout=7)
             elif event.button.id == "profile-use-detected":
                 selection = self.query_one("#profile-binding", Select).value
                 selected = next((d for d in self.displays if d.index == selection), None)
@@ -107,7 +110,10 @@ class ProfileScreen(Screen):
                 if selected.refresh_hz:
                     self.query_one("#profile-refresh_rate_hz", Input).value = str(selected.refresh_hz)
                     self.detected_values["refresh_rate_hz"] = selected.refresh_hz
-                status.update("Copied OS mode values. Physical dimensions and viewing distance still require measurement. Unknown refresh was left unchanged.")
+                notice = "Copied detected pixel resolution/refresh into the draft. Measure physical display size and viewing distance, then Save local revision."
+                status.update(notice)
+                self.query_one("#profile-save-feedback", Static).update(notice)
+                self.app.notify(notice, timeout=7)
             elif event.button.id == "profile-save":
                 payload = self.profile.to_dict()
                 for key in ("id", "display_name", "notes", "calibration_method", "calibration_date", "calibration_notes"):
@@ -187,8 +193,18 @@ class ProfileScreen(Screen):
                 # Return to the parent page so the new profile is actually
                 # visible instead of leaving the obsolete reference selected.
                 self.app.pop_screen()
-        except (ValueError, TypeError, KeyError, StopIteration, OSError, RuntimeError, json.JSONDecodeError) as exc:
-            message = f"Display NOT saved: {exc}"
+        except Exception as exc:
+            action = event.button.id
+            operation = {
+                "profile-detect": "Display detection failed",
+                "profile-use-detected": "Detected values not copied",
+                "profile-save": "Display NOT saved",
+            }.get(action, "Display action failed")
+            message = f"{operation}: {exc}"
             status.update(message)
             self.query_one("#profile-save-feedback", Static).update(f"[red]{message}[/red]")
-            self.app.notify(message, title="Display profile not saved", severity="error", timeout=10)
+            self.app.notify(message, title=operation, severity="error", timeout=10)
+            if not isinstance(exc, (ValueError, TypeError, KeyError, StopIteration, OSError,
+                                    RuntimeError, json.JSONDecodeError)):
+                from .setup import _report_ui_exception
+                _report_ui_exception(self.app, exc, phase=f"tui_profile_{action}")
