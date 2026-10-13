@@ -95,6 +95,12 @@ def diagnostic_domains(screen):
         from ..core.luminance_session import validate_luminance_session
         validate_luminance_session(screen._luminance_request(),profile)
     except ValueError as exc: errors.append('Photometer sweep: '+str(exc))
+    from ..core.display_tests import temporal_plan
+    mode=str(screen.query_one('#cal-temporal-mode',Select).value)
+    domains['geometry-temporal']=f"Finite > 0 and {'<' if mode=='temporal_sine' else '≤'} {profile.refresh_rate_hz/2:g} Hz for {mode}."
+    try: temporal_plan(profile.refresh_rate_hz,float(screen.query_one('#geometry-temporal',Input).value),mode)
+    except ValueError as exc:
+        screen.query_one('#geometry-temporal',Input).add_class('invalid-input'); errors.append(str(exc))
     show_domains(screen,domains,errors)
 
 

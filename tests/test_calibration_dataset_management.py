@@ -368,3 +368,55 @@ def test_focused_verification_returns_with_current_instrument_and_noop_save(tmp_
             screen.query_one('#dataset-save',Button).press(); await pilot.pause()
             assert screen.profile.revision==revision and 'No changes to save' in str(screen.query_one('#dataset-feedback',Static).render())
     asyncio.run(scenario())
+
+
+def test_invalid_low_probe_still_shows_current_allowed_range():
+    p=profile(); reports,errors=experiment_constraints(CSF_SPEC,p,values()|{'Background_Screen_intensity':.25,'starting_probe_intensity':.1})
+    assert '0.250–0.625' in reports['starting_probe_intensity']['domain']
+    assert reports['starting_probe_intensity']['error']
+
+
+def test_changed_older_file_adds_only_new_observations(tmp_path):
+    p=profile(); document=example_luminance_document(p)
+    document['measurements']=[{'screen_intensity':.25,'luminance_cdm2':10,'readings_cdm2':[9,10,11]}]
+    path=tmp_path/'growing.json'; path.write_text(json.dumps(document))
+    rows,_=import_observations(path,p,config_root(ROOT))
+    data=merge_observations(raw_dataset(p),rows,mode='replace_selected',selected_command=.25,confirmed=True)
+    document['measurements'][0].update(luminance_cdm2=10.5,readings_cdm2=[9,10,11,12]); path.write_text(json.dumps(document))
+    new,_=import_observations(path,p,config_root(ROOT))
+    data=merge_observations(data,new)
+    result=next(r for r in summary(data) if r['screen_intensity']==.25)
+    assert result['n']==4 and result['luminance_cdm2']==10.5
+
+
+def test_outer_app_presentation_failure_reports_only_to_test_root(tmp_path,monkeypatch):
+    import psychophysics_lab.app as launcher
+    from psychophysics_lab.ui import setup
+    from psychophysics_lab.core import presentation_testing
+    root=tmp_path/'repo'; root.mkdir(); human=tmp_path/'human'; human.mkdir()
+    sentinel=human/'real.tsv'; sentinel.write_bytes(b'KEEP')
+    test_root=config_root(ROOT).parent/'psycolab_presentation_tests'; test_root.mkdir(exist_ok=True)
+    (test_root/MARKER).write_text(json.dumps({'human_acquisition_allowed':False,'data_kind':'uncalibrated_presentation_test'}))
+    action=PresentationTestRequest(SetupRequest('H001','new',CSF_SPEC.id,'fixture',values()))
+    calls=[]; prompts=[]
+    def tui(**kwargs):
+        prompts.append(kwargs); return action if len(prompts)==1 else None
+    def fail(*args,**kwargs): raise RuntimeError('mocked presentation failure')
+    monkeypatch.setattr(launcher,'find_repo_root',lambda:root)
+    monkeypatch.setattr(launcher,'default_data_root',lambda _:human)
+    monkeypatch.setattr(launcher,'preferred_data_root',lambda _r,default:default)
+    monkeypatch.setattr(setup,'run_setup_tui',tui)
+    monkeypatch.setattr(presentation_testing,'run_presentation_test',fail)
+    monkeypatch.setattr(launcher,'write_crash_report',lambda *args,**kwargs:calls.append(kwargs) or test_root/'fixture.log')
+    assert launcher._main([])==0
+    assert calls[0]['data_root']==test_root and calls[0]['phase']=='uncalibrated_presentation_test'
+    assert 'failed' in prompts[1]['simulation_summary'] and sentinel.read_bytes()==b'KEEP'
+
+
+def test_manifest_does_not_certify_legacy_fake_verified_flag(tmp_path):
+    from psychophysics_lab.core.runner import _manifest_payload
+    p=replace(profile(),calibration_status='verified',calibration_method='fake pilot')
+    request=SetupRequest('presentation_test_fixture','new',CSF_SPEC.id,p.id,values())
+    manifest=_manifest_payload(request=request,setup={},profile=p.to_dict(),run_dir=tmp_path/'run_001',data_root=tmp_path,repo_root=ROOT,grouping_parts=(),run_uuid='fixture',status='configured')
+    assert manifest['calibration']['has_encoded_luminance_mapping']
+    assert not manifest['calibration']['has_verified_luminance_mapping']

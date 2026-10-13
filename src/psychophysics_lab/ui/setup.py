@@ -779,7 +779,7 @@ class DisplayCheckScreen(HubPage):
         self.query_one("#latest-geometry", Static).update(text)
 
     def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id and event.select.id.startswith("geometry-"):
+        if event.select.id and (event.select.id.startswith("geometry-") or event.select.id=='cal-temporal-mode'):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()

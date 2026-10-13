@@ -245,6 +245,7 @@ def _manifest_payload(
     run_uuid: str,
     status: str,
 ) -> dict:
+    from ..config.monitor import _profile_from_dict
     relative_run_path = run_dir.relative_to(data_root).as_posix()
     return {
         "schema_version": 3,
@@ -274,8 +275,7 @@ def _manifest_payload(
             "status": profile.get("calibration_status", "unverified"),
             "has_encoded_luminance_mapping": bool(profile.get("luminance_calibration")),
             "has_verified_luminance_mapping": (
-                str(profile.get("calibration_status", "")).strip().lower() == "verified"
-                and bool(profile.get("luminance_calibration"))
+                _profile_from_dict(profile).has_verified_luminance_mapping
             ),
             "notes": profile.get("calibration_notes", ""),
         },

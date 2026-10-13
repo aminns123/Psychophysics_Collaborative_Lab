@@ -150,9 +150,11 @@ def import_observations(path, profile, root):
         import statistics
         if not math.isclose(statistics.fmean(r['luminance_cdm2'] for r in checked),float(row['luminance_cdm2']),rel_tol=1e-8,abs_tol=1e-8):
             raise ValueError('Imported mean contradicts raw readings; correct the source file before importing.')
+        occurrences={}
         for i, r in enumerate(checked):
             r['observation_id']=row.get('observation_ids',[None]*len(samples))[i] or content_hash({'source_session':raw.get('source_luminance_session_uuid','legacy_import'),
-                'command':r['screen_intensity'],'samples':samples,'index':i})
+                'command':r['screen_intensity'],'value':r['luminance_cdm2'],'occurrence':occurrences.get(r['luminance_cdm2'],0)})
+            occurrences[r['luminance_cdm2']]=occurrences.get(r['luminance_cdm2'],0)+1
             r['data_kind']='synthetic' if kind=='synthetic' else row.get('reading_data_kinds',[kind]*len(samples))[i]
             r['recorded_utc']=row.get('reading_recorded_utc',[None]*len(samples))[i]
             rows.append(r)

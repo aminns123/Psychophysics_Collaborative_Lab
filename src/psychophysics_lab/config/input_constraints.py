@@ -20,10 +20,14 @@ def experiment_constraints(spec,profile,raw):
         reports['timeT']['domain']='Allowed: whole milliseconds ≥ 0; 0 is self-paced response.'
         try:
             from ..stimuli.contrast_validation import starting_contrast_limits
-            limits=starting_contrast_limits(parsed['Background_Screen_intensity'],parsed['starting_probe_intensity'],parsed['logUNIT_UP'])
+            limits=starting_contrast_limits(parsed['Background_Screen_intensity'],parsed['Background_Screen_intensity'])
             reports['starting_probe_intensity']['domain']=f"Allowed range: {limits['minimum_starting']:.3f}–{limits['maximum_starting']:.3f} (current shader)"
             reports['starting_probe_intensity']['classification']='multiple values: background + shader'
-            if not limits['initial_valid']: reports['starting_probe_intensity']['error']='Outside the current shader range. Retain and correct the entered value; no clamping.'
+            if 'starting_probe_intensity' in parsed:
+                try: current=starting_contrast_limits(parsed['Background_Screen_intensity'],parsed['starting_probe_intensity'])
+                except ValueError as exc: reports['starting_probe_intensity']['error']=str(exc)
+                else:
+                    if not current['initial_valid']: reports['starting_probe_intensity']['error']='Outside the current shader range. Retain and correct the entered value; no clamping.'
         except (ValueError,KeyError): pass
         if 'Max_monitor_Luminance' in parsed:
             reports['Background_Luminance']['domain']=f"Allowed: ≥ 0 and < {parsed['Max_monitor_Luminance']:g} cd/m²; verified mapping requires the measured pair."
