@@ -55,6 +55,7 @@ class VirtualObserverOptionsScreen(Screen):
                 yield Button("Back", id="virtual-back")
                 yield Button("Run virtual experiment", id="virtual-run", variant="success",
                              disabled=not bool(self.scenarios))
+            yield Static("", id="virtual-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Virtual observer — same configured experiment[/b]\n"
@@ -81,7 +82,6 @@ class VirtualObserverOptionsScreen(Screen):
                         yield Label(name.replace("_", " "))
                         yield Input(value=json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value),
                                     id=f"virtual-observer-{i}-{j}")
-            yield Static("", id="virtual-status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -133,4 +133,5 @@ class VirtualObserverOptionsScreen(Screen):
             try:
                 self.app.exit(self._launch_request())
             except (ValueError, TypeError, OverflowError) as exc:
-                self.query_one("#virtual-status", Static).update(f"[red]{exc}[/red]")
+                self.query_one("#virtual-status", Static).update(f"[red]Virtual run NOT started: {exc}[/red]")
+                self.app.notify(str(exc), title="Virtual run not started", severity="error", timeout=8)
