@@ -241,7 +241,7 @@ class ProfileScreen(Screen):
                 self.query_one("#profile-qualified_experiments", Input).value = ""
                 warnings = draft.get("warnings", [])
                 message = (
-                    f"Loaded {len(draft['luminance_calibration'])} real command/luminance "
+                    f"Loaded {len(draft['luminance_calibration'])} entered command/luminance "
                     "pairs into this UNSAVED, UNVERIFIED draft. Click Save profile / "
                     "continue calibration. This completes the measurement stage, not "
                     "laboratory certification. Existing experiment qualification "
