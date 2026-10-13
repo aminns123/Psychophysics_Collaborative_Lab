@@ -430,6 +430,8 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="", placeholder="e.g. 99.5", id="geometry-measured")
                 yield Button("Record measurement in latest diagnostic",
                              id="record-geometry-measurement")
+                yield Button("Review / verify geometry in profile editor",
+                             id="edit-geometry-profile")
                 with Collapsible(title="Further help · Worked example", collapsed=True):
                     yield Static(
                         "Set size units to Physical length (mm), requested length to 100, "
@@ -518,6 +520,8 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="7.5", id="geometry-temporal")
                 yield Button("Launch fullscreen timing diagnostic", id="launch-temporal",
                              variant="primary")
+                yield Button("Review / verify physical timing in profile editor",
+                             id="edit-timing-profile")
                 with Collapsible(title="Further help · What is verified?", collapsed=True):
                     yield Static(
                         "Check requested versus realised frame-cycle frequencies and the "
@@ -554,6 +558,9 @@ class DisplayCheckScreen(HubPage):
 
     def _refresh_stage_status(self) -> None:
         if not self.is_mounted:
+            return
+        selected = self.query_one("#geometry-monitor", Select).value
+        if _is_blank_select_value(selected) or str(selected) not in self.app.monitor_profiles:
             return
         profile = self._profile()
         states = stage_states(profile, self.app.local_config_root)
@@ -751,10 +758,17 @@ class DisplayCheckScreen(HubPage):
             self._refresh_latest()
             self._refresh_stage_status()
             return
-        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile"}:
+        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile",
+                                      "edit-geometry-profile", "edit-timing-profile"}:
             event.stop()
             from .profiles import ProfileScreen
-            self.app.push_screen(ProfileScreen(profile=self._profile()))
+            focus = {
+                "edit-luminance-profile": "profile-luminance-path",
+                "edit-review-profile": "profile-qualified_experiments",
+                "edit-geometry-profile": "profile-geometry_status",
+                "edit-timing-profile": "profile-timing_status",
+            }.get(event.button.id)
+            self.app.push_screen(ProfileScreen(profile=self._profile(), focus_field=focus))
             return
         status = self.query_one("#geometry-status", Static)
         if event.button.id == "launch-luminance-session":
@@ -806,7 +820,7 @@ class DisplayCheckScreen(HubPage):
                         note += f" Windows could not open it automatically ({exc}); copy and open the displayed path in your editor."
                 else:
                     note += " Open the displayed path using your local JSON editor."
-                status.update(f"[green]{note}[/green]")
+                status.update(f"[yellow]{note}[/yellow]")
                 self.app.notify("Editable luminance JSON prepared; measurements remain unverified.", timeout=8)
             except (OSError, ValueError) as exc:
                 status.update(f"[red]Could not open luminance JSON: {exc}[/red]")
