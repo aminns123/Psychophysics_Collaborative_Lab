@@ -4,7 +4,8 @@ import math
 from ..stimuli.geometry import resolve_white_bar
 
 TESTS = (("Size / ruler bar", "size"), ("Position / ruler bar", "position"),
-         ("Spatial sine grating", "spatial"), ("Binary flicker (constant frame cycle)", "temporal_binary"),
+         ("Spatial sine grating", "spatial"), ("Luminance / grayscale measurement patch", "luminance_patch"),
+         ("Binary flicker (constant frame cycle)", "temporal_binary"),
          ("Frame-sampled sine modulation", "temporal_sine"))
 
 def finite(value, name, *, positive=False):
@@ -86,6 +87,17 @@ def resolve_test(profile, request, resolution):
         plan["spatial"] = {"requested_cycles_per_degree": freq, "minimum_pixels_per_cycle": minimum_pixels_per_cycle,
                            "cycles_across_patch": freq * (high_angle - low_angle),
                            "phase_semantics": "Sine phase uses angular position atan((pixel-centre - screen-centre) * metres-per-pixel / distance), not a linear degrees-per-pixel approximation."}
+    if request.test_kind == "luminance_patch":
+        command = finite(request.digital_command, "Photometry digital command")
+        if not 0 <= command <= 1:
+            raise ValueError("Photometry digital command must be within [0, 1].")
+        plan["luminance_patch"] = {
+            "digital_command": command,
+            "patch_rgb": [command, command, command],
+            "patch_location": "centred rectangle on black surround",
+            "measurement": "requires a real photometer (cd/m²), not obtained by PsyCoLab",
+            "photometry_verified": False,
+        }
     if request.test_kind.startswith("temporal_"):
         plan["temporal"] = temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind)
     # 0 means the researcher ends the display test with ESC or ENTER.
