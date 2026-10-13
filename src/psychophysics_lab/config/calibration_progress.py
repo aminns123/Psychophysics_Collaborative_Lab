@@ -36,7 +36,8 @@ def calibration_progress(profile, root: Path):
     manual = all(profile.measurement_sources.get(k) == "manual" for k in
                  ("physical_width_m", "physical_height_m", "viewing_distance_m"))
     bound = profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px) and manual
-    result = {"bind": {"ready": bound, "state": "complete" if bound else "incomplete",
+    result = {"bind": {"ready": bound, "completed": bound, "verified": False,
+                       "state": "complete" if bound else "incomplete",
                        "message": "Saved binding, pixel resolution and manually entered physical dimensions" if bound else "Bind the actual display and enter measured screen size/distance"}}
     for stage in ("geometry", "spatial", "timing"):
         rows = evidence[stage]
@@ -67,7 +68,11 @@ def calibration_progress(profile, root: Path):
             message = "Latest attempt failed; rerun and inspect diagnostic error" if state == "failed" else "Earlier evidence is stale or invalid for this physical setup; run a fresh test"
         if valid and rows and rows[0]["payload"].get("status") == "error":
             message += "; latest attempt failed, prior compatible evidence retained"
-        result[stage] = {"ready": ready, "state": state, "message": message,
+        # Completion means the required workflow observation was SAVED.
+        # Readiness remains a separate, stricter physical verification flag.
+        completed = bool(measurements) if stage == "geometry" else bool(valid)
+        result[stage] = {"ready": ready, "completed": completed,
+                         "verified": ready, "state": state, "message": message,
                          "software_completed": bool(valid), "measurement_recorded": bool(measurements),
                          "verification_declared": declaration == "verified",
                          "reports": [row["path"] for row in valid]}
@@ -80,14 +85,19 @@ def calibration_progress(profile, root: Path):
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
                 if diagnostic_matches_profile(dict(payload, status="completed"), profile) and payload.get("readings"):
-                    session_message = "Photometer readings saved locally; complete method/notes, import means and save profile"
+                    session_message = "Photometer readings saved locally; import the means and Save profile. Method/date/notes are optional."
                     break
             except (OSError, ValueError, TypeError):
                 continue
     ready = bound and profile.has_verified_luminance_mapping
-    result["luminance"] = {"ready": ready, "state": "complete" if ready else "awaiting_review" if measured else "awaiting_import" if session_message else "awaiting_measurement",
-                           "message": "Measured photometer mapping explicitly verified" if ready else "Measured mapping saved; laboratory review and explicit verification required" if measured else session_message or "Genuine photometer observations required; synthetic demonstration data cannot be imported"}
+    result["luminance"] = {"ready": ready, "completed": measured,
+                           "verified": bool(profile.has_verified_luminance_mapping),
+                           "state": "complete" if ready else "awaiting_review" if measured else "awaiting_import" if session_message else "awaiting_measurement",
+                           "message": "Saved photometer mapping explicitly verified" if ready else
+                           "Real intensity / cd/m² values SAVED. Measurement stage finished; physical certification remains unverified (optional method/date/notes do not block saving)." if measured else
+                           session_message or "Enter at least two real intensity / cd/m² pairs, import and save. Instrument details are optional."}
     ready = bound and bool(profile.qualified_experiments)
-    result["review"] = {"ready": ready, "state": "complete" if ready else "awaiting_review",
+    result["review"] = {"ready": ready, "completed": ready, "verified": ready,
+                        "state": "complete" if ready else "awaiting_review",
                         "message": f"Explicit qualification for: {', '.join(profile.qualified_experiments)}; experiment preflight remains authoritative" if ready else "Review experiment requirements before explicitly qualifying this display"}
     return result
