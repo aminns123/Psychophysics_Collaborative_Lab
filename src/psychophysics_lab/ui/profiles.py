@@ -226,7 +226,7 @@ class ProfileScreen(Screen):
                     "continue calibration. This completes the measurement stage, not "
                     "laboratory certification. Existing experiment qualification "
                     "has been cleared pending review."
-                    + ("\\nOptional metadata warnings: " + "; ".join(warnings) if warnings else "")
+                    + ("\nOptional metadata warnings: " + "; ".join(warnings) if warnings else "")
                 )
                 status.update(message)
                 self.query_one("#profile-luminance-feedback", Static).update(message)
