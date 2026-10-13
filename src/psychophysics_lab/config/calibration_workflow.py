@@ -48,7 +48,9 @@ def import_and_save_luminance(profile, local_config_root: Path, json_path: str):
     from .local import save_profile
     from .monitor import _profile_from_dict
 
-    draft = read_luminance_measurements(json_path, profile)
+    draft = read_luminance_measurements(
+        json_path, profile, local_config_root=local_config_root
+    )
     target_id, _ = template_identity(profile)
     fields = profile.to_dict()
     fields.update({
