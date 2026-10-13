@@ -124,12 +124,29 @@ class ProfileScreen(Screen):
                 "run headless simulations and inspect geometry diagnostics.",
                 classes="info-card",
             )
+            if p.luminance_calibration:
+                yield Static(
+                    f"[green]Already saved in this profile: {len(p.luminance_calibration)} "
+                    f"intensity / cd/m² pairs (revision {p.revision}).[/green] "
+                    "If these are the readings you want, there is NO need to load "
+                    "an older JSON again. Click Back to view calibration progress, "
+                    "or Save profile / continue calibration after making edits. "
+                    "Saved pairs are not automatically physically verified.",
+                    classes="info-card",
+                )
+            else:
+                yield Static(
+                    "[yellow]No saved intensity / luminance pairs on this profile yet.[/yellow] "
+                    "Import a completed JSON, or enter pairs in the editable draft "
+                    "list below, then Save profile / continue calibration.",
+                    classes="info-card",
+                )
             yield Button("Create / open example luminance JSON", id="profile-luminance-example")
             yield Label("Path to completed luminance measurement JSON file")
             yield Input(value="", placeholder="C:\\...\\luminance_...json", id="profile-luminance-path")
             yield Button("Load measurements into draft (not yet saved)", id="profile-luminance-load")
             yield Static("", id="profile-luminance-feedback")
-            yield Label("Current draft measurements (JSON list of screen_intensity / luminance_cdm2)")
+            yield Label("Measurement values in this profile (editing requires Save; no need to re-import if already populated)")
             yield Input(value=json.dumps(p.to_dict()["luminance_calibration"]), id="profile-luminance")
             yield Static(
                 "[b]STEP 4 — Timing, provenance and experiment qualification[/b]\n"
