@@ -336,7 +336,7 @@ def test_diagnostic_interrupt_is_recorded(tmp_path, monkeypatch):
 def test_concurrent_profile_edits_keep_one_revision_and_reject_stale_writer(tmp_path):
     import subprocess
     saved = save_profile(config_root(ROOT), profile(id='race_profile',origin='local'))
-    script = "from pathlib import Path; import sys; from psychophysics_lab.config.monitor import load_monitor_profiles; from psychophysics_lab.config.local import config_root,save_profile; from psychophysics_lab.paths import find_repo_root; r=find_repo_root(); p=load_monitor_profiles(r)['race_profile']; save_profile(config_root(r),p,expected_revision=1)"
+    script = "from pathlib import Path; import sys; from psychophysics_lab.config.monitor import load_monitor_profiles; from psychophysics_lab.config.local import config_root,save_profile; from psychophysics_lab.paths import find_repo_root; r=find_repo_root(); p=load_monitor_profiles(r)['race_profile']; from dataclasses import replace; save_profile(config_root(r),replace(p,notes='competing explicit edit'),expected_revision=1)"
     jobs = [subprocess.Popen([sys.executable,'-B','-c',script],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE) for _ in range(2)]
     results = []
     for job in jobs:

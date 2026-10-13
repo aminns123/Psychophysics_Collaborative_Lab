@@ -6,6 +6,11 @@ import math
 from ..data.identifiers import validate_path_component
 
 
+def photometry_is_test_data(profile) -> bool:
+    return any(marker in profile.calibration_method.lower()
+               for marker in ("fake", "demo", "simulated", "synthetic"))
+
+
 @dataclass(frozen=True)
 class LuminanceCalibrationPoint:
     """One measured mapping between a digital display command and luminance."""
@@ -106,6 +111,7 @@ class MonitorProfile:
         return (
             self.calibration_status.strip().lower() == "verified"
             and bool(self.luminance_calibration)
+            and not photometry_is_test_data(self)
         )
 
     def screen_intensity_for_luminance(

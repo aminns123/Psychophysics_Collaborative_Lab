@@ -1,0 +1,116 @@
+"""Focused laboratory declarations and registered experiment qualification."""
+from textual.app import ComposeResult
+from textual.screen import Screen
+from textual.containers import Vertical, VerticalScroll, Horizontal
+from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Static, Label
+
+from ..config.calibration_review import save_verification, qualify_experiment
+from ..config.preflight import qualification_checks
+from ..experiments.registry import list_experiments, get_experiment
+
+
+class PhysicalVerificationScreen(Screen):
+    def __init__(self, profile):
+        super().__init__()
+        self.profile = profile
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id='fixed-shell'):
+            yield Header()
+            with Horizontal(classes='buttons'):
+                yield Button('Back to Review', id='verification-back')
+                yield Button('Save verification declarations', id='verification-save', variant='primary')
+            yield Static('', id='verification-feedback', markup=False)
+        with VerticalScroll(classes='page-body'):
+            yield Static('Physical verification is an explicit laboratory declaration. Saved software tests and a green setup page do not measure emitted light or photon timing. Changing verification does not qualify an experiment.')
+            for key, label, explanation in (
+                ('geometry_status','Geometry','Review the compatible ruler measurement, measured active dimensions and eye distance against your laboratory criteria.'),
+                ('calibration_status','Photometry','Use actual photometer observations. Test/fake data cannot be verified. Notes are optional for setup completion.'),
+                ('timing_status','Photon timing','Use independently recorded photodiode or equivalent evidence. OS refresh and software flips are insufficient.'),
+            ):
+                yield Label(label)
+                yield Static(explanation)
+                yield Select([('Unverified','unverified'),('Measurements entered; unverified','manual_unverified'),('Verified — manually declared','verified')],value=getattr(self.profile,key),allow_blank=False,id='verification-'+key)
+            yield Label('Actual photometer instrument / method (needed to declare photometry verified)')
+            yield Input(value=self.profile.calibration_method,id='verification-method')
+            yield Checkbox('I independently reviewed the changed Verified declarations with actual instruments and the laboratory criteria; supporting evidence is retained by the laboratory.',id='verification-reviewed')
+        yield Footer()
+
+    def on_button_pressed(self,event):
+        if event.button.id=='verification-back':
+            self.app.pop_screen()
+        elif event.button.id=='verification-save':
+            try:
+                result=save_verification(self.profile,self.app.local_config_root,
+                    **{key:str(self.query_one('#verification-'+key,Select).value) for key in ('geometry_status','calibration_status','timing_status')},
+                    calibration_method=self.query_one('#verification-method',Input).value,
+                    reviewed=self.query_one('#verification-reviewed',Checkbox).value)
+                self.app.reload_profiles()
+                if self.app.monitor_profiles.get(result.id)!=result:
+                    raise RuntimeError('Saved verification could not be reloaded. Inspect local configuration.')
+                self.app.notify('No changes to save.' if result.revision==self.profile.revision else 'Verification declarations saved. Experiment qualification remains separate.',timeout=10)
+                self.app.pop_screen()
+            except (OSError,ValueError,RuntimeError) as exc:
+                self.query_one('#verification-feedback',Static).update(str(exc))
+
+
+class ExperimentQualificationScreen(Screen):
+    def __init__(self,profile):
+        super().__init__()
+        self.profile=profile
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id='fixed-shell'):
+            yield Header()
+            with Horizontal(classes='buttons'):
+                yield Button('Back to Review',id='qualification-back')
+                yield Button('Explicitly qualify selected experiment',id='qualification-save',variant='primary')
+            yield Static('',id='qualification-feedback',markup=False)
+        with VerticalScroll(classes='page-body'):
+            yield Static('Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
+            specs=list_experiments()
+            yield Select([(spec.display_name,spec.id) for spec in specs],value=specs[0].id,allow_blank=False,id='qualification-experiment')
+            yield Static('',id='qualification-checks',markup=False)
+            yield Checkbox('The laboratory reviewed this experiment on this display, including its stimulus/protocol requirements and supporting physical evidence.',id='qualification-reviewed')
+        yield Footer()
+
+    def _spec_values(self):
+        spec=get_experiment(str(self.query_one('#qualification-experiment',Select).value))
+        # Use an actual existing draft, never invent scientific parameter values.
+        candidates=[values for (_,experiment,profile),values in self.app.config_drafts.items() if experiment==spec.id and profile==self.profile.id]
+        return spec,candidates[-1] if candidates else None
+
+    def _refresh(self):
+        if not self.is_mounted: return
+        spec,values=self._spec_values()
+        checks=qualification_checks(spec,self.profile,values)
+        text='\n\n'.join(('PASS' if item['passed'] else 'BLOCKED')+': '+item['name']+'\n'+item['detail'] for item in checks)
+        if values is None:
+            text+='\n\nNo experiment parameter draft is available. Qualification covers declared hardware requirements; configure and Review the experiment before acquisition.'
+        if spec.id in self.profile.qualified_experiments:
+            text+='\n\nQualification is already declared; unchanged Save will not create a revision.'
+        self.query_one('#qualification-checks',Static).update(text)
+        self.query_one('#qualification-save',Button).disabled=not all(item['passed'] for item in checks)
+
+    def on_mount(self): self._refresh()
+
+    def on_select_changed(self,event):
+        if event.select.id=='qualification-experiment':
+            self.query_one('#qualification-reviewed',Checkbox).value=False
+            self._refresh()
+
+    def on_button_pressed(self,event):
+        if event.button.id=='qualification-back':
+            self.app.pop_screen()
+        elif event.button.id=='qualification-save':
+            try:
+                spec,values=self._spec_values()
+                result=qualify_experiment(self.profile,self.app.local_config_root,spec,
+                    reviewed=self.query_one('#qualification-reviewed',Checkbox).value,values=values)
+                self.app.reload_profiles()
+                if self.app.monitor_profiles.get(result.id)!=result:
+                    raise RuntimeError('Saved qualification could not be reloaded.')
+                self.app.notify('No changes to save.' if result.revision==self.profile.revision else f'Explicit qualification saved for {spec.display_name}.',timeout=10)
+                self.app.pop_screen()
+            except (OSError,ValueError,RuntimeError) as exc:
+                self.query_one('#qualification-feedback',Static).update(str(exc))

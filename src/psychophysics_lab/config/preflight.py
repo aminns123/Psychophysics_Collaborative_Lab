@@ -9,12 +9,48 @@ def compatible(spec, profile) -> bool:
     return not spec.compatible_monitor_profiles or profile.id in spec.compatible_monitor_profiles or spec.id in profile.qualified_experiments
 
 
+def qualification_checks(spec, profile, values=None):
+    """Shared experiment-owned laboratory requirements, not automatic certification.
+
+    Stored Verified flags are researcher declarations. Configuration checks
+    remain separate and use the same validator as final acquisition preflight.
+    """
+    from .models import photometry_is_test_data
+    checks = [{"name": "Saved physical display binding", "passed": profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px),
+               "detail": "Save a local bound display and expected pixel resolution on Display."}]
+    for key in spec.calibration_requirements:
+        if key == "geometry":
+            passed = profile.geometry_status == "verified" and all(profile.measurement_sources.get(field) == "manual" for field in ("physical_width_m","physical_height_m","viewing_distance_m"))
+            detail = "Review measured screen dimensions, eye distance and ruler error; declare geometry verified under laboratory criteria."
+        elif key == "luminance":
+            passed = len(profile.luminance_calibration) >= 2 and profile.has_verified_luminance_mapping and bool(profile.calibration_method.strip()) and not photometry_is_test_data(profile)
+            detail = "Physical photometry needs genuine saved observations and explicit verification. Fake/synthetic methods cannot qualify human acquisition."
+        else:
+            passed = profile.timing_status == "verified"
+            detail = "Review independent photon-timing instrument evidence and explicitly declare timing verified. Software flips are insufficient."
+        checks.append({"name": key.title() + " laboratory verification (manually declared)", "passed": passed, "detail": detail})
+    if values is not None:
+        from .models import SetupRequest
+        try:
+            validate_setup(SetupRequest("calibration_review", "new", spec.id, profile.id, values), spec, profile, mode="configuration")
+        except (ValueError, TypeError, KeyError) as exc:
+            checks.append({"name": "Current experiment configuration", "passed": False, "detail": str(exc)})
+        else:
+            checks.append({"name": "Current experiment configuration", "passed": True, "detail": "Current settings validate; acquisition still checks response/range safeguards."})
+    return checks
+
+
 def human_blockers(spec, profile, values=None):
     reasons = []
     if not compatible(spec, profile):
         reasons.append("This experiment/profile combination has not been qualified. Use Calibrate to complete laboratory checks and explicitly record experiment qualification; headless simulation remains available.")
     if profile.origin == "local" and not profile.display_binding:
         reasons.append("This local profile is an UNBOUND DRAFT. Calibrate → Edit / copy display profile → Detect connected displays → select monitor → Save local revision.")
+    from .models import photometry_is_test_data
+    if "luminance" in spec.calibration_requirements and photometry_is_test_data(profile):
+        reasons.append("Fake/synthetic photometry cannot support human acquisition.")
+    if profile.origin == "local":
+        reasons.extend(check["detail"] for check in qualification_checks(spec, profile) if not check["passed"])
     if spec.id == "contrast_sensitivity" and values:
         if values.get("condition_unit") != "legacy_shader_radians" and not profile.expected_resolution_px:
             reasons.append("Physical cpd acquisition needs expected fullscreen pixel resolution. Save it in Calibrate and check the framebuffer.")

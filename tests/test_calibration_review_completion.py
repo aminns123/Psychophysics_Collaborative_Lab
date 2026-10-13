@@ -1,0 +1,231 @@
+"""Researcher completion/review workflows; all evidence is isolated fixture data."""
+import asyncio
+from dataclasses import replace
+import json
+from pathlib import Path
+import pytest
+from textual.widgets import Button, Checkbox, Input, Select, Static
+
+from psychophysics_lab.config.local import config_root, save_profile, content_hash, preferences
+from psychophysics_lab.config.monitor import load_monitor_profiles
+from psychophysics_lab.config.models import LuminanceCalibrationPoint, SetupRequest
+from psychophysics_lab.config.calibration_progress import calibration_progress
+from psychophysics_lab.config.calibration_review import qualify_experiment, save_verification
+from psychophysics_lab.config.preflight import validate_setup, qualification_checks
+from psychophysics_lab.config.calibration_workflow import import_and_save_luminance
+from psychophysics_lab.config.calibration_templates import example_luminance_document
+from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, DisplayCheckScreen
+from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
+
+ROOT=Path(__file__).resolve().parents[1]
+
+def fixture_profile(*, verified=False, observations=True):
+    root=config_root(ROOT)
+    reference=load_monitor_profiles(ROOT)['legacy_reference_display']
+    p=save_profile(root,replace(reference,id='review_lab',origin='local',
+        expected_resolution_px=(1920,1080),display_binding={'device_id':'FIXTURE','index':0,'x':0,'y':0,'width':1920,'height':1080},
+        measurement_sources={key:'manual' for key in ('physical_width_m','physical_height_m','viewing_distance_m')},
+        luminance_calibration=tuple(LuminanceCalibrationPoint(command,luminance) for command,luminance in zip((0,.25,.5,.75,1),(.3,10,49,100,200))),
+        calibration_method='Laboratory meter fixture' if verified else '',
+        geometry_status='verified' if verified else 'manual_unverified',
+        calibration_status='verified' if verified else 'manual_unverified',
+        timing_status='verified' if verified else 'manual_unverified',qualified_experiments=()))
+    if observations:
+        for kind in ('size','spatial','temporal_binary'):
+            folder=root/'diagnostics'/'display_geometry'/p.id/kind
+            folder.mkdir(parents=True)
+            (folder/'geometry_check.json').write_text(json.dumps({'status':'completed','monitor_profile':p.to_dict(),'monitor_profile_sha256':content_hash(p.to_dict()),'request':{'test_kind':kind},'measurement':{'measured_length_mm':100.,'error_percent':0.} if kind=='size' else {}}),encoding='utf-8')
+    return p
+
+def values():
+    return CSF_SPEC.field_defaults()|{'Max_monitor_Luminance':200.,'Background_Luminance':49.,'Background_Screen_intensity':.5,'starting_probe_intensity':.75}
+
+def revisions(p):
+    return list((config_root(ROOT)/'profiles'/p.id).glob('revision_*.json'))
+
+@pytest.mark.parametrize('size',[(80,24),(120,40)])
+def test_finish_completed_measurements_without_qualification_returns_to_experiment(tmp_path,size):
+    p=fixture_profile()
+    initial=[file.read_bytes() for file in revisions(p)]
+    assert calibration_progress(p,config_root(ROOT))['review']['completed']
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test(size=size) as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            screen=app.screen
+            screen.query_one('#cal-stage-review',Button).press()
+            await pilot.pause()
+            assert screen.query_one('#cal-stage-review',Button).variant=='success'
+            assert '5 intensity / cd/m² pairs saved' in str(screen.query_one('#calibration-review-detail',Static).render())
+            assert 'Physical verification pending' in str(screen.query_one('#calibration-review-detail',Static).render())
+            assert await pilot.click('#calibration-finish')  # visible even at 80×24
+            await pilot.pause()
+            assert len(app.screen_stack)==1
+            assert app.query_one('#monitor-profile',Select).value==p.id
+            assert 'preflight' in str(app.query_one('#setup-status',Static).render())
+    asyncio.run(scenario())
+    assert load_monitor_profiles(ROOT)[p.id]==p
+    assert [file.read_bytes() for file in revisions(p)]==initial
+    assert preferences(config_root(ROOT))['active_monitor_profile_id']==p.id
+    assert not p.qualified_experiments and not p.has_verified_luminance_mapping
+    with pytest.raises(ValueError,match='Physical photometry'):
+        validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,values()),CSF_SPEC,p)
+    validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,values()),CSF_SPEC,p,mode='simulation')
+
+def test_incomplete_setup_can_also_finish_without_profile_save(tmp_path):
+    p=fixture_profile(observations=False)
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test() as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            app.screen.query_one('#cal-stage-review',Button).press()
+            await pilot.pause()
+            assert await pilot.click('#calibration-finish')
+            await pilot.pause()
+            assert len(app.screen_stack)==1
+            assert 'Incomplete observations' in str(app.query_one('#setup-status',Static).render())
+    asyncio.run(scenario())
+    assert len(revisions(p))==1
+
+def test_general_editor_noop_save_does_not_create_revision_or_advance(tmp_path):
+    p=fixture_profile()
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test() as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            review=app.screen
+            review.query_one('#cal-stage-review',Button).press()
+            await pilot.pause()
+            review.query_one('#edit-review-profile',Button).press()
+            await pilot.pause()
+            app.screen.query_one('#profile-save',Button).press()
+            await pilot.pause()
+            assert app.screen is review and review.active_calibration_stage=='review'
+            assert app.monitor_profiles[p.id]==p
+    asyncio.run(scenario())
+    assert len(revisions(p))==1
+
+def test_verification_requires_deliberate_review_preserves_observations_and_returns(tmp_path):
+    p=fixture_profile()
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test(size=(100,30)) as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            review=app.screen
+            review.query_one('#cal-stage-review',Button).press()
+            await pilot.pause()
+            review.query_one('#review-physical-verification',Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,PhysicalVerificationScreen)
+            focused=app.screen
+            focused.query_one('#verification-geometry_status',Select).value='verified'
+            focused.query_one('#verification-save',Button).press()
+            await pilot.pause()
+            assert app.screen is focused
+            assert 'Confirm independent' in str(focused.query_one('#verification-feedback',Static).render())
+            focused.query_one('#verification-reviewed',Checkbox).value=True
+            focused.query_one('#verification-save',Button).press()
+            await pilot.pause()
+            assert app.screen is review and review.active_calibration_stage=='review'
+            assert 'Manually declared verified' in str(review.query_one('#calibration-review-detail',Static).render())
+    asyncio.run(scenario())
+    updated=load_monitor_profiles(ROOT)[p.id]
+    assert updated.geometry_status=='verified' and updated.luminance_calibration==p.luminance_calibration
+    assert not updated.has_verified_luminance_mapping and not updated.qualified_experiments
+    assert calibration_progress(updated,config_root(ROOT))['geometry']['measurement_recorded']
+
+def test_registry_qualification_failure_is_explained_and_no_save(tmp_path):
+    p=fixture_profile()
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test() as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            review=app.screen
+            review.query_one('#review-qualification',Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,ExperimentQualificationScreen)
+            assert app.screen.query_one('#qualification-save',Button).disabled
+            assert 'BLOCKED' in str(app.screen.query_one('#qualification-checks',Static).render())
+            app.screen.query_one('#qualification-back',Button).press()
+            await pilot.pause()
+            assert app.screen is review
+    asyncio.run(scenario())
+    assert len(revisions(p))==1
+    with pytest.raises(ValueError,match='cannot be qualified'):
+        qualify_experiment(p,config_root(ROOT),CSF_SPEC,reviewed=True)
+
+def test_explicit_qualified_experiment_and_restart(tmp_path):
+    p=fixture_profile(verified=True)
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test() as pilot:
+            app.query_one('#nav-display',Button).press()
+            await pilot.pause()
+            review=app.screen
+            review.query_one('#review-qualification',Button).press()
+            await pilot.pause()
+            focused=app.screen
+            assert focused.query_one('#qualification-experiment',Select).value==CSF_SPEC.id
+            assert not focused.query_one('#qualification-save',Button).disabled
+            focused.query_one('#qualification-reviewed',Checkbox).value=True
+            focused.query_one('#qualification-save',Button).press()
+            await pilot.pause()
+            assert app.screen is review
+        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with restart.run_test() as pilot:
+            assert restart.query_one('#monitor-profile',Select).value==p.id
+            assert CSF_SPEC.id in restart.monitor_profiles[p.id].qualified_experiments
+    asyncio.run(scenario())
+    updated=load_monitor_profiles(ROOT)[p.id]
+    assert len(revisions(p))==2 and updated.luminance_calibration==p.luminance_calibration
+    validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,values()),CSF_SPEC,updated)
+    unchanged=qualify_experiment(updated,config_root(ROOT),CSF_SPEC,reviewed=True)
+    assert unchanged==updated and len(revisions(p))==2
+
+def test_compatible_older_luminance_reimport_retains_measurements_and_review(tmp_path):
+    p=fixture_profile(verified=True)
+    document=example_luminance_document(p)
+    document.update(photometer_model_and_method=p.calibration_method,measurement_date='',notes='',measurements=p.to_dict()['luminance_calibration'])
+    path=tmp_path/'earlier.json'
+    path.write_text(json.dumps(document))
+    updated=save_profile(config_root(ROOT),replace(p,notes='Metadata only'),expected_revision=p.revision)
+    imported,warnings=import_and_save_luminance(updated,config_root(ROOT),str(path))
+    assert imported==updated and len(revisions(p))==2
+    assert any('Reused' in warning for warning in warnings)
+    assert calibration_progress(imported,config_root(ROOT))['geometry']['measurement_recorded']
+
+def test_fake_photometry_cannot_be_verified_or_qualify_human():
+    p=fixture_profile(verified=True)
+    fake=replace(p,calibration_method='fake_photometer',qualified_experiments=(CSF_SPEC.id,))
+    assert calibration_progress(fake,config_root(ROOT))['luminance']['completed']
+    assert not fake.has_verified_luminance_mapping
+    assert not all(check['passed'] for check in qualification_checks(CSF_SPEC,fake))
+    with pytest.raises(ValueError,match='Fake/synthetic'):
+        save_verification(p,config_root(ROOT),geometry_status='verified',calibration_status='verified',timing_status='verified',calibration_method='fake_photometer',reviewed=True)
+    with pytest.raises(ValueError,match='Physical photometry'):
+        validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,fake.id,values()),CSF_SPEC,fake)
+
+def test_stale_verification_and_physical_changes_do_not_keep_qualification():
+    p=fixture_profile(verified=True)
+    qualified=qualify_experiment(p,config_root(ROOT),CSF_SPEC,reviewed=True)
+    with pytest.raises(ValueError,match='Profile changed'):
+        save_verification(p,config_root(ROOT),geometry_status=p.geometry_status,calibration_status=p.calibration_status,timing_status=p.timing_status,calibration_method=p.calibration_method,reviewed=False)
+    changed=save_profile(config_root(ROOT),replace(qualified,viewing_distance_m=2.),expected_revision=qualified.revision)
+    assert not changed.qualified_experiments and changed.geometry_status!='verified'
+    assert not calibration_progress(changed,config_root(ROOT))['geometry']['completed']
+
+
+def test_changing_timing_does_not_require_unrelated_old_ruler_entry():
+    p=fixture_profile(verified=True,observations=False)
+    updated=save_verification(p,config_root(ROOT),geometry_status=p.geometry_status,
+        calibration_status=p.calibration_status,timing_status='manual_unverified',
+        calibration_method=p.calibration_method,reviewed=False)
+    assert updated.timing_status=='manual_unverified'
+    assert updated.geometry_status==p.geometry_status
+    assert updated.luminance_calibration==p.luminance_calibration

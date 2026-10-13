@@ -188,6 +188,14 @@ def test_contrast_numeric_risk_and_mode_specific_fail_closed(tmp_path,monkeypatc
     with pytest.raises(ValueError,match="not been qualified"):
         validate_setup(request,CSF_SPEC,p,mode="human")
     qualified=replace(p,qualified_experiments=(CSF_SPEC.id,))
+    with pytest.raises(ValueError,match="Physical photometry"):
+        validate_setup(request,CSF_SPEC,qualified,mode="human")
+    # Fixture declarations satisfy the newly explicit CSF laboratory requirements;
+    # this is test data, never a claim that hardware was measured by pytest.
+    from psychophysics_lab.config.models import LuminanceCalibrationPoint
+    qualified=replace(qualified,geometry_status="verified",timing_status="verified",
+        calibration_status="verified",calibration_method="Laboratory instrument fixture",
+        luminance_calibration=(LuminanceCalibrationPoint(.374,49.),LuminanceCalibrationPoint(1.,500.)))
     with pytest.raises(ValueError,match="clip"):
         validate_setup(request,CSF_SPEC,qualified,mode="human")
     safe=replace(request,experiment_values=dict(DEFAULT_VALUES,starting_probe_intensity=.7))
