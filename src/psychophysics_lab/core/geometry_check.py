@@ -39,6 +39,7 @@ class GeometryCheckRequest:
     spatial_cpd: float = 1.0
     temporal_hz: float = 7.5
     duration_s: float = 0.0
+    digital_command: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -125,7 +126,11 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
                     if request.orientation == "horizontal": rectangle(lo,bottom,hi,top,command)
                     else: rectangle(left,lo,right,hi,command)
             else:
-                command = frame_command(plan["temporal"],window.frame_index) if "temporal" in plan else 1.0
+                command = (
+                    frame_command(plan["temporal"],window.frame_index) if "temporal" in plan
+                    else plan["luminance_patch"]["digital_command"] if "luminance_patch" in plan
+                    else 1.0
+                )
                 rectangle(left,bottom,right,top,command)
             label.draw()
         @window.event
@@ -211,10 +216,11 @@ def run_geometry_check(
                 "recorded_utc": None,
             },
             "interpretation": (
-                "This ruler check validates the relationship between the selected monitor "
-                "profile, actual fullscreen resolution and physical geometry. It does not "
-                "by itself certify photometric calibration, temporal accuracy or stimulus "
-                "contrast."
+                "This display diagnostic records the requested display command, selected "
+                "monitor profile, fullscreen resolution and derived geometry. A grayscale "
+                "patch is NOT a luminance measurement: enter the real cd/m² obtained from "
+                "a photometer separately. The test does not certify geometry, photometry, "
+                "photon timing or scientific contrast by itself."
             ),
         }
         atomic_write_json(report, payload)
