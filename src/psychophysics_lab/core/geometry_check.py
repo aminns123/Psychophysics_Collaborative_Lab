@@ -185,6 +185,9 @@ def _draw_luminance_session(profile, request, session) -> None:
         fullscreen=True, screen=screen, vsync=True,
         caption="PsyCoLab — Luminance Measurement (Esc to finish)"
     )
+    # Force an explicitly black surround; OpenGL's default clear colour
+    # is not a laboratory brightness calibration or a reliable UI setting.
+    gl.glClearColor(0.0, 0.0, 0.0, 1.0)
     current = 1.0
     entry = ""
     feedback = "Type measured cd/m²; Enter saves. Left dimmer / Right brighter. Esc finishes."
