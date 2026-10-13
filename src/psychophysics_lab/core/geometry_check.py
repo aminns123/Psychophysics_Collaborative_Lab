@@ -38,7 +38,7 @@ class GeometryCheckRequest:
     position_units: str = "mm"
     spatial_cpd: float = 1.0
     temporal_hz: float = 7.5
-    duration_s: float = 10.0
+    duration_s: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -82,7 +82,7 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             self.frame_index += 1
     window = DiagnosticWindow(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab Display Test")
     def invalidate(dt):
-        if time.perf_counter() - start >= request.duration_s:
+        if request.duration_s > 0 and time.perf_counter() - start >= request.duration_s:
             window.close()
         else:
             window.invalid = True
