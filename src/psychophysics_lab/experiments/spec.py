@@ -48,7 +48,7 @@ class ConfigField:
             if self.kind == "int" and not number.is_integer():
                 raise ValueError(f"{self.label} must be a whole number.")
             if self.minimum is not None and number < self.minimum or self.maximum is not None and number > self.maximum:
-                raise ValueError(f"{self.label} is outside its permitted range.")
+                raise ValueError(f"{self.label} ({self.key.replace(chr(95), chr(45))}) is outside its permitted range.")
             return int(number) if self.kind == "int" else number
         if self.kind == "choice":
             if value not in self.choices:

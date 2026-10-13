@@ -33,6 +33,7 @@ class RunContext:
     spec: ExperimentSpec
     run_directory: Path
     synthetic: bool = False
+    data_kind: str = "human"
 
     @property
     def responses(self):

@@ -7,7 +7,7 @@ from ..data.identifiers import validate_path_component
 
 
 def photometry_is_test_data(profile) -> bool:
-    return any(marker in profile.calibration_method.lower()
+    return getattr(profile,'luminance_data_kind','unspecified') == 'synthetic' or any(marker in profile.calibration_method.lower()
                for marker in ("fake", "demo", "simulated", "synthetic"))
 
 
@@ -47,11 +47,15 @@ class MonitorProfile:
     qualified_experiments: tuple[str, ...] = ()
     calibration_method: str = ""
     calibration_date: str = ""
+    luminance_data_kind: str = "unspecified"
+    luminance_source_hash: str = ""
     geometry_status: str = "unverified"
     timing_status: str = "unverified"
     measurement_sources: dict[str, str] = field(default_factory=dict)
 
     def validate(self) -> None:
+        if self.luminance_data_kind not in {"genuine", "synthetic", "unspecified"}:
+            raise ValueError("Unknown luminance provenance classification.")
         validate_path_component(self.id, label="monitor profile")
         allowed_sources = {"manual", "os_mode", "reference", "unspecified"}
         allowed_fields = {"physical_width_m", "physical_height_m", "viewing_distance_m", "refresh_rate_hz", "expected_resolution_px"}

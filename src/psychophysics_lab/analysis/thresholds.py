@@ -249,6 +249,8 @@ def analyse_thresholds(
     warning = "EXPLORATORY — INCOMPLETE/CENSORED RUN" if incomplete else "EXPLORATORY REVERSAL ESTIMATE"
     if missing_ids:
         warning += "; some staircases have no reversal estimate"
+    if manifest.get("data_kind") == "uncalibrated_presentation_test":
+        warning = "UNCALIBRATED PRESENTATION TEST — " + warning
     if manifest.get("data_kind") == "synthetic":
         warning = "SYNTHETIC — " + warning
     plot_file = _plot(condition_results, plot_path, x_label=x_label, warning=warning) if create_plot else None

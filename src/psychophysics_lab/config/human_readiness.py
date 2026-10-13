@@ -16,6 +16,9 @@ def experiment_readiness(request, spec, profile, *, repo_root):
     by_key = {row['key']:row for row in requirements}
     if 'luminance' in by_key:
         row=by_key['luminance']
+        from .calibration_dataset import luminance_state,load_active
+        row['status']=luminance_state(profile,load_active(config_root(repo_root),profile))
+        row['action']='Open luminance measurements and verification'
         count=len(profile.luminance_calibration)
         row['detail']=f'{count} intensity/luminance pairs saved. ' + ('Recorded method labels these as synthetic/test data; they cannot verify physical photometry. ' if photometry_is_test_data(profile) else '') + row['detail']
     if 'geometry' in by_key and not by_key['geometry']['passed'] and not stages['geometry']['measurement_recorded']:

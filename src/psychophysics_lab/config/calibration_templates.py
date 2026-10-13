@@ -164,7 +164,7 @@ def _validate_older_revision(
 
 def parse_luminance_measurements(
     data: object, profile: MonitorProfile, *,
-    local_config_root: Path | None = None
+    local_config_root: Path | None = None, allow_partial: bool = False
 ) -> dict:
     """Validate an imported measurement document without asserting certification."""
     if not isinstance(data, dict) or data.get("format") != FORMAT or data.get("schema_version") != VERSION:
@@ -212,7 +212,8 @@ def parse_luminance_measurements(
         warnings.append("Measurement notes not recorded; add setup details later if available.")
 
     pairs = data.get("measurements")
-    if not isinstance(pairs, list) or len(pairs) < 2:
+    minimum_points=1 if allow_partial else 2
+    if not isinstance(pairs, list) or len(pairs) < minimum_points:
         raise ValueError("Provide at least two measured digital-command/luminance pairs.")
     points = []
     ignored = 0
@@ -229,7 +230,7 @@ def parse_luminance_measurements(
         point = LuminanceCalibrationPoint(command, luminance)
         point.validate()
         points.append(point)
-    if len(points) < 2:
+    if len(points) < minimum_points:
         raise ValueError("At least two REAL intensity/luminance measurements are required; blank template rows do not count.")
     if ignored:
         warnings.append(f"Ignored {ignored} blank template row(s) without a luminance reading.")
@@ -256,7 +257,7 @@ def parse_luminance_measurements(
 
 def read_luminance_measurements(
     path: str, profile: MonitorProfile, *,
-    local_config_root: Path | None = None
+    local_config_root: Path | None = None, allow_partial: bool = False
 ) -> dict:
     """Read a small, explicit researcher-selected JSON path; never writes files."""
     if not path.strip():
@@ -271,7 +272,7 @@ def read_luminance_measurements(
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Invalid UTF-8 JSON file: {exc}") from exc
     return parse_luminance_measurements(
-        document, profile, local_config_root=local_config_root
+        document, profile, local_config_root=local_config_root, allow_partial=allow_partial
     )
 
 

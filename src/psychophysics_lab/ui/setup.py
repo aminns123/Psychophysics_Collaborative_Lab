@@ -428,6 +428,7 @@ class DisplayCheckScreen(HubPage):
                 yield Label("Position units (relative to screen centre)")
                 yield Select([("Millimetres", "mm"), ("Degrees", "degrees")],
                              value="mm", allow_blank=False, id="geometry-position-units")
+                yield Static("", id="live-input-domains", markup=False, classes="info-card")
                 yield Label("X position")
                 yield Input(value="0", id="geometry-x")
                 yield Label("Y position")
@@ -488,6 +489,7 @@ class DisplayCheckScreen(HubPage):
                     "remains a separate researcher declaration.",
                     classes="info-card",
                 )
+                yield Button("Open / edit active luminance measurements", id="open-active-luminance", variant="primary")
                 yield Label("Single-patch normalized digital command (0 to 1)")
                 yield Input(value="0.5", id="geometry-luminance")
                 yield Button("Launch one static photometer patch", id="launch-patch")
@@ -701,6 +703,8 @@ class DisplayCheckScreen(HubPage):
 
     def _refresh_preview(self) -> None:
         try:
+            from .domain_feedback import diagnostic_domains
+            diagnostic_domains(self)
             profile = self._profile()
             resolution = profile.expected_resolution_px
             if resolution:
@@ -775,7 +779,7 @@ class DisplayCheckScreen(HubPage):
         self.query_one("#latest-geometry", Static).update(text)
 
     def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id and event.select.id.startswith("geometry-"):
+        if event.select.id and (event.select.id.startswith("geometry-") or event.select.id=='cal-temporal-mode'):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
@@ -799,6 +803,10 @@ class DisplayCheckScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "open-active-luminance":
+            from .luminance_data import LuminanceDataScreen
+            self.app.push_screen(LuminanceDataScreen(self._profile()))
             return
         if event.button.id in {"calibration-finish", "review-physical-verification", "review-qualification"}:
             event.stop()
@@ -1071,6 +1079,9 @@ class DataScreen(HubPage):
             yield Select(options, value=options[0][1], allow_blank=False, id="data-run")
             yield Static("", id="data-details", classes="info-card")
             with Horizontal(classes="buttons wrap-buttons"):
+                yield Button("Latest uncalibrated test manifest",id="inspect-presentation-manifest")
+                yield Button("Latest uncalibrated test trials",id="inspect-presentation-trials")
+            with Horizontal(classes="buttons wrap-buttons"):
                 yield Button("Manifest", id="inspect-manifest")
                 yield Button("Trials", id="inspect-trials")
                 yield Button("Staircase state", id="inspect-adaptive")
@@ -1083,9 +1094,9 @@ class DataScreen(HubPage):
                 ("Final fraction of reversals within each staircase", "fraction"),
                 ("Last N reversals within each staircase", "count"),
             ], value="fraction", allow_blank=False, id="threshold-retention-mode")
-            yield Label("Fraction (when fraction mode selected)")
+            yield Label("Fraction (when fraction mode selected): allowed 0 < fraction ≤ 1")
             yield Input(value="0.80", id="threshold-fraction")
-            yield Label("N final reversals (when count mode selected)")
+            yield Label("N final reversals (when count mode selected): positive whole number")
             yield Input(value="8", id="threshold-last-n")
             yield Label("Reversal contrast value")
             yield Select(
@@ -1167,6 +1178,17 @@ class DataScreen(HubPage):
         if event.select.id == "data-run":
             self._refresh()
 
+    def on_input_changed(self,event):
+        if event.input.id not in ('threshold-fraction','threshold-last-n'): return
+        import math
+        try:
+            value=float(event.input.value)
+            valid=math.isfinite(value) and (0<value<=1 if event.input.id=='threshold-fraction' else value>0 and value.is_integer())
+            if not valid: raise ValueError('Allowed fraction: (0,1]; reversal count: positive whole number. Entered value retained.')
+            event.input.remove_class('invalid-input')
+        except ValueError as exc:
+            event.input.add_class('invalid-input'); self.query_one('#data-status',Static).update(str(exc))
+
     def _inspect(self, filename: str, title: str) -> None:
         run = self._run_dir()
         path = run / filename
@@ -1179,7 +1201,17 @@ class DataScreen(HubPage):
             return
         status = self.query_one("#data-status", Static)
         try:
-            if event.button.id == "inspect-manifest":
+            if event.button.id in ('inspect-presentation-manifest','inspect-presentation-trials'):
+                event.stop()
+                root=self.app.local_config_root.parent/'psycolab_presentation_tests'
+                from ..core.presentation_testing import MARKER
+                if not (root/MARKER).is_file(): raise ValueError('No isolated uncalibrated presentation results exist yet.')
+                candidates=[p for p in root.rglob('manifest.json') if not p.is_symlink() and p.resolve().is_relative_to(root.resolve()) and json.loads(p.read_text(encoding='utf-8')).get('data_kind')=='uncalibrated_presentation_test']
+                if not candidates: raise ValueError('No uncalibrated presentation run is available.')
+                manifest=max(candidates,key=lambda p:p.stat().st_mtime_ns)
+                path=manifest if event.button.id=='inspect-presentation-manifest' else manifest.parent/'trials.tsv'
+                self.app.push_screen(CodeViewScreen(title='UNCALIBRATED PRESENTATION TEST — NOT HUMAN DATA',path=path))
+            elif event.button.id == "inspect-manifest":
                 event.stop(); self._inspect("manifest.json", "Run manifest")
             elif event.button.id == "inspect-trials":
                 event.stop(); self._inspect("trials.tsv", "Canonical accepted-response table")
@@ -1330,6 +1362,7 @@ class ExperimentConfigScreen(Screen):
                 yield Button("Change display / Calibrate", id="change-display")
                 yield Button("Review", id="review", variant="primary")
             yield Static("", id="config-status")
+            yield Static("", id="constraint-summary", markup=False)
         with VerticalScroll(id="config-body"):
             yield Static(
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n"
@@ -1341,6 +1374,10 @@ class ExperimentConfigScreen(Screen):
             for field in self.experiment.fields:
                 group = "Adaptive settings" if field.key in controls else field.section
                 groups.setdefault(group, []).append(field)
+            if self.experiment.id == "contrast_sensitivity":
+                yield Label("Background from this display's saved measurements")
+                yield Select([("Manual pair (unverified unless it matches a verified mapping)","manual")],value="manual",allow_blank=False,id="background-mapping")
+                yield Static("",id="mapping-provenance",markup=False)
             for group, fields in groups.items():
                 with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"}):
                     if group == "Adaptive settings":
@@ -1353,6 +1390,7 @@ class ExperimentConfigScreen(Screen):
                         )
                     for field in fields:
                         yield from self._compose_field(field)
+                        yield Static("", id="domain-"+field.key.replace('_','-'), markup=False, classes="field-help")
                         if self.experiment.id == "contrast_sensitivity" and field.key == "starting_probe_intensity":
                             yield Static("", id="contrast-live-validation", markup=False, classes="field-help")
                     if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
@@ -1372,6 +1410,8 @@ class ExperimentConfigScreen(Screen):
     def on_mount(self):
         self._refresh_unit_help()
         self._refresh_contrast_help()
+        self._refresh_constraints()
+        self._refresh_mapping_choices()
         if self.focus_field:
             field = next(item for item in self.experiment.fields if item.key == self.focus_field)
             widget = self.query_one("#" + _field_widget_id(field))
@@ -1380,6 +1420,41 @@ class ExperimentConfigScreen(Screen):
                     parent.collapsed = False
             self.call_after_refresh(widget.scroll_visible)
             self.call_after_refresh(widget.focus)
+
+    def _refresh_mapping_choices(self):
+        if not self.is_mounted or self.experiment.id!='contrast_sensitivity': return
+        from ..config.calibration_dataset import luminance_state
+        profile=self.app.monitor_profiles[self.monitor_profile_id]
+        selector=self.query_one('#background-mapping',Select)
+        rows=profile.luminance_calibration
+        selector.set_options([('Manual pair (retain precise entries)','manual')]+[(f'{p.luminance_cdm2:g} cd/m² — Screen intensity {p.screen_intensity:g}',str(i)) for i,p in enumerate(rows)])
+        selected='manual'
+        try:
+            intensity=float(self.query_one('#field-Background-Screen-intensity',Input).value)
+            luminance=float(self.query_one('#field-Background-Luminance',Input).value)
+            selected=next((str(i) for i,p in enumerate(rows) if p.screen_intensity==intensity and p.luminance_cdm2==luminance),'manual')
+        except ValueError: pass
+        self._mapping_refresh=True
+        selector.value=selected
+        self.call_after_refresh(setattr,self,'_mapping_refresh',False)
+        self.query_one('#mapping-provenance',Static).update(luminance_state(profile)+'\nOnly this display’s measured rows are offered; no interpolation. Starting probe intensity remains separate.')
+
+    def _refresh_constraints(self):
+        if not self.is_mounted: return
+        from ..config.input_constraints import experiment_constraints
+        raw={field.key:self.query_one("#"+_field_widget_id(field)).value for field in self.experiment.fields}
+        profile=self.app.monitor_profiles[self.monitor_profile_id]
+        reports,errors=experiment_constraints(self.experiment,profile,raw)
+        for field in self.experiment.fields:
+            report=reports[field.key]; widget=self.query_one("#"+_field_widget_id(field))
+            widget.set_class(bool(report['error']),"invalid-input")
+            widget.tooltip=report['domain']+"\n"+report['error']
+            self.query_one("#domain-"+field.key.replace('_','-'),Static).update(report['domain']+("\nINVALID: "+report['error'] if report['error'] else ""))
+        self.query_one('#constraint-summary',Static).update("\n".join(errors))
+        # Shader range affects human/test launch, but does not block numerical simulation Review.
+        # Submission runs the same validator again; retaining an enabled button
+        # avoids stale disabled state between the last keystroke and its event.
+        # Invalid values cannot be committed by _collect/validate_setup.
 
     def _refresh_contrast_help(self):
         if not self.is_mounted or self.experiment.id != "contrast_sensitivity":
@@ -1420,6 +1495,8 @@ class ExperimentConfigScreen(Screen):
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n" +
                 _monitor_summary(current) + "\n" + readiness_text(self.experiment, current, self.app.repo_root))
         self._refresh_unit_help()
+        self._refresh_constraints()
+        self._refresh_mapping_choices()
 
     def _save_calibration_draft(self):
         save_preferences(self.app.local_config_root, active_monitor_profile_id=self.monitor_profile_id, calibration_experiment_draft={
@@ -1487,13 +1564,23 @@ class ExperimentConfigScreen(Screen):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         self._refresh_contrast_help()
+        self._refresh_constraints()
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
     def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id=='background-mapping' and not getattr(self,'_mapping_refresh',False):
+            if event.value!='manual' and not _is_blank_select_value(event.value):
+                profile=self.app.monitor_profiles[self.monitor_profile_id]
+                point=profile.luminance_calibration[int(str(event.value))]
+                self.query_one('#field-Background-Screen-intensity',Input).value=str(point.screen_intensity)
+                self.query_one('#field-Background-Luminance',Input).value=str(point.luminance_cdm2)
+                endpoint=next((p for p in profile.luminance_calibration if p.screen_intensity==1),None)
+                if endpoint is not None: self.query_one('#field-Max-monitor-Luminance',Input).value=str(endpoint.luminance_cdm2)
         if hasattr(self, "draft_key"):
             self.remember_draft()
             self._refresh_unit_help()
+            self._refresh_constraints()
 
     def _collect(self) -> dict[str, Any]:
         values: dict[str, Any] = {}
@@ -1707,6 +1794,8 @@ class ReviewScreen(Screen):
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
             with Horizontal(classes="buttons"):
+                yield Button("Test experiment presentation (UNCALIBRATED)",id="run-presentation-test",variant="warning")
+            with Horizontal(classes="buttons"):
                 yield Button("Resolve blockers / Calibration guide →",
                              id="review-calibration-guide", variant="primary")
             yield Static("", id="review-status")
@@ -1870,6 +1959,10 @@ class ReviewScreen(Screen):
                 "profile":self.request.monitor_profile_id,"values":dict(self.request.experiment_values)})
         row = next(item for item in self.readiness_report["requirements"] if item["key"] == key)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
+        if key == "luminance":
+            from .luminance_data import LuminanceDataScreen
+            self.app.push_screen(LuminanceDataScreen(profile,experiment_id=self.request.experiment_id))
+            return
         if row["destination"] in {"verification", "qualification"}:
             from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
             cls = PhysicalVerificationScreen if row["destination"] == "verification" else ExperimentQualificationScreen
@@ -1909,7 +2002,7 @@ class ReviewScreen(Screen):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
             return
-        if button_id not in {"back", "run", "run-simulation", "review-calibration-guide"}:
+        if button_id not in {"back", "run", "run-simulation", "run-presentation-test", "review-calibration-guide"}:
             return
         event.stop()
         try:
@@ -1926,6 +2019,9 @@ class ReviewScreen(Screen):
                     self.request, initial_stage=stage))
             elif button_id == "back":
                 self.app.pop_screen()
+            elif button_id == "run-presentation-test":
+                from .presentation_testing import PresentationTestScreen
+                self.app.push_screen(PresentationTestScreen(self.request))
             else:
                 spec = get_experiment(self.request.experiment_id)
                 current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
@@ -1972,6 +2068,7 @@ class PsyCoLabSetupApp(App):
     SUB_TITLE = "Psychophysics Collaborative Lab"
 
     CSS = """
+    .invalid-input { border: tall $error; }
     Screen { align: center top; }
     #fixed-shell { dock: top; height: auto; width: 100%; }
     #fixed-shell Header { dock: none; height: 1; }

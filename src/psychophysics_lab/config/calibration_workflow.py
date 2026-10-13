@@ -48,6 +48,8 @@ def import_and_save_luminance(profile, local_config_root: Path, json_path: str):
     from .local import save_profile
     from .monitor import _profile_from_dict
 
+    from .calibration_dataset import import_observations
+    raw_observations, _ = import_observations(json_path,profile,local_config_root)
     draft = read_luminance_measurements(
         json_path, profile, local_config_root=local_config_root
     )
@@ -79,4 +81,12 @@ def import_and_save_luminance(profile, local_config_root: Path, json_path: str):
         _profile_from_dict(fields),
         expected_revision=profile.revision if profile.origin == "local" else 0,
     )
+    from .calibration_dataset import load_active,import_observations,merge_observations,save_active
+    active=load_active(local_config_root,saved)
+    rows=raw_observations
+    # This legacy button has always replaced its mapping; preserve that policy.
+    # The focused editor offers explicit append/merge/selected replacement modes.
+    data=merge_observations(active,rows,mode='replace_all',confirmed=True)
+    data.update(method=saved.calibration_method,date=saved.calibration_date,notes=saved.calibration_notes)
+    saved,_=save_active(local_config_root,saved,data,expected_version=active['version'])
     return saved, list(draft.get("warnings", ()))

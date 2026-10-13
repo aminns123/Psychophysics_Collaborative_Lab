@@ -57,6 +57,12 @@ def save_verification(profile, root, *, geometry_status, calibration_status,
     if 'geometry_status' in newly_verified and not progress['geometry']['measurement_recorded']:
         raise ValueError('Geometry needs a compatible saved ruler measurement. Record it on Geometry before verification.')
     if 'calibration_status' in newly_verified or 'calibration_method' in newly_verified:
+        from .calibration_dataset import load_active,physical_snapshot
+        dataset=load_active(root,profile)
+        if any(r['data_kind']=='synthetic' for r in dataset['observations']):
+            raise ValueError('Fake/synthetic photometer data cannot be declared physically verified. Replace actual observations explicitly; changing metadata alone is not evidence.')
+        if dataset['physical_snapshot']!=physical_snapshot(profile):
+            raise ValueError('Saved luminance evidence belongs to an earlier physical configuration. Replace measurements explicitly before verification.')
         if len(candidate.luminance_calibration) < 2 or not candidate.calibration_method:
             raise ValueError('Photometry verification needs saved pairs and the actual instrument/method. Optional notes do not block setup completion.')
         if photometry_is_test_data(candidate):
@@ -71,6 +77,14 @@ def save_verification(profile, root, *, geometry_status, calibration_status,
         except KeyError:
             continue
     candidate = replace(candidate, qualified_experiments=tuple(keep))
+    if reviewed and candidate.calibration_status=='verified' and candidate.calibration_method!=profile.calibration_method and (root/'profiles'/profile.id/'current'/'luminance.json').exists():
+        # Both validations above have already passed. Record the instrument
+        # while unverified first, then the explicit laboratory declaration.
+        # This uses the existing save/invalidation rules, with no override flag.
+        # An interrupted/concurrent second save leaves the data unverified.
+        intermediate=save_profile(root,replace(candidate,calibration_status='manual_unverified',qualified_experiments=()),expected_revision=profile.revision)
+        candidate=replace(intermediate,calibration_status='verified')
+        return save_profile(root,candidate,expected_revision=intermediate.revision)
     return save_profile(root, candidate, expected_revision=profile.revision)
 
 

@@ -60,6 +60,7 @@ class SimulationsScreen(HubPage):
             yield Input(
                 value=_value_text(value), id=widget_id, disabled=not field.editable
             )
+        yield Static("",id=f"sim-domain-{index}-{number}",markup=False,classes="field-help")
         if field.help_text:
             yield Static(field.help_text, classes="field-help")
 
@@ -177,7 +178,8 @@ class SimulationsScreen(HubPage):
                                 )
                     with Collapsible(title="Virtual observer (simulation-only properties)", collapsed=False):
                         for number, (key, value) in enumerate(effective_observer_values(scenario).items()):
-                            yield Label(key.replace("_", " "))
+                            from .domain_feedback import observer_domain
+                            yield Label(key.replace("_", " ")+" — "+observer_domain(experiment.id,key,value))
                             yield Input(value=_value_text(value), id=f"sim-observer-{index}-{number}")
             yield Static(
                 "The scenario defines the scientific validation and interpretation. "
@@ -299,6 +301,23 @@ class SimulationsScreen(HubPage):
             monitor_profile_id=profile_id,
             monitor_profile_hash=checked.monitor_profile_hash,
         )
+
+    def on_input_changed(self,event):
+        if not self.is_mounted: return
+        try:
+            index,scenario=self._current(); spec=get_experiment(scenario.experiment_id)
+            profile=self.app.monitor_profiles[str(self.query_one('#sim-profile',Select).value)]
+            raw={field.key:self.query_one(f'#sim-experiment-value-{index}-{number}').value for number,field in enumerate(spec.fields)}
+            from ..config.input_constraints import experiment_constraints
+            reports,errors=experiment_constraints(spec,profile,raw)
+            for number,field in enumerate(spec.fields):
+                report=reports[field.key]
+                self.query_one(f'#sim-domain-{index}-{number}',Static).update(report['domain']+('\nINVALID: '+report['error'] if report['error'] else ''))
+                self.query_one(f'#sim-experiment-value-{index}-{number}').set_class(bool(report['error']),'invalid-input')
+            # Observer factory and seed validators are pure; no run is allocated.
+            self._request()
+        except (ValueError,TypeError,OverflowError,KeyError) as exc:
+            self.query_one('#sim-status',Static).update('Current input: '+str(exc))
 
     def _calculate_step(self, button_id: str) -> None:
         _, _, direction, text_index = button_id.split("-", 3)

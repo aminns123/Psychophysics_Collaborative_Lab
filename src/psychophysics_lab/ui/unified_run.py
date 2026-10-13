@@ -75,12 +75,13 @@ class VirtualObserverOptionsScreen(Screen):
             for i, scenario in enumerate(self.scenarios):
                 with Vertical(id=f"virtual-scenario-{i}"):
                     yield Static(f"[b]{scenario.id}[/b]\n{scenario.description}", classes="info-card")
-                    yield Label("Random seeds (comma-separated)")
+                    yield Label("Random seeds (comma-separated nonnegative whole numbers)")
                     yield Input(value=",".join(str(x) for x in scenario.seeds),
                                 id=f"virtual-seeds-{i}")
                     yield Static("[b]Observer-only properties[/b]")
                     for j, (name, value) in enumerate(self._observer_defaults(scenario).items()):
-                        yield Label(name.replace("_", " "))
+                        from .domain_feedback import observer_domain
+                        yield Label(name.replace("_", " ")+" — "+observer_domain(self.request.experiment_id,name,value))
                         yield Input(value=json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value),
                                     id=f"virtual-observer-{i}-{j}")
         yield Footer()
@@ -123,6 +124,16 @@ class VirtualObserverOptionsScreen(Screen):
             experiment_values=values, monitor_profile_id=self.request.monitor_profile_id,
             monitor_profile_hash=self.request.monitor_profile_hash,
         )
+
+    def on_input_changed(self,event):
+        if not self.is_mounted: return
+        try:
+            self._launch_request()
+            self.query_one('#virtual-status',Static).update('Current observer parameters and seed list validate; this is a simulation.')
+            event.input.remove_class('invalid-input')
+        except (ValueError,TypeError,OverflowError) as exc:
+            event.input.add_class('invalid-input')
+            self.query_one('#virtual-status',Static).update(str(exc))
 
     def on_button_pressed(self, event: Button.Pressed):
         if _handle_nav(self, event):

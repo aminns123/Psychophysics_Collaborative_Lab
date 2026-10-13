@@ -166,6 +166,29 @@ def _main(
                 print("PsyCoLab exited normally.")
             return 0
 
+        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
+        if isinstance(action,PresentationTestRequest):
+            from .config.local import config_root
+            from .core.presentation_testing import MARKER
+            test_root=config_root(repo_root).parent/'psycolab_presentation_tests'
+            if diagnostic_context is not None:
+                diagnostic_context['data_root']=test_root
+                diagnostic_context['phase']='uncalibrated_presentation_test'
+            try:
+                artifacts=run_presentation_test(action,repo_root=repo_root)
+            except Exception as exc:
+                recoverable_failures+=1
+                print(f'Uncalibrated presentation did not complete: {exc}')
+                # Never allocate an unmarked folder merely to log a preflight
+                # failure, and never write a presentation log into human data.
+                report=write_crash_report(exc,repo_root=repo_root,data_root=test_root,phase='uncalibrated_presentation_test') if (test_root/MARKER).is_file() else None
+                simulation_summary=f'[red]UNCALIBRATED presentation failed: {exc}[/red]\n'+(f'Test diagnostic: {report}' if report else 'No test run/report was created before preflight completed.')
+            else:
+                _print_run_summary(artifacts)
+                if artifacts.status=='error': recoverable_failures+=1
+                simulation_summary='UNCALIBRATED presentation status: '+artifacts.status+'. Output: '+str(artifacts.run_directory)+'. These are not human experimental records.'
+            continue
+
         from .core.simulation_request import SimulationLaunchRequest
         if isinstance(action, SimulationLaunchRequest):
             selected_data_root = resolve_data_root(action.data_root, repo_root)
