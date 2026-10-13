@@ -151,9 +151,11 @@ def _main(
 
         from .ui.setup import run_setup_tui
 
+        launch_options = {"simulation_summary": simulation_summary}
+        if geometry_summary is not None:
+            launch_options["geometry_summary"] = geometry_summary
         action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root,
-                               simulation_summary=simulation_summary,
-                               geometry_summary=geometry_summary)
+                               **launch_options)
         simulation_summary = None
         geometry_summary = None
         if action is None:
