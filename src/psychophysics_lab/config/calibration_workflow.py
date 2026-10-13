@@ -63,6 +63,14 @@ def import_and_save_luminance(profile, local_config_root: Path, json_path: str):
         "calibration_status": "manual_unverified",
         "qualified_experiments": [],
     })
+    for key in ("calibration_method", "calibration_date", "calibration_notes"):
+        if not draft[key]:
+            fields[key] = profile.to_dict()[key]  # Optional omissions never erase saved provenance.
+    unchanged_mapping = all(fields[key] == profile.to_dict()[key] for key in
+                            ("luminance_calibration", "calibration_method", "calibration_date"))
+    if unchanged_mapping:
+        fields["calibration_status"] = profile.calibration_status
+        fields["qualified_experiments"] = list(profile.qualified_experiments)
     if profile.origin != "local":
         fields["revision"] = 0
         fields["profile_uuid"] = ""

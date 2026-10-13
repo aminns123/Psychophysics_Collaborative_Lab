@@ -157,6 +157,7 @@ CSF_SPEC = ExperimentSpec(
     legacy_module="Experiments.contrast_sensitivity_function",
     legacy_experiment_type="contrast_sensitivity_function",
     compatible_monitor_profiles=("legacy_reference_display",),
+    calibration_requirements=("geometry", "luminance", "timing"),
     data_path_builder=_data_path_parts,
     trial_column_overrides={
         "stimulus_condition": {

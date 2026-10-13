@@ -88,8 +88,11 @@ class ExperimentSpec:
     adaptive: Any = None
     response_paradigm: Any = None
     procedure: Callable | None = None
+    calibration_requirements: tuple[str, ...] = ()
 
     def __post_init__(self):
+        if any(key not in {"geometry", "luminance", "timing"} for key in self.calibration_requirements):
+            raise ValueError("Unknown experiment calibration requirement.")
         from pathlib import PurePosixPath
         from ..data.identifiers import validate_path_component
         validate_path_component(self.id, label="experiment")

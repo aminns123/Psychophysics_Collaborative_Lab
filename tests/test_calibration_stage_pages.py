@@ -57,7 +57,9 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
     )
     status = stage_states(profile, tmp_path)
     assert status["bind"][0] and status["luminance"][0]
-    assert status["timing"][0] and status["review"][0]
+    assert status["timing"][0]
+    # Qualification does not stand in for missing geometry/spatial setup records.
+    assert not status["review"][0]
     assert not status["geometry"][0] and not status["spatial"][0]
     folder = tmp_path / "diagnostics" / "display_geometry" / profile.id
     folder.mkdir(parents=True)

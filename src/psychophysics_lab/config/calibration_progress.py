@@ -72,7 +72,7 @@ def calibration_progress(profile, root: Path):
         # Readiness remains a separate, stricter physical verification flag.
         completed = (bool(measurements) if stage == "geometry" else bool(valid)) or ready
         result[stage] = {"ready": ready, "completed": completed,
-                         "verified": ready, "state": state, "message": message,
+                         "verified": ready if stage != "spatial" else False, "state": state, "message": message,
                          "software_completed": bool(valid), "measurement_recorded": bool(measurements),
                          "verification_declared": declaration == "verified",
                          "reports": [row["path"] for row in valid]}
@@ -94,10 +94,11 @@ def calibration_progress(profile, root: Path):
                            "verified": bool(profile.has_verified_luminance_mapping),
                            "state": "complete" if ready else "awaiting_review" if measured else "awaiting_import" if session_message else "awaiting_measurement",
                            "message": "Saved photometer mapping explicitly verified" if ready else
-                           "Real intensity / cd/m² values SAVED. Measurement stage finished; physical certification remains unverified (optional method/date/notes do not block saving)." if measured else
+                           "Entered intensity / cd/m² values SAVED (not independently certified). Measurement stage finished; physical certification remains unverified (optional method/date/notes do not block saving)." if measured else
                            session_message or "Enter at least two real intensity / cd/m² pairs, import and save. Instrument details are optional."}
-    ready = bound and bool(profile.qualified_experiments)
-    result["review"] = {"ready": ready, "completed": ready, "verified": ready,
+    setup_completed = all(result[key]["completed"] for key in ("bind", "geometry", "spatial", "luminance", "timing"))
+    ready = setup_completed
+    result["review"] = {"ready": ready, "completed": ready, "verified": False,
                         "state": "complete" if ready else "awaiting_review",
-                        "message": f"Explicit qualification for: {', '.join(profile.qualified_experiments)}; experiment preflight remains authoritative" if ready else "Review experiment requirements before explicitly qualifying this display"}
+                        "message": "Calibration setup records complete. Finish setup returns to Experiment; physical verification and qualification remain separate." if ready else "Some setup records are incomplete. You may still finish and return to Experiment; review missing observations later."}
     return result

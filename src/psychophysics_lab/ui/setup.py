@@ -376,6 +376,7 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Previous", id="calibration-previous")
                 yield Button("Next stage", id="calibration-next", variant="primary")
                 yield Button("Refresh status", id="calibration-refresh")
+            yield Button("Finish calibration setup → Return to Experiment", id="calibration-finish", variant="success")
             yield Static("", id="geometry-status")
 
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
@@ -567,8 +568,10 @@ class DisplayCheckScreen(HubPage):
                     classes="info-card",
                 )
                 yield Static("", id="calibration-review-detail", classes="info-card")
-                yield Button("Review / change verification and qualified experiments",
-                             id="edit-review-profile", variant="primary")
+                yield Static("", id="calibration-review-outstanding", classes="info-card", markup=False)
+                yield Button("Review physical verification", id="review-physical-verification", variant="primary")
+                yield Button("Check / qualify experiment", id="review-qualification", variant="primary")
+                yield Button("Advanced monitor profile editor", id="edit-review-profile")
                 if self.app.geometry_summary:
                     yield Static(self.app.geometry_summary, id="geometry-last-outcome",
                                  classes="info-card")
@@ -578,8 +581,8 @@ class DisplayCheckScreen(HubPage):
                         "stimuli, inspect model predictions and run simulations. "
                         "An experiment may have different calibration requirements: "
                         "return to Experiment > Review to see its specific blockers. "
-                        "Use qualified experiment IDs in your saved monitor profile "
-                        "only after laboratory verification, not merely a software test."
+                        "Finish setup to return to Experiment at any time. Use Check / "
+                        "qualify experiment for deliberate qualification after laboratory review."
                     )
         yield Footer()
 
@@ -623,33 +626,17 @@ class DisplayCheckScreen(HubPage):
             )
             + "\n" + states[self.active_calibration_stage][1]
         )
+        self.query_one("#calibration-finish", Button).display = self.active_calibration_stage == "review"
+        if self.active_calibration_stage == "review":
+            self.query_one("#calibration-stage-summary", Static).update(
+                f"{profile.display_name} · revision {profile.revision}\nSetup completion, physical verification and experiment qualification are separate.")
         self.query_one("#calibration-bind-detail", Static).update(
             _monitor_summary(profile) + "\n\n[b]Display status:[/b] " + states["bind"][1]
         )
-        self.query_one("#calibration-review-detail", Static).update(
-            "\n".join(
-                f"[{'green' if states[k][0] else 'red'}]"
-                f"{'COMPLETE' if states[k][0] else 'INCOMPLETE / IN PROGRESS'}[/] "
-                f"{title}: {states[k][1]}"
-                for k, title in STAGES
-            )
-            + "\n\nQualified experiment IDs: "
-            + (", ".join(profile.qualified_experiments) or "none")
-            + "\n\nPhotometry: "
-            + ("[green]EXPLICITLY VERIFIED[/green]" if profile.has_verified_luminance_mapping
-               else "[yellow]NOT PHYSICALLY VERIFIED[/yellow]")
-            + f" | Saved pairs: {len(profile.luminance_calibration)}"
-            + (" | Missing optional method/date/notes: "
-               + ", ".join(key for key, value in (
-                   ("method", profile.calibration_method),
-                   ("date", profile.calibration_date),
-                   ("notes", profile.calibration_notes),
-               ) if not value.strip())
-               if any(not value.strip() for value in (
-                   profile.calibration_method, profile.calibration_date,
-                   profile.calibration_notes)) else "")
-            + "\nA laboratory expert must validate the recorded evidence."
-        )
+        from ..config.calibration_review import review_summary
+        summary, outstanding = review_summary(profile, self.app.local_config_root)
+        self.query_one("#calibration-review-detail", Static).update(summary)
+        self.query_one("#calibration-review-outstanding", Static).update("Outstanding actions\n\n" + outstanding)
 
     def on_mount(self) -> None:
         for key, value in self.app.display_draft.items():
@@ -813,6 +800,35 @@ class DisplayCheckScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id in {"calibration-finish", "review-physical-verification", "review-qualification"}:
+            event.stop()
+            try:
+                profile_id = self._profile().id
+                self.app.reload_profiles()
+                profile = self.app.monitor_profiles.get(profile_id)
+                if profile is None:
+                    raise ValueError("Selected monitor is no longer available. Restore it on Display; no fallback was selected.")
+                save_preferences(self.app.local_config_root, active_monitor_profile_id=profile_id,
+                                 calibration_active_stage="review")
+                if event.button.id == "calibration-finish":
+                    from ..config.calibration_progress import calibration_progress
+                    progress = calibration_progress(profile, self.app.local_config_root)
+                    pending = [name for name in ("bind", "geometry", "spatial", "luminance", "timing") if not progress[name]["completed"] or (name in {"geometry", "luminance", "timing"} and not progress[name]["verified"])]
+                    draft = preferences(self.app.local_config_root).get("calibration_experiment_draft")
+                    if isinstance(draft, dict):
+                        save_preferences(self.app.local_config_root, calibration_experiment_draft=dict(draft, profile=profile_id))
+                    self.app.open_hub_page("setup")
+                    self.app.screen_stack[0].query_one("#monitor-profile", Select).value = profile_id
+                    message = "Calibration setup saved. " + ("Incomplete observations or laboratory verification remain: " + ", ".join(pending) + ". " if pending else "Setup records are available. ") + "Continue configuring experiments; human acquisition remains subject to experiment-specific preflight."
+                    self.app.screen_stack[0].query_one("#setup-status", Static).update(message)
+                    self.app.notify(message, timeout=15)
+                else:
+                    from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
+                    cls = PhysicalVerificationScreen if event.button.id == "review-physical-verification" else ExperimentQualificationScreen
+                    self.app.push_screen(cls(profile))
+            except (OSError, ValueError) as exc:
+                self.query_one("#geometry-status", Static).update(str(exc))
+            return
         if event.button.id == "calibration-return":
             event.stop()
             self.app.pop_screen()
@@ -850,9 +866,10 @@ class DisplayCheckScreen(HubPage):
                                       "edit-geometry-profile", "edit-timing-profile"}:
             event.stop()
             from .profiles import ProfileScreen
+            save_preferences(self.app.local_config_root, active_monitor_profile_id=self._profile().id)
             focus = {
                 "edit-luminance-profile": "profile-luminance-path",
-                "edit-review-profile": "profile-qualified_experiments",
+
                 "edit-geometry-profile": "profile-geometry_status",
                 "edit-timing-profile": "profile-timing_status",
             }.get(event.button.id)

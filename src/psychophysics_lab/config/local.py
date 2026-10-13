@@ -67,6 +67,10 @@ def save_profile(root: Path, profile, *, expected_revision: int = 0):
             if geometry_changed or binding_changed or timing_changed or luminance_changed:
                 changes["qualified_experiments"] = ()
             profile = replace(profile, **changes)
+        if previous is not None:
+            normalised = replace(profile, revision=previous.revision, profile_uuid=previous.profile_uuid)
+            if normalised == previous:
+                return previous  # No revision or preference write for a no-op Save.
         saved=replace(profile,revision=revision+1,profile_uuid=previous.profile_uuid if previous else str(uuid4()),origin='local')
         atomic_write_json(directory/f'revision_{saved.revision:06d}.json',saved.to_dict())
         save_preferences(root,active_monitor_profile_id=saved.id)

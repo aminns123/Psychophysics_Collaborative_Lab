@@ -232,20 +232,27 @@ class ProfileScreen(Screen):
                     measurement_path, self.profile,
                     local_config_root=self.app.local_config_root
                 )
+                for key in ("calibration_method", "calibration_date", "calibration_notes"):
+                    if not draft[key]:
+                        draft[key] = self.profile.to_dict()[key]
                 # Apply only after EVERY field and all measured pairs validated.
                 self.query_one("#profile-luminance", Input).value = json.dumps(draft["luminance_calibration"])
                 self.query_one("#profile-calibration_method", Input).value = draft["calibration_method"]
                 self.query_one("#profile-calibration_date", Input).value = draft["calibration_date"]
                 self.query_one("#profile-calibration_notes", Input).value = draft["calibration_notes"]
-                self.query_one("#profile-calibration_status", Select).value = "manual_unverified"
-                self.query_one("#profile-qualified_experiments", Input).value = ""
+                same_mapping = all(draft[key] == self.profile.to_dict()[key] for key in
+                                   ("luminance_calibration", "calibration_method", "calibration_date"))
+                if not same_mapping:
+                    self.query_one("#profile-calibration_status", Select).value = "manual_unverified"
+                    self.query_one("#profile-qualified_experiments", Input).value = ""
                 warnings = draft.get("warnings", [])
                 message = (
                     f"Loaded {len(draft['luminance_calibration'])} entered command/luminance "
                     "pairs into this UNSAVED, UNVERIFIED draft. Click Save profile / "
                     "continue calibration. This completes the measurement stage, not "
-                    "laboratory certification. Existing experiment qualification "
-                    "has been cleared pending review."
+                    "laboratory certification. "
+                    + ("Unchanged mapping retains saved verification/qualification." if same_mapping else
+                       "Changed mapping clears experiment qualification pending review.")
                     + ("\nOptional metadata warnings: " + "; ".join(warnings) if warnings else "")
                 )
                 status.update(message)
@@ -271,8 +278,8 @@ class ProfileScreen(Screen):
                         sources[key] = "os_mode"
                     elif payload[key] != old:
                         sources[key] = "manual"
-                    else:
-                        sources.setdefault(key, "reference" if self.profile.origin == "reference" else "unspecified")
+                    elif self.profile.origin == "reference":
+                        sources.setdefault(key, "reference")
                 if self.query_one("#profile-confirm-manual-geometry", Checkbox).value:
                     for key in ("physical_width_m", "physical_height_m", "viewing_distance_m"):
                         sources[key] = "manual"
@@ -321,7 +328,7 @@ class ProfileScreen(Screen):
                 # A physical monitor is not required to SAVE measurements. An
                 # unbound local copy is clearly a draft: no physical human run
                 # may use it until a suitable monitor is bound and validated.
-                if not payload.get("display_binding"):
+                if not payload.get("display_binding") and self.profile.origin != "local":
                     payload["geometry_status"] = "manual_unverified"
                     payload["timing_status"] = "manual_unverified"
                     payload["qualified_experiments"] = []
@@ -336,7 +343,9 @@ class ProfileScreen(Screen):
                 if not same:
                     payload["profile_uuid"] = ""
                     payload["revision"] = 0
+                unchanged_revision = self.profile.revision
                 result = save_profile(self.app.local_config_root, _profile_from_dict(payload), expected_revision=self.profile.revision if same else 0)
+                no_changes = same and result.revision == unchanged_revision
                 saved_result = result
                 # Do not report success until the on-disk revision is visible
                 # through the same loader used by future experiment sessions.
@@ -348,6 +357,7 @@ class ProfileScreen(Screen):
                 detail = ("bound to a selected physical display" if result.display_binding
                           else "saved as an UNBOUND DRAFT (not ready for human acquisition)")
                 notice = (
+                    "No changes to save. " if no_changes else
                     f"Saved {result.id}, revision {result.revision}; {detail}. "
                     "The Calibrate page now shows your saved values."
                 )
@@ -362,7 +372,7 @@ class ProfileScreen(Screen):
                     from ..config.calibration_workflow import advance_if_completed
                     previous = (self.app.screen_stack[-2]
                                 if len(self.app.screen_stack) >= 2 else None)
-                    if isinstance(previous, DisplayCheckScreen):
+                    if isinstance(previous, DisplayCheckScreen) and not no_changes:
                         stage = previous.active_calibration_stage
                         following = advance_if_completed(
                             persisted, self.app.local_config_root, stage
