@@ -354,6 +354,8 @@ class DisplayCheckScreen(HubPage):
         self.app.display_guide_target_profile_id = None
         remembered = preferences(self.app.local_config_root).get("calibration_active_stage", "bind")
         self.active_calibration_stage = remembered if remembered in dict(STAGES) else "bind"
+        from ..core.luminance_session import latest_luminance_pilot
+        pilot_json = latest_luminance_pilot(self.app.local_config_root, selected)
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
@@ -497,8 +499,14 @@ class DisplayCheckScreen(HubPage):
                              id="open-luminance-pilot")
                 yield Button("Open completed FAKE example JSON (education only)",
                              id="open-luminance-demo")
-                yield Button("Import real JSON → Save measurements → Next stage",
-                             id="edit-luminance-profile", variant="success")
+                yield Label("Absolute path to your real measurement JSON (pilot file or your own JSON)")
+                yield Input(value=str(pilot_json) if pilot_json else "",
+                            placeholder="C:\\...\\pilot_luminance.json", id="cal-luminance-json-path")
+                yield Button("Import + SAVE real readings → Continue to Timing",
+                             id="calibration-import-luminance", variant="success")
+                yield Static("", id="cal-luminance-import-feedback")
+                yield Button("Advanced: edit all monitor fields / manual entry",
+                             id="edit-luminance-profile")
                 with Collapsible(title="Further help · Real and example JSON", collapsed=True):
                     yield Static(
                         "Real JSON row: screen_intensity=0.50, luminance_cdm2=(your real meter reading). "
@@ -509,9 +517,11 @@ class DisplayCheckScreen(HubPage):
                         "reading at the same command for repetitions. Esc ends the session.\n"
                         "Open pilot/test JSON, fill at least TWO real cd/m² readings. "
                         "Method/date/notes may be blank (shown as warnings). "
-                        "In the profile editor paste its full file path, click Load into draft, "
-                        "then Save profile. The Luminance tab turns GREEN for saved readings "
-                        "and the wizard moves to Timing. This does NOT auto-verify photometry."
+                        "Paste the file path above, then click Import + SAVE to commit "
+                        "your real pairs directly into a new local monitor profile revision. "
+                        "The Luminance tab turns GREEN and the wizard moves to Timing. "
+                        "The Advanced editor remains available for manual edits. "
+                        "Saving does NOT auto-verify physical photometry."
                     )
 
             with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
@@ -778,6 +788,11 @@ class DisplayCheckScreen(HubPage):
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
                 self._refresh_stage_status()
+                from ..core.luminance_session import latest_luminance_pilot
+                chosen = str(event.select.value)
+                if chosen in self.app.monitor_profiles:
+                    pilot = latest_luminance_pilot(self.app.local_config_root, chosen)
+                    self.query_one("#cal-luminance-json-path", Input).value = str(pilot) if pilot else ""
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id and event.input.id.startswith("geometry-") and event.input.id != "geometry-measured":
@@ -832,6 +847,51 @@ class DisplayCheckScreen(HubPage):
             self.app.push_screen(ProfileScreen(profile=self._profile(), focus_field=focus))
             return
         status = self.query_one("#geometry-status", Static)
+        if event.button.id == "calibration-import-luminance":
+            event.stop()
+            try:
+                from ..config.calibration_workflow import (
+                    import_and_save_luminance, advance_if_completed,
+                )
+                path = self.query_one("#cal-luminance-json-path", Input).value
+                saved, warnings = import_and_save_luminance(
+                    self._profile(), self.app.local_config_root, path
+                )
+                self.app.reload_profiles()
+                persisted = self.app.monitor_profiles.get(saved.id)
+                if persisted != saved:
+                    raise RuntimeError("Saved luminance profile failed to reload from disk.")
+                selector = self.query_one("#geometry-monitor", Select)
+                selector.set_options([
+                    (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id)
+                    for p in self.app.monitor_profiles.values()
+                ])
+                selector.value = saved.id
+                self._refresh_preview()
+                self._refresh_latest()
+                self._refresh_stage_status()
+                message = (
+                    f"[green]SAVED {len(saved.luminance_calibration)} REAL intensity / cd/m² pairs "
+                    f"to monitor {saved.id}, revision {saved.revision}.[/green] "
+                    "Measurement stage COMPLETE; physical certification is still UNVERIFIED."
+                )
+                if warnings:
+                    message += "\n[yellow]Optional information: " + "; ".join(warnings) + "[/yellow]"
+                following = advance_if_completed(saved, self.app.local_config_root, "luminance")
+                if following and self.active_calibration_stage == "luminance":
+                    self._go_to_stage(following, remember=False)
+                    message += "\nContinuing to Timing. Return to Luminance to review the saved data."
+                status.update(message)
+                self.query_one("#cal-luminance-import-feedback", Static).update(message)
+                self.app.notify("Real luminance measurements saved to profile. No automatic certification.",
+                                timeout=10)
+            except (ValueError, TypeError, OSError, RuntimeError, KeyError) as exc:
+                message = f"[red]Luminance NOT imported or confirmed: {exc}[/red]"
+                status.update(message)
+                self.query_one("#cal-luminance-import-feedback", Static).update(message)
+                self.app.notify(str(exc), title="Luminance import failed",
+                                severity="error", timeout=12)
+            return
         if event.button.id == "launch-luminance-session":
             event.stop()
             try:
