@@ -88,10 +88,15 @@ def resolve_test(profile, request, resolution):
                            "phase_semantics": "Sine phase uses angular position atan((pixel-centre - screen-centre) * metres-per-pixel / distance), not a linear degrees-per-pixel approximation."}
     if request.test_kind.startswith("temporal_"):
         plan["temporal"] = temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind)
-    duration = finite(request.duration_s, "Duration", positive=True)
-    if duration > 60:
-        raise ValueError("Diagnostic duration must be no more than 60 seconds.")
+    # 0 means the researcher ends the display test with ESC or ENTER.
+    # Any positive finite duration is also permitted for scripted acceptance.
+    duration = finite(request.duration_s, "Duration")
+    if duration < 0:
+        raise ValueError("Duration must be nonnegative (0 = until ESC/ENTER).")
     plan["duration_s"] = duration
+    plan["termination"] = ("manual_escape_or_enter" if duration == 0
+                           else "manual_or_timeout")
+
     return bar, plan
 
 def interval_summary(timestamps, refresh_hz):
