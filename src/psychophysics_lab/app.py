@@ -212,6 +212,49 @@ def _main(
             continue
 
         from .core.geometry_check import GeometryCheckRequest
+        from .core.luminance_session import LuminanceSessionRequest
+
+        if isinstance(action, LuminanceSessionRequest):
+            selected_data_root = resolve_data_root(
+                Path(action.data_root).expanduser().resolve()
+                if action.data_root else initial_data_root, repo_root
+            )
+            if diagnostic_context is not None:
+                diagnostic_context["data_root"] = selected_data_root
+                diagnostic_context["phase"] = "interactive_luminance_measurement"
+            from .core.luminance_session import run_interactive_luminance
+            try:
+                artifacts = run_interactive_luminance(
+                    action, repo_root=repo_root, data_root=selected_data_root
+                )
+            except Exception as exc:
+                # Partial observations already entered are retained locally
+                # even when the GPU/window closes unexpectedly.
+                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                report = write_crash_report(
+                    exc, repo_root=repo_root, data_root=selected_data_root,
+                    phase="interactive_luminance_measurement"
+                )
+                geometry_summary = (
+                    f"[red]Luminance session interrupted: {exc}[/red]\\n"
+                    + (f"Diagnostic error report: {report}" if report
+                       else "Previously saved measurements remain in calibration_sessions/.")
+                )
+            else:
+                geometry_summary = (
+                    "[green]Interactive luminance session completed.[/green]\\n"
+                    f"Recorded individual measurements: {artifacts.readings_count} "
+                    f"at {artifacts.measured_commands} digital commands.\\n"
+                    f"Raw readings: {artifacts.session_file}\\n"
+                    f"Editable mean JSON: {artifacts.pilot_json_file}\\n"
+                    "Open pilot/test JSON, enter real photometer method and notes, "
+                    "and import into the monitor profile when ready. "
+                    "The results remain UNVERIFIED."
+                )
+                print(f"Luminance measurements: {artifacts.session_file}")
+                print(f"Editable pilot JSON: {artifacts.pilot_json_file}")
+            initial_data_root = selected_data_root
+            continue
 
         if isinstance(action, GeometryCheckRequest):
             selected_data_root = (
