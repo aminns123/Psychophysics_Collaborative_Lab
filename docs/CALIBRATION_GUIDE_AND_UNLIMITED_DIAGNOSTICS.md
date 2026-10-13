@@ -31,8 +31,8 @@ button directly above it. A small persistent lower-right panel appears:
 | 1. Bind monitor | Green means bound and expected resolution present | Edit monitor → Detect, select, verify physical size/viewing distance, Save |
 | 2. Ruler geometry | Green means physical measurement is recorded on a **matching physical setup and profile identity** | Calibrate → Size test → measure physical bar → Record Measurement; inspect signed error |
 | 3. Spatial frequency | Green means a spatial diagnostic was presented for that physical setup, **not** that output frequency was measured | Calibrate → Spatial sine → independently verify orientation, cycles and geometry |
-| 4. Luminance | Red if no trusted encoded luminance/command table; geometry cannot fix it | Measure with a photometer, enter instrument/date/points in profile editor, review before verifying |
-| 5. Timing | Green only if explicitly declared verified; amber for software-only temporal test | Calibrate → temporal test; photodiode evidence required for photon-onset claims |
+| 4. Luminance | Green once at least two valid REAL intensity/cd/m² pairs are SAVED; physical verification shown separately | Import and SAVE directly from Calibrate → Luminance, or use the advanced editor; optional method/date/notes warn but do not block |
+| 5. Timing | Green when software timing evidence is SAVED, not when photon-onset was verified | Calibrate → temporal diagnostic → Review; separate photodiode evidence is required for physical timing claims |
 | 6. Contrast | Amber if starting RGB command passes the *initial* range guard; red if it could clip | Edit Experiment → background/starting intensity/adaptive steps; document scientifically chosen contrast policy |
 | 7. Experiment qualification | Red until the selected experiment/profile pairing is explicitly qualified | Finish lab protocol checks first, then add the experiment ID to the profile's qualified-experiments field |
 
