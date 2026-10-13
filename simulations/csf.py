@@ -35,7 +35,7 @@ class CSFObserver:
             raise ValueError("Observer needs finite nonnegative contrast and positive condition.")
         if contrast == 0:
             return .5
-        offset = math.log2(condition / self.preferred_condition) / self.tuning_width_octaves
+        offset = (math.log2(condition) - math.log2(self.preferred_condition)) / self.tuning_width_octaves
         # Compute in log space to avoid overflowing extreme tuning/contrast.
         log_threshold = math.log(self.threshold) + .5 * offset * offset
         log_odds = self.slope * (math.log(contrast) - log_threshold)

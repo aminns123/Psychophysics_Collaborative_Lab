@@ -105,16 +105,18 @@ def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path, *,
         tick_labels = labels
 
     fig, ax = plt.subplots()
-    ax.plot(x, values, marker="o")
-    if tick_labels is not None:
-        ax.set_xticks(x, tick_labels)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel("Threshold C_disp (digital; not measured physical contrast)")
-    ax.set_title("Derived threshold contrast vs condition" + ("\n" + warning if warning else ""))
-    ax.grid(True, alpha=0.25)
-    fig.tight_layout()
-    fig.savefig(output, dpi=160)
-    plt.close(fig)
+    try:
+        ax.plot(x, values, marker="o")
+        if tick_labels is not None:
+            ax.set_xticks(x, tick_labels)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel("Threshold C_disp (digital; not measured physical contrast)")
+        ax.set_title("Derived threshold contrast vs condition" + ("\n" + warning if warning else ""))
+        ax.grid(True, alpha=0.25)
+        fig.tight_layout()
+        fig.savefig(output, dpi=160)
+    finally:
+        plt.close(fig)
     return output
 
 

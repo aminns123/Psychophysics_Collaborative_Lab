@@ -16,7 +16,7 @@ button directly above it. A small persistent lower-right panel appears:
 - Choose **← Previous / Next →** or press the **left/right arrow keys** to
   inspect independent calibration sections.
 - Each step is labelled green, amber or red. Green **TEST RECORDED** means a
-  same-revision software diagnostic/ruler measurement exists, *not* that
+  physically compatible software diagnostic/ruler measurement exists, *not* that
   the emitted visual stimulus was scientifically verified.
 - **Open section** routes to the exact selected local profile's editor,
   the Calibrate test controls, or the experiment's editable protocol settings.
@@ -29,8 +29,8 @@ button directly above it. A small persistent lower-right panel appears:
 | Guide step | What a status means | User action |
 |---|---|---|
 | 1. Bind monitor | Green means bound and expected resolution present | Edit monitor → Detect, select, verify physical size/viewing distance, Save |
-| 2. Ruler geometry | Green means physical measurement is recorded on a **matching profile hash/revision** | Calibrate → Size test → measure physical bar → Record Measurement; inspect signed error |
-| 3. Spatial frequency | Green means a spatial diagnostic was presented for that revision, **not** that output frequency was measured | Calibrate → Spatial sine → independently verify orientation, cycles and geometry |
+| 2. Ruler geometry | Green means physical measurement is recorded on a **matching physical setup and profile identity** | Calibrate → Size test → measure physical bar → Record Measurement; inspect signed error |
+| 3. Spatial frequency | Green means a spatial diagnostic was presented for that physical setup, **not** that output frequency was measured | Calibrate → Spatial sine → independently verify orientation, cycles and geometry |
 | 4. Luminance | Red if no trusted encoded luminance/command table; geometry cannot fix it | Measure with a photometer, enter instrument/date/points in profile editor, review before verifying |
 | 5. Timing | Green only if explicitly declared verified; amber for software-only temporal test | Calibrate → temporal test; photodiode evidence required for photon-onset claims |
 | 6. Contrast | Amber if starting RGB command passes the *initial* range guard; red if it could clip | Edit Experiment → background/starting intensity/adaptive steps; document scientifically chosen contrast policy |
@@ -72,3 +72,13 @@ Regression tests cover duration 0, large positive durations, rejection of
 negative duration, readiness status wording and Textual button/key navigation,
 including click-through to the original profile. Physical on-monitor visual
 checks remain necessary on Windows with the actual hardware and video driver.
+
+### Progress after a test or measurement
+
+The active calibration page and Review now show software completion separately
+from verification: awaiting measurement, awaiting review, stale or failed.
+Escape/Enter completes a presented diagnostic; it does not certify hardware.
+Ruler measurements attach to the latest completed ruler, even after running a
+spatial/timing test. Notes or verification-only revisions retain compatible
+evidence; changed physical geometry/binding/resolution/refresh rejects it.
+See `CALIBRATION_RELIABILITY_AUDIT_2026-10-13.md` for the compatibility policy.

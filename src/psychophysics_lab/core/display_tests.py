@@ -1,6 +1,7 @@
 """Pure display diagnostic plans; no GUI imports or hardware access."""
 from dataclasses import asdict, dataclass
 import math
+from itertools import pairwise
 from ..stimuli.geometry import resolve_white_bar
 
 TESTS = (("Size / ruler bar", "size"), ("Position / ruler bar", "position"),
@@ -82,8 +83,8 @@ def resolve_test(profile, request, resolution):
         # Most widely separated adjacent angular samples occur nearest the optical centre.
         maximum_step_deg = math.degrees(2 * math.atan(step_m / (2 * distance)))
         minimum_pixels_per_cycle = 1 / (freq * maximum_step_deg)
-        if minimum_pixels_per_cycle < 2:
-            raise ValueError("Spatial frequency exceeds the selected display's pixel sampling Nyquist limit.")
+        if minimum_pixels_per_cycle <= 2:
+            raise ValueError("Spatial frequency reaches or exceeds the selected display's pixel sampling Nyquist limit; the boundary is phase dependent.")
         plan["spatial"] = {"requested_cycles_per_degree": freq, "minimum_pixels_per_cycle": minimum_pixels_per_cycle,
                            "cycles_across_patch": freq * (high_angle - low_angle),
                            "phase_semantics": "Sine phase uses angular position atan((pixel-centre - screen-centre) * metres-per-pixel / distance), not a linear degrees-per-pixel approximation."}
@@ -118,10 +119,15 @@ def diagnostic_timeout_reached(duration_s, elapsed_s):
 
 def interval_summary(timestamps, refresh_hz):
     import statistics
-    intervals = [b-a for a,b in zip(timestamps,timestamps[1:])]
+    rate = finite(refresh_hz, "Refresh rate", positive=True)
+    if any(not math.isfinite(stamp) for stamp in timestamps):
+        raise ValueError("Software flip timestamps must be finite.")
+    intervals = [b-a for a,b in pairwise(timestamps)]
+    if any(not math.isfinite(dt) or dt <= 0 for dt in intervals):
+        raise ValueError("Software flip timestamps must be finite and strictly increasing.")
     if not intervals:
         return {"frames": len(timestamps), "software_timing_verified": False}
-    expected = 1 / refresh_hz
+    expected = 1 / rate
     return {"frames": len(timestamps), "intervals_s": intervals,
             "median_interval_s": statistics.median(intervals), "maximum_interval_s": max(intervals),
             "suspected_missed_refreshes": sum(max(0, round(dt/expected)-1) for dt in intervals if dt > 1.5*expected),

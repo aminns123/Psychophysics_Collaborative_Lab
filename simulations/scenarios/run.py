@@ -125,103 +125,124 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
     observer = model.observer_factory(**observer_values)
     records = []
     checks = []
-    for seed in selected_seeds:
-        artifacts, analysis = simulate(
-            data_root=root, repo_root=source_root, experiment_id=experiment_id,
-            seed=seed, observer=observer, values=experiment_settings,
-            monitor_profile_id=monitor_profile_id, monitor_profile_hash=monitor_profile_hash, analyse=True,
-        )
-        records.append(ScenarioRun(seed, artifacts, analysis))
-        manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
-        checks.append({
-            "seed": seed, "name": "virtual participant provenance",
-            "passed": (
-                manifest.get("data_kind") == "synthetic"
-                and manifest.get("participant_id") == f"synthetic_{seed}"
-                and (artifacts.run_directory / "SYNTHETIC_DATA.json").exists()
-            ),
-            "detail": "run must be marked synthetic and belong to a reserved virtual participant",
-        })
-        if scenario.expect_analysis is not None:
+    failed_seed = None
+    try:
+        for seed in selected_seeds:
+            failed_seed = seed
+            artifacts, analysis = simulate(
+                data_root=root, repo_root=source_root, experiment_id=experiment_id,
+                seed=seed, observer=observer, values=experiment_settings,
+                monitor_profile_id=monitor_profile_id, monitor_profile_hash=monitor_profile_hash, analyse=True,
+            )
+            records.append(ScenarioRun(seed, artifacts, analysis))
+            manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
             checks.append({
-                "seed": seed, "name": "experiment-specific analysis expectation",
-                "passed": (analysis is not None) == scenario.expect_analysis,
-                "detail": f"expected analysis={scenario.expect_analysis}, actual={analysis is not None}",
+                "seed": seed, "name": "virtual participant provenance",
+                "passed": (
+                    manifest.get("data_kind") == "synthetic"
+                    and manifest.get("participant_id") == f"synthetic_{seed}"
+                    and (artifacts.run_directory / "SYNTHETIC_DATA.json").exists()
+                ),
+                "detail": "run must be marked synthetic and belong to a reserved virtual participant",
             })
-        for check in _validator_checks(scenario, artifacts.run_directory):
-            checks.append({"seed": seed, **check})
+            if scenario.expect_analysis is not None:
+                checks.append({
+                    "seed": seed, "name": "experiment-specific analysis expectation",
+                    "passed": (analysis is not None) == scenario.expect_analysis,
+                    "detail": f"expected analysis={scenario.expect_analysis}, actual={analysis is not None}",
+                })
+            for check in _validator_checks(scenario, artifacts.run_directory):
+                checks.append({"seed": seed, **check})
 
-    evaluation = dict(scenario.evaluate(observer, tuple(records))) if scenario.evaluate else {}
-    # An experiment may declare its own scientific acceptance checks. These
-    # are distinct from the universal provenance and file-integrity checks.
-    for entry in evaluation.get("checks", []):
-        if not isinstance(entry, dict) or not isinstance(entry.get("name"), str) or type(entry.get("passed")) is not bool:
-            raise TypeError("Experiment-specific evaluation checks need name:str and passed:bool.")
-        checks.append({
-            "seed": "scenario",
-            "name": entry["name"],
-            "passed": entry["passed"],
-            "detail": str(entry.get("detail", "")),
-        })
-    succeeded = all(bool(check["passed"]) for check in checks)
-    # Every observer run is self-contained: the success report lives beside
-    # trials.tsv, adaptive_session.json and analysis/ in its OWN run directory.
-    # With multiple seeds an identical aggregate report is attached to each run.
-    report_file = records[0].artifacts.run_directory / "scenario_report.json"
+        failed_seed = None  # failures below are scenario evaluation/export failures
+        evaluation = dict(scenario.evaluate(observer, tuple(records))) if scenario.evaluate else {}
+        # An experiment may declare its own scientific acceptance checks. These
+        # are distinct from the universal provenance and file-integrity checks.
+        for entry in evaluation.get("checks", []):
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str) or type(entry.get("passed")) is not bool:
+                raise TypeError("Experiment-specific evaluation checks need name:str and passed:bool.")
+            checks.append({
+                "seed": "scenario",
+                "name": entry["name"],
+                "passed": entry["passed"],
+                "detail": str(entry.get("detail", "")),
+            })
+        succeeded = all(bool(check["passed"]) for check in checks)
+        # Every observer run is self-contained: the success report lives beside
+        # trials.tsv, adaptive_session.json and analysis/ in its OWN run directory.
+        # With multiple seeds an identical aggregate report is attached to each run.
+        report_file = records[0].artifacts.run_directory / "scenario_report.json"
 
-    def relative(path: Path) -> str:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        def relative(path: Path) -> str:
+            return path.resolve().relative_to(root.resolve()).as_posix()
 
-    from psychophysics_lab.analysis.previews import latest_staircase_plot
-    def preview_path(record):
-        plot = latest_staircase_plot(data_root=root, run_directory=record.artifacts.run_directory)
-        return relative(plot) if plot else None
+        from psychophysics_lab.analysis.previews import latest_staircase_plot
+        def preview_path(record):
+            plot = latest_staircase_plot(data_root=root, run_directory=record.artifacts.run_directory)
+            return relative(plot) if plot else None
 
-    report = {
-        "schema_version": 1,
-        "data_kind": "synthetic",
-        "experiment_id": experiment_id,
-        "scenario_id": scenario_id,
-        "description": scenario.description,
-        "passed": succeeded,
-        "seeds": list(selected_seeds),
-        "observer_model": type(observer).__name__,
-        "observer_parameters": observer_values,
-        "experiment_values": experiment_settings,
-        "monitor_profile_id": monitor_profile_id or model.monitor_profile_id,
-        "display_hardware_used": False,
-        "expected_analysis": scenario.expect_analysis,
-        "tests": checks,
-        "experiment_evaluation": evaluation,
-        "runs": [
-            {
-                "seed": record.seed,
-                "relative_run_directory": relative(record.artifacts.run_directory),
-                "status": record.artifacts.status,
-                "accepted_responses": record.artifacts.accepted_trials,
-                "canonical_trials": relative(record.artifacts.trial_log_file),
-                "canonical_manifest": relative(record.artifacts.manifest_file),
-                "staircase_plot": preview_path(record),
-                "threshold_plot": (
-                    relative(Path(record.analysis.plot_file))
-                    if record.analysis is not None and getattr(record.analysis, "plot_file", None) is not None
-                    else None
-                ),
-                "relative_analysis_summary": (
-                    relative(Path(record.analysis.summary_json))
-                    if record.analysis is not None and getattr(record.analysis, "summary_json", None) is not None
-                    else None
-                ),
-            }
-            for record in records
-        ],
-        "scientific_warning": (
-            "This test verifies software processing with experiment-specific virtual observers. "
-            "It is not human-subject evidence or physical calibration, and estimated reversal "
-            "thresholds need not coincide with a virtual observer's psychometric midpoint."
-        ),
-    }
-    for record in records:
-        atomic_write_json(record.artifacts.run_directory / "scenario_report.json", report)
-    return ScenarioResult(experiment_id, scenario_id, succeeded, report_file,
-                          tuple(records), tuple(checks), evaluation)
+        report = {
+            "schema_version": 1,
+            "data_kind": "synthetic",
+            "experiment_id": experiment_id,
+            "scenario_id": scenario_id,
+            "description": scenario.description,
+            "passed": succeeded,
+            "seeds": list(selected_seeds),
+            "observer_model": type(observer).__name__,
+            "observer_parameters": observer_values,
+            "experiment_values": experiment_settings,
+            "monitor_profile_id": monitor_profile_id or model.monitor_profile_id,
+            "display_hardware_used": False,
+            "expected_analysis": scenario.expect_analysis,
+            "tests": checks,
+            "experiment_evaluation": evaluation,
+            "runs": [
+                {
+                    "seed": record.seed,
+                    "relative_run_directory": relative(record.artifacts.run_directory),
+                    "status": record.artifacts.status,
+                    "accepted_responses": record.artifacts.accepted_trials,
+                    "canonical_trials": relative(record.artifacts.trial_log_file),
+                    "canonical_manifest": relative(record.artifacts.manifest_file),
+                    "staircase_plot": preview_path(record),
+                    "threshold_plot": (
+                        relative(Path(record.analysis.plot_file))
+                        if record.analysis is not None and getattr(record.analysis, "plot_file", None) is not None
+                        else None
+                    ),
+                    "relative_analysis_summary": (
+                        relative(Path(record.analysis.summary_json))
+                        if record.analysis is not None and getattr(record.analysis, "summary_json", None) is not None
+                        else None
+                    ),
+                }
+                for record in records
+            ],
+            "scientific_warning": (
+                "This test verifies software processing with experiment-specific virtual observers. "
+                "It is not human-subject evidence or physical calibration, and estimated reversal "
+                "thresholds need not coincide with a virtual observer's psychometric midpoint."
+            ),
+        }
+        for record in records:
+            atomic_write_json(record.artifacts.run_directory / "scenario_report.json", report)
+        return ScenarioResult(experiment_id, scenario_id, succeeded, report_file,
+                              tuple(records), tuple(checks), evaluation)
+    except BaseException as exc:
+        # Preserve a scenario-level failure alongside every already acquired
+        # run, even if a later seed or scientific evaluator fails. The original
+        # acquisition exception remains authoritative.
+        failure = {"schema_version": 1, "data_kind": "synthetic", "passed": False,
+                   "status": "error", "experiment_id": experiment_id,
+                   "scenario_id": scenario_id, "seeds": list(selected_seeds),
+                   "failed_seed": failed_seed, "error": repr(exc),
+                   "display_hardware_used": False, "tests": checks,
+                   "completed_seed_records": [record.seed for record in records],
+                   "scientific_warning": "Partial synthetic scenario; no physical calibration or human evidence."}
+        for record in records:
+            try:
+                atomic_write_json(record.artifacts.run_directory / "scenario_report.json", failure)
+            except Exception as report_error:
+                exc.add_note(f"Could not save partial scenario report: {report_error!r}")
+        raise

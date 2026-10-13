@@ -121,3 +121,13 @@ the same import workflow after filling the file.
 Hardware acceptance on Windows must check the actual 6° square and
 keyboard controls. Headless CI can test the calculations, metadata,
 JSON round-trips, input validation and file safety, **not emitted light**.
+
+### Failed exports and partial sessions
+
+`session.json` is the authoritative raw record. If saving the derived pilot
+fails, the application says the raw reading was saved and shows an export
+warning. **Open pilot/test JSON** rebuilds a missing pilot from that raw record;
+it never replaces an existing edited pilot. Inspect partial/interrupted records
+and complete instrument notes before import. Sessions with fewer than two
+distinct commands are marked incomplete. Clear or save a partially typed
+reading before Escape. Physical verification remains a separate review.

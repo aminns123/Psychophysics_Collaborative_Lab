@@ -168,7 +168,11 @@ def main() -> int:
             )
             return 1
 
-        _validate_environment(venv_python)
+        try:
+            _validate_environment(venv_python)
+        except subprocess.CalledProcessError:
+            print("Environment validation failed after installation. Review dependency/import errors above; no experiment was started.")
+            return 1
         _write_state(pyproject_hash)
     else:
         print("Dependency configuration is unchanged; reusing the existing .venv.")

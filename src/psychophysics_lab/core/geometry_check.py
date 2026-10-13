@@ -85,8 +85,11 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             timestamps.append(time.perf_counter())
             self.frame_index += 1
     window = DiagnosticWindow(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab Display Test")
+    termination = "window_closed"
     def invalidate(dt):
+        nonlocal termination
         if diagnostic_timeout_reached(request.duration_s, time.perf_counter() - start):
+            termination = "timeout"
             window.close()
         else:
             window.invalid = True
@@ -143,11 +146,16 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             label.draw()
         @window.event
         def on_key_press(symbol, modifiers):
+            nonlocal termination
             if symbol in {pyglet.window.key.ESCAPE,pyglet.window.key.ENTER}:
+                termination = "escape" if symbol == pyglet.window.key.ESCAPE else "enter"
                 window.close()
                 return True
         pyglet.clock.schedule_interval(invalidate,1/profile.refresh_rate_hz)
         pyglet.app.run()
+        if not timestamps:
+            raise ValueError("Display test ended before any software flip was observed; rerun the diagnostic.")
+        plan["termination_reason"] = termination
         plan["display_identity"] = identity
         plan["frame_timing"] = interval_summary(timestamps,profile.refresh_rate_hz)
         plan["frame_timing"]["total_flips"] = window.frame_index
@@ -195,11 +203,11 @@ def _draw_luminance_session(profile, request, session) -> None:
     )
     # Force an explicitly black surround; OpenGL's default clear colour
     # is not a laboratory brightness calibration or a reliable UI setting.
-    gl.glClearColor(0.0, 0.0, 0.0, 1.0)
     current = 1.0
     entry = ""
     feedback = "Type measured cd/m²; Enter saves. Left dimmer / Right brighter. Esc finishes."
     try:
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         resolution = (int(window.width), int(window.height))
         if profile.expected_resolution_px and resolution != profile.expected_resolution_px:
             raise ValueError("Actual fullscreen pixel resolution changed since calibration; rebind the monitor.")
@@ -257,6 +265,10 @@ def _draw_luminance_session(profile, request, session) -> None:
             nonlocal current, entry, feedback
             k = pyglet.window.key
             if symbol == k.ESCAPE:
+                if entry:
+                    feedback = "Unsaved reading: Enter saves, or Backspace clears before Esc finishes."
+                    window.invalid = True
+                    return True
                 window.close()
                 return True
             if symbol == k.BACKSPACE:
@@ -280,7 +292,7 @@ def _draw_luminance_session(profile, request, session) -> None:
                     except (ValueError, OSError, RuntimeError) as exc:
                         feedback = f"Reading NOT saved: {exc}"
                     else:
-                        feedback = f"Reading saved to local calibration session (command {current:.4f})."
+                        feedback = session.export_warning or f"Reading saved to local calibration session (command {current:.4f})."
                         entry = ""
             else:
                 return
@@ -379,13 +391,23 @@ def run_geometry_check(
     )
 
 
-def latest_geometry_report(data_root: Path, monitor_profile_id: str | None = None) -> Path | None:
+def latest_geometry_report(data_root: Path, monitor_profile_id: str | None = None, *, ruler_only: bool = False) -> Path | None:
     base = data_root / "diagnostics" / "display_geometry"
     if monitor_profile_id:
         base = base / monitor_profile_id
     if not base.exists():
         return None
-    reports = [path for path in base.rglob("geometry_check.json") if path.is_file()]
+    reports = []
+    for path in base.rglob("geometry_check.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                continue
+            if ruler_only and payload.get("request", {}).get("test_kind", "size") not in {"size", "position"}:
+                continue
+            reports.append(path)
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
     return max(reports, key=lambda path: path.stat().st_mtime_ns) if reports else None
 
 
@@ -394,6 +416,7 @@ def record_geometry_measurement(
     data_root: Path,
     report_file: Path,
     measured_length_mm: float,
+    profile=None,
 ) -> dict[str, Any]:
     """Add a ruler measurement to a diagnostic report, never to acquisition data."""
     root = data_root.resolve()
@@ -402,12 +425,17 @@ def record_geometry_measurement(
     if not report.is_relative_to(diagnostics_root):
         raise ValueError("Geometry report is not inside this workspace's diagnostics area.")
     payload = json.loads(report.read_text(encoding="utf-8"))
+    from ..config.readiness import diagnostic_matches_profile
     if payload.get("request", {}).get("test_kind", "size") not in {"size", "position"}:
         raise ValueError(
             "A ruler measurement can only be recorded for a Size or Position "
             "bar test. Run a ruler diagnostic first; do not record photometer "
             "values or grating measurements in this field."
         )
+    if payload.get("status") != "completed":
+        raise ValueError("Only a completed ruler presentation can receive a measurement.")
+    if profile is not None and not diagnostic_matches_profile(payload, profile):
+        raise ValueError("Ruler evidence is stale or belongs to another physical display setup. Run a fresh test.")
     intended = float(payload["resolved_bar"]["intended_length_mm"])
     measured = finite(measured_length_mm, "Measured ruler length", positive=True)
     error = measured - intended
@@ -419,6 +447,8 @@ def record_geometry_measurement(
     }
     with file_lock(report.parent / "measurement.lock"):
         latest = json.loads(report.read_text(encoding="utf-8"))
+        if latest.get("status") != "completed" or (profile is not None and not diagnostic_matches_profile(latest, profile)):
+            raise ValueError("Ruler evidence changed while recording; reload before saving.")
         latest.setdefault("measurement_history", []).append(dict(latest.get("measurement", {})))
         latest["measurement"] = payload["measurement"]
         atomic_write_json(report, latest)

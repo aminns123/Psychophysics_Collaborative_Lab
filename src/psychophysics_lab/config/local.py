@@ -48,9 +48,25 @@ def save_profile(root: Path, profile, *, expected_revision: int = 0):
     if not directory.is_relative_to(root.resolve()): raise ValueError('Profile path escapes local configuration.')
     with file_lock(root/'profiles.lock'):
         existing=sorted(directory.glob('revision_*.json')) if directory.exists() else []
-        previous=_profile_from_dict(json.loads(existing[-1].read_text())) if existing else None
+        previous=_profile_from_dict(json.loads(existing[-1].read_text(encoding="utf-8"))) if existing else None
         revision=previous.revision if previous else 0
         if revision!=expected_revision: raise ValueError('Profile changed. Reload before saving another revision.')
+        if previous is not None:
+            geometry_changed = any(getattr(previous, field) != getattr(profile, field) for field in
+                ("physical_width_m", "physical_height_m", "viewing_distance_m", "expected_resolution_px"))
+            binding_changed = previous.display_binding != profile.display_binding
+            timing_changed = previous.refresh_rate_hz != profile.refresh_rate_hz
+            luminance_changed = previous.luminance_calibration != profile.luminance_calibration
+            changes = {}
+            if geometry_changed or binding_changed:
+                changes["geometry_status"] = "manual_unverified"
+            if timing_changed or binding_changed:
+                changes["timing_status"] = "manual_unverified"
+            if luminance_changed or binding_changed:
+                changes["calibration_status"] = "manual_unverified"
+            if geometry_changed or binding_changed or timing_changed or luminance_changed:
+                changes["qualified_experiments"] = ()
+            profile = replace(profile, **changes)
         saved=replace(profile,revision=revision+1,profile_uuid=previous.profile_uuid if previous else str(uuid4()),origin='local')
         atomic_write_json(directory/f'revision_{saved.revision:06d}.json',saved.to_dict())
         save_preferences(root,active_monitor_profile_id=saved.id)

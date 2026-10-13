@@ -1,5 +1,4 @@
 """Read-only profile readiness. Recorded checks never certify qualification."""
-import json
 from .local import content_hash, config_root
 from .preflight import compatible, human_blockers
 
@@ -14,13 +13,18 @@ _DIAGNOSTIC_PHYSICAL_FIELDS = (
 
 
 def diagnostic_matches_profile(payload, profile) -> bool:
-    """Require untampered recorded profile and matching physical configuration."""
-    if payload.get("status") != "completed":
+    """Require a consistent recorded profile snapshot and matching physical configuration."""
+    if not isinstance(payload, dict) or payload.get("status") != "completed":
         return False
     snapshot = payload.get("monitor_profile")
     if not isinstance(snapshot, dict):
         return False
-    if payload.get("monitor_profile_sha256") != content_hash(snapshot):
+    try:
+        if payload.get("monitor_profile_sha256") != content_hash(snapshot):
+            return False
+    except (ValueError, TypeError):
+        return False
+    if snapshot.get("id") != profile.id or snapshot.get("profile_uuid", "") != profile.profile_uuid:
         return False
     current = profile.to_dict()
     return all(snapshot.get(field) == current.get(field)
@@ -32,32 +36,26 @@ def profile_readiness(spec, profile, *, repo_root=None, values=None):
     spatial_check = None
     temporal_check = None
     if repo_root is not None:
-        base = config_root(repo_root) / "diagnostics" / "display_geometry" / profile.id
-        reports = sorted(base.rglob("geometry_check.json"), key=lambda p: p.stat().st_mtime_ns, reverse=True) if base.exists() else []
-        for report in reports:
-            try:
-                payload = json.loads(report.read_text(encoding="utf-8"))
-                if not diagnostic_matches_profile(payload, profile):
+        from .calibration_progress import diagnostic_evidence
+        groups = diagnostic_evidence(profile, config_root(repo_root))
+        for stage, rows in groups.items():
+            for row in rows:
+                if not row["compatible"]:
                     continue
-                kind = payload.get("request", {}).get("test_kind")
-                if (kind in {"size", "position"} and matched is None
-                        and payload.get("measurement", {}).get("measured_length_mm") is not None):
-                    matched = {"diagnostic_uuid": payload.get("diagnostic_uuid"),
-                               "profile_revision": profile.revision,
-                               "evidence_revision": payload["monitor_profile"].get("revision"),
-                               "measurement": payload["measurement"],
-                               "interpretation": "Recorded ruler check for this revision; not automatic acceptance."}
-                if kind == "spatial" and spatial_check is None:
-                    spatial_check = {"diagnostic_uuid": payload.get("diagnostic_uuid"),
-                                     "profile_revision": profile.revision,
-                                     "interpretation": "Software sine pattern was presented; physical spatial frequency NOT independently measured."}
-                if kind in {"temporal_binary", "temporal_sine"} and temporal_check is None:
-                    temporal_check = {"diagnostic_uuid": payload.get("diagnostic_uuid"),
-                                      "profile_revision": profile.revision,
-                                      "interpretation": "Software timing test was presented; photon onset NOT verified."}
-            except (OSError, ValueError, TypeError, AttributeError):
-                continue
-    return {"available": True, "profile_id": profile.id, "profile_revision": profile.revision,
+                payload = row["payload"]
+                base = {"diagnostic_uuid": payload.get("diagnostic_uuid"),
+                        "profile_revision": profile.revision,
+                        "evidence_revision": payload["monitor_profile"].get("revision")}
+                measurement = payload.get("measurement")
+                if stage == "geometry" and matched is None and isinstance(measurement, dict) and measurement.get("measured_length_mm") is not None:
+                    matched = base | {"measurement": measurement, "interpretation": "Recorded ruler check for this physical setup; not automatic acceptance."}
+                if stage == "spatial" and spatial_check is None:
+                    spatial_check = base | {"interpretation": "Software sine pattern was presented; physical spatial frequency NOT independently measured."}
+                if stage == "timing" and temporal_check is None:
+                    temporal_check = base | {"interpretation": "Software timing test was presented; photon onset NOT verified."}
+    from .calibration_progress import calibration_progress
+    stages = calibration_progress(profile, config_root(repo_root)) if repo_root is not None else None
+    return {"calibration_stages": stages, "available": True, "profile_id": profile.id, "profile_revision": profile.revision,
             "profile_sha256": content_hash(profile.to_dict()), "bound": bool(profile.display_binding),
             "measurement_sources": dict(profile.measurement_sources),
             "geometry_status": profile.geometry_status, "geometry_check": matched,

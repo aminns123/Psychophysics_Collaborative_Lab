@@ -71,11 +71,14 @@ def _upsert_run_index(data_root: Path, row: dict[str, Any]) -> Path:
         rows.append({key: str(value) for key, value in normalized.items()})
 
     temporary = path.with_name(path.name + f".{uuid4().hex}.tmp")
-    with temporary.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=RUN_INDEX_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.replace(temporary, path)
+    try:
+        with temporary.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=RUN_INDEX_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
     return path

@@ -94,7 +94,7 @@ if not "%APP_EXIT%"=="0" (
 
 echo.
 echo ============================================================
-echo   PsyCoLab finished normally
+echo   PsyCoLab application exited - review operation outcomes above
 echo ============================================================
 echo.
 echo The terminal is being kept open so you can review the run summary above.
