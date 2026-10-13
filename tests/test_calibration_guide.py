@@ -112,7 +112,7 @@ def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_pa
         "Max_monitor_Luminance":500.,
         "Background_Luminance":49.,
         "Background_Screen_intensity":.25,
-        "starting_probe_intensity":.8,
+        "starting_probe_intensity":.55,
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
@@ -123,7 +123,7 @@ def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_pa
             app.screen.query_one("#review-calibration-guide",Button).press()
             await pilot.pause()
             guide=app.screen
-            assert GUIDE_STEPS[guide.stage_index][0]=="geometry" or GUIDE_STEPS[guide.stage_index][0]=="qualification"
+            assert GUIDE_STEPS[guide.stage_index][0]=="display"
             guide.query_one("#guide-open",Button).press()
             await pilot.pause()
             assert isinstance(app.screen,(ProfileScreen,DisplayCheckScreen))
