@@ -17,6 +17,20 @@ from psychophysics_lab.ui.simulations import SimulationsScreen, SimulationReview
 ROOT = Path(__file__).resolve().parents[1]
 
 
+async def _settle(pilot, app):
+    """Wait for scenario inputs to mount, without forcing their values."""
+    await pilot.pause(.2)
+    for _ in range(30):
+        if not isinstance(app.screen, SimulationsScreen):
+            return
+        inputs = list(app.screen.query("Input, Select"))
+        if app.screen.is_mounted and inputs and all(w.is_mounted for w in inputs):
+            await pilot.pause(.05)
+            return
+        await pilot.pause(.1)
+    raise AssertionError("Simulation inputs did not mount within the test deadline.")
+
+
 def test_typed_virtual_launch_rejects_invalid_or_ambiguous_values(tmp_path):
     assert parse_seeds("0, 2,42") == (0, 2, 42)
     assert parse_parameter("0.15", 0.1) == .15
@@ -46,7 +60,7 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
         monkeypatch.setattr(app, "exit", lambda result=None: captured.append(result))
         async with app.run_test(size=size) as pilot:
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             screen = app.screen
             assert screen.query_one("#sim-experiment", Select).value == "contrast_sensitivity"
@@ -60,11 +74,11 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
             # Baseline CSF scenario declares 'threshold' as the first observer parameter.
             screen.query_one("#sim-observer-0-0", Input).value = "0.08"
             screen.query_one("#sim-review", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
             assert "0.08" in str(app.screen.query_one("#sim-review-summary", Static).render())
             app.screen.query_one("#sim-run", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert len(captured) == 1
             request = captured[0]
             assert isinstance(request, SimulationLaunchRequest)
@@ -82,17 +96,17 @@ def test_tui_invalid_observer_and_invalid_seed_block_review(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "human")
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             screen = app.screen
             screen.query_one("#sim-seeds-0", Input).value = "1,x"
             screen.query_one("#sim-review", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert "Seeds must" in str(screen.query_one("#sim-status", Static).render())
             screen.query_one("#sim-seeds-0", Input).value = "123"
             screen.query_one("#sim-observer-0-0", Input).value = "-0.1"
             screen.query_one("#sim-review", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert "threshold" in str(screen.query_one("#sim-status", Static).render())
     asyncio.run(scenario())
@@ -103,16 +117,16 @@ def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external")
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             screen = app.screen
             screen.query_one("#sim-scenario", Select).value = "csf_short_censored"
-            await pilot.pause()
+            await _settle(pilot, app)
             index = next(i for i, item in enumerate(screen.scenarios)
                          if item.id == "csf_short_censored")
             assert screen.query_one(f"#sim-panel-{index}").display
             assert not screen.query_one("#sim-panel-0").display
             screen.query_one("#sim-review", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
             assert app.screen.request.experiment_values["max_trials"] == 1
     asyncio.run(scenario())
@@ -123,10 +137,10 @@ def test_tui_receives_and_displays_last_simulation_report(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external",
                                simulation_summary="Latest simulation: PASSED")
         async with app.run_test(size=(100, 30)) as pilot:
-            await pilot.pause()
+            await _settle(pilot, app)
             assert "PASSED" in str(app.query_one("#last-simulation", Static).render())
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert "PASSED" in str(app.screen.query_one("#sim-latest", Static).render())
     asyncio.run(scenario())
@@ -178,7 +192,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
         async with app.run_test(size=size) as pilot:
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             screen = app.screen
             assert isinstance(screen, SimulationsScreen)
             index, selected = screen._current()
@@ -188,7 +202,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
 
             assert screen.query_one("#sim-edit-adaptive", Button).label.plain == "Adaptive algorithm"
             screen.query_one("#sim-edit-adaptive", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             editor = app.screen
             assert isinstance(editor, AdaptiveAlgorithmScreen)
             assert "consecutive_up_down" in str(editor.query_one("#adaptive-algorithm-heading", Static).render())
@@ -206,13 +220,13 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
             edit("reversal_termination").value = "14"
             edit("max_trials").value = "250"
             editor.query_one("#adaptive-apply", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert source("n_down").value == "3"
             assert source("logUNIT_DW").value == "0.16"
 
             screen.query_one("#sim-review", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
             values = app.screen.request.experiment_values
             assert values["n_down"] == 3
@@ -232,7 +246,7 @@ def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#nav-simulations", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             parent = app.screen
             index, current = parent._current()
             keys = {field.key: n for n, field in enumerate(get_experiment(current.experiment_id).fields)}
@@ -241,22 +255,22 @@ def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
 
             old_n_down = source("n_down").value
             parent.query_one("#sim-edit-adaptive", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             editor = app.screen
             assert isinstance(editor, AdaptiveAlgorithmScreen)
             editor.query_one(f"#adaptive-value-{keys['n_down']}", Input).value = "3"
             editor.query_one("#adaptive-cancel", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert source("n_down").value == old_n_down
 
             parent.query_one("#sim-edit-adaptive", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             editor = app.screen
             n_down = editor.query_one(f"#adaptive-value-{keys['n_down']}", Input)
             n_down.value = "0"
             editor.query_one("#adaptive-apply", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, AdaptiveAlgorithmScreen)
             assert "n-down" in str(editor.query_one("#adaptive-editor-status", Static).render())
             assert source("n_down").value == old_n_down
@@ -264,12 +278,12 @@ def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
             n_down.value = "3"
             editor.query_one(f"#adaptive-value-{keys['logUNIT_UP']}", Input).value = "0.4"
             editor.query_one("#adaptive-calculate-down", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             expected = .4 * .7393
             calculated = editor.query_one(f"#adaptive-value-{keys['logUNIT_DW']}", Input)
             assert float(calculated.value) == pytest.approx(expected)
             editor.query_one("#adaptive-apply", Button).press()
-            await pilot.pause()
+            await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert float(source("logUNIT_DW").value) == pytest.approx(expected)
     asyncio.run(scenario())

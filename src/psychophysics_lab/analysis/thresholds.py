@@ -87,7 +87,7 @@ def _write_tsv(path: Path, rows: list[dict[str, Any]], fields: tuple[str, ...]) 
         writer.writerows(rows)
 
 
-def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path) -> Path | None:
+def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path, *, x_label="Condition", warning="") -> Path | None:
     try:
         import matplotlib.pyplot as plt
     except Exception:
@@ -108,9 +108,9 @@ def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path) ->
     ax.plot(x, values, marker="o")
     if tick_labels is not None:
         ax.set_xticks(x, tick_labels)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel("Threshold contrast")
-    ax.set_title("Derived threshold contrast vs condition")
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("Threshold C_disp (digital; not measured physical contrast)")
+    ax.set_title("Derived threshold contrast vs condition" + ("\n" + warning if warning else ""))
     ax.grid(True, alpha=0.25)
     fig.tight_layout()
     fig.savefig(output, dpi=160)
@@ -232,7 +232,24 @@ def analyse_thresholds(
         ("condition", "staircase_count", "threshold"),
     )
 
-    plot_file = _plot(condition_results, plot_path) if create_plot else None
+    entered_unit = manifest.get("experiment_values", {}).get("condition_unit")
+    if manifest.get("experiment_id") == "contrast_sensitivity":
+        x_label = ("Spatial frequency (cycles/degree)" if entered_unit in {"cycles_per_degree", "degrees_per_cycle"}
+                   else "Historical shader phase (uncalibrated legacy units)")
+    else:
+        x_label = "Condition"
+    incomplete = manifest.get("status") != "completed"
+    missing_ids = []
+    states = manifest.get("adaptive_session", {}).get("staircases", {})
+    estimated_ids = {item.staircase_id for item in staircase_results}
+    if states:
+        missing_ids = sorted(str(identity) for identity in states if str(identity) not in estimated_ids)
+    warning = "EXPLORATORY — INCOMPLETE/CENSORED RUN" if incomplete else "EXPLORATORY REVERSAL ESTIMATE"
+    if missing_ids:
+        warning += "; some staircases have no reversal estimate"
+    if manifest.get("data_kind") == "synthetic":
+        warning = "SYNTHETIC — " + warning
+    plot_file = _plot(condition_results, plot_path, x_label=x_label, warning=warning) if create_plot else None
     if plot_file:
         import shutil
         latest = run_directory / "analysis" / "threshold_vs_condition.png"
@@ -249,11 +266,14 @@ def analyse_thresholds(
         "input_sha256": {name: hashlib.sha256((run_directory / name).read_bytes()).hexdigest() for name in ("manifest.json", "trials.tsv")},
         "quality_flags": {
             "source_status": manifest.get("status", "unknown"),
-            "incomplete_run": manifest.get("status") != "completed",
+            "incomplete_run": incomplete,
+            "missing_staircase_estimates": missing_ids,
             "calibration_status": manifest.get("calibration", {}).get("status", "unverified"),
             "timing_status": manifest.get("runtime_display", {}).get("timing_status", "unverified"),
             "photon_timing_verified": False},
         "monitor_profile_sha256": manifest.get("monitor_profile_sha256"),
+        "condition_axis_label": x_label,
+        "scientific_warning": warning,
         "participant_id": manifest.get("participant_id"),
         "experiment_id": manifest.get("experiment_id"),
         "retain_fraction": fraction if last_n_reversals is None else None,
@@ -284,7 +304,7 @@ def analyse_thresholds(
         "retain_fraction": summary["retain_fraction"],
         "reversal_value_column": reversal_value_column,
         "plot": "threshold_vs_condition.png" if plot_file else None,
-        "scientific_warning": "Exploratory threshold analysis, not an authorised final THC.",
+        "scientific_warning": warning + "; not an authorised final THC.",
     })
 
     return ThresholdAnalysisResult(

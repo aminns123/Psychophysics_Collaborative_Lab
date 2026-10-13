@@ -21,6 +21,13 @@ def evaluate_csf(observer, records):
     cases = []
     for record in records:
         points = []
+        unit = "legacy_shader_radians"
+        path = getattr(record.artifacts, "manifest_file", None)
+        if path is not None:
+            import json
+            entered = json.loads(path.read_text(encoding="utf-8")).get("experiment_values", {}).get("condition_unit")
+            if entered in {"cycles_per_degree", "degrees_per_cycle"}:
+                unit = "cycles_per_degree"
         if record.analysis is not None:
             for item in record.analysis.condition_thresholds:
                 condition = float(item.condition)
@@ -28,16 +35,19 @@ def evaluate_csf(observer, records):
                 true_midpoint = observer.threshold * math.exp(0.5 * offset * offset)
                 found = item.threshold
                 points.append({
-                    "condition_legacy_units": condition,
+                    "condition_value": condition,
+                    "condition_units": unit,
+                    **({"condition_legacy_units": condition} if unit == "legacy_shader_radians" else {}),
                     "model_midpoint_contrast": true_midpoint,
                     "estimated_reversal_contrast": found,
                     "estimated_to_model_midpoint_ratio": found / true_midpoint,
                     "absolute_log10_ratio": abs(math.log10(found / true_midpoint)) if found > 0 else None,
                 })
-        predicted = min(points, key=lambda item: item["model_midpoint_contrast"])["condition_legacy_units"] if points else None
-        estimated = min(points, key=lambda item: item["estimated_reversal_contrast"])["condition_legacy_units"] if points else None
+        predicted = min(points, key=lambda item: item["model_midpoint_contrast"])["condition_value"] if points else None
+        estimated = min(points, key=lambda item: item["estimated_reversal_contrast"])["condition_value"] if points else None
         cases.append({
             "seed": record.seed,
+            "condition_units": unit,
             "status": record.artifacts.status,
             "accepted_responses": record.artifacts.accepted_trials,
             "model_preferred_condition": observer.preferred_condition,
@@ -57,7 +67,8 @@ def evaluate_csf(observer, records):
             "passed": plausible,
             "detail": "Scientific consistency check; does not require exact numerical convergence.",
         }],
-        "units": "legacy CSF condition values, not calibrated cycles/degree",
+        "units": sorted({case["condition_units"] for case in cases}),
+        "evaluated_estimate_count": sum(len(case["conditions"]) for case in cases),
         "estimator": "mean of final 80% of post-update reversal observations; not a model midpoint estimator",
         "comparison_interpretation": "diagnostic, not a strict numerical recovery guarantee",
         "runs": cases,

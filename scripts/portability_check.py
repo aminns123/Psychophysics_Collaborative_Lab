@@ -27,6 +27,7 @@ FORBIDDEN_TRACKED_PREFIXES = (
 
 SCAN_PREFIXES = (
     "src/",
+    "simulations/",
     "Events/",
     "Experiments/",
     "Functions/",

@@ -80,7 +80,7 @@ def synthetic_run(tmp_path, monkeypatch, status="max_trials_reached"):
     monkeypatch.setattr(runner.importlib, "import_module", import_module)
     request = SetupRequest("S001", "new", "contrast_sensitivity", "legacy_reference_display", {
         "Max_monitor_Luminance": 500., "Background_Luminance": 49., "Background_Screen_intensity": .374,
-        "n_down": 1, "reversal_termination": 1,
+        "n_down": 1, "reversal_termination": 1, "condition_unit": "legacy_shader_radians", "starting_probe_intensity": .7,
         "max_trials": 3 if status == "max_trials_reached" else 30,
     })
     return run_request(request, repo_root=ROOT, data_root=tmp_path / "data").run_directory

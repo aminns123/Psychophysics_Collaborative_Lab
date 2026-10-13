@@ -1,0 +1,874 @@
+{
+  "audit_date": "2026-10-13",
+  "sources": [
+    {
+      "path": "src/psychophysics_lab/__init__.py",
+      "lines": 4,
+      "sha256": "d05d255f70d180f116ee55b0b640e7185280b52cfe541eb65c72fe669547c86b",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/__main__.py",
+      "lines": 4,
+      "sha256": "a72b9285ed75e3b5b8655255a23dca3fb8c60c1ab6bb12b5d6972117ad11a475",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/__init__.py",
+      "lines": 6,
+      "sha256": "f04115930a8247fd3ba05499cb264477fd6be47b68b063ae3384cf93e21d3ee3",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/registry.py",
+      "lines": 76,
+      "sha256": "b56c0bec0f616f1f24adcf5760a7b692ae8233037f33a29950d032e1964ecb8d",
+      "public_definitions": [
+        "StaircaseAlgorithm",
+        "AdaptiveAlgorithm",
+        "AdaptiveSelection",
+        "register_algorithm",
+        "get_algorithm",
+        "list_algorithms"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/staircase.py",
+      "lines": 195,
+      "sha256": "1122a54cdf787fd8922b81125ccbd6ae6d8bf1bc640c1b4e87899baf2c692c42",
+      "public_definitions": [
+        "Step",
+        "positive_integer",
+        "StaircaseConfig",
+        "ResponseStreak",
+        "StaircaseState",
+        "AdaptiveRun"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/steps.py",
+      "lines": 31,
+      "sha256": "8e13d4a746ce3ffab17ced5464f237cb73f17b86ac628352adaf2aaa851c2f00",
+      "public_definitions": [
+        "paired_step"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/__init__.py",
+      "lines": 5,
+      "sha256": "32a45ee3b392b36503a83a6be6d9cb4bf899163750a1e840d2446264e77df7b0",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/previews.py",
+      "lines": 183,
+      "sha256": "626c5b1b7cdfc8e0fc1736dd06d324d90683b74e9ce380f0c168d902c0aabe82",
+      "public_definitions": [
+        "StaircasePreview",
+        "latest_staircase_plot",
+        "latest_threshold_plot",
+        "_sort_condition",
+        "create_staircase_preview"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/thresholds.py",
+      "lines": 318,
+      "sha256": "a2a78af55edfb04225470f0704440b664fb2789b1a1893245e97b6d700bd781e",
+      "public_definitions": [
+        "StaircaseThreshold",
+        "ConditionThreshold",
+        "ThresholdAnalysisResult",
+        "_owned_run",
+        "_read_manifest",
+        "_read_trials",
+        "_safe_component",
+        "_write_tsv",
+        "_plot",
+        "analyse_thresholds"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/app.py",
+      "lines": 323,
+      "sha256": "a482728cf9562f1fd51dded63d81317721477633c4a817fe7c0d634ebf4b914d",
+      "public_definitions": [
+        "_diagnose",
+        "_print_run_summary",
+        "_print_geometry_summary",
+        "build_parser",
+        "_main",
+        "main"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/config/__init__.py",
+      "lines": 3,
+      "sha256": "0150809188bf409a3d6d570d2a5f8738fe52c737585e61912ce4ccbdaea769aa",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/config/local.py",
+      "lines": 107,
+      "sha256": "3ea40dccacec6d2b179e011d7c9218c1c17e51334b62a918574fb8723c1dff47",
+      "public_definitions": [
+        "config_root",
+        "content_hash",
+        "preferences",
+        "save_preferences",
+        "save_profile",
+        "save_preset",
+        "update_preset",
+        "load_presets"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/config/models.py",
+      "lines": 179,
+      "sha256": "66406afc10cef04370fee657bbe3a80a7553917303a02596a5c656021faaa22e",
+      "public_definitions": [
+        "LuminanceCalibrationPoint",
+        "MonitorProfile",
+        "SetupRequest"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/config/monitor.py",
+      "lines": 98,
+      "sha256": "e6a3ebeb4e79291287baea5801f0c2f0e6e27f6a379a2c772eac980ae89487ff",
+      "public_definitions": [
+        "_profile_from_dict",
+        "load_monitor_profiles"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/config/preflight.py",
+      "lines": 59,
+      "sha256": "61d9aa323f11b23f2f740502ba43bee60b768ff470480dd1c31649ad92ffe4bd",
+      "public_definitions": [
+        "compatible",
+        "human_blockers",
+        "validate_setup"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/config/readiness.py",
+      "lines": 42,
+      "sha256": "be3fdd1c5d990a925296296e4c088476bf292f17292ee3a4c4ab5d125986109d",
+      "public_definitions": [
+        "profile_readiness",
+        "readiness_text"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/contributions.py",
+      "lines": 10,
+      "sha256": "a42580890f457d8fc2db5d5e96394cee930e3ee8544f2c0a359a959d3992873c",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/core/__init__.py",
+      "lines": 1,
+      "sha256": "d6ab178265deb69f8f2b018565c33a3a5b9fb3433ef577394443673984c02f89",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/core/display.py",
+      "lines": 127,
+      "sha256": "da0995ad67b7606680b39151401a9452b74ff9f625c59aee51bcc8d1a52bdc4e",
+      "public_definitions": [
+        "DisplayInfo",
+        "screen_info",
+        "enumerate_displays",
+        "resolve_binding",
+        "preflight_fullscreen_display",
+        "select_screen"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/display_tests.py",
+      "lines": 106,
+      "sha256": "f1eea2f550fd0ec8cee45f393600119a085949fa37de3e083f5ee4e60864b4c1",
+      "public_definitions": [
+        "finite",
+        "temporal_plan",
+        "frame_command",
+        "resolve_test",
+        "interval_summary"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/geometry_check.py",
+      "lines": 279,
+      "sha256": "1f16b94aa77798d14bed179c627ed98f0d9a33bead6e6bd9e39a6b198cccf03f",
+      "public_definitions": [
+        "GeometryCheckRequest",
+        "GeometryCheckArtifacts",
+        "_allocate_output",
+        "_draw_fullscreen",
+        "run_geometry_check",
+        "latest_geometry_report",
+        "record_geometry_measurement"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/lifecycle.py",
+      "lines": 72,
+      "sha256": "0a143e75b79663777eb25f9fd13379fa85af18ed5f8d70b18f1a81f1c743c5b2",
+      "public_definitions": [
+        "request_window_end",
+        "install_escape_handler"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/runner.py",
+      "lines": 516,
+      "sha256": "f962ca40bd226b81b0cbd9d2e85f87ed28f9772af4d4188604af03e39a9fee16",
+      "public_definitions": [
+        "RunArtifacts",
+        "_legacy_runtime_context",
+        "_safe_version",
+        "_git_provenance",
+        "_sha256",
+        "_runtime_source_fingerprints",
+        "_run_artifact_fingerprints",
+        "_software_provenance",
+        "_relative",
+        "_portable_request_payload",
+        "_trial_count",
+        "_index_row",
+        "_manifest_payload",
+        "run_request"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/simulation_request.py",
+      "lines": 79,
+      "sha256": "147ee5b829287af618d8222e8090b2dff613cc5aea061e76c8a97ea057a67981",
+      "public_definitions": [
+        "SimulationLaunchRequest",
+        "parse_seeds",
+        "parse_parameter"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/core/synthetic.py",
+      "lines": 107,
+      "sha256": "f1c696f805bbc2c6335b16d9edbc071274b962224abfbfb8e2cc779a6ee7ea0a",
+      "public_definitions": [
+        "synthetic_recorded_utc",
+        "is_synthetic_path",
+        "simulation_workspace",
+        "register_virtual_participant",
+        "SimulationRun"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/__init__.py",
+      "lines": 1,
+      "sha256": "84f0b76c242139866b7fcd4b7e5b8743ed34f1298948909acd547821b968c699",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/data/identifiers.py",
+      "lines": 22,
+      "sha256": "2e00c333cec644f263352570fc16c2b14965218a254db47837e706e4e4d7bfe4",
+      "public_definitions": [
+        "validate_path_component"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/index.py",
+      "lines": 81,
+      "sha256": "9005680e1047a1099eadeb38ef51692bfe662e3ff2ef7559b99e8ceaa689fa9b",
+      "public_definitions": [
+        "runs_index_path",
+        "upsert_run_index",
+        "_upsert_run_index"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/locking.py",
+      "lines": 31,
+      "sha256": "76bf977d4c0d4b7d9ce6d2144a3c3bd1c413b27fdf36017f025defb79ce679bb",
+      "public_definitions": [
+        "file_lock"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/participants.py",
+      "lines": 49,
+      "sha256": "d4a794065cdbb983e016c2c0d221442818d8b4799fba9ee7b4e56233c72067c9",
+      "public_definitions": [
+        "validate_participant_id",
+        "list_participants",
+        "participant_directory"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/session.py",
+      "lines": 35,
+      "sha256": "941982bbeb6b8071c203a476386c43ba22ce29957b681cc038cb64f5063aa15a",
+      "public_definitions": [
+        "atomic_write_json",
+        "copy_snapshot",
+        "response_owned_path"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/trials.py",
+      "lines": 338,
+      "sha256": "0bcf81934df8aa7deb5fd23e12464ba4dc6f25e70a9627e419e3b14b740a45b8",
+      "public_definitions": [
+        "TrialColumnDefinition",
+        "trial_dictionary_overrides",
+        "_merged_definition",
+        "write_trial_data_dictionary",
+        "write_readable_trial_table",
+        "TrialLog"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/data/workspace.py",
+      "lines": 240,
+      "sha256": "7bc4442cf811a91dd86d8af0f89359c455d929f0b974b308de3dc038b559f944",
+      "public_definitions": [
+        "data_config_path",
+        "load_workspace_state",
+        "request_from_workspace_state",
+        "_safe_component",
+        "create_run_directory",
+        "run_number_from_path",
+        "_relative_to_data_root",
+        "save_workspace_state",
+        "local_preferences_path",
+        "preferred_data_root",
+        "remember_data_root"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/diagnostics.py",
+      "lines": 167,
+      "sha256": "6ddf779ac3fe91141b0151d9864d31f40edbd248fc089a485d9f53f215beeb1b",
+      "public_definitions": [
+        "_safe_version",
+        "_safe_log_directory",
+        "write_crash_report",
+        "FatalFaultCapture",
+        "start_fatal_fault_capture"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/__init__.py",
+      "lines": 3,
+      "sha256": "b1c0fc90402aed922f05920462734e06361d73d326b49d17ec86712ff4983e89",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+      "lines": 291,
+      "sha256": "d6e0938a12f5f0e42ca6bc103ac1d3f547b14c6dc36072f43b26386d850be4c5",
+      "public_definitions": [
+        "resolved_condition_frequencies",
+        "_legacy_condition_defaults",
+        "parse_condition_values",
+        "_folder_number",
+        "_data_path_parts",
+        "_validate",
+        "_validate_monitor"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contributions.py",
+      "lines": 30,
+      "sha256": "abb76b281c70a39428ba063b9e01cb5e15c8d09d2f28a3810446768d13de66c8",
+      "public_definitions": [
+        "load_contributions"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/registry.py",
+      "lines": 35,
+      "sha256": "8190f0bc8587d9701627bb26e521c88b85978190a6580265e994dc6da440bff3",
+      "public_definitions": [
+        "list_experiments",
+        "get_experiment",
+        "register_experiment"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/responses.py",
+      "lines": 30,
+      "sha256": "027242f8be1dc4496799721315a2aadec5ea6231c8b021890ee3665cd0568ac9",
+      "public_definitions": [
+        "ResponseParadigm"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/spec.py",
+      "lines": 173,
+      "sha256": "7a4b0d5078d61ac8b14086085ca529f0ed2f29adfe9a8f584cbc356dd01e6c73",
+      "public_definitions": [
+        "ConfigField",
+        "ExperimentSpec"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/paths.py",
+      "lines": 80,
+      "sha256": "8758710c466fa026c8585dbc5534db2b435605e18e4c6ddc4cb2848401821a86",
+      "public_definitions": [
+        "find_repo_root",
+        "default_data_root",
+        "resolve_data_root"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/researcher.py",
+      "lines": 69,
+      "sha256": "061cc282aa1d7058bac7924e11cd9d8de55d2e6a4fc810a36db6a98eafeca523",
+      "public_definitions": [
+        "experiment",
+        "RunContext",
+        "configure"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/scaffold.py",
+      "lines": 52,
+      "sha256": "9cda44f49146e7b861e03ea303b81bd337e352330144c8ab81192093ae7d6fc0",
+      "public_definitions": [
+        "scaffold"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/__init__.py",
+      "lines": 21,
+      "sha256": "68f97086043bd9be2f9fc9e442436cb0fe4213eed6bdccfa653a6e2c3c28d4ea",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/contrast_validation.py",
+      "lines": 26,
+      "sha256": "c4a8ffee0080b77a9259480727c8e6733f9cfa635ac67273f64ee8a4fb41aad4",
+      "public_definitions": [
+        "grating_command_bounds",
+        "validate_grating_command"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/geometry.py",
+      "lines": 180,
+      "sha256": "300309dee76d85cf1a8069fc4e005c74626d69f498c98c6c9f315ca3c410c781",
+      "public_definitions": [
+        "WhiteBarStimulus",
+        "physical_length_for_visual_angle",
+        "visual_angle_for_physical_length",
+        "pixels_for_physical_length",
+        "physical_length_for_pixels",
+        "_axes",
+        "resolve_white_bar",
+        "geometry_reference_table"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/registry.py",
+      "lines": 30,
+      "sha256": "5195d083637fa2f7d9f6e3b2fa9da23186f4d449e6caadec105e90e2651b3d7a",
+      "public_definitions": [
+        "StimulusSpec",
+        "register_stimulus",
+        "list_stimuli"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/spatial_calibration.py",
+      "lines": 83,
+      "sha256": "8fa2e15a5f833ea252a3d75d8ac49788c1a956f177c584f273a3978c5ca47532",
+      "public_definitions": [
+        "SpatialGeometry",
+        "resolve_spatial_geometry",
+        "validate_requested_cpd",
+        "angle_deg_at_pixel",
+        "shader_radians_for_cpd_at_centre"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/__init__.py",
+      "lines": 1,
+      "sha256": "581ad431262fbeca756d505a48e664a6f1d228e5cb3402bb78c25f14f521dc8a",
+      "public_definitions": []
+    },
+    {
+      "path": "src/psychophysics_lab/ui/editor.py",
+      "lines": 25,
+      "sha256": "eea0faa984cb61f2365d0f9fa571a32a9134f96fa30d80e2ed653abf9ee7dbcb",
+      "public_definitions": [
+        "editor_command",
+        "open_source"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/plots.py",
+      "lines": 51,
+      "sha256": "6e8d52714c27fe0667d289dbb0450ce15a9413792be9a2a254e0e5a2ee37af31",
+      "public_definitions": [
+        "open_analysis_png",
+        "open_run_directory"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/profiles.py",
+      "lines": 236,
+      "sha256": "e25213a45c82e6728c362e33fea9ccc364f3cdf0bce3acc3469c37fde87d619b",
+      "public_definitions": [
+        "ProfileScreen"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/setup.py",
+      "lines": 1801,
+      "sha256": "72b7891dcd6f91ff61b12b9e7b7b304e8522421ecf9b698eb6b559dfb85c506e",
+      "public_definitions": [
+        "_report_ui_exception",
+        "_field_widget_id",
+        "_is_blank_select_value",
+        "_workspace_request",
+        "_monitor_summary",
+        "_prospective_run_path",
+        "_source_candidates",
+        "_stimulus_sources",
+        "HubNavigation",
+        "_nav_bar",
+        "_handle_nav",
+        "CodeViewScreen",
+        "HubPage",
+        "ExperimentsScreen",
+        "StimuliScreen",
+        "DisplayCheckScreen",
+        "DataScreen",
+        "HelpScreen",
+        "ExperimentConfigScreen",
+        "ChangeDisplayScreen",
+        "ReviewScreen",
+        "PsyCoLabSetupApp",
+        "run_setup_tui"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/simulations.py",
+      "lines": 577,
+      "sha256": "3d19a0d30044a89f93db349995955c34d1a690947c84547d429afa5a26b0cf74",
+      "public_definitions": [
+        "_value_text",
+        "SimulationsScreen",
+        "AdaptiveAlgorithmScreen",
+        "SimulationReviewScreen"
+      ]
+    },
+    {
+      "path": "src/psychophysics_lab/ui/unified_run.py",
+      "lines": 139,
+      "sha256": "ee73b1004672a2a269a3b80433fb860da863996b996d57b4fc2bd9bd840232e4",
+      "public_definitions": [
+        "VirtualObserverOptionsScreen"
+      ]
+    },
+    {
+      "path": "Events/adaptive_session.py",
+      "lines": 246,
+      "sha256": "bffa6d9301fcfa3fbe740a85518a0cbddade289f60ef9adf503d3c67512e396c",
+      "public_definitions": [
+        "_response_value",
+        "LegacyStaircaseSession"
+      ]
+    },
+    {
+      "path": "Events/adaptiveMethods.py",
+      "lines": 469,
+      "sha256": "35eb8970729a6b60395749c72b6f61d0b961ebe47262a9ed0f84df3a9adea74d",
+      "public_definitions": [
+        "convert_screen_intensity_history_to_weber_contrast_list",
+        "convert_weber_contrast_to_screenIntensity",
+        "count_reversals_HighLow",
+        "retrieve_staircase_weber_contrasts",
+        "_beep",
+        "_to_weber",
+        "_count_staircase_reversals",
+        "_weber_contrast_to_cpu_intensity",
+        "record_event",
+        "_key_to_response",
+        "subject_response",
+        "_get_single_staircase_history",
+        "_check_responses_history",
+        "_update_probe_weber_contrast",
+        "Trial_small",
+        "Trials_read_write_staircase_conditions"
+      ]
+    },
+    {
+      "path": "Events/display_contrast.py",
+      "lines": 17,
+      "sha256": "636ce7ebe89654cdbaaeb852be93616eba95cc30b6b800eab3d13c0094128e80",
+      "public_definitions": [
+        "normalized_display_contrast",
+        "display_contrast_to_screen_intensity"
+      ]
+    },
+    {
+      "path": "Events/staircase.py",
+      "lines": 4,
+      "sha256": "c70d1110699518e02ecc63410b394c104937359e552416792cebc45cc7caba61",
+      "public_definitions": []
+    },
+    {
+      "path": "Events/stimuliC.py",
+      "lines": 274,
+      "sha256": "4ae2cb2393439b96bf16d184fddedd230ea0e40206c77eb63db0048bba58d5e6",
+      "public_definitions": [
+        "Grating_ADM",
+        "Dot_stairCase_centre",
+        "Text"
+      ]
+    },
+    {
+      "path": "Experiments/contrast_sensitivity_function.py",
+      "lines": 460,
+      "sha256": "32f7ecc356c93fba2bf6d5552b8da7e0db665ea06e5a0a7443e8a19f5983195d",
+      "public_definitions": [
+        "run_experiment"
+      ]
+    },
+    {
+      "path": "Functions/functionsForUse.py",
+      "lines": 391,
+      "sha256": "92c212edd2d174fd8d120f62516bfc8fd3ca952bf73a78c0b6715409b156e914",
+      "public_definitions": [
+        "CheckFileName",
+        "check_folder_exist",
+        "findCorrespondingIndex",
+        "ProbabilitySimilarWord",
+        "checkWordForWord",
+        "optionPrompt",
+        "ratio_PIXEL_Meter",
+        "from_Text",
+        "to_Text",
+        "create_Text",
+        "create_JSON",
+        "read_JSON",
+        "create_Text_columns",
+        "write_toText",
+        "readText_toList",
+        "removeZeroRow",
+        "correctFileSpacings",
+        "write_toText_Spacing",
+        "convertArcangleTOPixel",
+        "Meter_convertToArcangle"
+      ]
+    },
+    {
+      "path": "Interface/config.py",
+      "lines": 253,
+      "sha256": "2fb17be4ecf0d7b5391885168560d7a926205d9305f5055c933fe979a4631504",
+      "public_definitions": [
+        "run_configure_experiment"
+      ]
+    },
+    {
+      "path": "simulations/__init__.py",
+      "lines": 1,
+      "sha256": "d6aca563dede82d3ac3165d1c593c5ff57bd6d3270a26f92a67b77f1ce3f675d",
+      "public_definitions": []
+    },
+    {
+      "path": "simulations/__main__.py",
+      "lines": 94,
+      "sha256": "aa7e9a4cd05fa81fc95c7d46086c48611480c3d2e2a98e1cd91c9eaada6c6bcc",
+      "public_definitions": [
+        "main"
+      ]
+    },
+    {
+      "path": "simulations/controls.py",
+      "lines": 30,
+      "sha256": "dec03957e9bcce019d1566dd884212fce957f4569430706cf171285a09129074",
+      "public_definitions": [
+        "effective_experiment_values",
+        "effective_observer_values"
+      ]
+    },
+    {
+      "path": "simulations/csf.py",
+      "lines": 139,
+      "sha256": "b5c267fb6329bdbc417a9495d9970f448e3b443129c1c77401164b9f5438c053",
+      "public_definitions": [
+        "CSFObserver",
+        "runtime"
+      ]
+    },
+    {
+      "path": "simulations/progress.py",
+      "lines": 29,
+      "sha256": "639ef03552d0ac4c48695d9fd22d1ce45b602889335b3598ad991c97fd11c263",
+      "public_definitions": [
+        "simulation_heartbeat"
+      ]
+    },
+    {
+      "path": "simulations/registry.py",
+      "lines": 62,
+      "sha256": "e2f3fa74ac96109ae871bcbabf1f35a0e12d3936a57286e2c1d3b72ed0a671f6",
+      "public_definitions": [
+        "SimulationSpec",
+        "register_simulation",
+        "get_simulation",
+        "list_simulations"
+      ]
+    },
+    {
+      "path": "simulations/run.py",
+      "lines": 57,
+      "sha256": "c198a6a592522616ed58898b403e9426190e9b6b45badcf42f796b470ae0e308",
+      "public_definitions": [
+        "simulate"
+      ]
+    },
+    {
+      "path": "simulations/scaffold.py",
+      "lines": 79,
+      "sha256": "43e5a522d4cd0a22dd804a699c5292b31205b564861583189a408250aeb5c345",
+      "public_definitions": [
+        "scaffold_simulation"
+      ]
+    },
+    {
+      "path": "simulations/scenarios/__init__.py",
+      "lines": 9,
+      "sha256": "65b338dedb08bd2213c3df220d2ddbd6fac8d4f722ff13bd0b1f1a5e5ba55032",
+      "public_definitions": []
+    },
+    {
+      "path": "simulations/scenarios/core.py",
+      "lines": 42,
+      "sha256": "d3005d7bbeadd5f9c78e65b07906494649f63d21049dda5c046c85a377a9d116",
+      "public_definitions": [
+        "SimulationScenario"
+      ]
+    },
+    {
+      "path": "simulations/scenarios/csf.py",
+      "lines": 109,
+      "sha256": "bb249b0f0bd578d42f130d5ca29bdb8ad072c5930579fffc13dc2b794e2c9a99",
+      "public_definitions": [
+        "evaluate_csf"
+      ]
+    },
+    {
+      "path": "simulations/scenarios/registry.py",
+      "lines": 54,
+      "sha256": "9b8d76ab40ff73b8ff74b5b9ea1414adeb57546ce54dd0c1b93409989f16163e",
+      "public_definitions": [
+        "register_scenario",
+        "_load",
+        "list_scenarios",
+        "get_scenario"
+      ]
+    },
+    {
+      "path": "simulations/scenarios/run.py",
+      "lines": 227,
+      "sha256": "cd5cfa1d4f53208e3284181d6ffe51a96641519e0999030b10438867d6dd93fd",
+      "public_definitions": [
+        "ScenarioRun",
+        "ScenarioResult",
+        "_validator_checks",
+        "run_scenario"
+      ]
+    },
+    {
+      "path": "scripts/cleanup_git_tracking.py",
+      "lines": 62,
+      "sha256": "4d52981d765d6455a321d1cd1cca40180ef8683f0fee6e6b932eca8f30efbbc7",
+      "public_definitions": [
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/launcher_setup.py",
+      "lines": 200,
+      "sha256": "e86e9cee9e4531bc8a5256b1143139d6af0d7c2c155011a7f5ec3531b59bd109",
+      "public_definitions": [
+        "_venv_python",
+        "_hash_file",
+        "_run",
+        "_python_version",
+        "_preserve_incompatible_venv",
+        "_load_state",
+        "_write_state",
+        "_validate_environment",
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/portability_check.py",
+      "lines": 181,
+      "sha256": "cbc62520a87d598aab6c6da1f82499a7a862ff78b3c33ec4ea3047b30460e684",
+      "public_definitions": [
+        "_git_lines",
+        "tracked_files",
+        "shared_candidate_files",
+        "_is_scannable",
+        "text_files",
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/validate_run.py",
+      "lines": 399,
+      "sha256": "8ee2e4adc9e1e8dd14f630bc19d593149b17e947ac8ba5e5b59b66a8c62d97c3",
+      "public_definitions": [
+        "Check",
+        "require",
+        "owned_path",
+        "read_json",
+        "table",
+        "same_number",
+        "leaves",
+        "validate_run",
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/windows_display_preflight.py",
+      "lines": 76,
+      "sha256": "0001381dae7d5731973e59c81ccf69be42a7937e587c3b5f50d86d9ae755df2f",
+      "public_definitions": [
+        "inspect",
+        "main"
+      ]
+    },
+    {
+      "path": "scripts/windows_shader_probe.py",
+      "lines": 86,
+      "sha256": "210888afc9b90afe7c177f3b55aa70e2879047e7f838b49efdc889672ab1db7a",
+      "public_definitions": [
+        "probe",
+        "main"
+      ]
+    },
+    {
+      "path": "libC.py",
+      "lines": 603,
+      "sha256": "fdbf4939a72a46853e9e180c7e58c31419197eb29a0a53e0777ba412a8ea22cf"
+    }
+  ],
+  "dependency_archive": {
+    "sha256": "deb26d7084bd5e335cfdeb2be10e35b7a38ed2019d2df6f793939e759e291877",
+    "member_count": 233,
+    "top_level_entries": [
+      "pyglet",
+      "wmi.py"
+    ],
+    "license_candidates": []
+  }
+}

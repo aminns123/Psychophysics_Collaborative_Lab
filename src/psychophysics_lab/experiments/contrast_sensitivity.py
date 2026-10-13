@@ -48,9 +48,9 @@ def parse_condition_values(values: str) -> tuple[float, ...]:
     try:
         result = tuple(float(part) for part in parts)
     except ValueError as exc:
-        raise ValueError("Each condition must be a numeric legacy stimulus value.") from exc
+        raise ValueError("Each condition must be a numeric value in the selected units.") from exc
     if any(not math.isfinite(value) or value <= 0 or value > 10000 for value in result):
-        raise ValueError("Every legacy stimulus condition must be finite and in (0, 10000].")
+        raise ValueError("Every stimulus condition must be finite and in (0, 10000] in the selected units.")
     if len(set(result)) != len(result):
         raise ValueError("Condition values must be unique; use staircases per condition for repeats.")
     return result

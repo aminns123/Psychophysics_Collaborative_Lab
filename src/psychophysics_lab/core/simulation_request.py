@@ -22,6 +22,7 @@ class SimulationLaunchRequest:
     observer_parameters: dict[str, Any] = field(default_factory=dict)
     experiment_values: dict[str, Any] = field(default_factory=dict)
     monitor_profile_id: str | None = None
+    monitor_profile_hash: str | None = None
 
     def __post_init__(self) -> None:
         if not self.experiment_id or not self.scenario_id:

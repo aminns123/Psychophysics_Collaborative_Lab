@@ -1,0 +1,31 @@
+Windows local audit verification — 2026-10-13
+Baseline main: 6002235316ba3eac333fb34611925026be6dfd6f
+Feature branch: fix/calibration-experiment-pipeline-audit
+
+Full suite command:
+.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp=<fresh isolated test directory> --tb=short --maxfail=3
+
+Actual result:
+490 passed in 142.74s (0:02:22)
+
+Production GPU probe:
+.venv\Scripts\python.exe scripts\windows_shader_probe.py --output <new isolated probe directory>
+Six actual production GLSL compile/draw/readback cases passed on Intel UHD Graphics.
+Maximum RGB error <0.0021, tolerance 2/255; raw report: shader_probe.json.
+
+Read-only OS monitor check:
+.venv\Scripts\python.exe scripts\windows_display_preflight.py --profile legacy_reference_display_local
+screen_selection_ok: true; saved/OS mode 1536x960, 59 Hz.
+Saved geometry 340x210 mm, viewing distance 0.5 m; independently measuring these was not performed by the agent.
+
+No human trials, physical ruler/photometer/photodiode measurements, display-mode changes or historical-data modifications were performed.
+
+-m pip check
+No broken requirements found.
+
+scripts/portability_check.py
+PsyCoLab portability check passed.
+No tracked local virtualenv/editor/cache artefacts or hard-coded user-home paths were found in shared source candidates.
+
+diff --check
+Passed (no whitespace errors).

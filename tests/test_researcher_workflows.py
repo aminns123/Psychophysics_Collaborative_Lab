@@ -124,7 +124,7 @@ def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
         async with app.run_test(size=size) as pilot:
             app.query_one("#participant",Input).value="S001"
             app.query_one("#configure",Button).press()
-            await pilot.pause()
+            await pilot.pause(.2)
             screen=app.screen
             assert isinstance(screen,ExperimentConfigScreen)
             assert len(screen.query("#calculate-up")) == len(screen.query("#calculate-down")) == 1
@@ -132,24 +132,24 @@ def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
             before=nav.region
             adaptive = next(c for c in screen.query(Collapsible) if c.title == "Adaptive settings")
             adaptive.collapsed=False
-            await pilot.pause()
+            await pilot.pause(.2)
             down=screen.query_one("#field-logUNIT-DW",Input)
             initial=down.value
             screen.query_one("#field-n-down",Input).value="3"
-            await pilot.pause()
+            await pilot.pause(.2)
             assert down.value == initial
             screen.query_one("#calculate-down",Button).press()
-            await pilot.pause()
+            await pilot.pause(.2)
             assert float(down.value) == pytest.approx(.35*.7393)
             screen.query_one("#field-n-up",Input).value="2"
-            await pilot.pause()
+            await pilot.pause(.2)
             saved=down.value
             screen.query_one("#calculate-down",Button).press()
-            await pilot.pause()
+            await pilot.pause(.2)
             assert down.value == saved
             assert "supports only" in str(screen.query_one("#step-status",Static).render())
             screen.query_one("#config-body").scroll_end(animate=False)
-            await pilot.pause()
+            await pilot.pause(.2)
             assert nav.region == before
             for button in nav.query(Button):
                 assert 0 <= button.region.x and button.region.right <= size[0]

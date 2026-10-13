@@ -83,12 +83,12 @@ def test_preflight_catches_changed_profiles_and_verified_luminance_mismatch():
     spec = get_experiment('contrast_sensitivity')
     values=spec.field_defaults() | {'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374}
     request=SetupRequest('S001','new',spec.id,'bench',values)
-    checked=validate_setup(request,spec,profile())
+    checked=validate_setup(request,spec,profile(),mode="configuration")
     with pytest.raises(ValueError,match='changed since review'):
-        validate_setup(checked,spec,replace(profile(),viewing_distance_m=1.1))
+        validate_setup(checked,spec,replace(profile(),viewing_distance_m=1.1),mode="configuration")
     verified=_profile_from_dict(profile().to_dict() | {'calibration_status':'verified','luminance_calibration':[{'screen_intensity':.374,'luminance_cdm2':49},{'screen_intensity':1.,'luminance_cdm2':500}]})
     with pytest.raises(ValueError,match='calibrated pair'):
-        validate_setup(replace(request,experiment_values=values|{'Background_Screen_intensity':.38}),spec,verified)
+        validate_setup(replace(request,experiment_values=values|{'Background_Screen_intensity':.38}),spec,verified,mode='configuration')
 
 def test_quantisation_is_explicit_and_sine_is_a_distinct_plan():
     quantised=temporal_plan(60,8,'temporal_binary')
@@ -229,7 +229,7 @@ def test_extension_adapter_runs_without_csf_configuration_or_hardware(tmp_path,m
 
 def test_primary_setup_error_is_preserved_with_final_manifest(tmp_path,monkeypatch):
     import psychophysics_lab.core.runner as runner
-    values=get_experiment('contrast_sensitivity').field_defaults()|{'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374}
+    values=get_experiment('contrast_sensitivity').field_defaults()|{'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374,'condition_unit':'legacy_shader_radians','starting_probe_intensity':.7}
     error=RuntimeError('intentional initial config write failure')
     original=runner.atomic_write_json
     def failing(path,payload):

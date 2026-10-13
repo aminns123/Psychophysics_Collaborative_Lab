@@ -310,7 +310,7 @@ def run_request(
     if request.monitor_profile_id not in profiles:
         raise ValueError(f"Unknown monitor profile: {request.monitor_profile_id}")
     profile = profiles[request.monitor_profile_id]
-    request = validate_setup(request, spec, profile)
+    request = validate_setup(request, spec, profile, mode="simulation" if simulation is not None else "human")
     values = request.experiment_values
     grouping_parts = spec.data_path_parts(values, profile)
     setup = spec.build_legacy_setup(participant_id=request.participant_id, values=values, monitor_profile=profile)
@@ -359,6 +359,8 @@ def run_request(
             payload["simulation"] = simulation.metadata
             atomic_write_json(run_dir / "SYNTHETIC_DATA.json", {"data_kind": "synthetic", **simulation.metadata})
         payload["monitor_profile_sha256"] = content_hash(profile.to_dict())
+        from ..config.readiness import profile_readiness
+        payload["display_readiness"] = profile_readiness(spec, profile, repo_root=root, values=values)
         registered_sources = {}
         for relative in spec.source_paths:
             source = (root / relative).resolve()
