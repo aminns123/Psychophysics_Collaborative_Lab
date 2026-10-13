@@ -121,14 +121,20 @@ transfer readings only after verifying their physical validity.
 
 ### C. Import, inspect and save the profile
 
+**Recommended direct method:** Calibrate → **4 · Luminance** → paste the
+absolute JSON path → **Import + SAVE real readings → Continue to Timing**.
+The stage turns green after a successful save, regardless of optional metadata;
+it does **not** assert laboratory verification. The advanced profile editor
+below remains available if you need to modify the entire display profile.
+
 1. Save the edited JSON file in your preferred editor.
 2. Paste or retain its **absolute file path** in **Path to completed luminance
    measurement JSON file**. You do NOT paste the entire outer JSON object
    into the old single-line raw-calibration field.
 3. Click **Load measurements into draft (not yet saved)**.
-4. PsyCoLab validates file format, ID/revision, meter/method, date, numerical
-   readings, command range, unique points and monotonically increasing
-   measured luminance.
+4. PsyCoLab validates file format, ID/revision, numeric real readings, command
+   range, unique points and monotonic luminance. Method/date/notes may be omitted:
+   their absence creates warnings, not import errors. Unused `null` rows are skipped.
 5. Successful loading populates the current draft table and its method/date/
    notes fields. It explicitly selects **manual_unverified** and clears any
    experiment qualification from the draft.
