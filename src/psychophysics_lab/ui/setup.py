@@ -1212,6 +1212,13 @@ class ReviewScreen(Screen):
                 else:
                     if self.request.participant_id == "synthetic_preview":
                         raise ValueError("Provide a real pseudonymous participant ID in the previous screen before human acquisition.")
+                    if current.origin == "local" and not current.display_binding:
+                        raise ValueError(
+                            "This saved local monitor profile is an UNBOUND DRAFT. "
+                            "Open Calibrate → Edit / copy display profile, Detect connected displays, "
+                            "select the physical monitor, save a new revision and verify its geometry "
+                            "before launching a human experiment."
+                        )
                     if (spec.id == "contrast_sensitivity"
                             and self.request.experiment_values.get("condition_unit") != "legacy_shader_radians"
                             and current.expected_resolution_px is None):
