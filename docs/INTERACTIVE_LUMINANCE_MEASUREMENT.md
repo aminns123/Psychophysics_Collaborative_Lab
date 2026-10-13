@@ -12,19 +12,22 @@ human-participant data or synthetic experiment trials are touched.
 
 ## Route 1 — Import an existing JSON table
 
-Go to **Calibrate → Bind/edit monitor profile**.
+Go to **Calibrate → 4 · Luminance**. Use the direct JSON path and **Import + SAVE real readings → Continue to Timing** button. The advanced profile editor remains an alternative.
 
 Choose **Create/open example luminance JSON** if you need to see the format.
 Enter measured pairs as an array of
 `{"screen_intensity": 0.5, "luminance_cdm2": <your real meter reading>}`
-objects, with meter model/method, date and measurement notes. The command is a
-normalized grayscale RGB value in **[0,1]**; the reading is the emitted light
+objects. The instrument/method, date and notes are **recommended but optional**.
+You must supply at least two real measured points; unused template rows may remain `null`.
+The command is a normalized grayscale RGB value in **[0,1]**; the reading is the emitted light
 in **cd/m²**. Neither is a percentage.
 
-Paste the **absolute path to the saved JSON file** into the form and click
-**Load measurements into draft**. This validates numeric values and the
-specific monitor profile/revision, but does not change saved monitor settings
-until you press **Save local revision**.
+Paste the **absolute path** to the JSON file into the Luminance page and click
+**Import + SAVE real readings → Continue to Timing**. Values are checked
+against the selected monitor profile/revision and written to a new local revision.
+Missing method/date/notes generate warnings, not save errors. The stage turns
+green for **saved evidence**, while physical photometric verification remains
+unverified until separately declared. Advanced editing offers draft → save.
 
 Do not use fabricated example values as measurements.
 
@@ -61,13 +64,11 @@ Do not use fabricated example values as measurements.
    (individual readings with timestamps and exact monitor snapshot/hash)
    and **pilot_luminance.json** (mean per command, n, sample SD and the
    original repeated readings).
-8. Click **Open pilot/test JSON**. Complete the instrument/method details
-   and notes in this editable file. Only actual photometer readings are
-   allowed to stand as measured values.
-9. Finally go to **Bind/edit monitor profile**, paste the full absolute
-   pilot JSON path in the existing luminance file-import field, select
-   **Load measurements into draft**, inspect the results, and **Save
-   local revision**. Import does not mark calibration verified.
+8. Click **Open pilot/test JSON** to inspect the actual measured values.
+   Method, date and notes may be added at any time but are not import blockers.
+9. On the **Luminance** page, paste the pilot JSON path and click **Import + SAVE**.
+   After values are saved, the stage turns green and advances to **Timing**.
+   That green status does **not** mean the photometry is physically verified.
 
 Notes:
 
@@ -109,9 +110,9 @@ the same import workflow after filling the file.
   patch settings, and a snapshot/hash of the monitor revision.
 - **Pilot JSON:** command-level mean, count, sample SD, individual readings,
   and links to the source session. This is deliberately *unverified* and
-  requires method/notes before normal import.
+  can be imported without method/notes; missing metadata produces warnings.
 - **Monitor profile:** the actual validated command-to-mean-cd/m² pairs
-  and entered method, date and notes, only when you explicitly import
+  and any optional method/date/notes supplied, only when you explicitly import
   and save another versioned local revision.
 - **Never automatic:** laboratory photometric verification, uncertainty
   certification, display gamma correction, photon timing or experiment
