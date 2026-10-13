@@ -20,7 +20,7 @@ from ..config.local import config_root, content_hash
 from ..data.identifiers import validate_path_component
 from ..data.locking import file_lock
 from .display import select_screen
-from .display_tests import resolve_test, frame_command, interval_summary, finite
+from .display_tests import resolve_test, frame_command, interval_summary, finite, diagnostic_timeout_reached
 from ..stimuli.geometry import geometry_reference_table, physical_length_for_visual_angle
 
 
@@ -82,7 +82,7 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             self.frame_index += 1
     window = DiagnosticWindow(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab Display Test")
     def invalidate(dt):
-        if request.duration_s > 0 and time.perf_counter() - start >= request.duration_s:
+        if diagnostic_timeout_reached(request.duration_s, time.perf_counter() - start):
             window.close()
         else:
             window.invalid = True
