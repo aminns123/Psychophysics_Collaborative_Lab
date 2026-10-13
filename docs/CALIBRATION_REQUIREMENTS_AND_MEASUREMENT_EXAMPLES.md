@@ -121,6 +121,19 @@ transfer readings only after verifying their physical validity.
 
 ### C. Import, inspect and save the profile
 
+**Old JSON files:** A saved file from an earlier monitor revision does NOT
+need to be rewritten merely because notes or verification metadata changed.
+PsyCoLab now checks the complete saved history and accepts older readings if
+monitor identity and every stored physical configuration match. It rejects
+files when a physical display/binding/resolution/timing change occurred or
+history is missing. Always independently confirm brightness, gamma and screen
+settings, which revision history cannot physically verify.
+
+If the editor already shows measured pairs under your selected monitor profile,
+they are already available in that draft/profile: do not repeatedly import the
+same old JSON. Return to the Luminance stage to inspect saved progress.
+
+
 **Recommended direct method:** Calibrate → **4 · Luminance** → paste the
 absolute JSON path → **Import + SAVE real readings → Continue to Timing**.
 The stage turns green after a successful save, regardless of optional metadata;

@@ -883,7 +883,7 @@ class DisplayCheckScreen(HubPage):
                 self._refresh_latest()
                 self._refresh_stage_status()
                 message = (
-                    f"[green]SAVED {len(saved.luminance_calibration)} REAL intensity / cd/m² pairs "
+                    f"[green]SAVED {len(saved.luminance_calibration)} entered intensity / cd/m² pairs "
                     f"to monitor {saved.id}, revision {saved.revision}.[/green] "
                     "Measurement stage COMPLETE; physical certification is still UNVERIFIED."
                 )

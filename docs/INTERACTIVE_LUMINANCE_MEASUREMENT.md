@@ -22,6 +22,14 @@ You must supply at least two real measured points; unused template rows may rema
 The command is a normalized grayscale RGB value in **[0,1]**; the reading is the emitted light
 in **cd/m²**. Neither is a percentage.
 
+Older local-profile JSON files can be reused when PsyCoLab's saved revision history
+confirms the same monitor identity and unchanged physical geometry, resolution,
+binding and refresh across all intervening revisions. No numeric measurements are
+overwritten in this check. Physical display brightness/gamma cannot be verified
+from profile history alone and must still be checked by the researcher. If the
+hardware setup changed or the history is missing, the importer explains the
+problem rather than silently relabelling an old file.
+
 Paste the **absolute path** to the JSON file into the Luminance page and click
 **Import + SAVE real readings → Continue to Timing**. Values are checked
 against the selected monitor profile/revision and written to a new local revision.

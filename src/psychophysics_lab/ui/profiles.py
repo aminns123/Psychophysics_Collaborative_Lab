@@ -124,12 +124,29 @@ class ProfileScreen(Screen):
                 "run headless simulations and inspect geometry diagnostics.",
                 classes="info-card",
             )
+            if p.luminance_calibration:
+                yield Static(
+                    f"[green]Already saved in this profile: {len(p.luminance_calibration)} "
+                    f"intensity / cd/m² pairs (revision {p.revision}).[/green] "
+                    "If these are the readings you want, there is NO need to load "
+                    "an older JSON again. Click Back to view calibration progress, "
+                    "or Save profile / continue calibration after making edits. "
+                    "Saved pairs are not automatically physically verified.",
+                    classes="info-card",
+                )
+            else:
+                yield Static(
+                    "[yellow]No saved intensity / luminance pairs on this profile yet.[/yellow] "
+                    "Import a completed JSON, or enter pairs in the editable draft "
+                    "list below, then Save profile / continue calibration.",
+                    classes="info-card",
+                )
             yield Button("Create / open example luminance JSON", id="profile-luminance-example")
             yield Label("Path to completed luminance measurement JSON file")
             yield Input(value="", placeholder="C:\\...\\luminance_...json", id="profile-luminance-path")
             yield Button("Load measurements into draft (not yet saved)", id="profile-luminance-load")
             yield Static("", id="profile-luminance-feedback")
-            yield Label("Current draft measurements (JSON list of screen_intensity / luminance_cdm2)")
+            yield Label("Measurement values in this profile (editing requires Save; no need to re-import if already populated)")
             yield Input(value=json.dumps(p.to_dict()["luminance_calibration"]), id="profile-luminance")
             yield Static(
                 "[b]STEP 4 — Timing, provenance and experiment qualification[/b]\n"
@@ -211,7 +228,10 @@ class ProfileScreen(Screen):
                 self.app.notify("Luminance example ready; edit the file before loading.", timeout=8)
             elif event.button.id == "profile-luminance-load":
                 measurement_path = self.query_one("#profile-luminance-path", Input).value
-                draft = read_luminance_measurements(measurement_path, self.profile)
+                draft = read_luminance_measurements(
+                    measurement_path, self.profile,
+                    local_config_root=self.app.local_config_root
+                )
                 # Apply only after EVERY field and all measured pairs validated.
                 self.query_one("#profile-luminance", Input).value = json.dumps(draft["luminance_calibration"])
                 self.query_one("#profile-calibration_method", Input).value = draft["calibration_method"]
@@ -221,7 +241,7 @@ class ProfileScreen(Screen):
                 self.query_one("#profile-qualified_experiments", Input).value = ""
                 warnings = draft.get("warnings", [])
                 message = (
-                    f"Loaded {len(draft['luminance_calibration'])} real command/luminance "
+                    f"Loaded {len(draft['luminance_calibration'])} entered command/luminance "
                     "pairs into this UNSAVED, UNVERIFIED draft. Click Save profile / "
                     "continue calibration. This completes the measurement stage, not "
                     "laboratory certification. Existing experiment qualification "

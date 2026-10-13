@@ -201,3 +201,96 @@ def test_one_observed_pair_is_not_a_usable_luminance_mapping():
     with pytest.raises(ValueError, match="At least two REAL"):
         parse_luminance_measurements(document, p)
 
+
+
+
+def test_earlier_luminance_file_survives_metadata_only_profile_saves(tmp_path):
+    """Regression: the user's JSON targets revision 11, but current profile is 14."""
+    from psychophysics_lab.config.local import save_profile
+    from psychophysics_lab.config.calibration_workflow import import_and_save_luminance
+
+    root = tmp_path / "local_settings"
+    initial = replace(reference(), id="measured_monitor", origin="local")
+    current = save_profile(root, initial)
+    for index in range(2, 12):
+        current = save_profile(
+            root, replace(current, notes=f"Unrelated note {index}"),
+            expected_revision=current.revision,
+        )
+    assert current.revision == 11
+    document = finished_document(current)
+    path = tmp_path / "luminance_readings_from_rev11.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    # These are versioned app metadata edits; no physical geometry was changed.
+    for index in range(12, 15):
+        current = save_profile(
+            root, replace(current, notes=f"New unrelated note {index}"),
+            expected_revision=current.revision,
+        )
+    assert current.revision == 14
+
+    # External parsers without access to saved historical evidence stay strict.
+    with pytest.raises(ValueError, match="another profile/revision"):
+        read_luminance_measurements(str(path), current)
+    parsed = read_luminance_measurements(
+        str(path), current, local_config_root=root
+    )
+    assert len(parsed["luminance_calibration"]) == 5
+    assert any("revision 11" in warning for warning in parsed["warnings"])
+
+    persisted, warnings = import_and_save_luminance(current, root, str(path))
+    assert persisted.revision == 15
+    assert persisted.calibration_status == "manual_unverified"
+    assert len(persisted.luminance_calibration) == 5
+    assert any("brightness" in text.lower() for text in warnings)
+    assert json.loads(path.read_text(encoding="utf-8")) == document
+
+
+def test_old_luminance_file_rejected_when_physical_setup_changed_and_returned(tmp_path):
+    """Matching current configuration is insufficient if an intervening revision changed."""
+    from psychophysics_lab.config.local import save_profile
+
+    root = tmp_path / "local_settings"
+    old = save_profile(root, replace(reference(), id="geometry_monitor", origin="local"))
+    document = finished_document(old)
+    path = tmp_path / "old_screen.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    changed = save_profile(
+        root, replace(old, viewing_distance_m=old.viewing_distance_m + .1),
+        expected_revision=old.revision
+    )
+    reverted = save_profile(
+        root, replace(changed, viewing_distance_m=old.viewing_distance_m),
+        expected_revision=changed.revision
+    )
+    with pytest.raises(ValueError, match="physical setup changed"):
+        read_luminance_measurements(
+            str(path), reverted, local_config_root=root
+        )
+    assert json.loads(path.read_text(encoding="utf-8")) == document
+
+
+def test_old_luminance_file_rejected_when_revisions_missing(tmp_path):
+    from psychophysics_lab.config.local import save_profile
+
+    root = tmp_path / "local_settings"
+    old = save_profile(root, replace(reference(), id="history_monitor", origin="local"))
+    document = finished_document(old)
+    path = tmp_path / "old_photometry.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    current = save_profile(
+        root, replace(old, notes="Saved a new note"), expected_revision=old.revision
+    )
+    (root / "profiles" / old.id / "revision_000001.json").unlink()
+    with pytest.raises(ValueError, match="revision 1 is missing"):
+        read_luminance_measurements(str(path), current, local_config_root=root)
+
+
+def test_fake_method_warns_and_does_not_certify_human_photometry():
+    document = finished_document(reference())
+    document["photometer_model_and_method"] = "fake_photometer"
+    parsed = parse_luminance_measurements(document, reference())
+    assert parsed["calibration_status"] == "manual_unverified"
+    assert any("synthetic" in warning for warning in parsed["warnings"])
