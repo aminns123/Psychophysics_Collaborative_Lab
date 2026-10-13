@@ -25,8 +25,19 @@ class ProfileScreen(Screen):
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="profile-back")
                 yield Button("Save local revision", id="profile-save", variant="success")
+            yield Static(
+                "Saving creates a local monitor profile. Without a detected/bound display "
+                "it is a draft and cannot launch human acquisition.",
+                id="profile-save-feedback",
+            )
         with VerticalScroll(classes="page-body"):
-            yield Static("Reference profiles are shared specifications. Save a local copy with a new ID. Display binding, geometry and timing are separate from luminance calibration. Saving a profile does not certify laboratory measurements.")
+            yield Static(
+                "Edit the physical image width/height and eye distance, then save a new "
+                "local copy (or revision). A monitor binding is needed to RUN human "
+                "experiments, but NOT to save a geometry draft. The shared reference "
+                "profile remains unchanged. The edited profile is reloaded and selected "
+                "automatically on the Calibrate page after saving."
+            )
             values = {
                 "id": p.id if p.origin == "local" else p.id + "_local",
                 "display_name": p.display_name,
@@ -41,7 +52,7 @@ class ProfileScreen(Screen):
                 "calibration_notes": p.calibration_notes,
                 "qualified_experiments": ",".join(p.qualified_experiments),
             }
-            labels = {"qualified_experiments": "Explicitly qualified experiments (comma-separated IDs, after laboratory validation)", "physical_width_m": "Screen width (metres)", "physical_height_m": "Screen height (metres)", "viewing_distance_m": "Viewing distance (metres)", "refresh_rate_hz": "Refresh rate (Hz; e.g. 59.94)", "pyglet_wakeup_rate_hz": "Legacy callback rate (Hz; does not certify presentation timing)"}
+            labels = {"qualified_experiments": "Explicitly qualified experiments (comma-separated IDs, after laboratory validation)", "physical_width_m": "Active screen image width (metres; e.g. 0.610 = 610 mm)", "physical_height_m": "Active screen image height (metres; e.g. 0.350 = 350 mm)", "viewing_distance_m": "Eye-to-screen viewing distance (metres; e.g. 1.0)", "refresh_rate_hz": "Refresh rate (Hz; e.g. 59.94)", "pyglet_wakeup_rate_hz": "Legacy callback rate (Hz; does not certify presentation timing)"}
             for key, value in values.items():
                 yield Label(labels.get(key, key.replace("_", " ").title()))
                 yield Input(value=str(value), id="profile-" + key)
@@ -57,7 +68,7 @@ class ProfileScreen(Screen):
             yield Button("Detect connected displays", id="profile-detect")
             yield Select([], id="profile-binding")
             yield Button("Use detected resolution and refresh", id="profile-use-detected")
-            yield Static("Detection is explicit and may initialise the display driver. Select the display that will present the stimuli; a missing binding prevents a local profile from launching.")
+            yield Static("Detection is optional while saving a local geometry draft. Before a human experiment, detect and select the actual display and verify its fullscreen pixel resolution; a profile without a binding cannot launch physical stimuli.")
             yield Static("", id="profile-status")
         yield Footer()
 
@@ -138,8 +149,13 @@ class ProfileScreen(Screen):
                         payload["timing_status"] = "manual_unverified"
                         payload["calibration_status"] = "manual_unverified"
                         payload["qualified_experiments"] = []
+                # A physical monitor is not required to SAVE measurements. An
+                # unbound local copy is clearly a draft: no physical human run
+                # may use it until a suitable monitor is bound and validated.
                 if not payload.get("display_binding"):
-                    raise ValueError("Detect and select a display before saving a local profile.")
+                    payload["geometry_status"] = "manual_unverified"
+                    payload["timing_status"] = "manual_unverified"
+                    payload["qualified_experiments"] = []
                 if geometry_changed or timing_changed:
                     payload["qualified_experiments"] = []
                 existing = self.app.monitor_profiles.get(payload["id"])
@@ -152,8 +168,27 @@ class ProfileScreen(Screen):
                     payload["profile_uuid"] = ""
                     payload["revision"] = 0
                 result = save_profile(self.app.local_config_root, _profile_from_dict(payload), expected_revision=self.profile.revision if same else 0)
-                self.profile = result
+                # Do not report success until the on-disk revision is visible
+                # through the same loader used by future experiment sessions.
                 self.app.reload_profiles()
-                status.update(f"Saved {result.id} revision {result.revision} in {self.app.local_config_root}. Shared reference files are unchanged.")
-        except (ValueError, TypeError, KeyError, StopIteration, OSError) as exc:
-            status.update(str(exc))
+                persisted = self.app.monitor_profiles.get(result.id)
+                if persisted != result:
+                    raise RuntimeError("Saved display profile could not be reloaded; inspect the local configuration folder.")
+                self.profile = persisted
+                detail = ("bound to a selected physical display" if result.display_binding
+                          else "saved as an UNBOUND DRAFT (not ready for human acquisition)")
+                notice = (
+                    f"Saved {result.id}, revision {result.revision}; {detail}. "
+                    "The Calibrate page now shows your saved values."
+                )
+                status.update(notice)
+                self.query_one("#profile-save-feedback", Static).update(f"[green]{notice}[/green]")
+                self.app.notify(notice, title="Display profile saved", timeout=8)
+                # Return to the parent page so the new profile is actually
+                # visible instead of leaving the obsolete reference selected.
+                self.app.pop_screen()
+        except (ValueError, TypeError, KeyError, StopIteration, OSError, RuntimeError, json.JSONDecodeError) as exc:
+            message = f"Display NOT saved: {exc}"
+            status.update(message)
+            self.query_one("#profile-save-feedback", Static).update(f"[red]{message}[/red]")
+            self.app.notify(message, title="Display profile not saved", severity="error", timeout=10)
