@@ -599,7 +599,7 @@ class DisplayCheckScreen(HubPage):
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         self.query_one("#calibration-stage-summary", Static).update(
             "[b]GREEN = stage records saved; NOT necessarily laboratory verified.[/b] "
-            "RED = no saved stage record. Previous/Next may be used at any time.\\n"
+            "RED = no saved stage record. Previous/Next may be used at any time.\n"
             f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
             + "   ".join(
                 f"[{'green' if states[k][0] else 'red'}]"
