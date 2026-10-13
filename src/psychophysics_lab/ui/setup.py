@@ -558,10 +558,12 @@ class DisplayCheckScreen(HubPage):
                     measured_length_mm=measured,
                 )
                 error = payload["measurement"]["error_percent"]
-                status.update(f"[green]Measurement recorded. Error: {error:+.2f}%[/green]")
+                status.update(f"[green]Measurement recorded and saved. Error: {error:+.2f}%[/green]")
+                self.app.notify(f"Measurement saved; error {error:+.2f}%.", timeout=7)
                 self._refresh_latest()
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
+                self.app.notify(str(exc), title="Calibration action failed", severity="error", timeout=8)
 
 
 class DataScreen(HubPage):
@@ -585,6 +587,7 @@ class DataScreen(HubPage):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            yield Static("", id="data-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Acquisition data[/b]\n"
@@ -640,7 +643,6 @@ class DataScreen(HubPage):
                 "staircase thresholds that share a condition. This is derived analysis only.",
                 classes="field-help",
             )
-            yield Static("", id="data-status")
         yield Footer()
 
     def _rows(self) -> list[dict[str, str]]:
@@ -1158,9 +1160,9 @@ class ReviewScreen(Screen):
                 yield Button("Back", id="back")
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
+            yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
             yield Static("\n".join(lines), id="review-text")
-            yield Static("", id="review-status")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -1199,6 +1201,7 @@ class ReviewScreen(Screen):
                     self.app.exit(self.request)
         except Exception as exc:
             self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
+            self.app.notify(str(exc), title="Run not started", severity="error", timeout=10)
             _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
 
