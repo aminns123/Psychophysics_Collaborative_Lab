@@ -886,7 +886,8 @@ class ExperimentConfigScreen(Screen):
                 yield Select([(name, name) for name in presets], id="config-preset")
                 yield Button("Load preset", id="load-preset")
                 yield Input(placeholder="New preset name", id="preset-name")
-                yield Button("Save validated preset", id="save-preset")
+                yield Button("Save new preset", id="save-preset")
+                yield Button("Update selected preset", id="update-preset")
         yield Footer()
 
     def _compose_field(self, field):
@@ -974,33 +975,49 @@ class ExperimentConfigScreen(Screen):
             self.query_one("#step-status", Static).update(message)
             self.query_one("#config-status", Static).update(message)
             return
-        if event.button.id in {"save-preset", "load-preset"}:
+        if event.button.id in {"save-preset", "load-preset", "update-preset"}:
             event.stop()
+            operation = event.button.id
+            verb = {"save-preset": "saved", "load-preset": "loaded",
+                    "update-preset": "updated"}[operation]
             try:
-                if event.button.id == "save-preset":
+                all_presets = load_presets(self.app.local_config_root, self.experiment.id)
+                if operation == "save-preset":
                     name = self.query_one("#preset-name", Input).value
-                    # Never silently destroy another saved choice with
-                    # the same name; require the researcher to choose a new
-                    # name for a new immutable preset.
-                    existing = load_presets(self.app.local_config_root, self.experiment.id)
-                    if name in existing:
-                        raise ValueError(f"Preset '{name}' already exists. Choose a new name before saving.")
+                    if name in all_presets:
+                        raise ValueError(
+                            f"Preset '{name}' already exists. Choose a new name or "
+                            "select it and press Update selected preset."
+                        )
                     snapshot = self._collect()
                     saved_path = save_preset(self.app.local_config_root, name, self.experiment.id, snapshot)
-                    # Validate that the saved values survive a fresh loader.
-                    stored = load_presets(self.app.local_config_root, self.experiment.id).get(name)
-                    if stored != snapshot:
-                        raise RuntimeError(f"Preset file was not reloaded correctly: {saved_path}")
+                    loaded = load_presets(self.app.local_config_root, self.experiment.id).get(name)
+                    if loaded != snapshot:
+                        raise RuntimeError(f"Preset save could not be verified: {saved_path}")
                     selector = self.query_one("#config-preset", Select)
-                    selector.set_options([(item, item) for item in load_presets(self.app.local_config_root, self.experiment.id)])
+                    selector.set_options([(item, item) for item in load_presets(
+                        self.app.local_config_root, self.experiment.id
+                    )])
                     selector.value = name
-                    self.app.notify(f"Saved preset '{name}' for {self.experiment.display_name}.",
-                                    title="Preset saved", timeout=6)
+                elif operation == "update-preset":
+                    raw = self.query_one("#config-preset", Select).value
+                    if _is_blank_select_value(raw) or str(raw) not in all_presets:
+                        raise ValueError("Select an existing preset before updating it.")
+                    name = str(raw)
+                    snapshot = self._collect()
+                    from ..config.local import update_preset
+                    saved_path = update_preset(self.app.local_config_root, name,
+                                               self.experiment.id, snapshot)
+                    if load_presets(self.app.local_config_root, self.experiment.id).get(name) != snapshot:
+                        raise RuntimeError(f"Updated preset could not be verified: {saved_path}")
                 else:
-                    name = str(self.query_one("#config-preset", Select).value)
-                    values = self.experiment.normalise_values(load_presets(self.app.local_config_root, self.experiment.id)[name])
-                    # Check the COMPLETE preset against current experiment
-                    # rules and selected monitor before touching any widget.
+                    raw = self.query_one("#config-preset", Select).value
+                    if _is_blank_select_value(raw):
+                        raise ValueError("Select a saved preset first.")
+                    name = str(raw)
+                    if name not in all_presets:
+                        raise ValueError("The selected preset no longer exists. Reload the screen.")
+                    values = self.experiment.normalise_values(all_presets[name])
                     if self.experiment.monitor_validator:
                         self.experiment.monitor_validator(
                             values, self.app.monitor_profiles[self.monitor_profile_id]
@@ -1010,12 +1027,11 @@ class ExperimentConfigScreen(Screen):
                             values[field.key] if field.kind == "choice" else str(values[field.key])
                         )
                     self.remember_draft()
-                    self.app.notify(f"Loaded preset '{name}'.", title="Preset loaded", timeout=6)
-                self.query_one("#config-status", Static).update(
-                    f"[green]Preset '{name}' {'saved' if event.button.id == 'save-preset' else 'loaded'} successfully.[/green]"
-                )
+                notice = f"Preset '{name}' {verb} successfully."
+                self.query_one("#config-status", Static).update(f"[green]{notice}[/green]")
+                self.app.notify(notice, title=f"Preset {verb}", timeout=6)
             except (ValueError, KeyError, OSError, RuntimeError, TypeError) as exc:
-                message = f"Preset NOT {'saved' if event.button.id == 'save-preset' else 'loaded'}: {exc}"
+                message = f"Preset NOT {verb}: {exc}"
                 self.query_one("#config-status", Static).update(f"[red]{message}[/red]")
                 self.app.notify(message, severity="error", timeout=8)
             return
