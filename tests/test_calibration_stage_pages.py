@@ -65,17 +65,21 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
         ("ruler", "size", {"measured_length_mm": 100.0}),
         ("spatial", "spatial", {}),
     ):
-        (folder / f"{name}_geometry_check.json").write_text("{}")  # ignored filename
         sub = folder / name
         sub.mkdir()
         (sub / "geometry_check.json").write_text(json.dumps({
             "status": "completed",
+            "monitor_profile": profile.to_dict(),
             "monitor_profile_sha256": content_hash(profile.to_dict()),
             "request": {"test_kind": kind},
             "measurement": measurement,
         }))
     status = stage_states(profile, tmp_path)
     assert all(status[key][0] for key, _ in STAGES)
+    # A verification-only save changes the profile revision/hash, not physical setup.
+    marked = replace(profile, revision=4, calibration_notes="Reviewed in the laboratory")
+    assert stage_states(marked, tmp_path)["geometry"][0]
+    assert stage_states(marked, tmp_path)["spatial"][0]
     revised = replace(profile, viewing_distance_m=profile.viewing_distance_m + 0.1)
     status = stage_states(revised, tmp_path)
     assert not status["geometry"][0] and not status["spatial"][0]
