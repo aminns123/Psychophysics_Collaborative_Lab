@@ -236,17 +236,17 @@ def _main(
                     phase="interactive_luminance_measurement"
                 )
                 geometry_summary = (
-                    f"[red]Luminance session interrupted: {exc}[/red]\\n"
+                    f"[red]Luminance session interrupted: {exc}[/red]\n"
                     + (f"Diagnostic error report: {report}" if report
                        else "Previously saved measurements remain in calibration_sessions/.")
                 )
             else:
                 geometry_summary = (
-                    "[green]Interactive luminance session completed.[/green]\\n"
+                    "[green]Interactive luminance session completed.[/green]\n"
                     f"Recorded individual measurements: {artifacts.readings_count} "
-                    f"at {artifacts.measured_commands} digital commands.\\n"
-                    f"Raw readings: {artifacts.session_file}\\n"
-                    f"Editable mean JSON: {artifacts.pilot_json_file}\\n"
+                    f"at {artifacts.measured_commands} digital commands.\n"
+                    f"Raw readings: {artifacts.session_file}\n"
+                    f"Editable mean JSON: {artifacts.pilot_json_file}\n"
                     "Open pilot/test JSON, enter real photometer method and notes, "
                     "and import into the monitor profile when ready. "
                     "The results remain UNVERIFIED."
