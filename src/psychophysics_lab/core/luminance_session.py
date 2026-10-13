@@ -216,14 +216,15 @@ def run_interactive_luminance(
     request: LuminanceSessionRequest, *, repo_root: Path, data_root: Path | None = None
 ) -> LuminanceSessionArtifacts:
     """Fullscreen Pyglet 1.5 measurement loop. Never run inside Textual."""
-    from .display import select_screen
     from .geometry_check import _draw_luminance_session
     profiles = load_monitor_profiles(repo_root)
     try:
         profile = profiles[request.monitor_profile_id]
     except KeyError as exc:
         raise ValueError(f"Unknown monitor profile: {request.monitor_profile_id}") from exc
-    root = config_root(repo_root, data_root or Path(request.data_root) if request.data_root else data_root)
+    selected_data_root = (data_root if data_root is not None
+                          else Path(request.data_root) if request.data_root else None)
+    root = config_root(repo_root, selected_data_root)
     session = LocalLuminanceSession(root, profile, request)
     _draw_luminance_session(profile, request, session)
     return session.finish()
