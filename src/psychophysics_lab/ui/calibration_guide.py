@@ -301,7 +301,7 @@ class CalibrationGuideScreen(ModalScreen[None]):
             from .profiles import ProfileScreen
             profile = self.app.monitor_profiles[profile_id]
             target_field = {"display": "profile-binding",
-                            "luminance": "profile-luminance",
+                            "luminance": "profile-luminance-example",
                             "qualification": "profile-qualified_experiments"}[key]
             self.app.push_screen(ProfileScreen(
                 profile=profile, focus_field=target_field))
