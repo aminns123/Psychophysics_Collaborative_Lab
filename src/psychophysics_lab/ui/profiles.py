@@ -38,6 +38,24 @@ class ProfileScreen(Screen):
                 "profile remains unchanged. The edited profile is reloaded and selected "
                 "automatically on the Calibrate page after saving."
             )
+            yield Static(
+                "[b]STEP 1 — Bind the real display (required to launch fullscreen tests)[/b]\n"
+                "Click Detect connected displays, then select the actual display "
+                "below. A previously saved unbound draft is NOT automatically "
+                "associated with the primary monitor.",
+                classes="info-card",
+            )
+            yield Button("Detect connected displays", id="profile-detect")
+            yield Label("Physical monitor for fullscreen calibration")
+            yield Select([], id="profile-binding")
+            yield Button("Use detected resolution and refresh", id="profile-use-detected")
+            yield Static(
+                "[b]STEP 2 — Measure and enter geometric dimensions[/b]\n"
+                "Screen size is the physical ACTIVE IMAGE AREA, not the "
+                "Windows setting for resolution or desktop scaling. "
+                "Saving a draft without binding is allowed but fullscreen calibration "
+                "will be blocked until a display is bound."
+            )
             values = {
                 "id": p.id if p.origin == "local" else p.id + "_local",
                 "display_name": p.display_name,
@@ -65,10 +83,11 @@ class ProfileScreen(Screen):
                 yield Select([(v, v) for v in ("unverified", "manual_unverified", "verified")], value=getattr(p, name), allow_blank=False, id="profile-" + name)
             yield Label("Measured luminance table (JSON list of screen_intensity / luminance_cdm2 objects)")
             yield Input(value=json.dumps(p.to_dict()["luminance_calibration"]), id="profile-luminance")
-            yield Button("Detect connected displays", id="profile-detect")
-            yield Select([], id="profile-binding")
-            yield Button("Use detected resolution and refresh", id="profile-use-detected")
-            yield Static("Detection is optional while saving a local geometry draft. Before a human experiment, detect and select the actual display and verify its fullscreen pixel resolution; a profile without a binding cannot launch physical stimuli.")
+            yield Static(
+                "Detected OS resolution/refresh values can be copied into this profile, "
+                "but they must agree with the selected physical display when launching "
+                "a fullscreen test. Check physical dimensions and eye distance manually."
+            )
             yield Static("", id="profile-status")
         yield Footer()
 
@@ -146,8 +165,12 @@ class ProfileScreen(Screen):
                 if timing_changed:
                     payload["timing_status"] = "manual_unverified"
                 selection = self.query_one("#profile-binding", Select).value
-                if selection is Select.BLANK and self.displays:
-                    raise ValueError("Select a connected display before saving.")
+                if self.displays and selection is Select.BLANK:
+                    raise ValueError(
+                        "You detected physical displays but did not choose one. "
+                        "Select your monitor in the Physical monitor dropdown "
+                        "or go Back and save only an unbound draft without detection."
+                    )
                 if self.displays and selection is not Select.BLANK:
                     selected = next(d for d in self.displays if d.index == selection)
                     payload["display_binding"] = asdict(selected)
