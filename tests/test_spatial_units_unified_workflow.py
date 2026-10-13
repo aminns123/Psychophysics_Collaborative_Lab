@@ -161,7 +161,7 @@ def test_human_cpd_acquisition_blocks_uncalibrated_resolution_but_virtual_path_w
             screen.query_one("#run",Button).press()
             await pilot.pause()
             assert not exited
-            assert "fullscreen pixel resolution" in str(screen.query_one("#review-status",Static).render())
+            assert "fullscreen pixel resolution" in str(screen.query_one("#readiness-technical",Static).render())
             screen.query_one("#run-simulation",Button).press()
             await pilot.pause()
             assert isinstance(app.screen,VirtualObserverOptionsScreen)
