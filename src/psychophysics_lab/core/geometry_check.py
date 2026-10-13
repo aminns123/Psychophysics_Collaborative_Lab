@@ -70,10 +70,13 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
     """Selected-screen, vsynced diagnostic; software timing is not a photodiode."""
     import math
     import time
+    from collections import deque
     import pyglet
     from pyglet import gl
     screen, identity = select_screen(profile)
-    timestamps = []
+    # Unlimited manual sessions must not retain one timestamp per frame forever.
+    # Keep a bounded recent window for timing diagnostics and count all flips.
+    timestamps = deque(maxlen=6000)
     class DiagnosticWindow(pyglet.window.Window):
         frame_index = 0
         def flip(self):
@@ -134,6 +137,12 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
         pyglet.app.run()
         plan["display_identity"] = identity
         plan["frame_timing"] = interval_summary(timestamps,profile.refresh_rate_hz)
+        plan["frame_timing"]["total_flips"] = window.frame_index
+        plan["frame_timing"]["sampled_recent_flips"] = len(timestamps)
+        plan["frame_timing"]["sampling_note"] = (
+            "Timing intervals cover at most the last 6000 software flips; "
+            "not measured photon-onset times."
+        )
         return resolution,bar,plan
     except BaseException as exc:
         primary_error = exc
