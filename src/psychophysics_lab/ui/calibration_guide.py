@@ -143,6 +143,9 @@ class CalibrationGuideScreen(ModalScreen[None]):
         padding: 1;
         margin: 0 1 1 0;
     }
+    #calibration-guide-panel.guide-done { border: round green; }
+    #calibration-guide-panel.guide-warning { border: round yellow; }
+    #calibration-guide-panel.guide-blocked { border: round red; }
     #guide-top, #guide-buttons { height: 3; }
     #guide-heading { width: 1fr; text-style: bold; }
     #guide-close { width: 12; }
@@ -188,6 +191,11 @@ class CalibrationGuideScreen(ModalScreen[None]):
         status_label = {"verified": "DECLARED/READY", "recorded": "TEST RECORDED",
                         "partial": "REVIEW NEEDED", "bound": "BOUND",
                         "missing": "INCOMPLETE"}[state]
+        panel = self.query_one("#calibration-guide-panel")
+        panel.remove_class("guide-done", "guide-warning", "guide-blocked")
+        panel.add_class("guide-done" if state in {"verified", "recorded", "bound"}
+                        else "guide-warning" if state == "partial"
+                        else "guide-blocked")
         self.query_one("#guide-heading", Static).update(
             f"Calibration guide — {name}")
         self.query_one("#guide-progress", Static).update(
