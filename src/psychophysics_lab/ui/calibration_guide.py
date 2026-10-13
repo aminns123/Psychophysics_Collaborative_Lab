@@ -271,4 +271,8 @@ class CalibrationGuideScreen(ModalScreen[None]):
         if key in {"display", "luminance", "qualification"}:
             from .profiles import ProfileScreen
             profile = self.app.monitor_profiles[profile_id]
-            self.app.push_screen(ProfileScreen(profile=profile))
+            target_field = {"display": "profile-binding",
+                            "luminance": "profile-luminance",
+                            "qualification": "profile-qualified_experiments"}[key]
+            self.app.push_screen(ProfileScreen(
+                profile=profile, focus_field=target_field))
