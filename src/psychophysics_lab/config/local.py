@@ -84,12 +84,10 @@ def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Pa
         if (previous.get("experiment_id") != experiment
                 or not isinstance(previous.get("values"), dict)):
             raise ValueError("Existing preset has unexpected content; it was not overwritten.")
-        old_bytes = path.read_bytes()
         history_dir = base / ".history"
         history_dir.mkdir(parents=True, exist_ok=True)
-        from ..data.session import atomic_write_bytes
         backup = history_dir / f"{name}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')}_{uuid4().hex[:8]}.json"
-        atomic_write_bytes(backup, old_bytes)
+        atomic_write_json(backup, previous)
         atomic_write_json(path, {
             "schema_version": 1, "experiment_id": experiment,
             "values": values, "saved_utc": datetime.now(timezone.utc).isoformat(),
