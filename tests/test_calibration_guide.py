@@ -149,3 +149,41 @@ def test_duration_control_defaults_to_manual_exit(tmp_path,monkeypatch):
             await pilot.pause()
             assert app.screen._request().duration_s==180
     asyncio.run(scenario())
+
+
+def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path/"machine"))
+    profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
+    values=CSF_SPEC.normalise_values({
+        "Max_monitor_Luminance":500.,
+        "Background_Luminance":49.,
+        "Background_Screen_intensity":.25,
+        "starting_probe_intensity":1.0,
+        "condition_unit":"cycles_per_degree",
+        "condition_values":"2,4,8",
+        "number_conditions":3,
+    })
+    request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
+
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        async with app.run_test(size=(110,34)) as pilot:
+            app.push_screen(ExperimentConfigScreen(
+                data_root=tmp_path/"data",participant_id="P001",session_mode="new",
+                experiment=CSF_SPEC,monitor_profile_id=profile.id,defaults=values
+            ))
+            await pilot.pause()
+            config=app.screen
+            app.push_screen(ReviewScreen(request=request))
+            await pilot.pause()
+            app.screen.query_one("#review-calibration-guide",Button).press()
+            await pilot.pause()
+            guide=app.screen
+            assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
+            guide.query_one("#guide-open",Button).press()
+            await pilot.pause()
+            assert app.screen is config
+            assert config.query_one("#field-number-conditions",Input).value=="3"
+            assert config.query_one("#field-condition-values",Input).value=="2,4,8"
+            assert config.query_one("#field-starting-probe-intensity",Input).value=="1.0"
+    asyncio.run(scenario())
