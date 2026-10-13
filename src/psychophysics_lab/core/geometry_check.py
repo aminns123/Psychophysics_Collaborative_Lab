@@ -167,6 +167,119 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
                 raise cleanup_errors[0]
 
 
+def _draw_luminance_session(profile, request, session) -> None:
+    """6° centred square; keyboard entry in a dim corner away from the patch.
+
+    Pyglet 1.5 OpenGL is imported lazily after Textual closes. Photometer
+    readings are human-entered, NOT sampled or verified by this software.
+    Escape closes; Enter saves each reading. Every saved observation is
+    flushed to a local session file immediately for crash recovery.
+    """
+    import pyglet
+    from pyglet import gl
+    from .display import select_screen
+    from .luminance_session import stepped_command, summarise_readings
+
+    screen, _ = select_screen(profile)
+    window = pyglet.window.Window(
+        fullscreen=True, screen=screen, vsync=True,
+        caption="PsyCoLab — Luminance Measurement (Esc to finish)"
+    )
+    # Force an explicitly black surround; OpenGL's default clear colour
+    # is not a laboratory brightness calibration or a reliable UI setting.
+    gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+    current = 1.0
+    entry = ""
+    feedback = "Type measured cd/m²; Enter saves. Left dimmer / Right brighter. Esc finishes."
+    try:
+        resolution = (int(window.width), int(window.height))
+        if profile.expected_resolution_px and resolution != profile.expected_resolution_px:
+            raise ValueError("Actual fullscreen pixel resolution changed since calibration; rebind the monitor.")
+        patch_m = session.plan["square_side_m"]
+        px_w = patch_m / profile.physical_width_m * resolution[0]
+        px_h = patch_m / profile.physical_height_m * resolution[1]
+        if px_w > resolution[0] or px_h > resolution[1]:
+            raise ValueError("6° photometer square would exceed the physical display.")
+        x1 = (resolution[0] - px_w)/2
+        y1 = (resolution[1] - px_h)/2
+        x2, y2 = x1 + px_w, y1 + px_h
+        label = pyglet.text.Label(
+            "", font_size=10, color=(100, 100, 100, 255),
+            x=resolution[0] - 12, y=10,
+            anchor_x="right", anchor_y="bottom",
+            multiline=True, width=min(640, max(200, resolution[0] - 24)),
+        )
+        def update_label():
+            rows = summarise_readings(session.session["readings"])
+            selected = next((row for row in rows if abs(row["screen_intensity"]-current)<1e-6), None)
+            sample_status = (
+                f"n={selected['n']}, mean={selected['luminance_cdm2']:.5g} cd/m²"
+                if selected else "n=0, no measurements"
+            )
+            label.text = (
+                f"Command: {current:.4f}  |  Photometer cd/m²: {entry or '_'}\n"
+                f"{sample_status}  |  {feedback}\n"
+                "Left/Right: intensity  |  Enter: save reading  |  Esc: end"
+            )
+
+        @window.event
+        def on_draw():
+            window.clear()
+            gl.glColor3f(current, current, current)
+            pyglet.graphics.draw(4, gl.GL_QUADS,
+                ("v2f", (x1, y1, x2, y1, x2, y2, x1, y2)))
+            update_label()
+            label.draw()
+
+        @window.event
+        def on_text(text):
+            nonlocal entry, feedback
+            if text and all(char in "0123456789." for char in text) and len(entry) < 18:
+                entry += text
+                feedback = "Enter saves a reading (repeat at same intensity as needed)."
+                window.invalid = True
+                return True
+
+        @window.event
+        def on_key_press(symbol, modifiers):
+            nonlocal current, entry, feedback
+            k = pyglet.window.key
+            if symbol == k.ESCAPE:
+                window.close()
+                return True
+            if symbol == k.BACKSPACE:
+                entry = entry[:-1]
+                feedback = "Reading edited; press Enter to save."
+            elif symbol in (k.LEFT, k.RIGHT):
+                if entry:
+                    feedback = "Unsaved reading: Enter to save or Backspace to clear before changing command."
+                else:
+                    current = stepped_command(
+                        current, -1 if symbol == k.LEFT else 1,
+                        session.plan["minimum_command"], session.plan["step"]
+                    )
+                    feedback = "Intensity changed; measure and type a reading in cd/m²."
+            elif symbol in (k.ENTER, getattr(k, "NUM_ENTER", k.ENTER)):
+                if not entry:
+                    feedback = "Type a measured luminance value in cd/m² before Enter."
+                else:
+                    try:
+                        session.record(current, entry)
+                    except (ValueError, OSError, RuntimeError) as exc:
+                        feedback = f"Reading NOT saved: {exc}"
+                    else:
+                        feedback = f"Reading saved to local calibration session (command {current:.4f})."
+                        entry = ""
+            else:
+                return
+            window.invalid = True
+            return True
+
+        pyglet.app.run()
+    finally:
+        window.close()
+
+
 def run_geometry_check(
     request: GeometryCheckRequest,
     *,
