@@ -375,6 +375,10 @@ class DisplayCheckScreen(HubPage):
                 "bound revision BEFORE launching the fullscreen calibration.\n"
                 "2. Run a size/ruler check and a spatial-frequency diagnostic. "
                 "Record a physical ruler measurement; confirm the pixel grid and viewing setup.\n"
+                "For luminance, choose Luminance / grayscale measurement patch, "
+                "set a normalized digital command from 0 to 1, and measure the "
+                "central patch using a real photometer. Enter those readings via "
+                "the example JSON in Bind/edit monitor profile; no luminance is inferred.\n"
                 "3. Return to Experiment to enter frequencies in cycles/degree.\n"
                 "Display geometry does NOT measure screen luminance, gamma or photon onset. "
                 "Those need separate photometric/temporal instruments.",
@@ -410,7 +414,7 @@ class DisplayCheckScreen(HubPage):
             yield Input(value="5", id="geometry-thickness")
             yield Label("Position units (offset from screen centre)")
             yield Select([("Millimetres", "mm"), ("Degrees", "degrees")], value="mm", allow_blank=False, id="geometry-position-units")
-            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Display test duration (seconds; 0 = until ESC/ENTER)", "0")):
+            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("luminance", "Grayscale digital command for photometer (0–1)", "0.5"), ("duration", "Display test duration (seconds; 0 = until ESC/ENTER)", "0")):
                 yield Label(label)
                 yield Input(value=value, id="geometry-" + key)
             yield Static("", id="geometry-preview", classes="info-card")
@@ -469,6 +473,7 @@ class DisplayCheckScreen(HubPage):
             y_position=float(self.query_one("#geometry-y", Input).value),
             spatial_cpd=float(self.query_one("#geometry-spatial", Input).value),
             temporal_hz=float(self.query_one("#geometry-temporal", Input).value),
+            digital_command=float(self.query_one("#geometry-luminance", Input).value),
             duration_s=float(self.query_one("#geometry-duration", Input).value))
 
     def _refresh_preview(self) -> None:

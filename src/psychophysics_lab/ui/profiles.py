@@ -1,11 +1,16 @@
 """Explicit local copies and append-only revisions of display profiles."""
 from dataclasses import replace, asdict
 import json
+import os
+import sys
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.widgets import Header, Footer, Button, Static, Input, Label, Select
 from ..config.local import save_profile
+from ..config.calibration_templates import (
+    write_luminance_example, read_luminance_measurements
+)
 from ..config.monitor import _profile_from_dict
 from ..core.display import enumerate_displays, resolve_binding
 
@@ -90,8 +95,37 @@ class ProfileScreen(Screen):
             for name in ("calibration_status", "geometry_status", "timing_status"):
                 yield Label(name.replace("_", " ").title())
                 yield Select([(v, v) for v in ("unverified", "manual_unverified", "verified")], value=getattr(p, name), allow_blank=False, id="profile-" + name)
-            yield Label("Measured luminance table (JSON list of screen_intensity / luminance_cdm2 objects)")
+            yield Static(
+                "[b]STEP 3 — Luminance: measured command-to-cd/m² pairs[/b]\n"
+                "This needs a PHOTOMETER, not a ruler or Windows brightness slider. "
+                "Use a digital grayscale command from 0 to 1 (e.g. 0.50), "
+                "measure the light emitted in cd/m² and enter the readings in "
+                "the JSON example. Create example opens an editable file on "
+                "Windows. Replace all null placeholders, meter details and "
+                "measurement date. Paste the full absolute path below and click "
+                "Load measurements into draft. Then inspect the data and Save "
+                "local revision. Loading NEVER marks photometry verified.\n"
+                "If you have no photometer, leave this unverified; you can still "
+                "run headless simulations and inspect geometry diagnostics.",
+                classes="info-card",
+            )
+            yield Button("Create / open example luminance JSON", id="profile-luminance-example")
+            yield Label("Path to completed luminance measurement JSON file")
+            yield Input(value="", placeholder="C:\\...\\luminance_...json", id="profile-luminance-path")
+            yield Button("Load measurements into draft (not yet saved)", id="profile-luminance-load")
+            yield Static("", id="profile-luminance-feedback")
+            yield Label("Current draft measurements (JSON list of screen_intensity / luminance_cdm2)")
             yield Input(value=json.dumps(p.to_dict()["luminance_calibration"]), id="profile-luminance")
+            yield Static(
+                "[b]STEP 4 — Timing, provenance and experiment qualification[/b]\n"
+                "Software flicker tests do not measure photon onset. Record "
+                "physical timing evidence separately before choosing Verified. "
+                "Only declare an experiment qualified after the laboratory has "
+                "reviewed all its requirements. Use the experiment ID, e.g. "
+                "'contrast_sensitivity', in the qualified-experiments field; "
+                "a ruler check alone is insufficient.",
+                classes="info-card",
+            )
             yield Static(
                 "Detected OS resolution/refresh values can be copied into this profile, "
                 "but they must agree with the selected physical display when launching "
@@ -143,6 +177,41 @@ class ProfileScreen(Screen):
                 status.update(notice)
                 self.query_one("#profile-save-feedback", Static).update(notice)
                 self.app.notify(notice, timeout=7)
+            elif event.button.id == "profile-luminance-example":
+                example = write_luminance_example(self.app.local_config_root, self.profile)
+                self.query_one("#profile-luminance-path", Input).value = str(example)
+                message = (
+                    f"Editable example: {example}. Fill ALL measured cd/m² readings, "
+                    "meter details and date; save the file, then Load measurements. "
+                    "No example numbers are actual measurements."
+                )
+                if sys.platform == "win32":
+                    try:
+                        os.startfile(str(example))
+                    except OSError as exc:
+                        message += f" Automatic file opening failed ({exc}); open this path manually."
+                status.update(message)
+                self.query_one("#profile-luminance-feedback", Static).update(message)
+                self.app.notify("Luminance example ready; edit the file before loading.", timeout=8)
+            elif event.button.id == "profile-luminance-load":
+                measurement_path = self.query_one("#profile-luminance-path", Input).value
+                draft = read_luminance_measurements(measurement_path, self.profile)
+                # Apply only after EVERY field and all measured pairs validated.
+                self.query_one("#profile-luminance", Input).value = json.dumps(draft["luminance_calibration"])
+                self.query_one("#profile-calibration_method", Input).value = draft["calibration_method"]
+                self.query_one("#profile-calibration_date", Input).value = draft["calibration_date"]
+                self.query_one("#profile-calibration_notes", Input).value = draft["calibration_notes"]
+                self.query_one("#profile-calibration_status", Select).value = "manual_unverified"
+                self.query_one("#profile-qualified_experiments", Input).value = ""
+                message = (
+                    f"Loaded {len(draft['luminance_calibration'])} measured command/luminance "
+                    "pairs into this UNSAVED, UNVERIFIED draft. Check readings, "
+                    "then Save local revision. Existing experiment qualification "
+                    "has been cleared in the draft pending laboratory review."
+                )
+                status.update(message)
+                self.query_one("#profile-luminance-feedback", Static).update(message)
+                self.app.notify("Luminance draft loaded; review and Save to persist.", timeout=8)
             elif event.button.id == "profile-save":
                 payload = self.profile.to_dict()
                 for key in ("id", "display_name", "notes", "calibration_method", "calibration_date", "calibration_notes"):
@@ -166,6 +235,26 @@ class ProfileScreen(Screen):
                     else:
                         sources.setdefault(key, "reference" if self.profile.origin == "reference" else "unspecified")
                 payload["measurement_sources"] = sources
+                # Changes to a scientific measurement mapping invalidate
+                # previous certification and any per-experiment qualification.
+                # Import/Save must NEVER auto-verify photometry.
+                luminance_changed = (
+                    payload["luminance_calibration"]
+                    != self.profile.to_dict()["luminance_calibration"]
+                )
+                if luminance_changed:
+                    payload["calibration_status"] = "manual_unverified"
+                    payload["qualified_experiments"] = []
+                elif payload["calibration_status"] == "verified":
+                    if (len(payload["luminance_calibration"]) < 2
+                            or not payload["calibration_method"].strip()
+                            or not payload["calibration_date"].strip()
+                            or not payload["calibration_notes"].strip()):
+                        raise ValueError(
+                            "Photometry cannot be declared verified here without "
+                            "at least two measured points, method/instrument, "
+                            "measurement date and notes. See luminance example."
+                        )
                 # Measurements or binding changes invalidate the previous qualification.
                 geometry_changed = any(payload[k] != self.profile.to_dict().get(k) for k in ("physical_width_m", "physical_height_m", "viewing_distance_m", "expected_resolution_px"))
                 timing_changed = payload["refresh_rate_hz"] != self.profile.refresh_rate_hz
@@ -232,6 +321,8 @@ class ProfileScreen(Screen):
             operation = {
                 "profile-detect": "Display detection failed",
                 "profile-use-detected": "Detected values not copied",
+                "profile-luminance-example": "Example file not created/opened",
+                "profile-luminance-load": "Luminance file NOT loaded",
                 "profile-save": ("Display file saved, but refresh FAILED"
                                  if saved_result is not None else "Display NOT saved"),
             }.get(action, "Display action failed")
