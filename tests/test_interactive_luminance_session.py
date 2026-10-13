@@ -116,10 +116,12 @@ def test_repeat_readings_persist_individually_and_aggregated_pilot_import(tmp_pa
     assert pilot["measurements"][0]["n"]==3
     assert pilot["source_session_file"]==str(artifacts.session_file)
 
-    # Researcher supplies actual instrument provenance before using the
-    # EXISTING JSON Import -> Draft -> Save local revision workflow.
-    with pytest.raises(ValueError, match="photometer"):
-        read_luminance_measurements(str(artifacts.pilot_json_file),p)
+    # Real readings may be imported without optional provenance metadata.
+    # That absence must be warned about and physical verification stays false.
+    provisional=read_luminance_measurements(str(artifacts.pilot_json_file),p)
+    assert len(provisional["luminance_calibration"])==2
+    assert provisional["warnings"]
+    assert provisional["calibration_status"]=="manual_unverified"
     pilot["photometer_model_and_method"]="Research meter and centre-screen method"
     pilot["notes"]="Screen warmed up, instrument settings checked, uncertainty reviewed."
     artifacts.pilot_json_file.write_text(json.dumps(pilot))
