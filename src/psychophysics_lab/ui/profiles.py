@@ -38,7 +38,7 @@ class ProfileScreen(Screen):
             yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="profile-back")
-                yield Button("Save local revision", id="profile-save", variant="success")
+                yield Button("Save profile / continue calibration", id="profile-save", variant="success")
             yield Static(
                 "Saving creates a local monitor profile. Without a detected/bound display "
                 "it is a draft and cannot launch human acquisition.",
@@ -114,10 +114,12 @@ class ProfileScreen(Screen):
                 "Use a digital grayscale command from 0 to 1 (e.g. 0.50), "
                 "measure the light emitted in cd/m² and enter the readings in "
                 "the JSON example. Create example opens an editable file on "
-                "Windows. Replace all null placeholders, meter details and "
-                "measurement date. Paste the full absolute path below and click "
-                "Load measurements into draft. Then inspect the data and Save "
-                "local revision. Loading NEVER marks photometry verified.\n"
+                "Windows. Fill at least TWO real screen-intensity / cd/m² pairs; "
+                "unused blank rows can stay null. Meter method, date and notes "
+                "are OPTIONAL, but recommended for reproducibility. Paste the "
+                "absolute JSON path and click Load measurements into draft, "
+                "then Save profile / continue calibration. The saved readings "
+                "mark the measurement stage complete, NOT physically verified.\n"
                 "If you have no photometer, leave this unverified; you can still "
                 "run headless simulations and inspect geometry diagnostics.",
                 classes="info-card",
@@ -194,9 +196,10 @@ class ProfileScreen(Screen):
                 example = write_luminance_example(self.app.local_config_root, self.profile)
                 self.query_one("#profile-luminance-path", Input).value = str(example)
                 message = (
-                    f"Editable example: {example}. Fill ALL measured cd/m² readings, "
-                    "meter details and date; save the file, then Load measurements. "
-                    "No example numbers are actual measurements."
+                    f"Editable example: {example}. Enter at least two REAL command / cd/m² "
+                    "measurements (other null rows may remain blank). Method, date and "
+                    "notes are recommended but optional. Save the file and Load measurements. "
+                    "Example placeholders are NOT observations."
                 )
                 if sys.platform == "win32":
                     try:
@@ -216,11 +219,14 @@ class ProfileScreen(Screen):
                 self.query_one("#profile-calibration_notes", Input).value = draft["calibration_notes"]
                 self.query_one("#profile-calibration_status", Select).value = "manual_unverified"
                 self.query_one("#profile-qualified_experiments", Input).value = ""
+                warnings = draft.get("warnings", [])
                 message = (
-                    f"Loaded {len(draft['luminance_calibration'])} measured command/luminance "
-                    "pairs into this UNSAVED, UNVERIFIED draft. Check readings, "
-                    "then Save local revision. Existing experiment qualification "
-                    "has been cleared in the draft pending laboratory review."
+                    f"Loaded {len(draft['luminance_calibration'])} real command/luminance "
+                    "pairs into this UNSAVED, UNVERIFIED draft. Click Save profile / "
+                    "continue calibration. This completes the measurement stage, not "
+                    "laboratory certification. Existing experiment qualification "
+                    "has been cleared pending review."
+                    + ("\\nOptional metadata warnings: " + "; ".join(warnings) if warnings else "")
                 )
                 status.update(message)
                 self.query_one("#profile-luminance-feedback", Static).update(message)
@@ -262,14 +268,13 @@ class ProfileScreen(Screen):
                     payload["calibration_status"] = "manual_unverified"
                     payload["qualified_experiments"] = []
                 elif payload["calibration_status"] == "verified":
-                    if (len(payload["luminance_calibration"]) < 2
-                            or not payload["calibration_method"].strip()
-                            or not payload["calibration_date"].strip()
-                            or not payload["calibration_notes"].strip()):
+                    # Researcher-initiated declaration is distinct from importing
+                    # measured values; optional metadata may be missing. Preserve
+                    # that limitation in warnings, not an arbitrary save blocker.
+                    if len(payload["luminance_calibration"]) < 2:
                         raise ValueError(
-                            "Photometry cannot be declared verified here without "
-                            "at least two measured points, method/instrument, "
-                            "measurement date and notes. See luminance example."
+                            "At least two measured intensity/luminance pairs are needed "
+                            "before explicitly declaring photometry verified."
                         )
                 # Measurements or binding changes invalidate the previous qualification.
                 geometry_changed = any(payload[k] != self.profile.to_dict().get(k) for k in ("physical_width_m", "physical_height_m", "viewing_distance_m", "expected_resolution_px"))
@@ -329,8 +334,30 @@ class ProfileScreen(Screen):
                 status.update(notice)
                 self.query_one("#profile-save-feedback", Static).update(f"[green]{notice}[/green]")
                 self.app.notify(notice, title="Display profile saved", timeout=8)
-                # Return to the parent page so the new profile is actually
-                # visible instead of leaving the obsolete reference selected.
+                # If this editor was opened from a calibration stage and that
+                # stage now has SAVED evidence, resume on the next chronological
+                # page. Do not auto-verify any physical instrument or experiment.
+                try:
+                    from .setup import DisplayCheckScreen
+                    from ..config.calibration_workflow import advance_if_completed
+                    previous = (self.app.screen_stack[-2]
+                                if len(self.app.screen_stack) >= 2 else None)
+                    if isinstance(previous, DisplayCheckScreen):
+                        stage = previous.active_calibration_stage
+                        following = advance_if_completed(
+                            persisted, self.app.local_config_root, stage
+                        )
+                        if following:
+                            self.app.notify(
+                                f"Saved {stage} data. Continuing to {following}. "
+                                "Physical verification remains separate.",
+                                timeout=9,
+                            )
+                except (OSError, ValueError) as exc:
+                    self.app.notify(
+                        f"Profile was saved, but automatic page advance failed: {exc}",
+                        severity="warning", timeout=8,
+                    )
                 self.app.pop_screen()
         except Exception as exc:
             action = event.button.id
