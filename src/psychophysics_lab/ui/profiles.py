@@ -211,7 +211,10 @@ class ProfileScreen(Screen):
                 self.app.notify("Luminance example ready; edit the file before loading.", timeout=8)
             elif event.button.id == "profile-luminance-load":
                 measurement_path = self.query_one("#profile-luminance-path", Input).value
-                draft = read_luminance_measurements(measurement_path, self.profile)
+                draft = read_luminance_measurements(
+                    measurement_path, self.profile,
+                    local_config_root=self.app.local_config_root
+                )
                 # Apply only after EVERY field and all measured pairs validated.
                 self.query_one("#profile-luminance", Input).value = json.dumps(draft["luminance_calibration"])
                 self.query_one("#profile-calibration_method", Input).value = draft["calibration_method"]
