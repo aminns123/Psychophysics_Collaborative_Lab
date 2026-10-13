@@ -355,7 +355,12 @@ class DisplayCheckScreen(HubPage):
         remembered = preferences(self.app.local_config_root).get("calibration_active_stage", "bind")
         self.active_calibration_stage = remembered if remembered in dict(STAGES) else "bind"
         from ..core.luminance_session import latest_luminance_pilot
-        pilot_json = latest_luminance_pilot(self.app.local_config_root, selected)
+        try:
+            pilot_json = latest_luminance_pilot(self.app.local_config_root, selected)
+        except (OSError, ValueError):
+            # A damaged or locked prior pilot must not prevent the entire
+            # calibration hub from opening. The researcher can pick a file.
+            pilot_json = None
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
@@ -791,7 +796,14 @@ class DisplayCheckScreen(HubPage):
                 from ..core.luminance_session import latest_luminance_pilot
                 chosen = str(event.select.value)
                 if chosen in self.app.monitor_profiles:
-                    pilot = latest_luminance_pilot(self.app.local_config_root, chosen)
+                    try:
+                        pilot = latest_luminance_pilot(self.app.local_config_root, chosen)
+                    except (OSError, ValueError) as exc:
+                        pilot = None
+                        self.app.notify(
+                            f"Could not load latest pilot automatically: {exc}. Enter the JSON path manually.",
+                            severity="warning", timeout=8,
+                        )
                     self.query_one("#cal-luminance-json-path", Input).value = str(pilot) if pilot else ""
 
     def on_input_changed(self, event: Input.Changed) -> None:
