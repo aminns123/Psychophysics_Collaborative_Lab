@@ -186,7 +186,7 @@ def test_tui_buttons_launch_request_and_show_editable_pilot_path(tmp_path,monkey
             await pilot.pause()
             assert isinstance(app.screen,DisplayCheckScreen)
             screen=app.screen
-            assert screen.query_one("#geometry-luminance-step",Input).value==".05"
+            assert float(screen.query_one("#geometry-luminance-step",Input).value)==pytest.approx(.05)
             screen.query_one("#geometry-luminance-background",Input).value=".3"
             screen.query_one("#open-luminance-pilot",Button).press()
             await pilot.pause()
