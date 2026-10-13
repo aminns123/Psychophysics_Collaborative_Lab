@@ -129,6 +129,7 @@ def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_pa
             assert isinstance(app.screen,(ProfileScreen,DisplayCheckScreen))
             if isinstance(app.screen,ProfileScreen):
                 assert app.screen.profile.id==profile.id
+                assert app.screen.focus_field=="profile-binding"
             else:
                 from textual.widgets import Select
                 assert app.screen.query_one("#geometry-monitor",Select).value==profile.id
