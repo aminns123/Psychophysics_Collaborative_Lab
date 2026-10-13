@@ -363,6 +363,9 @@ class DisplayCheckScreen(HubPage):
                     yield Button("Return to display choice", id="calibration-return")
                 yield Button("Bind / edit monitor profile", id="edit-profile")
                 yield Button("Launch fullscreen calibration", id="launch-geometry", variant="success")
+            with Horizontal(classes="buttons"):
+                yield Button("Start interactive luminance measurement", id="launch-luminance-session", variant="primary")
+                yield Button("Open pilot/test JSON", id="open-luminance-pilot")
             yield Static("", id="geometry-status")
             if self.app.geometry_summary:
                 yield Static(self.app.geometry_summary, id="geometry-last-outcome")
@@ -418,6 +421,32 @@ class DisplayCheckScreen(HubPage):
                 yield Label(label)
                 yield Input(value=value, id="geometry-" + key)
             yield Static("", id="geometry-preview", classes="info-card")
+            yield Static(
+                "[b]Photometer measurement session (interactive)[/b]\n"
+                "Start with a centred 6° grayscale square on a BLACK surround. "
+                "It begins at digital screen intensity 1.0. Use Left/Right to "
+                "decrease/increase intensity between 1.0 and your chosen minimum "
+                "(usually the experiment background). At each intensity, type "
+                "your photometer reading in cd/m² and press Enter to save. "
+                "You can enter multiple readings at the SAME intensity, then "
+                "change intensity. Esc ends the test. A dim command/readout "
+                "appears outside the measurement square at the bottom-right. "
+                "Individual readings plus mean, count and sample SD are saved "
+                "in machine-local calibration_sessions/; Open pilot/test JSON "
+                "opens the editable means file for later import. This is NOT "
+                "automatic luminance calibration or a human-subject experiment.",
+                classes="info-card",
+            )
+            yield Label("Lowest intensity in interactive sweep (normalized digital command, 0 ≤ background < 1)")
+            yield Input(
+                value=str(
+                    state.experiment_values.get("Background_Screen_intensity", 0.0)
+                    if state is not None else 0.0
+                ),
+                id="geometry-luminance-background",
+            )
+            yield Label("Arrow-key command step (normalized digital units, e.g. 0.05)")
+            yield Input(value="0.05", id="geometry-luminance-step")
             yield Static(
                 "Automated tests verify the geometry calculation only. The ruler measurement, "
                 "viewing distance, fullscreen behaviour and timing are laboratory checks.",
@@ -475,6 +504,16 @@ class DisplayCheckScreen(HubPage):
             temporal_hz=float(self.query_one("#geometry-temporal", Input).value),
             digital_command=float(self.query_one("#geometry-luminance", Input).value),
             duration_s=float(self.query_one("#geometry-duration", Input).value))
+
+    def _luminance_request(self):
+        from ..core.luminance_session import LuminanceSessionRequest
+        return LuminanceSessionRequest(
+            monitor_profile_id=str(self.query_one("#geometry-monitor", Select).value),
+            background_command=float(self.query_one("#geometry-luminance-background", Input).value),
+            command_step=float(self.query_one("#geometry-luminance-step", Input).value),
+            patch_degrees=6.0,
+            data_root=str(self.app.data_root),
+        )
 
     def _refresh_preview(self) -> None:
         try:
@@ -574,7 +613,38 @@ class DisplayCheckScreen(HubPage):
             self.app.push_screen(ProfileScreen(profile=self._profile()))
             return
         status = self.query_one("#geometry-status", Static)
-        if event.button.id == "launch-geometry":
+        if event.button.id == "launch-luminance-session":
+            event.stop()
+            try:
+                from ..core.display import preflight_fullscreen_display
+                from ..core.luminance_session import validate_luminance_session
+                profile = self._profile()
+                request = self._luminance_request()
+                preflight_fullscreen_display(profile)
+                validate_luminance_session(request, profile)
+                self.app.exit(request)
+            except (ValueError, TypeError, OSError) as exc:
+                status.update(f"[red]Luminance test NOT launched: {exc}[/red]")
+                self.app.notify(str(exc), title="Luminance test blocked", severity="error", timeout=12)
+        elif event.button.id == "open-luminance-pilot":
+            event.stop()
+            try:
+                import os
+                import sys
+                from ..core.luminance_session import latest_luminance_pilot
+                from ..config.calibration_templates import write_luminance_example
+                profile = self._profile()
+                path = (latest_luminance_pilot(self.app.local_config_root, profile.id)
+                        or write_luminance_example(self.app.local_config_root, profile))
+                note = f"Editable luminance JSON: {path}. Complete meter/date/notes, then import via Bind/edit monitor profile."
+                if sys.platform == "win32":
+                    os.startfile(str(path))
+                status.update(f"[green]{note}[/green]")
+                self.app.notify("Editable luminance JSON opened; readings are not automatically verified.", timeout=8)
+            except (OSError, ValueError) as exc:
+                status.update(f"[red]Could not open luminance JSON: {exc}[/red]")
+                self.app.notify(str(exc), title="Luminance JSON not opened", severity="error", timeout=10)
+        elif event.button.id == "launch-geometry":
             event.stop()
             try:
                 request = self._request()
