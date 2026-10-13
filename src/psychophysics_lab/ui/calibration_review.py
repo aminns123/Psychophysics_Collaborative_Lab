@@ -10,9 +10,11 @@ from ..experiments.registry import list_experiments, get_experiment
 
 
 class PhysicalVerificationScreen(Screen):
-    def __init__(self, profile):
+    def __init__(self, profile, *, experiment_id=None, focus_category=None):
         super().__init__()
         self.profile = profile
+        self.experiment_id = experiment_id
+        self.focus_category = focus_category
 
     def compose(self) -> ComposeResult:
         with Vertical(id='fixed-shell'):
@@ -29,12 +31,25 @@ class PhysicalVerificationScreen(Screen):
                 ('timing_status','Photon timing','Use independently recorded photodiode or equivalent evidence. OS refresh and software flips are insufficient.'),
             ):
                 yield Label(label)
-                yield Static(explanation)
+                from ..config.calibration_progress import calibration_progress
+                state_key = {"geometry_status":"geometry","calibration_status":"luminance","timing_status":"timing"}[key]
+                state = calibration_progress(self.profile,self.app.local_config_root)[state_key]
+                required = self.experiment_id is not None and state_key in get_experiment(self.experiment_id).calibration_requirements
+                evidence = (f"{len(self.profile.luminance_calibration)} pairs saved; method: {self.profile.calibration_method or 'not recorded'}" if state_key=="luminance" else
+                            "Compatible diagnostic reports: " + (", ".join(state.get("reports",())) or "none"))
+                yield Static(explanation + "\nCurrent status: " + getattr(self.profile,key) + "\n" + evidence
+                    + ("\nRequired for selected experiment." if required else "\nNot required by a selected experiment / independent laboratory review."),markup=False)
                 yield Select([('Unverified','unverified'),('Measurements entered; unverified','manual_unverified'),('Verified — manually declared','verified')],value=getattr(self.profile,key),allow_blank=False,id='verification-'+key)
             yield Label('Actual photometer instrument / method (needed to declare photometry verified)')
             yield Input(value=self.profile.calibration_method,id='verification-method')
             yield Checkbox('I independently reviewed the changed Verified declarations with actual instruments and the laboratory criteria; supporting evidence is retained by the laboratory.',id='verification-reviewed')
         yield Footer()
+
+    def on_mount(self):
+        if self.focus_category:
+            target=self.query_one('#verification-'+self.focus_category,Select)
+            self.call_after_refresh(target.scroll_visible)
+            self.call_after_refresh(target.focus)
 
     def on_button_pressed(self,event):
         if event.button.id=='verification-back':
@@ -55,9 +70,11 @@ class PhysicalVerificationScreen(Screen):
 
 
 class ExperimentQualificationScreen(Screen):
-    def __init__(self,profile):
+    def __init__(self,profile,*,experiment_id=None,values=None):
         super().__init__()
         self.profile=profile
+        self.experiment_id=experiment_id
+        self.values=values
 
     def compose(self) -> ComposeResult:
         with Vertical(id='fixed-shell'):
@@ -67,9 +84,9 @@ class ExperimentQualificationScreen(Screen):
                 yield Button('Explicitly qualify selected experiment',id='qualification-save',variant='primary')
             yield Static('',id='qualification-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
-            yield Static('Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
+            yield Static(f'Selected display: {self.profile.display_name}. Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
             specs=list_experiments()
-            yield Select([(spec.display_name,spec.id) for spec in specs],value=specs[0].id,allow_blank=False,id='qualification-experiment')
+            yield Select([(spec.display_name,spec.id) for spec in specs],value=self.experiment_id or specs[0].id,allow_blank=False,id='qualification-experiment')
             yield Static('',id='qualification-checks',markup=False)
             yield Checkbox('The laboratory reviewed this experiment on this display, including its stimulus/protocol requirements and supporting physical evidence.',id='qualification-reviewed')
         yield Footer()
@@ -78,7 +95,7 @@ class ExperimentQualificationScreen(Screen):
         spec=get_experiment(str(self.query_one('#qualification-experiment',Select).value))
         # Use an actual existing draft, never invent scientific parameter values.
         candidates=[values for (_,experiment,profile),values in self.app.config_drafts.items() if experiment==spec.id and profile==self.profile.id]
-        return spec,candidates[-1] if candidates else None
+        return spec,self.values if spec.id==self.experiment_id and self.values is not None else candidates[-1] if candidates else None
 
     def _refresh(self):
         if not self.is_mounted: return

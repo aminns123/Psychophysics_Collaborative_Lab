@@ -183,7 +183,8 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
             assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
             guide.query_one("#guide-open",Button).press()
             await pilot.pause()
-            assert app.screen is config
+            assert isinstance(app.screen, ExperimentConfigScreen)
+            config = app.screen  # focused editor returns to the existing Experiment Review
             assert config.query_one("#field-number-conditions",Input).value=="3"
             assert config.query_one("#field-condition-values",Input).value=="2,4,8"
             assert config.query_one("#field-starting-probe-intensity",Input).value=="1.0"

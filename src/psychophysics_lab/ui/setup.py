@@ -371,7 +371,7 @@ class DisplayCheckScreen(HubPage):
             yield Static("", id="calibration-stage-summary")
             with Horizontal(classes="buttons"):
                 if getattr(self, "return_to_configuration", False):
-                    yield Button("Return to display choice", id="calibration-return")
+                    yield Button("Return to Experiment Review" if getattr(self,"return_to_review",False) else "Return to display choice", id="calibration-return")
                 yield Button("Start at page 1", id="calibration-start")
                 yield Button("Previous", id="calibration-previous")
                 yield Button("Next stage", id="calibration-next", variant="primary")
@@ -831,6 +831,8 @@ class DisplayCheckScreen(HubPage):
             return
         if event.button.id == "calibration-return":
             event.stop()
+            if getattr(self, "return_to_review", False):
+                save_preferences(self.app.local_config_root, calibration_review_return=None)
             self.app.pop_screen()
             return
         if (event.button.id or "").startswith("cal-stage-"):
@@ -1298,6 +1300,8 @@ class ExperimentConfigScreen(Screen):
         experiment: ExperimentSpec,
         monitor_profile_id: str,
         defaults: dict[str, Any],
+        review_return=None,
+        focus_field: str | None = None,
     ) -> None:
         super().__init__()
         self.data_root = data_root
@@ -1306,6 +1310,8 @@ class ExperimentConfigScreen(Screen):
         self.experiment = experiment
         self.monitor_profile_id = monitor_profile_id
         self.defaults = dict(defaults)
+        self.review_return = review_return
+        self.focus_field = focus_field
         # Preserve historical pre-cpd workspaces explicitly when reusing.
         if (self.experiment.id == "contrast_sensitivity"
                 and "condition_values" in self.defaults
@@ -1347,6 +1353,8 @@ class ExperimentConfigScreen(Screen):
                         )
                     for field in fields:
                         yield from self._compose_field(field)
+                        if self.experiment.id == "contrast_sensitivity" and field.key == "starting_probe_intensity":
+                            yield Static("", id="contrast-live-validation", markup=False, classes="field-help")
                     if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
                         from ..adaptive.steps import NOTICE
                         yield Static(NOTICE, classes="field-help")
@@ -1363,6 +1371,28 @@ class ExperimentConfigScreen(Screen):
 
     def on_mount(self):
         self._refresh_unit_help()
+        self._refresh_contrast_help()
+        if self.focus_field:
+            field = next(item for item in self.experiment.fields if item.key == self.focus_field)
+            widget = self.query_one("#" + _field_widget_id(field))
+            for parent in widget.ancestors:
+                if isinstance(parent, Collapsible):
+                    parent.collapsed = False
+            self.call_after_refresh(widget.scroll_visible)
+            self.call_after_refresh(widget.focus)
+
+    def _refresh_contrast_help(self):
+        if not self.is_mounted or self.experiment.id != "contrast_sensitivity":
+            return
+        try:
+            from ..stimuli.contrast_validation import contrast_limit_text
+            fields = {field.key:field for field in self.experiment.fields}
+            def value(key):
+                return float(self.query_one("#" + _field_widget_id(fields[key]), Input).value)
+            message = contrast_limit_text(value("Background_Screen_intensity"), value("starting_probe_intensity"), value("logUNIT_UP"))
+        except (ValueError, TypeError) as exc:
+            message = f"Contrast range requires valid numeric inputs: {exc}"
+        self.query_one("#contrast-live-validation", Static).update(message)
 
     def _refresh_unit_help(self):
         if self.experiment.id != "contrast_sensitivity" or not self.is_mounted:
@@ -1376,6 +1406,14 @@ class ExperimentConfigScreen(Screen):
     def on_screen_resume(self):
         if not hasattr(self, "draft_key"):
             return
+        applied = getattr(self, "applied_review_values", None)
+        if applied is not None:
+            self.applied_review_values = None
+            for field in self.experiment.fields:
+                if field.key in applied:
+                    value = applied[field.key]
+                    self.query_one("#" + _field_widget_id(field)).value = value if field.kind == "choice" else str(value)
+            self._refresh_contrast_help()
         current = self.app.monitor_profiles.get(self.monitor_profile_id)
         if current is not None:
             self.query_one("#experiment-description", Static).update(
@@ -1448,6 +1486,7 @@ class ExperimentConfigScreen(Screen):
         self.app.config_drafts[self.draft_key] = raw
 
     def on_input_changed(self, event: Input.Changed) -> None:
+        self._refresh_contrast_help()
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
@@ -1572,7 +1611,15 @@ class ExperimentConfigScreen(Screen):
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.remember_draft()
-            self.app.push_screen(ReviewScreen(request=request))
+            if self.review_return is not None:
+                for screen in self.app.screen_stack:
+                    if isinstance(screen, ExperimentConfigScreen) and screen is not self and screen.draft_key == self.draft_key:
+                        screen.applied_review_values = dict(values)
+                self.review_return.request = request
+                self.review_return.reviewed_profile_snapshot = self.app.monitor_profiles[request.monitor_profile_id].to_dict()
+                self.app.pop_screen()
+            else:
+                self.app.push_screen(ReviewScreen(request=request))
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
             self.app.notify(str(exc), title="Review blocked: check inputs", severity="error", timeout=8)
@@ -1646,12 +1693,39 @@ class ReviewScreen(Screen):
     def __init__(self, *, request: SetupRequest) -> None:
         super().__init__()
         self.request = request
+        self.reviewed_profile_snapshot = None
 
     def compose(self) -> ComposeResult:
         experiment = get_experiment(self.request.experiment_id)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
-        prospective = _prospective_run_path(self.request, experiment, profile)
+        self.reviewed_profile_snapshot = profile.to_dict()
+        with Vertical(id="fixed-shell"):
+            yield Header(show_clock=True)
+            yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Back", id="back")
+                yield Button("Run human experiment", id="run", variant="success")
+                yield Button("Run simulation", id="run-simulation", variant="primary")
+            with Horizontal(classes="buttons"):
+                yield Button("Resolve blockers / Calibration guide →",
+                             id="review-calibration-guide", variant="primary")
+            yield Static("", id="review-status")
+        with VerticalScroll(id="review-body"):
+            yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
+            yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
+            from ..config.human_readiness import experiment_readiness
+            report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
+            for row in report["requirements"]:
+                yield Static("", id="readiness-" + row["key"], classes="info-card")
+                if row.get("action"):
+                    yield Button(row["action"], id="resolve-" + row["key"])
+            with Collapsible(title="Technical preflight details", collapsed=True):
+                yield Static("", id="readiness-technical", markup=False)
+            yield Static(self._summary_text(experiment, profile), id="review-text")
+        yield Footer()
 
+    def _summary_text(self, experiment, profile):
+        prospective = _prospective_run_path(self.request, experiment, profile)
         lines = [
             "[b]Review experiment[/b]",
             "",
@@ -1665,7 +1739,6 @@ class ReviewScreen(Screen):
             f"Experiment: {experiment.display_name}",
             f"Display: {profile.display_name} [{profile.id}]",
             _monitor_summary(profile),
-            readiness_text(experiment, profile, self.app.repo_root, self.request.experiment_values),
             f"Calibration status: {profile.calibration_status}",
             f"Profile revision: {profile.revision} · SHA256: {content_hash(profile.to_dict())}",
             f"Display binding: {profile.display_binding or 'legacy primary display; verify before acquisition'}",
@@ -1695,7 +1768,6 @@ class ReviewScreen(Screen):
                 from ..stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
                 if profile.expected_resolution_px:
                     calibration = resolve_spatial_geometry(profile, profile.expected_resolution_px)
-                    validate_requested_cpd(frequencies, calibration)
                     lines.extend([
                         f"Local pixels/degree at gaze: X={calibration.pixels_per_degree_at_centre[0]:.3f}, Y={calibration.pixels_per_degree_at_centre[1]:.3f}",
                         f"Nyquist limit: X={calibration.nyquist_cpd_at_centre[0]:.3f}, Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd",
@@ -1727,19 +1799,6 @@ class ReviewScreen(Screen):
                         f"is below an indicative {estimate}-response alternating-step "
                         f"budget for {count} staircases. Some may end unfinished.[/yellow]"
                     )
-        if not profile.has_verified_luminance_mapping and {
-            "Background_Luminance",
-            "Background_Screen_intensity",
-        }.issubset(self.request.experiment_values):
-            lines.extend(
-                [
-                    "",
-                    "[yellow]This monitor profile does not contain a trusted luminance-command "
-                    "mapping. Physical luminance and digital intensity are saved, but the pair "
-                    "remains explicitly manual/unverified.[/yellow]",
-                ]
-            )
-
         lines.extend(
             [
                 "",
@@ -1749,25 +1808,107 @@ class ReviewScreen(Screen):
             ]
         )
 
-        with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
-            with Horizontal(classes="buttons"):
-                yield Button("Back", id="back")
-                yield Button("Run human experiment", id="run", variant="success")
-                yield Button("Run simulation", id="run-simulation", variant="primary")
-            with Horizontal(classes="buttons"):
-                yield Button("Resolve blockers / Calibration guide →",
-                             id="review-calibration-guide", variant="primary")
-            yield Static("", id="review-status")
-        with VerticalScroll(id="review-body"):
-            yield Static("\n".join(lines), id="review-text")
-        yield Footer()
+        return "\n".join(lines)
+
+    def on_mount(self):
+        self._refresh_readiness()
+
+    def on_screen_resume(self):
+        if not self.is_mounted:
+            return
+        from dataclasses import replace
+        self.app.reload_profiles()
+        profile = self.app.monitor_profiles.get(self.request.monitor_profile_id)
+        if profile is not None and self.reviewed_profile_snapshot is not None:
+            from ..config.readiness import _DIAGNOSTIC_PHYSICAL_FIELDS
+            current = profile.to_dict()
+            # An explicit return from review controls refreshes metadata-only
+            # revisions. Changed physical arrangements require a new Review.
+            same = all(current.get(key) == self.reviewed_profile_snapshot.get(key) for key in
+                       (*_DIAGNOSTIC_PHYSICAL_FIELDS, "id", "profile_uuid"))
+            if same:
+                candidate = replace(self.request, monitor_profile_hash=None)
+                try:
+                    self.request = validate_setup(candidate, get_experiment(candidate.experiment_id), profile, mode="configuration")
+                except (ValueError, TypeError):
+                    pass
+                else:
+                    self.reviewed_profile_snapshot = current
+        self._refresh_readiness()
+
+    def _refresh_readiness(self):
+        if not self.is_mounted:
+            return
+        from ..config.human_readiness import experiment_readiness
+        profile = self.app.monitor_profiles.get(self.request.monitor_profile_id)
+        if profile is None:
+            self.query_one("#human-readiness-summary", Static).update("Human experiment: Blocked. Selected monitor unavailable; restore it in Display. No fallback selected.")
+            return
+        self.readiness_report = experiment_readiness(self.request, get_experiment(self.request.experiment_id), profile, repo_root=self.app.repo_root)
+        report = self.readiness_report
+        count = len(report["blockers"])
+        self.query_one("#review-text", Static).update(self._summary_text(get_experiment(self.request.experiment_id), profile))
+        self.query_one("#human-readiness-summary", Static).update(
+            ("Human experiment: Ready (final launch checks still apply)" if report["human_ready"] else f"Human acquisition blocked — {count} requirements outstanding")
+            + "\nSimulation: " + ("Available" if report["simulation_available"] else "Unavailable")
+            + "\nGreen calibration pages record saved observations; physical verification is a separate laboratory declaration.")
+        for row in report["requirements"]:
+            matches = self.query("#readiness-" + row["key"])
+            if matches:
+                color = "green" if row["passed"] and row["required"] else "yellow" if not row["required"] else "red"
+                matches.first().update(f"[{color}][b]{row['name']}: {row['status']}[/b][/] "
+                    + ("Required for human acquisition" if row["required"] else "Recommended / informational") + "\n" + row["detail"])
+        self.query_one("#readiness-technical", Static).update(
+            "\n\n".join(row["detail"] for row in report["blockers"]) + "\n\n" + report["simulation_detail"])
+        self.query_one("#run-simulation", Button).disabled = not report["simulation_available"]
+
+    def resolve_requirement(self, key):
+        # Fullscreen diagnostics restart the app; preserve the exact experiment draft.
+        self.app.config_drafts[(self.request.participant_id,self.request.experiment_id,self.request.monitor_profile_id)] = dict(self.request.experiment_values)
+        save_preferences(self.app.local_config_root, active_monitor_profile_id=self.request.monitor_profile_id,
+            calibration_experiment_draft={"participant":self.request.participant_id,"experiment":self.request.experiment_id,
+                "profile":self.request.monitor_profile_id,"values":dict(self.request.experiment_values)})
+        row = next(item for item in self.readiness_report["requirements"] if item["key"] == key)
+        profile = self.app.monitor_profiles[self.request.monitor_profile_id]
+        if row["destination"] in {"verification", "qualification"}:
+            from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
+            cls = PhysicalVerificationScreen if row["destination"] == "verification" else ExperimentQualificationScreen
+            kwargs = {"experiment_id":self.request.experiment_id}
+            if row["destination"] == "verification":
+                kwargs["focus_category"] = "calibration_status" if key=="luminance" else key+"_status"
+            else:
+                kwargs["values"] = self.request.experiment_values
+            self.app.push_screen(cls(profile, **kwargs))
+        elif row["destination"] == "settings":
+            self.app.push_screen(ExperimentConfigScreen(data_root=Path(self.request.data_root or self.app.data_root),
+                participant_id=self.request.participant_id,session_mode=self.request.session_mode,
+                experiment=get_experiment(self.request.experiment_id),monitor_profile_id=profile.id,
+                defaults=self.request.experiment_values,review_return=self,focus_field=row.get("field")))
+        elif row["destination"] == "calibration":
+            if row.get("stage") == "bind":
+                from .profiles import ProfileScreen
+                self.app.push_screen(ProfileScreen(profile=profile,focus_field="profile-binding"))
+                return
+            self.app.display_guide_target_profile_id = profile.id
+            self.app.display_draft["geometry-monitor"] = profile.id
+            from dataclasses import asdict
+            save_preferences(self.app.local_config_root, calibration_active_stage=row.get("stage") or "review",
+                calibration_review_return={"request":asdict(self.request),"snapshot":self.reviewed_profile_snapshot})
+            page = DisplayCheckScreen()
+            page.return_to_configuration = True
+            page.return_to_review = True
+            self.app.push_screen(page)
+        else:
+            self.app.open_hub_page("setup")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
         button_id = event.button.id
+        if button_id and button_id.startswith("resolve-"):
+            event.stop()
+            self.resolve_requirement(button_id.removeprefix("resolve-"))
+            return
         if button_id not in {"back", "run", "run-simulation", "review-calibration-guide"}:
             return
         event.stop()
@@ -1819,8 +1960,9 @@ class ReviewScreen(Screen):
                     preflight_fullscreen_display(current)
                     self.app.exit(self.request)
         except Exception as exc:
-            self.query_one("#review-status", Static).update(f"[red]{exc}[/red]")
-            self.app.notify(str(exc), title="Run not started", severity="error", timeout=10)
+            self._refresh_readiness()
+            self.query_one("#review-status", Static).update("Run not started. " + (str(exc) if "\n" not in str(exc) else "See Human Experiment Readiness for the outstanding requirements."))
+            self.query_one("#readiness-technical", Static).update(str(exc))
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
@@ -2065,6 +2207,34 @@ class PsyCoLabSetupApp(App):
 
     def on_mount(self) -> None:
         self._refresh_experiment_context()
+        if self.geometry_summary:
+            self.call_after_refresh(self._restore_diagnostic_review)
+
+    async def _restore_diagnostic_review(self):
+        saved = preferences(self.local_config_root).get("calibration_review_return")
+        if not isinstance(saved, dict):
+            return
+        save_preferences(self.local_config_root, calibration_review_return=None)
+        try:
+            request = SetupRequest(**saved["request"])
+            get_experiment(request.experiment_id)
+            if request.monitor_profile_id not in self.monitor_profiles:
+                raise ValueError("Selected display is unavailable")
+            review = ReviewScreen(request=request)
+            await self.push_screen(review)
+            # Preserve the earlier physical snapshot, so material changes cannot
+            # be silently accepted merely because the Textual process restarted.
+            review.reviewed_profile_snapshot = saved.get("snapshot")
+            review.on_screen_resume()
+            self.display_draft["geometry-monitor"] = request.monitor_profile_id
+            self.display_guide_target_profile_id = request.monitor_profile_id
+            page = DisplayCheckScreen()
+            page.return_to_configuration = True
+            page.return_to_review = True
+            await self.push_screen(page)
+        except (KeyError, TypeError, ValueError) as exc:
+            self.screen_stack[0].query_one("#setup-status", Static).update(
+                f"Cannot restore experiment Review after diagnostic: {exc}. Select current settings and Review again.")
 
     def _compatible_profiles(self, experiment: ExperimentSpec) -> dict[str, Any]:
         # Availability is independent of human qualification.

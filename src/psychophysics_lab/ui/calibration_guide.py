@@ -286,6 +286,19 @@ class CalibrationGuideScreen(ModalScreen[None]):
         key, _ = GUIDE_STEPS[self.stage_index]
         profile_id = self.request.monitor_profile_id
         self.app.pop_screen()
+        from .setup import ReviewScreen, DisplayCheckScreen
+        if isinstance(self.app.screen, ReviewScreen):
+            review=self.app.screen
+            mapped={"display":"binding","contrast":"contrast","qualification":"qualification"}.get(key,key)
+            if any(row['key']==mapped and row.get('action') for row in review.readiness_report['requirements']):
+                review.resolve_requirement(mapped)
+                return
+            # Reuse the direct calibration route, including its fullscreen
+            # diagnostic restart state, for guide-only stages such as Spatial.
+            review.resolve_requirement("setup")
+            from ..config.local import save_preferences
+            save_preferences(self.app.local_config_root,calibration_active_stage={'display':'bind'}.get(key,key))
+            return
         if key == "contrast":
             # Review is normally above ExperimentConfigScreen. Return to
             # editable contrast/adaptive controls with draft values intact.

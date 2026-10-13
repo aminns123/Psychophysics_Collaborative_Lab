@@ -16,7 +16,7 @@ def qualification_checks(spec, profile, values=None):
     remain separate and use the same validator as final acquisition preflight.
     """
     from .models import photometry_is_test_data
-    checks = [{"name": "Saved physical display binding", "passed": profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px),
+    checks = [{"key":"binding", "name": "Saved physical display binding", "passed": profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px),
                "detail": "Save a local bound display and expected pixel resolution on Display."}]
     for key in spec.calibration_requirements:
         if key == "geometry":
@@ -28,7 +28,7 @@ def qualification_checks(spec, profile, values=None):
         else:
             passed = profile.timing_status == "verified"
             detail = "Review independent photon-timing instrument evidence and explicitly declare timing verified. Software flips are insufficient."
-        checks.append({"name": key.title() + " laboratory verification (manually declared)", "passed": passed, "detail": detail})
+        checks.append({"key":key, "name": key.title() + " laboratory verification (manually declared)", "passed": passed, "detail": detail})
     if values is not None:
         from .models import SetupRequest
         try:
@@ -37,32 +37,60 @@ def qualification_checks(spec, profile, values=None):
             checks.append({"name": "Current experiment configuration", "passed": False, "detail": str(exc)})
         else:
             checks.append({"name": "Current experiment configuration", "passed": True, "detail": "Current settings validate; acquisition still checks response/range safeguards."})
+        # The same contrast row used at human launch also applies to explicit
+        # review of a current CSF configuration. No separate range formula.
+        checks.extend({"key":row["key"],"name":row["name"],"passed":row["passed"],"detail":row["detail"]}
+                      for row in human_requirements(spec,profile,values) if row["key"] == "contrast")
     return checks
 
 
-def human_blockers(spec, profile, values=None):
-    reasons = []
-    if not compatible(spec, profile):
-        reasons.append("This experiment/profile combination has not been qualified. Use Calibrate to complete laboratory checks and explicitly record experiment qualification; headless simulation remains available.")
-    if profile.origin == "local" and not profile.display_binding:
-        reasons.append("This local profile is an UNBOUND DRAFT. Calibrate → Edit / copy display profile → Detect connected displays → select monitor → Save local revision.")
+def human_requirements(spec, profile, values=None):
+    """One source for human blockers and their targeted resolution actions."""
+    rows=[]
+    def add(key,name,passed,detail,destination,*,field=None,stage=None,required=True):
+        if passed:
+            detail = {"qualification":"Explicit qualification declared or retained historical compatibility policy; final preflight still applies.",
+                "binding":"Saved local display binding and pixel resolution; the actual connected mode is checked at launch.",
+                "geometry":"Geometry is manually declared verified using laboratory criteria; PsyCoLab does not independently measure it.",
+                "luminance":"Photometer mapping is manually declared verified with recorded instrument/method; the software does not independently certify it.",
+                "timing":"Photon timing is manually declared verified from independent laboratory evidence, not software flips.",
+                "sampling":"Expected fullscreen pixel resolution is saved; sampling and actual mode remain checked."}.get(key,detail)
+        rows.append({"key":key,"name":name,"passed":passed,"required":required,
+            "status":"Verified" if passed and key in {"geometry","luminance","timing"} else "Complete" if passed else "Saved but unverified" if key in {"geometry","luminance","timing"} else "Blocked",
+            "detail":detail,"destination":destination,"field":field,"stage":stage,
+            "action": {"verification":"Review physical " + ("photometry" if key=="luminance" else key),"qualification":"Check experiment requirements","settings":"Edit contrast settings","calibration":"Open " + (stage or "display") + " calibration"}[destination]})
+    add("qualification","Experiment qualification",compatible(spec,profile),
+        "This experiment/profile combination has not been qualified. Explicitly review the registered experiment requirements; calibration completion does not qualify human acquisition.","qualification")
     from .models import photometry_is_test_data
-    if "luminance" in spec.calibration_requirements and photometry_is_test_data(profile):
-        reasons.append("Fake/synthetic photometry cannot support human acquisition.")
-    if profile.origin == "local":
-        reasons.extend(check["detail"] for check in qualification_checks(spec, profile) if not check["passed"])
-    if spec.id == "contrast_sensitivity" and values:
-        if values.get("condition_unit") != "legacy_shader_radians" and not profile.expected_resolution_px:
-            reasons.append("Physical cpd acquisition needs expected fullscreen pixel resolution. Save it in Calibrate and check the framebuffer.")
-        from ..stimuli.contrast_validation import validate_grating_command
-        from Events.display_contrast import normalized_display_contrast
+    if profile.origin=="local":
+        for check in qualification_checks(spec,profile):
+            key=check['key']
+            if key=="binding" and not profile.display_binding:
+                check=dict(check,detail="This local profile is an UNBOUND DRAFT. Detect connected displays, select the actual monitor and save its binding/resolution on Display.")
+            add(key,check['name'],check['passed'],check['detail'],"calibration" if key=="binding" else "verification",stage="bind" if key=="binding" else None)
+    if "luminance" in spec.calibration_requirements and photometry_is_test_data(profile) and not any(row['key']=='luminance' for row in rows):
+        add("luminance","Physical photometry",False,"Fake/synthetic photometry cannot support human acquisition.","verification")
+    if spec.id=="contrast_sensitivity" and values:
+        if values.get("condition_unit") != "legacy_shader_radians":
+            add("sampling","Fullscreen pixel resolution",bool(profile.expected_resolution_px),
+                "Physical cpd acquisition needs expected fullscreen pixel resolution; bind the display and check its actual framebuffer.","calibration",stage="bind")
+        from ..stimuli.contrast_validation import starting_contrast_limits,contrast_limit_text
         try:
-            contrast = normalized_display_contrast(float(values["starting_probe_intensity"]),
-                background_intensity=float(values["Background_Screen_intensity"]), maximum_intensity=1.)
-            validate_grating_command(contrast, float(values["Background_Screen_intensity"]))
-        except ValueError as exc:
-            reasons.append(str(exc))
-    return tuple(reasons)
+            result=starting_contrast_limits(float(values["Background_Screen_intensity"]),float(values["starting_probe_intensity"]),float(values["logUNIT_UP"]) if "logUNIT_UP" in values else None)
+            detail=contrast_limit_text(float(values["Background_Screen_intensity"]),float(values["starting_probe_intensity"]),float(values["logUNIT_UP"]) if "logUNIT_UP" in values else None)
+            passed=result['initial_valid']
+        except (ValueError,TypeError,KeyError) as exc:
+            detail=str(exc); passed=False
+        if not passed:
+            detail="Grating command may clip. " + detail
+        add("contrast","Digital contrast range",passed,detail,"settings",field="starting_probe_intensity")
+        add("adaptive_range","Adaptive contrast boundary policy",True,
+            "A valid initial command does not guarantee safe later steps. The runtime rejects unsafe human draws and preserves accepted data, without clamping or altered reversals.","settings",field="logUNIT_UP",required=False)
+    return rows
+
+
+def human_blockers(spec, profile, values=None):
+    return tuple(row['detail'] for row in human_requirements(spec,profile,values) if row['required'] and not row['passed'])
 
 
 def validate_setup(request, spec, profile, *, mode="human"):
