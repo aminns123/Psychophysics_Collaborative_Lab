@@ -6,7 +6,7 @@ import sys
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import Horizontal, VerticalScroll, Vertical
-from textual.widgets import Header, Footer, Button, Static, Input, Label, Select
+from textual.widgets import Header, Footer, Button, Static, Input, Label, Select, Checkbox
 from ..config.local import save_profile
 from ..config.calibration_templates import (
     write_luminance_example, read_luminance_measurements
@@ -92,6 +92,19 @@ class ProfileScreen(Screen):
             yield Input(value=str(p.expected_resolution_px[0]) if p.expected_resolution_px else "", id="profile-pixel-width")
             yield Input(value=str(p.expected_resolution_px[1]) if p.expected_resolution_px else "", id="profile-pixel-height")
             yield Static("Measure the active image area and eye-to-screen distance yourself. OS resolution may be DPI-scaled; verify actual fullscreen pixels. Refresh is an OS mode or manual value, not measured photon timing.")
+            yield Checkbox(
+                "I personally measured the active WIDTH, HEIGHT and EYE DISTANCE "
+                "and confirm these three entered values (not just defaults).",
+                value=all(p.measurement_sources.get(key) == "manual" for key in
+                          ("physical_width_m", "physical_height_m", "viewing_distance_m")),
+                id="profile-confirm-manual-geometry",
+            )
+            yield Static(
+                "Check this only after measuring. It records manual provenance even "
+                "if a value happens to match the previous/reference value. "
+                "It does NOT verify the ruler test or automatically qualify experiments.",
+                classes="field-help",
+            )
             for name in ("calibration_status", "geometry_status", "timing_status"):
                 yield Label(name.replace("_", " ").title())
                 yield Select([(v, v) for v in ("unverified", "manual_unverified", "verified")], value=getattr(p, name), allow_blank=False, id="profile-" + name)
@@ -234,6 +247,9 @@ class ProfileScreen(Screen):
                         sources[key] = "manual"
                     else:
                         sources.setdefault(key, "reference" if self.profile.origin == "reference" else "unspecified")
+                if self.query_one("#profile-confirm-manual-geometry", Checkbox).value:
+                    for key in ("physical_width_m", "physical_height_m", "viewing_distance_m"):
+                        sources[key] = "manual"
                 payload["measurement_sources"] = sources
                 # Changes to a scientific measurement mapping invalidate
                 # previous certification and any per-experiment qualification.

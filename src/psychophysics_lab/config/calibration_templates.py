@@ -95,6 +95,8 @@ def parse_luminance_measurements(data: object, profile: MonitorProfile) -> dict:
             f"Expected {profile_id} revision {revision}. Create a fresh example "
             "for this display and transfer verified measurements only after checking identity."
         )
+    if data.get("example_only") is True:
+        raise ValueError("FAKE demonstration values cannot be imported as photometer measurements.")
     method = data.get("photometer_model_and_method")
     if not isinstance(method, str) or not method.strip() or "REPLACE" in method.upper():
         raise ValueError("Provide the real photometer model and measurement method.")
@@ -154,3 +156,41 @@ def read_luminance_measurements(path: str, profile: MonitorProfile) -> dict:
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Invalid UTF-8 JSON file: {exc}") from exc
     return parse_luminance_measurements(document, profile)
+
+
+def demo_luminance_document(profile: MonitorProfile) -> dict:
+    """Visibly synthetic completed example, blocked by the production importer."""
+    example = example_luminance_document(profile)
+    example.update({
+        "example_only": True,
+        "photometer_model_and_method": "FAKE EXAMPLE - imaginary photometer, NOT A REAL MEASUREMENT",
+        "measurement_date": "2026-01-01",
+        "notes": "FAKE EXAMPLE ONLY. Demonstrates JSON structure. Do not use for an experiment.",
+        "measurements": [
+            {"screen_intensity": 0.0, "luminance_cdm2": 0.2},
+            {"screen_intensity": 0.25, "luminance_cdm2": 13.4},
+            {"screen_intensity": 0.50, "luminance_cdm2": 57.2},
+            {"screen_intensity": 0.75, "luminance_cdm2": 110.8},
+            {"screen_intensity": 1.0, "luminance_cdm2": 181.5},
+        ],
+        "instructions": (
+            "FAKE DEMONSTRATION DATA, NOT YOUR SCREEN. example_only=true prevents "
+            "import. For real calibration, create the blank measurement template, "
+            "take photometer measurements and replace null values with observations."
+        ),
+    })
+    return example
+
+
+def write_luminance_demo(local_config_root: Path, profile: MonitorProfile) -> Path:
+    """Write a sample on demand without overwriting user-entered data."""
+    profile_id, revision = template_identity(profile)
+    root = local_config_root.resolve()
+    destination = (root / "calibration_templates" /
+                   f"FAKE_DEMO_luminance_{profile_id}_rev{revision:06d}.json").resolve()
+    if not destination.is_relative_to(root):
+        raise ValueError("Demo path must remain inside local configuration.")
+    with file_lock(root / "calibration_templates.lock"):
+        if not destination.exists() and not destination.is_symlink():
+            atomic_write_json(destination, demo_luminance_document(profile))
+    return destination

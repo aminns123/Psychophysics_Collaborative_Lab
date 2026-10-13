@@ -4,6 +4,29 @@ from .local import content_hash, config_root
 from .preflight import compatible, human_blockers
 
 
+# Status/provenance changes create a new profile revision, but do not change
+# the geometry of the actual display. Preserve physically applicable diagnostic
+# evidence without silently accepting a changed screen or viewing arrangement.
+_DIAGNOSTIC_PHYSICAL_FIELDS = (
+    "physical_width_m", "physical_height_m", "viewing_distance_m",
+    "expected_resolution_px", "display_binding", "refresh_rate_hz",
+)
+
+
+def diagnostic_matches_profile(payload, profile) -> bool:
+    """Require untampered recorded profile and matching physical configuration."""
+    if payload.get("status") != "completed":
+        return False
+    snapshot = payload.get("monitor_profile")
+    if not isinstance(snapshot, dict):
+        return False
+    if payload.get("monitor_profile_sha256") != content_hash(snapshot):
+        return False
+    current = profile.to_dict()
+    return all(snapshot.get(field) == current.get(field)
+               for field in _DIAGNOSTIC_PHYSICAL_FIELDS)
+
+
 def profile_readiness(spec, profile, *, repo_root=None, values=None):
     matched = None
     spatial_check = None
@@ -14,15 +37,14 @@ def profile_readiness(spec, profile, *, repo_root=None, values=None):
         for report in reports:
             try:
                 payload = json.loads(report.read_text(encoding="utf-8"))
-                snapshot = payload.get("monitor_profile", {})
-                if (payload.get("status") != "completed" or
-                    payload.get("monitor_profile_sha256", content_hash(snapshot)) != content_hash(profile.to_dict())):
+                if not diagnostic_matches_profile(payload, profile):
                     continue
                 kind = payload.get("request", {}).get("test_kind")
                 if (kind in {"size", "position"} and matched is None
                         and payload.get("measurement", {}).get("measured_length_mm") is not None):
                     matched = {"diagnostic_uuid": payload.get("diagnostic_uuid"),
                                "profile_revision": profile.revision,
+                               "evidence_revision": payload["monitor_profile"].get("revision"),
                                "measurement": payload["measurement"],
                                "interpretation": "Recorded ruler check for this revision; not automatic acceptance."}
                 if kind == "spatial" and spatial_check is None:

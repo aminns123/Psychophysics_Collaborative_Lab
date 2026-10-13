@@ -10,7 +10,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher
 
 from ..analysis.thresholds import analyse_thresholds
 from ..config.models import SetupRequest
@@ -31,6 +31,7 @@ from ..experiments.registry import get_experiment, list_experiments
 from ..experiments.spec import ConfigField, ExperimentSpec
 from ..paths import resolve_data_root
 from ..stimuli.geometry import physical_length_for_visual_angle
+from .calibration_stages import STAGES, stage_states
 
 
 NAV_PAGES = (
@@ -338,126 +339,260 @@ class DisplayCheckScreen(HubPage):
 
     def compose(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
-        profile_options = [
-            (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles
-        ]
-        last_profile = next(iter(self.app.monitor_profiles))
+        options = [(f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles]
+        selected = next(iter(self.app.monitor_profiles))
         state = _workspace_request(self.app.data_root)
         preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
         if preferred in self.app.monitor_profiles:
-            last_profile = preferred
+            selected = preferred
         elif state and state.monitor_profile_id in self.app.monitor_profiles:
-            last_profile = state.monitor_profile_id
-        # A guidance link from Review must open Calibrate on the exact
-        # profile that was reviewed, even if preferences differ.
+            selected = state.monitor_profile_id
         guided = getattr(self.app, "display_guide_target_profile_id", None)
         if guided in self.app.monitor_profiles:
-            last_profile = guided
+            selected = guided
         self.app.display_guide_target_profile_id = None
+        remembered = preferences(self.app.local_config_root).get("calibration_active_stage", "bind")
+        self.active_calibration_stage = remembered if remembered in dict(STAGES) else "bind"
 
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            with Horizontal(id="calibration-stage-nav"):
+                for stage, label in STAGES:
+                    yield Button(label, id=f"cal-stage-{stage}", variant="error")
+            yield Static("", id="calibration-stage-summary")
             with Horizontal(classes="buttons"):
                 if getattr(self, "return_to_configuration", False):
                     yield Button("Return to display choice", id="calibration-return")
-                yield Button("Bind / edit monitor profile", id="edit-profile")
-                yield Button("Launch fullscreen calibration", id="launch-geometry", variant="success")
-            with Horizontal(classes="buttons"):
-                yield Button("Start interactive luminance measurement", id="launch-luminance-session", variant="primary")
-                yield Button("Open pilot/test JSON", id="open-luminance-pilot")
+                yield Button("Refresh calibration status", id="calibration-refresh")
             yield Static("", id="geometry-status")
-            if self.app.geometry_summary:
-                yield Static(self.app.geometry_summary, id="geometry-last-outcome")
-        with VerticalScroll(classes="page-body"):
-            yield Static(
-                "[b]Display calibration — measure before using cycles/degree[/b]\n"
-                "1. Select Bind / edit monitor profile. Save measured geometry and "
-                "enter its active width/height and eye-to-screen distance. "
-                "Detect connected displays, select the actual monitor and save a "
-                "bound revision BEFORE launching the fullscreen calibration.\n"
-                "2. Run a size/ruler check and a spatial-frequency diagnostic. "
-                "Record a physical ruler measurement; confirm the pixel grid and viewing setup.\n"
-                "For luminance, choose Luminance / grayscale measurement patch, "
-                "set a normalized digital command from 0 to 1, and measure the "
-                "central patch using a real photometer. Enter those readings via "
-                "the example JSON in Bind/edit monitor profile; no luminance is inferred.\n"
-                "3. Return to Experiment to enter frequencies in cycles/degree.\n"
-                "Display geometry does NOT measure screen luminance, gamma or photon onset. "
-                "Those need separate photometric/temporal instruments.",
-                classes="info-card",
-            )
-            yield Static("", id="spatial-calibration-summary", classes="info-card")
-            yield Static(
-                "Diagnostic settings below apply to the selected monitor. The physical "
-                "size and distance are manually measured; OS screen dimensions alone "
-                "are insufficient for geometric calibration."
-            )
-            yield Label("Display profile")
-            yield Select(profile_options, value=last_profile, allow_blank=False, id="geometry-monitor")
-            yield Label("Diagnostic")
-            yield Select(list(TESTS), value="size", allow_blank=False, id="geometry-test")
-            yield Label("Size units")
-            yield Select(
-                [("Visual angle (degrees)", "visual_angle_deg"), ("Physical length (mm)", "physical_mm")],
-                value="visual_angle_deg",
-                allow_blank=False,
-                id="geometry-mode",
-            )
-            yield Label("Requested value")
-            yield Input(value="5", id="geometry-value")
-            yield Label("Orientation")
-            yield Select(
-                [("Horizontal", "horizontal"), ("Vertical", "vertical")],
-                value="horizontal",
-                allow_blank=False,
-                id="geometry-orientation",
-            )
-            yield Label("Bar thickness (mm)")
-            yield Input(value="5", id="geometry-thickness")
-            yield Label("Position units (offset from screen centre)")
-            yield Select([("Millimetres", "mm"), ("Degrees", "degrees")], value="mm", allow_blank=False, id="geometry-position-units")
-            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("luminance", "Grayscale digital command for photometer (0–1)", "0.5"), ("duration", "Display test duration (seconds; 0 = until ESC/ENTER)", "0")):
-                yield Label(label)
-                yield Input(value=value, id="geometry-" + key)
-            yield Static("", id="geometry-preview", classes="info-card")
-            yield Static(
-                "[b]Photometer measurement session (interactive)[/b]\n"
-                "Start with a centred 6° grayscale square on a BLACK surround. "
-                "It begins at digital screen intensity 1.0. Use Left/Right to "
-                "decrease/increase intensity between 1.0 and your chosen minimum "
-                "(usually the experiment background). At each intensity, type "
-                "your photometer reading in cd/m² and press Enter to save. "
-                "You can enter multiple readings at the SAME intensity, then "
-                "change intensity. Esc ends the test. A dim command/readout "
-                "appears outside the measurement square at the bottom-right. "
-                "Individual readings plus mean, count and sample SD are saved "
-                "in machine-local calibration_sessions/; Open pilot/test JSON "
-                "opens the editable means file for later import. This is NOT "
-                "automatic luminance calibration or a human-subject experiment.",
-                classes="info-card",
-            )
-            yield Label("Lowest intensity in interactive sweep (normalized digital command, 0 ≤ background < 1)")
-            yield Input(
-                value=str(
-                    state.experiment_values.get("Background_Screen_intensity", 0.0)
-                    if state is not None else 0.0
-                ),
-                id="geometry-luminance-background",
-            )
-            yield Label("Arrow-key command step (normalized digital units, e.g. 0.05)")
-            yield Input(value="0.05", id="geometry-luminance-step")
-            yield Static(
-                "Automated tests verify the geometry calculation only. The ruler measurement, "
-                "viewing distance, fullscreen behaviour and timing are laboratory checks.",
-                classes="field-help",
-            )
-            yield Static("[b]Latest ruler result[/b]", classes="section-title")
-            yield Static("", id="latest-geometry")
-            yield Label("Measured bar length (mm, optional after the fullscreen check)")
-            yield Input(value="", placeholder="e.g. 87.4", id="geometry-measured")
-            yield Button("Record Measurement in Latest Diagnostic", id="record-geometry-measurement")
+
+        with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
+            with VerticalScroll(id="cal-panel-bind", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 1 / 6 · Display profile and physical screen[/b]\n"
+                    "Choose your actual monitor. Detect its OS pixel grid, then enter the "
+                    "measured ACTIVE image width, height and viewing distance. "
+                    "The monitor bezel size and Windows scaling are NOT physical calibration.",
+                    classes="info-card",
+                )
+                yield Label("Monitor profile (shared across all six stages)")
+                yield Select(options, value=selected, allow_blank=False, id="geometry-monitor")
+                yield Button("Bind / edit monitor profile", id="edit-profile", variant="primary")
+                yield Static("", id="calibration-bind-detail", classes="info-card")
+                with Collapsible(title="Further help · What exactly do I measure?", collapsed=True):
+                    yield Static(
+                        "1. Use a ruler to measure the illuminated image WIDTH and HEIGHT, "
+                        "not the bezel. Convert mm to metres: 610 mm = 0.610 m.\n"
+                        "2. Measure the distance from the observer's eye to the display plane.\n"
+                        "3. Choose Bind / edit, click Detect connected displays, select your "
+                        "physical monitor and copy its displayed pixel resolution/refresh.\n"
+                        "4. Enter the physical measurements, save a local revision and return.\n"
+                        "A green Display tab means saved binding and recorded manual geometry, "
+                        "not automatic laboratory certification."
+                    )
+
+            with VerticalScroll(id="cal-panel-geometry", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 2 / 6 · Geometry and ruler measurement[/b]\n"
+                    "Display a known-length bar, physically measure it, enter the length below "
+                    "and record its discrepancy. Then review the result before explicitly "
+                    "marking Geometry status Verified in the profile editor.",
+                    classes="info-card",
+                )
+                yield Label("Fullscreen test (choose Size / ruler bar for this stage)")
+                yield Select(list(TESTS), value="size", allow_blank=False, id="geometry-test")
+                yield Label("Requested length units")
+                yield Select([("Visual angle (degrees)", "visual_angle_deg"),
+                              ("Physical length (mm)", "physical_mm")],
+                             value="visual_angle_deg", allow_blank=False, id="geometry-mode")
+                yield Label("Requested length")
+                yield Input(value="5", id="geometry-value")
+                yield Label("Orientation")
+                yield Select([("Horizontal", "horizontal"), ("Vertical", "vertical")],
+                             value="horizontal", allow_blank=False, id="geometry-orientation")
+                yield Label("Bar thickness (mm)")
+                yield Input(value="5", id="geometry-thickness")
+                yield Label("Position units (relative to screen centre)")
+                yield Select([("Millimetres", "mm"), ("Degrees", "degrees")],
+                             value="mm", allow_blank=False, id="geometry-position-units")
+                yield Label("X position")
+                yield Input(value="0", id="geometry-x")
+                yield Label("Y position")
+                yield Input(value="0", id="geometry-y")
+                yield Label("Duration (seconds; 0 keeps fullscreen open until Esc / Enter)")
+                yield Input(value="0", id="geometry-duration")
+                yield Button("Launch ruler / selected fullscreen test", id="launch-geometry",
+                             variant="primary")
+                yield Static("", id="geometry-preview", classes="info-card")
+                yield Static("[b]Latest ruler diagnostic[/b]", classes="section-title")
+                yield Static("", id="latest-geometry", classes="info-card")
+                yield Label("Physically measured bar length (mm)")
+                yield Input(value="", placeholder="e.g. 99.5", id="geometry-measured")
+                yield Button("Record measurement in latest diagnostic",
+                             id="record-geometry-measurement")
+                yield Button("Review / verify geometry in profile editor",
+                             id="edit-geometry-profile")
+                with Collapsible(title="Further help · Worked example", collapsed=True):
+                    yield Static(
+                        "Set size units to Physical length (mm), requested length to 100, "
+                        "and run the size/ruler test. If a real ruler shows 99.5 mm, type "
+                        "99.5 into Measured bar length and Record. Review the -0.5% error. "
+                        "Decide whether this meets your experiment's required tolerance. "
+                        "Only then use the profile editor to mark Geometry status Verified. "
+                        "Do not mark Verified simply because the fullscreen test ran."
+                    )
+
+            with VerticalScroll(id="cal-panel-spatial", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 3 / 6 · Spatial frequency (cycles per degree)[/b]\n"
+                    "Verify the geometry first. Then display a grating and check its "
+                    "period and any visible aliasing. The software's computed "
+                    "pixels/degree depends on physical dimensions and viewing distance.",
+                    classes="info-card",
+                )
+                yield Static("", id="spatial-calibration-summary", classes="info-card")
+                yield Label("Requested grating frequency (cycles/degree)")
+                yield Input(value="1", id="geometry-spatial")
+                yield Button("Launch fullscreen spatial grating", id="launch-spatial",
+                             variant="primary")
+                with Collapsible(title="Further help · What should I see?", collapsed=True):
+                    yield Static(
+                        "A 1 cycle/degree grating has one complete dark-and-light "
+                        "period per degree near gaze centre. Compare this with the "
+                        "pixels/degree and Nyquist values above. The software pattern "
+                        "is a diagnostic, not a physical luminance measurement. "
+                        "Changing viewing distance or resolution requires a new check."
+                    )
+
+            with VerticalScroll(id="cal-panel-luminance", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 4 / 6 · Luminance (photometer required)[/b]\n"
+                    "Method A: Import JSON containing REAL measured pairs of normalized "
+                    "screen intensity and cd/m². Method B: Present a fullscreen 6-degree "
+                    "square and type meter readings repeatedly at each intensity. "
+                    "Without a photometer, keep this stage red.",
+                    classes="info-card",
+                )
+                yield Label("Single-patch normalized digital command (0 to 1)")
+                yield Input(value="0.5", id="geometry-luminance")
+                yield Button("Launch one static photometer patch", id="launch-patch")
+                yield Label("Minimum digital command for interactive sweep (0 <= value < 1)")
+                yield Input(
+                    value=str(state.experiment_values.get("Background_Screen_intensity", 0.0)
+                              if state is not None else 0.0),
+                    id="geometry-luminance-background",
+                )
+                yield Label("Left/Right arrow step (e.g. 0.05 digital intensity)")
+                yield Input(value="0.05", id="geometry-luminance-step")
+                yield Button("Start fullscreen interactive photometer entry",
+                             id="launch-luminance-session", variant="primary")
+                yield Button("Open my pilot/test or blank measurement JSON",
+                             id="open-luminance-pilot")
+                yield Button("Open completed FAKE example JSON (education only)",
+                             id="open-luminance-demo")
+                yield Button("Import real JSON and save profile revision",
+                             id="edit-luminance-profile", variant="success")
+                with Collapsible(title="Further help · Real and example JSON", collapsed=True):
+                    yield Static(
+                        "Real JSON row: screen_intensity=0.50, luminance_cdm2=(your real meter reading). "
+                        "The FAKE example uses 57.2 cd/m² at intensity 0.50 purely to show formatting. "
+                        "Demo files are marked example_only and cannot be imported.\n"
+                        "For interactive measurement: Left/Right changes intensity; type the meter "
+                        "reading (cd/m²) and Enter records one value. Repeat Enter with another "
+                        "reading at the same command for repetitions. Esc ends the session.\n"
+                        "Open pilot/test JSON, add the photometer model, method, date and notes. "
+                        "Then open the profile editor, enter the full file path, load into draft "
+                        "and Save local revision. Import NEVER auto-verifies the monitor."
+                    )
+
+            with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 5 / 6 · Temporal frequency and photon timing[/b]\n"
+                    "Fullscreen flicker can test software frame-cycle planning. "
+                    "Actual photon-onset/persistence timing needs a photodiode or equivalent.",
+                    classes="info-card",
+                )
+                yield Label("Timing diagnostic type")
+                yield Select([("Binary frame flicker", "temporal_binary"),
+                              ("Frame-sampled sine wave", "temporal_sine")],
+                             value="temporal_binary", allow_blank=False, id="cal-temporal-mode")
+                yield Label("Requested temporal frequency (Hz)")
+                yield Input(value="7.5", id="geometry-temporal")
+                yield Button("Launch fullscreen timing diagnostic", id="launch-temporal",
+                             variant="primary")
+                yield Button("Review / verify physical timing in profile editor",
+                             id="edit-timing-profile")
+                with Collapsible(title="Further help · What is verified?", collapsed=True):
+                    yield Static(
+                        "Check requested versus realised frame-cycle frequencies and the "
+                        "monitor refresh rate. Neither the Windows refresh setting nor "
+                        "software flip timestamps measure photon onset. Take independent "
+                        "instrument measurements and document them before declaring "
+                        "Timing status Verified in the monitor editor. Otherwise stay red."
+                    )
+
+            with VerticalScroll(id="cal-panel-review", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]PAGE 6 / 6 · Review, verify and qualify experiments[/b]\n"
+                    "Green means specific evidence or an explicit verified declaration is "
+                    "saved for this profile revision. Red means incomplete. A green tab "
+                    "does not bypass the final human-acquisition preflight.",
+                    classes="info-card",
+                )
+                yield Static("", id="calibration-review-detail", classes="info-card")
+                yield Button("Review / change verification and qualified experiments",
+                             id="edit-review-profile", variant="primary")
+                if self.app.geometry_summary:
+                    yield Static(self.app.geometry_summary, id="geometry-last-outcome",
+                                 classes="info-card")
+                with Collapsible(title="Further help · What if I lack a photometer?", collapsed=True):
+                    yield Static(
+                        "Leave stages without physical evidence red. You can still develop "
+                        "stimuli, inspect model predictions and run simulations. "
+                        "An experiment may have different calibration requirements: "
+                        "return to Experiment > Review to see its specific blockers. "
+                        "Use qualified experiment IDs in your saved monitor profile "
+                        "only after laboratory verification, not merely a software test."
+                    )
         yield Footer()
+
+    def _refresh_stage_status(self) -> None:
+        if not self.is_mounted:
+            return
+        selected = self.query_one("#geometry-monitor", Select).value
+        if _is_blank_select_value(selected) or str(selected) not in self.app.monitor_profiles:
+            return
+        profile = self._profile()
+        states = stage_states(profile, self.app.local_config_root)
+        for stage, title in STAGES:
+            ready, _ = states[stage]
+            button = self.query_one(f"#cal-stage-{stage}", Button)
+            button.variant = "success" if ready else "error"
+            button.label = f"{title} {'✓' if ready else '✕'}"
+            button.set_class(stage == self.active_calibration_stage, "calibration-active")
+        self.query_one("#calibration-stage-summary", Static).update(
+            f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
+            + "   ".join(
+                f"[{'green' if states[k][0] else 'red'}]"
+                f"{'✓' if states[k][0] else '✕'} {title.split(' · ')[1]}[/]"
+                for k, title in STAGES
+            )
+        )
+        self.query_one("#calibration-bind-detail", Static).update(
+            _monitor_summary(profile) + "\n\n[b]Display status:[/b] " + states["bind"][1]
+        )
+        self.query_one("#calibration-review-detail", Static).update(
+            "\n".join(
+                f"[{'green' if states[k][0] else 'red'}]"
+                f"{'COMPLETE' if states[k][0] else 'INCOMPLETE'}[/] "
+                f"{title}: {states[k][1]}"
+                for k, title in STAGES
+            )
+            + "\n\nQualified experiment IDs: "
+            + (", ".join(profile.qualified_experiments) or "none")
+            + "\nA laboratory expert must validate the recorded evidence."
+        )
 
     def on_mount(self) -> None:
         for key, value in self.app.display_draft.items():
@@ -469,6 +604,7 @@ class DisplayCheckScreen(HubPage):
                     pass
         self._refresh_preview()
         self._refresh_latest()
+        self._refresh_stage_status()
 
     def on_screen_resume(self) -> None:
         if not self.is_mounted:
@@ -483,6 +619,7 @@ class DisplayCheckScreen(HubPage):
         selector.value = preferred if preferred in self.app.monitor_profiles else current
         self._refresh_preview()
         self._refresh_latest()
+        self._refresh_stage_status()
 
     def _profile(self):
         value = self.query_one("#geometry-monitor", Select).value
@@ -595,6 +732,7 @@ class DisplayCheckScreen(HubPage):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
                 self._refresh_latest()
+                self._refresh_stage_status()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id and event.input.id.startswith("geometry-") and event.input.id != "geometry-measured":
@@ -607,10 +745,36 @@ class DisplayCheckScreen(HubPage):
             event.stop()
             self.app.pop_screen()
             return
-        if event.button.id == "edit-profile":
+        if (event.button.id or "").startswith("cal-stage-"):
+            stage = event.button.id.removeprefix("cal-stage-")
+            if stage in dict(STAGES):
+                event.stop()
+                self.active_calibration_stage = stage
+                self.query_one("#calibration-pages", ContentSwitcher).current = f"cal-panel-{stage}"
+                try:
+                    save_preferences(self.app.local_config_root, calibration_active_stage=stage)
+                except (OSError, ValueError) as exc:
+                    self.app.notify(f"Page changed but could not remember selection: {exc}",
+                                    severity="warning", timeout=8)
+                self._refresh_stage_status()
+            return
+        if event.button.id == "calibration-refresh":
+            event.stop()
+            self._refresh_preview()
+            self._refresh_latest()
+            self._refresh_stage_status()
+            return
+        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile",
+                                      "edit-geometry-profile", "edit-timing-profile"}:
             event.stop()
             from .profiles import ProfileScreen
-            self.app.push_screen(ProfileScreen(profile=self._profile()))
+            focus = {
+                "edit-luminance-profile": "profile-luminance-path",
+                "edit-review-profile": "profile-qualified_experiments",
+                "edit-geometry-profile": "profile-geometry_status",
+                "edit-timing-profile": "profile-timing_status",
+            }.get(event.button.id)
+            self.app.push_screen(ProfileScreen(profile=self._profile(), focus_field=focus))
             return
         status = self.query_one("#geometry-status", Static)
         if event.button.id == "launch-luminance-session":
@@ -626,6 +790,24 @@ class DisplayCheckScreen(HubPage):
             except (ValueError, TypeError, OSError) as exc:
                 status.update(f"[red]Luminance test NOT launched: {exc}[/red]")
                 self.app.notify(str(exc), title="Luminance test blocked", severity="error", timeout=12)
+        elif event.button.id == "open-luminance-demo":
+            event.stop()
+            try:
+                import os
+                import sys
+                from ..config.calibration_templates import write_luminance_demo
+                path = write_luminance_demo(self.app.local_config_root, self._profile())
+                note = (f"FAKE EXAMPLE ONLY: {path}. The data were invented for learning. "
+                        "They are NOT photometer observations and cannot be imported.")
+                if sys.platform == "win32":
+                    try:
+                        os.startfile(str(path))
+                    except OSError as exc:
+                        note += f" Open the path manually: {exc}"
+                status.update(f"[yellow]{note}[/yellow]")
+                self.app.notify("Synthetic example opened — NOT calibration.", timeout=8)
+            except (OSError, ValueError) as exc:
+                status.update(f"[red]Could not create demo JSON: {exc}[/red]")
         elif event.button.id == "open-luminance-pilot":
             event.stop()
             try:
@@ -644,14 +826,21 @@ class DisplayCheckScreen(HubPage):
                         note += f" Windows could not open it automatically ({exc}); copy and open the displayed path in your editor."
                 else:
                     note += " Open the displayed path using your local JSON editor."
-                status.update(f"[green]{note}[/green]")
+                status.update(f"[yellow]{note}[/yellow]")
                 self.app.notify("Editable luminance JSON prepared; measurements remain unverified.", timeout=8)
             except (OSError, ValueError) as exc:
                 status.update(f"[red]Could not open luminance JSON: {exc}[/red]")
                 self.app.notify(str(exc), title="Luminance JSON not opened", severity="error", timeout=10)
-        elif event.button.id == "launch-geometry":
+        elif event.button.id in {"launch-geometry", "launch-spatial", "launch-temporal", "launch-patch"}:
             event.stop()
             try:
+                requested_kind = {
+                    "launch-spatial": "spatial",
+                    "launch-temporal": str(self.query_one("#cal-temporal-mode", Select).value),
+                    "launch-patch": "luminance_patch",
+                }.get(event.button.id)
+                if requested_kind:
+                    self.query_one("#geometry-test", Select).value = requested_kind
                 request = self._request()
                 profile = self._profile()
                 # Check the physical binding and actual OS mode while the
@@ -685,6 +874,7 @@ class DisplayCheckScreen(HubPage):
                 status.update(f"[green]Measurement recorded and saved. Error: {error:+.2f}%[/green]")
                 self.app.notify(f"Measurement saved; error {error:+.2f}%.", timeout=7)
                 self._refresh_latest()
+                self._refresh_stage_status()
             except Exception as exc:
                 status.update(f"[red]{exc}[/red]")
                 self.app.notify(str(exc), title="Calibration action failed", severity="error", timeout=8)
@@ -1510,6 +1700,19 @@ class PsyCoLabSetupApp(App):
         margin-top: 1;
     }
     #code-text { width: 100%; }
+    #calibration-stage-nav { height: 3; width: 100%; }
+    #calibration-stage-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
+    #calibration-stage-nav Button.calibration-active {
+        text-style: bold underline; border-bottom: heavy $accent;
+    }
+    #calibration-stage-summary {
+        height: auto; min-height: 2; padding: 0 1; background: $surface;
+    }
+    #calibration-pages { width: 100%; height: 1fr; }
+    #calibration-pages .calibration-panel {
+        width: 100%; height: 1fr; overflow-y: auto;
+    }
+    .calibration-panel Button { margin: 1 0; min-width: 0; }
     """
 
     def __init__(self, *, repo_root: Path, data_root: Path,
