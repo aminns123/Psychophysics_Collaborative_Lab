@@ -92,6 +92,9 @@ def _monitor_summary(profile) -> str:
     calibration_notes = profile.calibration_notes.strip()
     lines = [
         f"[b]{profile.display_name}[/b]",
+        f"Profile ID: {profile.id} · origin: {profile.origin} · revision {profile.revision}",
+        f"Display binding: {'saved' if profile.display_binding else 'NOT BOUND (draft; cannot run human acquisition)' if profile.origin == 'local' else 'legacy reference/verify at launch'}",
+        f"Qualified experiments: {', '.join(profile.qualified_experiments) or 'none explicitly qualified'}",
         f"{width_mm:.0f} × {height_mm:.0f} mm · {profile.refresh_rate_hz} Hz · "
         f"viewing distance {profile.viewing_distance_m:.3f} m",
         f"Resolution: {resolution}",
@@ -334,7 +337,9 @@ class DisplayCheckScreen(HubPage):
 
     def compose(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
-        profile_options = [(item.display_name, item.id) for item in profiles]
+        profile_options = [
+            (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles
+        ]
         last_profile = next(iter(self.app.monitor_profiles))
         state = _workspace_request(self.app.data_root)
         preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
@@ -425,7 +430,10 @@ class DisplayCheckScreen(HubPage):
             return
         selector = self.query_one("#geometry-monitor", Select)
         current = selector.value
-        selector.set_options([(p.display_name,p.id) for p in self.app.monitor_profiles.values()])
+        selector.set_options([
+            (f"{p.display_name} [{p.id} · rev {p.revision}]", p.id)
+            for p in self.app.monitor_profiles.values()
+        ])
         preferred = preferences(self.app.local_config_root).get("active_monitor_profile_id")
         selector.value = preferred if preferred in self.app.monitor_profiles else current
         self._refresh_preview()
@@ -1343,7 +1351,7 @@ class PsyCoLabSetupApp(App):
             if preferred in allowed_profiles:
                 monitor_default = preferred
             monitor_options = [
-                (profile.display_name, profile.id) for profile in allowed_profiles.values()
+                (f"{profile.display_name} [{profile.id} · rev {profile.revision}]", profile.id) for profile in allowed_profiles.values()
             ]
         else:
             monitor_default = "__none__"
@@ -1464,7 +1472,10 @@ class PsyCoLabSetupApp(App):
             )
             return
         current = selector.value
-        selector.set_options([(item.display_name, item.id) for item in profiles.values()])
+        selector.set_options([
+            (f"{item.display_name} [{item.id} · rev {item.revision}]", item.id)
+            for item in profiles.values()
+        ])
         # Textual set_options resets the selection, including valid values.
         selector.value = current if current in profiles else next(iter(profiles))
         self._refresh_monitor_context()
