@@ -116,8 +116,16 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
                 command = .5+.5*math.cos(2*math.pi*request.spatial_cpd*angle)
                 spatial.append((max(lo,pixel),min(hi,pixel+1),command))
         def rectangle(l,b,r,t,command):
-            gl.glColor3f(command,command,command)
-            pyglet.graphics.draw(4,gl.GL_QUADS,("v2f",(l,b,r,b,r,t,l,t)))
+            # Avoid pyglet 1.5's deprecated graphics.draw sequence slicing
+            # on some Windows/Python/OpenGL combinations. Use compatibility
+            # OpenGL calls with scalar vertex coordinates instead.
+            gl.glColor3f(command, command, command)
+            gl.glBegin(gl.GL_QUADS)
+            gl.glVertex2f(l, b)
+            gl.glVertex2f(r, b)
+            gl.glVertex2f(r, t)
+            gl.glVertex2f(l, t)
+            gl.glEnd()
         @window.event
         def on_draw():
             window.clear()
@@ -226,8 +234,12 @@ def _draw_luminance_session(profile, request, session) -> None:
         def on_draw():
             window.clear()
             gl.glColor3f(current, current, current)
-            pyglet.graphics.draw(4, gl.GL_QUADS,
-                ("v2f", (x1, y1, x2, y1, x2, y2, x1, y2)))
+            gl.glBegin(gl.GL_QUADS)
+            gl.glVertex2f(x1, y1)
+            gl.glVertex2f(x2, y1)
+            gl.glVertex2f(x2, y2)
+            gl.glVertex2f(x1, y2)
+            gl.glEnd()
             update_label()
             label.draw()
 
