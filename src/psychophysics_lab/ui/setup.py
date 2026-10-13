@@ -404,7 +404,7 @@ class DisplayCheckScreen(HubPage):
             yield Input(value="5", id="geometry-thickness")
             yield Label("Position units (offset from screen centre)")
             yield Select([("Millimetres", "mm"), ("Degrees", "degrees")], value="mm", allow_blank=False, id="geometry-position-units")
-            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Duration (seconds, maximum 60)", "10")):
+            for key, label, value in (("x", "X position", "0"), ("y", "Y position", "0"), ("spatial", "Spatial frequency (cycles/degree)", "1"), ("temporal", "Temporal frequency (Hz)", "7.5"), ("duration", "Display test duration (seconds; 0 = until ESC/ENTER)", "0")):
                 yield Label(label)
                 yield Input(value=value, id="geometry-" + key)
             yield Static("", id="geometry-preview", classes="info-card")
