@@ -355,6 +355,8 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Bind / edit monitor profile", id="edit-profile")
                 yield Button("Launch fullscreen calibration", id="launch-geometry", variant="success")
             yield Static("", id="geometry-status")
+            if self.app.geometry_summary:
+                yield Static(self.app.geometry_summary, id="geometry-last-outcome")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Display calibration — measure before using cycles/degree[/b]\n"
@@ -482,7 +484,7 @@ class DisplayCheckScreen(HubPage):
                     "cannot start yet. Click Bind / edit monitor profile → "
                     "Detect connected displays, choose your monitor, then Save local revision.[/yellow]"
                 )
-            else:
+            elif not self.app.geometry_summary:
                 status.update("")
             from ..stimuli.spatial_calibration import resolve_spatial_geometry
             if resolution is not None:
@@ -1286,9 +1288,11 @@ class PsyCoLabSetupApp(App):
     """
 
     def __init__(self, *, repo_root: Path, data_root: Path,
-                 simulation_summary: str | None = None) -> None:
+                 simulation_summary: str | None = None,
+                 geometry_summary: str | None = None) -> None:
         super().__init__()
         self.simulation_summary = simulation_summary
+        self.geometry_summary = geometry_summary
         self.repo_root = repo_root.resolve()
         self.data_root = data_root.resolve()
         self.local_config_root = config_root(self.repo_root, self.data_root)
@@ -1646,7 +1650,9 @@ class PsyCoLabSetupApp(App):
 
 
 def run_setup_tui(*, repo_root: Path, data_root: Path,
-                  simulation_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
+                  simulation_summary: str | None = None,
+                  geometry_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
     app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
-                           simulation_summary=simulation_summary)
+                           simulation_summary=simulation_summary,
+                           geometry_summary=geometry_summary)
     return app.run()
