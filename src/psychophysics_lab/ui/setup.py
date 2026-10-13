@@ -638,9 +638,14 @@ class DisplayCheckScreen(HubPage):
                         or write_luminance_example(self.app.local_config_root, profile))
                 note = f"Editable luminance JSON: {path}. Complete meter/date/notes, then import via Bind/edit monitor profile."
                 if sys.platform == "win32":
-                    os.startfile(str(path))
+                    try:
+                        os.startfile(str(path))
+                    except OSError as exc:
+                        note += f" Windows could not open it automatically ({exc}); copy and open the displayed path in your editor."
+                else:
+                    note += " Open the displayed path using your local JSON editor."
                 status.update(f"[green]{note}[/green]")
-                self.app.notify("Editable luminance JSON opened; readings are not automatically verified.", timeout=8)
+                self.app.notify("Editable luminance JSON prepared; measurements remain unverified.", timeout=8)
             except (OSError, ValueError) as exc:
                 status.update(f"[red]Could not open luminance JSON: {exc}[/red]")
                 self.app.notify(str(exc), title="Luminance JSON not opened", severity="error", timeout=10)
