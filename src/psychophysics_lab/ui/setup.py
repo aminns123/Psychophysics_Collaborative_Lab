@@ -352,15 +352,18 @@ class DisplayCheckScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
             with Horizontal(classes="buttons"):
-                yield Button("Edit / copy display profile", id="edit-profile")
-                yield Button("Launch display test", id="launch-geometry", variant="success")
+                yield Button("Bind / edit monitor profile", id="edit-profile")
+                yield Button("Launch fullscreen calibration", id="launch-geometry", variant="success")
             yield Static("", id="geometry-status")
+            if self.app.geometry_summary:
+                yield Static(self.app.geometry_summary, id="geometry-last-outcome")
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Display calibration — measure before using cycles/degree[/b]\n"
-                "1. Select Edit / copy display profile. Bind the actual monitor; "
-                "enter measured active width/height and eye-to-screen distance, "
-                "and use detected/verified fullscreen pixel resolution.\n"
+                "1. Select Bind / edit monitor profile. Save measured geometry and "
+                "enter its active width/height and eye-to-screen distance. "
+                "Detect connected displays, select the actual monitor and save a "
+                "bound revision BEFORE launching the fullscreen calibration.\n"
                 "2. Run a size/ruler check and a spatial-frequency diagnostic. "
                 "Record a physical ruler measurement; confirm the pixel grid and viewing setup.\n"
                 "3. Return to Experiment to enter frequencies in cycles/degree.\n"
@@ -474,6 +477,15 @@ class DisplayCheckScreen(HubPage):
                 if request.test_kind.startswith("temporal_"):
                     details += "\n" + json.dumps(temporal_plan(profile.refresh_rate_hz, request.temporal_hz, request.test_kind), indent=2)
             self.query_one("#geometry-preview", Static).update(_monitor_summary(profile) + "\n\n" + details)
+            status = self.query_one("#geometry-status", Static)
+            if profile.origin == "local" and not profile.display_binding:
+                status.update(
+                    "[yellow]Saved geometry is an UNBOUND DRAFT: fullscreen calibration "
+                    "cannot start yet. Click Bind / edit monitor profile → "
+                    "Detect connected displays, choose your monitor, then Save local revision.[/yellow]"
+                )
+            elif not self.app.geometry_summary:
+                status.update("")
             from ..stimuli.spatial_calibration import resolve_spatial_geometry
             if resolution is not None:
                 calibration = resolve_spatial_geometry(profile, resolution)
@@ -547,11 +559,17 @@ class DisplayCheckScreen(HubPage):
             try:
                 request = self._request()
                 profile = self._profile()
+                # Check the physical binding and actual OS mode while the
+                # Textual screen is still open. If it fails, never exit into
+                # the fullscreen runner (which previously crashed the launcher).
+                from ..core.display import preflight_fullscreen_display
+                preflight_fullscreen_display(profile)
                 if profile.expected_resolution_px:
                     resolve_test(profile, request, profile.expected_resolution_px)
                 self.app.exit(request)
             except Exception as exc:
-                status.update(f"[red]{exc}[/red]")
+                status.update(f"[red]Calibration NOT launched: {exc}[/red]")
+                self.app.notify(str(exc), title="Calibration blocked", severity="error", timeout=12)
         elif event.button.id == "record-geometry-measurement":
             event.stop()
             try:
@@ -1270,9 +1288,11 @@ class PsyCoLabSetupApp(App):
     """
 
     def __init__(self, *, repo_root: Path, data_root: Path,
-                 simulation_summary: str | None = None) -> None:
+                 simulation_summary: str | None = None,
+                 geometry_summary: str | None = None) -> None:
         super().__init__()
         self.simulation_summary = simulation_summary
+        self.geometry_summary = geometry_summary
         self.repo_root = repo_root.resolve()
         self.data_root = data_root.resolve()
         self.local_config_root = config_root(self.repo_root, self.data_root)
@@ -1630,7 +1650,9 @@ class PsyCoLabSetupApp(App):
 
 
 def run_setup_tui(*, repo_root: Path, data_root: Path,
-                  simulation_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
+                  simulation_summary: str | None = None,
+                  geometry_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
     app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
-                           simulation_summary=simulation_summary)
+                           simulation_summary=simulation_summary,
+                           geometry_summary=geometry_summary)
     return app.run()

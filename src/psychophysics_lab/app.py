@@ -143,6 +143,7 @@ def _main(
     # Real participants and virtual observers must never execute inside the
     # active Textual event loop.
     simulation_summary: str | None = None
+    geometry_summary: str | None = None
     while True:
         if diagnostic_context is not None:
             diagnostic_context["data_root"] = initial_data_root
@@ -150,9 +151,13 @@ def _main(
 
         from .ui.setup import run_setup_tui
 
+        launch_options = {"simulation_summary": simulation_summary}
+        if geometry_summary is not None:
+            launch_options["geometry_summary"] = geometry_summary
         action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root,
-                               simulation_summary=simulation_summary)
+                               **launch_options)
         simulation_summary = None
+        geometry_summary = None
         if action is None:
             return 0
 
@@ -225,12 +230,32 @@ def _main(
 
             from .core.geometry_check import run_geometry_check
 
-            artifacts = run_geometry_check(
-                action,
-                repo_root=repo_root,
-                data_root=selected_data_root,
-            )
-            _print_geometry_summary(artifacts)
+            try:
+                artifacts = run_geometry_check(
+                    action, repo_root=repo_root, data_root=selected_data_root,
+                )
+            except Exception as exc:
+                # Display drivers, monitor bindings or actual fullscreen modes
+                # can change between preview and launch. These are recoverable
+                # diagnostic failures, not reasons to terminate the launcher.
+                traceback.print_exception(type(exc), exc, exc.__traceback__)
+                report = write_crash_report(
+                    exc, repo_root=repo_root, data_root=selected_data_root,
+                    phase="display_geometry_check",
+                )
+                geometry_summary = (
+                    f"[red]Fullscreen calibration did not start or complete: {exc}[/red]\n"
+                    + (f"Diagnostic report: {report}" if report
+                       else "No diagnostic log was written.")
+                )
+                print("Fullscreen calibration failed; returning to Calibrate.")
+            else:
+                _print_geometry_summary(artifacts)
+                geometry_summary = (
+                    f"[green]Fullscreen calibration finished.[/green]\n"
+                    f"Report: {artifacts.report_file}\n"
+                    "Measure the displayed ruler and record its length in Calibrate."
+                )
             initial_data_root = selected_data_root
             continue
 

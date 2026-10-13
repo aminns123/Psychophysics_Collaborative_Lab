@@ -45,6 +45,53 @@ def resolve_binding(binding: dict, displays: list[DisplayInfo]) -> DisplayInfo:
     if len(matches)!=1: raise ValueError('Bound monitor is missing or ambiguous; reselect it. No primary-screen fallback was used.')
     return matches[0]
 
+def preflight_fullscreen_display(profile, displays=None) -> DisplayInfo | None:
+    """Check a saved physical monitor binding *before* closing the Textual UI.
+
+    An unbound local profile is a legitimate saved geometry draft, NOT a
+    runnable hardware calibration. We must not silently choose the primary
+    screen, even when Windows reports only one monitor.
+    """
+    if not profile.display_binding and profile.id != "legacy_reference_display":
+        raise ValueError(
+            f"Monitor profile '{profile.id}' is an UNBOUND DRAFT. "
+            "Its geometry was saved, but no physical display was selected. "
+            "Go to Calibrate → Edit / copy display profile → "
+            "Detect connected displays; select the correct display and "
+            "press Save local revision. Then launch the display test."
+        )
+    if displays is None:
+        displays = enumerate_displays()
+    if not displays:
+        raise ValueError(
+            "No connected monitors were detected. Check the display connection "
+            "before launching a fullscreen calibration test."
+        )
+    if not profile.display_binding:
+        # Only the original historical reference profile permits legacy
+        # primary-screen selection; select_screen checks its identity later.
+        return None
+    info = resolve_binding(profile.display_binding, displays)
+    if profile.expected_resolution_px and (
+        info.width, info.height
+    ) != profile.expected_resolution_px:
+        raise ValueError(
+            f"Bound display currently reports {info.width} × {info.height} pixels, "
+            f"but the saved profile expects "
+            f"{profile.expected_resolution_px[0]} × {profile.expected_resolution_px[1]}. "
+            "Use Calibrate → Edit / copy display profile, select the monitor, "
+            "verify Windows resolution/DPI and save an updated local revision."
+        )
+    if info.refresh_hz and abs(info.refresh_hz - profile.refresh_rate_hz) > .5:
+        raise ValueError(
+            f"Bound display currently reports {info.refresh_hz:g} Hz, "
+            f"but profile expects {profile.refresh_rate_hz:g} Hz. "
+            "Use Calibrate → Edit / copy display profile to review its refresh "
+            "rate, then save a revised profile."
+        )
+    return info
+
+
 def select_screen(profile):
     import pyglet
     display = pyglet.canvas.get_display()
