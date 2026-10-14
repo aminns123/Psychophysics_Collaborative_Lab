@@ -280,12 +280,17 @@ def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_pa
     from psychophysics_lab.ui.luminance_data import LuminanceDataScreen
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
     p = fixture_profile(verified=False)
+    # Use a persisted test-data method, as the real TUI reloads the saved
+    # profile on resume rather than trusting unsaved in-memory decorations.
+    fake = save_profile(
+        config_root(ROOT), replace(p, calibration_method='photometer fake'),
+        expected_revision=p.revision,
+    )
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             screen = PhysicalVerificationScreen(
-                replace(p, calibration_method='photometer fake'),
-                experiment_id='contrast_sensitivity'
+                fake, experiment_id='contrast_sensitivity'
             )
             await app.push_screen(screen)
             await pilot.pause()
