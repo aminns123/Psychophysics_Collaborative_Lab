@@ -216,10 +216,12 @@ class ExperimentQualificationScreen(Screen):
             yield Static(f'Selected display: {self.profile.display_name}. Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
             specs=list_experiments()
             yield Select([(spec.display_name,spec.id) for spec in specs],value=self.experiment_id or specs[0].id,allow_blank=False,id='qualification-experiment')
-            yield Static('',id='qualification-checks',markup=False)
+            yield Static('',id='qualification-overview',markup=False)
             for key,label in [('binding','Bind display / resolution'),('geometry','Review geometry evidence'),('luminance','Open luminance measurements and verification'),('timing','Review photon timing evidence'),('contrast','Edit starting probe intensity / current range')]:
                 yield Button(label,id='qualification-resolve-'+key)
             yield Checkbox('Yes — I reviewed this experiment and its physical evidence.',id='qualification-reviewed')
+            with Collapsible(title='Advanced — detailed scientific qualification checks',collapsed=True):
+                yield Static('',id='qualification-checks',markup=False)
         yield Footer()
 
     def _spec_values(self):
@@ -240,7 +242,14 @@ class ExperimentQualificationScreen(Screen):
         for key in ('binding','geometry','luminance','timing','contrast'):
             self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='contrast_sensitivity'
         self.query_one('#qualification-checks',Static).update(text)
-        self.query_one('#qualification-save',Button).disabled=not all(item['passed'] for item in checks)
+        failures=[item for item in checks if not item['passed']]
+        self.query_one('#qualification-overview',Static).update(
+            'Ready to qualify this experiment.' if not failures else
+            str(len(failures))+' requirement(s) still need attention: '+
+            ', '.join(item['name'] for item in failures)+
+            '. Use the corresponding action above; details are under Advanced.'
+        )
+        self.query_one('#qualification-save',Button).disabled=bool(failures)
 
     def on_mount(self): self._refresh()
 
