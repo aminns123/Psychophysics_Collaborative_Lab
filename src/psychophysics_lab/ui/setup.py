@@ -2800,11 +2800,14 @@ class PsyCoLabSetupApp(App):
             self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
             entered_participant = self.screen_stack[0].query_one("#participant", Input).value.strip()
-            # Never carry a real participant ID into a software test/simulation.
-            # Test presentation reserves its own synthetic-only run identity.
+            # Keep an existing draft's identifier stable for backward
+            # compatibility. Actual presentation tests override it with a new
+            # synthetic-only ID at the isolated runtime boundary; simulations
+            # never record it as a human participant.
+            if self.run_intent == "human" and not entered_participant:
+                raise ValueError("Enter a pseudonymous participant ID for human acquisition.")
             participant = validate_participant_id(
-                entered_participant if self.run_intent == "human"
-                else "synthetic_preview"
+                entered_participant or "synthetic_preview"
             )
             session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
             experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
