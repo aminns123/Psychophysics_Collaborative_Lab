@@ -915,8 +915,12 @@ class DisplayCheckScreen(HubPage):
                 self.query_one("#geometry-status", Static).update(f"Observation not saved: {exc}")
             return
         if event.button.id == "open-active-luminance":
-            from .luminance_data import LuminanceDataScreen
-            self.app.push_screen(LuminanceDataScreen(self._profile()))
+            event.stop()
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(self.app, self._profile())
+            if error:
+                self.query_one("#geometry-status", Static).update(error)
+                self.app.notify(error, title="Luminance data need inspection", severity="warning", timeout=12)
             return
         if event.button.id in {"calibration-finish", "review-physical-verification", "review-qualification"}:
             event.stop()
@@ -1825,8 +1829,10 @@ class ExperimentConfigScreen(Screen):
                     "Luminance data need repair in Calibrate → Luminance: " + str(exc)
                 )
             else:
-                from .luminance_data import LuminanceDataScreen
-                self.app.push_screen(LuminanceDataScreen(profile, experiment_id=self.experiment.id))
+                from .luminance_data import open_luminance_editor
+                error = open_luminance_editor(self.app, profile, experiment_id=self.experiment.id)
+                if error:
+                    self.query_one("#config-status", Static).update(error)
             return
         if event.button.id == "change-display":
             event.stop()
@@ -2187,8 +2193,11 @@ class ReviewScreen(Screen):
         row = next(item for item in self.readiness_report["requirements"] if item["key"] == key)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
         if key == "luminance":
-            from .luminance_data import LuminanceDataScreen
-            self.app.push_screen(LuminanceDataScreen(profile,experiment_id=self.request.experiment_id))
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(self.app, profile, experiment_id=self.request.experiment_id)
+            if error:
+                self.query_one('#review-status', Static).update(error)
+                self.app.notify(error, title="Luminance data need inspection", severity="warning", timeout=12)
             return
         if row["destination"] in {"verification", "qualification"}:
             from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
