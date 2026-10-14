@@ -55,6 +55,10 @@ def profile_readiness(spec, profile, *, repo_root=None, values=None):
                     temporal_check = base | {"interpretation": "Software timing test was presented; photon onset NOT verified."}
     from .calibration_progress import calibration_progress
     stages = calibration_progress(profile, config_root(repo_root)) if repo_root is not None else None
+    if spatial_check is not None and stages is not None:
+        spatial_check.update(observation=stages["spatial"].get("observation"),
+                             state=stages["spatial"]["state"],
+                             physical_spatial_frequency_certified=False)
     return {"calibration_stages": stages, "available": True, "profile_id": profile.id, "profile_revision": profile.revision,
             "profile_sha256": content_hash(profile.to_dict()), "bound": bool(profile.display_binding),
             "measurement_sources": dict(profile.measurement_sources),

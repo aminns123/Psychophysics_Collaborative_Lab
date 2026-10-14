@@ -36,6 +36,20 @@ def fixture_profile(*, verified=False, observations=True):
             folder=root/'diagnostics'/'display_geometry'/p.id/kind
             folder.mkdir(parents=True)
             (folder/'geometry_check.json').write_text(json.dumps({'status':'completed','monitor_profile':p.to_dict(),'monitor_profile_sha256':content_hash(p.to_dict()),'request':{'test_kind':kind},'measurement':{'measured_length_mm':100.,'error_percent':0.} if kind=='size' else {}}),encoding='utf-8')
+            if kind == 'spatial':
+                from dataclasses import asdict
+                from uuid import uuid4
+                from psychophysics_lab.core.geometry_check import GeometryCheckRequest
+                from psychophysics_lab.core.display_tests import resolve_test
+                from psychophysics_lab.config.spatial_observation import record_observation
+                report = folder/'geometry_check.json'
+                payload = json.loads(report.read_text())
+                request = GeometryCheckRequest(p.id, 'visual_angle_deg', 5, test_kind='spatial')
+                bar, plan = resolve_test(p, request, (1920,1080))
+                payload.update(diagnostic_uuid=str(uuid4()), actual_fullscreen_resolution_px=[1920,1080],
+                               request=asdict(request), resolved_test=plan, resolved_bar=bar.to_dict())
+                report.write_text(json.dumps(payload), encoding='utf-8')
+                record_observation(root, report, p, assessment='consistent', abnormality='none')
     return p
 
 def values():

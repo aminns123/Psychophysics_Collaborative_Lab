@@ -318,7 +318,9 @@ def test_switching_monitor_rebuilds_mapping_and_retains_invalid_pair_for_correct
             editor=ExperimentConfigScreen(data_root=tmp_path/'human',participant_id='H001',session_mode='new',experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=values())
             app.push_screen(editor); await pilot.pause()
             editor._apply_display(second.id); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='manual'
+            assert editor.query_one('#background-mapping',Select).value=='confirm'
+            with pytest.raises(ValueError, match='Display or mapping changed'):
+                editor._collect()
             assert float(editor.query_one('#field-Background-Luminance',Input).value)==49
             assert editor.query_one('#field-Background-Luminance',Input).has_class('invalid-input')
             editor.query_one('#background-mapping',Select).value='1'; await pilot.pause()

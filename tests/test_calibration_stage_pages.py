@@ -77,7 +77,22 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
             "measurement": measurement,
         }))
     status = stage_states(profile, tmp_path)
-    assert all(status[key][0] for key, _ in STAGES)
+    assert not status['spatial'][0] and not status['review'][0]
+    # Legacy presentation-only reports are insufficient. Record a review against
+    # a complete, uniquely identified presentation before Spatial turns green.
+    from dataclasses import asdict
+    from psychophysics_lab.core.geometry_check import GeometryCheckRequest
+    from psychophysics_lab.core.display_tests import resolve_test
+    from psychophysics_lab.config.spatial_observation import record_observation
+    report = folder/'spatial'/'geometry_check.json'
+    payload = json.loads(report.read_text())
+    request = GeometryCheckRequest(profile.id,'visual_angle_deg',5,test_kind='spatial')
+    bar, plan = resolve_test(profile,request,(1920,1080))
+    payload.update(diagnostic_uuid='fixture-spatial-presentation', actual_fullscreen_resolution_px=[1920,1080],
+                   request=asdict(request), resolved_test=plan, resolved_bar=bar.to_dict())
+    report.write_text(json.dumps(payload))
+    record_observation(tmp_path,report,profile,assessment='consistent',abnormality='none')
+    assert all(stage_states(profile, tmp_path)[key][0] for key, _ in STAGES)
     # A verification-only save changes the profile revision/hash, not physical setup.
     marked = replace(profile, revision=4, calibration_notes="Reviewed in the laboratory")
     assert stage_states(marked, tmp_path)["geometry"][0]

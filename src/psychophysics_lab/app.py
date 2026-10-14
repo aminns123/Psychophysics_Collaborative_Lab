@@ -258,7 +258,7 @@ def _main(
                 artifacts = run_interactive_luminance(
                     action, repo_root=repo_root, data_root=selected_data_root
                 )
-            except Exception as exc:
+            except (Exception, KeyboardInterrupt) as exc:
                 # Partial observations already entered are retained locally
                 # even when the GPU/window closes unexpectedly.
                 recoverable_failures += 1
@@ -314,7 +314,7 @@ def _main(
                 artifacts = run_geometry_check(
                     action, repo_root=repo_root, data_root=selected_data_root,
                 )
-            except Exception as exc:
+            except (Exception, KeyboardInterrupt) as exc:
                 # Display drivers, monitor bindings or actual fullscreen modes
                 # can change between preview and launch. These are recoverable
                 # diagnostic failures, not reasons to terminate the launcher.
@@ -342,30 +342,8 @@ def _main(
                     f"Report: {artifacts.report_file}\n"
                     + guidance
                 )
-                # Fullscreen closes Textual and the launcher starts a new TUI.
-                # Advance only if the successful output belongs to the currently
-                # selected chronological stage; never advance on failure.
-                if action.test_kind in {"spatial", "temporal_binary", "temporal_sine"}:
-                    try:
-                        from .config.local import config_root, preferences
-                        from .config.monitor import load_monitor_profiles
-                        from .config.calibration_workflow import advance_if_completed
-                        local_root = config_root(repo_root)
-                        step = ("spatial" if action.test_kind == "spatial" else "timing")
-                        if preferences(local_root).get("calibration_active_stage") == step:
-                            profile = load_monitor_profiles(repo_root)[action.monitor_profile_id]
-                            following = advance_if_completed(profile, local_root, step)
-                            if following:
-                                geometry_summary += (
-                                    f"\n[green]{step.capitalize()} record saved. "
-                                    f"Continuing to {following.capitalize()}.[/green]"
-                                )
-                    except (OSError, ValueError, KeyError) as exc:
-                        # The diagnostic succeeded; a wizard-navigation failure
-                        # must not misreport the measurement as a failed test.
-                        geometry_summary += (
-                            f"\n[yellow]Could not auto-advance calibration page: {exc}[/yellow]"
-                        )
+                # Restore the saved calibration subsection. Only an explicit
+                # Next/Return action advances or leaves this workflow.
             initial_data_root = selected_data_root
             continue
 

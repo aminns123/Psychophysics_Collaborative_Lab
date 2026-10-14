@@ -376,6 +376,10 @@ def run_request(
             payload["simulation"] = simulation.metadata
             atomic_write_json(run_dir / "SYNTHETIC_DATA.json", {"data_kind": "synthetic", **simulation.metadata})
         payload["monitor_profile_sha256"] = content_hash(profile.to_dict())
+        from ..config.background_mapping import background_provenance
+        mapping_evidence = background_provenance(config_root(root, data), profile, values)
+        if mapping_evidence is not None:
+            payload["background_mapping"] = mapping_evidence
         from ..config.readiness import profile_readiness
         payload["display_readiness"] = profile_readiness(spec, profile, repo_root=root, values=values)
         registered_sources = {}
@@ -396,7 +400,8 @@ def run_request(
             "adaptive_session": "adaptive_session.json", "legacy_response": "legacy_response.txt", "state_directory": "state/"}
         atomic_write_json(manifest_file, payload)
         atomic_write_json(run_dir / "experiment_config.json", {"schema_version": 2,
-            "request": _portable_request_payload(request), "data_kind": data_kind, "normalised_experiment_values": values, "legacy_setup": setup})
+            "request": _portable_request_payload(request), "data_kind": data_kind, "normalised_experiment_values": values, "legacy_setup": setup,
+            **({"background_mapping": mapping_evidence} if mapping_evidence is not None else {})})
         atomic_write_json(run_dir / "monitor_profile.json", profile.to_dict())
         TrialLog(trial_log_file)  # Header remains valid even when no response is accepted.
         atomic_write_json(run_dir / "trial_context.json", {

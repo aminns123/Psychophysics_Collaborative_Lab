@@ -469,6 +469,24 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="1", id="geometry-spatial")
                 yield Button("Launch fullscreen spatial grating", id="launch-spatial",
                              variant="primary")
+                yield Label("Presentation to review (separate reports are never overwritten)")
+                yield Select([], id="spatial-report")
+                yield Static("", id="spatial-observation-summary", markup=False, classes="info-card")
+                yield Label("Did the displayed pattern match the expected structure?")
+                yield Select([("Yes — visually consistent", "consistent"), ("No — discrepancy observed", "discrepancy"),
+                              ("Uncertain — needs inspection", "uncertain"), ("Not assessed", "not_assessed")],
+                             value="not_assessed", allow_blank=False, id="spatial-assessment")
+                yield Label("Optional observed count (a complete light–dark period is one cycle)")
+                yield Input(value="", id="spatial-observed-count")
+                yield Select([("Complete light–dark cycles", "cycles"), ("Bright maxima (phase/edge dependent)", "bright_maxima")],
+                             value="cycles", allow_blank=False, id="spatial-count-kind")
+                yield Label("Visible rendering abnormality (use notes for additional abnormalities)")
+                yield Select([("Not assessed", "not_assessed"), ("No obvious abnormality", "none"), ("Aliasing", "aliasing"),
+                              ("Unexpected orientation", "orientation"), ("Nonuniform spacing", "spacing"),
+                              ("Clipping or cutoff", "clipping"), ("Other", "other")],
+                             value="not_assessed", allow_blank=False, id="spatial-abnormality")
+                yield Input(placeholder="Optional observation notes", id="spatial-observation-notes")
+                yield Button("Record observation", id="record-spatial-observation", variant="primary")
                 with Collapsible(title="Further help · What should I see?", collapsed=True):
                     yield Static(
                         "A 1 cycle/degree grating has one complete dark-and-light "
@@ -619,7 +637,7 @@ class DisplayCheckScreen(HubPage):
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         self.query_one("#calibration-stage-summary", Static).update(
             "[b]GREEN = stage records saved; NOT necessarily laboratory verified.[/b] "
-            "RED = no saved stage record. Previous/Next may be used at any time.\n"
+            "RED = required observation incomplete; Spatial needs a consistent researcher assessment. Previous/Next may be used at any time.\n"
             f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
             + "   ".join(
                 f"[{'green' if states[k][0] else 'red'}]"
@@ -651,6 +669,8 @@ class DisplayCheckScreen(HubPage):
         self._refresh_preview()
         self._refresh_latest()
         self._refresh_stage_status()
+        if self.app.geometry_summary:
+            self.query_one("#geometry-status", Static).update(self.app.geometry_summary)
 
     def on_screen_resume(self) -> None:
         if not self.is_mounted:
@@ -777,8 +797,58 @@ class DisplayCheckScreen(HubPage):
             except Exception as exc:
                 text = f"Could not read latest diagnostic: {exc}"
         self.query_one("#latest-geometry", Static).update(text)
+        self._refresh_spatial_observation()
+
+    def _refresh_spatial_observation(self):
+        from ..config.calibration_progress import diagnostic_evidence
+        from ..config.spatial_observation import report_summary, observations
+        rows = diagnostic_evidence(self._profile(), self.app.local_config_root)["spatial"]
+        selector = self.query_one("#spatial-report", Select)
+        previous = getattr(self, "_spatial_report", None)
+        self._spatial_rows = {row["path"]: row for row in rows}
+        selected = previous if previous in self._spatial_rows else rows[0]["path"] if rows else None
+        with self.prevent(Select.Changed):
+            selector.set_options([(f"{row['payload'].get('finished_utc', row['payload'].get('started_utc', 'Historical'))} · {row['payload'].get('diagnostic_uuid', row['path'])} · {row['payload'].get('status')}", row["path"]) for row in rows])
+            selector.value = selected if selected is not None else Select.BLANK
+        self._spatial_report = selected
+        self._show_spatial_observation()
+
+    def _show_spatial_observation(self):
+        from ..config.spatial_observation import report_summary, observations
+        row = self._spatial_rows.get(self._spatial_report)
+        record = None
+        if row:
+            payload = row["payload"]
+            records = observations(self.app.local_config_root / row["path"], payload)
+            record = records[-1] if records else None
+            text = report_summary(payload) + ("\nSTALE / unsuccessful evidence: present a fresh test." if not row["compatible"] else "")
+            text += (f"\nLatest observation: {record['assessment']} / {record['abnormality']} at {record['recorded_utc']}" if record else "\nAwaiting researcher observation. Closing fullscreen is not validation.")
+        else:
+            text = "Not tested. Present a spatial grating, then record your observation here."
+        self.query_one("#spatial-observation-summary", Static).update(text)
+        record = record or {}
+        with self.prevent(Select.Changed, Input.Changed):
+            self.query_one("#spatial-assessment", Select).value = record.get("assessment", "not_assessed")
+            self.query_one("#spatial-abnormality", Select).value = record.get("abnormality", "not_assessed")
+            self.query_one("#spatial-count-kind", Select).value = record.get("count_kind", "cycles")
+            self.query_one("#spatial-observed-count", Input).value = str(record["observed_count"]) if record.get("observed_count") is not None else ""
+            self.query_one("#spatial-observation-notes", Input).value = record.get("notes", "")
+
+    def _save_fullscreen_navigation(self, kind):
+        # Temporary UI state only; no monitor revision or certification write.
+        settings = {widget.id: widget.value for widget in self.query("Input, Select")
+                    if widget.id and (widget.id.startswith("geometry-") or widget.id == "cal-temporal-mode")
+                    and not _is_blank_select_value(widget.value)}
+        save_preferences(self.app.local_config_root, calibration_navigation={
+            "section": "calibrate", "profile": self._profile().id,
+            "stage": self.active_calibration_stage, "diagnostic_kind": kind,
+            "settings": settings, "return_to_review": bool(getattr(self, "return_to_review", False)),
+        })
 
     def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "spatial-report" and not _is_blank_select_value(event.value):
+            self._spatial_report = str(event.value)
+            self._show_spatial_observation()
         if event.select.id and (event.select.id.startswith("geometry-") or event.select.id=='cal-temporal-mode'):
             self._refresh_preview()
             if event.select.id == "geometry-monitor":
@@ -804,6 +874,25 @@ class DisplayCheckScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id == "record-spatial-observation":
+            event.stop()
+            try:
+                from ..config.spatial_observation import record_observation
+                if not self._spatial_report:
+                    raise ValueError("Present a spatial diagnostic first.")
+                count = self.query_one("#spatial-observed-count", Input).value.strip()
+                record_observation(self.app.local_config_root, self.app.local_config_root / self._spatial_report,
+                    self._profile(), assessment=str(self.query_one("#spatial-assessment", Select).value),
+                    abnormality=str(self.query_one("#spatial-abnormality", Select).value),
+                    observed_count=float(count) if count else None,
+                    count_kind=str(self.query_one("#spatial-count-kind", Select).value),
+                    notes=self.query_one("#spatial-observation-notes", Input).value)
+                self._refresh_spatial_observation()
+                self._refresh_stage_status()
+                self.query_one("#geometry-status", Static).update("Observation saved. Review it here, then use Next stage deliberately. This is not physical certification.")
+            except (OSError, ValueError, TypeError) as exc:
+                self.query_one("#geometry-status", Static).update(f"Observation not saved: {exc}")
+            return
         if event.button.id == "open-active-luminance":
             from .luminance_data import LuminanceDataScreen
             self.app.push_screen(LuminanceDataScreen(self._profile()))
@@ -825,6 +914,10 @@ class DisplayCheckScreen(HubPage):
                     draft = preferences(self.app.local_config_root).get("calibration_experiment_draft")
                     if isinstance(draft, dict):
                         save_preferences(self.app.local_config_root, calibration_experiment_draft=dict(draft, profile=profile_id))
+                    if getattr(self, "return_to_review", False):
+                        save_preferences(self.app.local_config_root, calibration_review_return=None)
+                        self.app.pop_screen()
+                        return
                     self.app.open_hub_page("setup")
                     self.app.screen_stack[0].query_one("#monitor-profile", Select).value = profile_id
                     message = "Calibration setup saved. " + ("Incomplete observations or laboratory verification remain: " + ", ".join(pending) + ". " if pending else "Setup records are available. ") + "Continue configuring experiments; human acquisition remains subject to experiment-specific preflight."
@@ -940,6 +1033,7 @@ class DisplayCheckScreen(HubPage):
                 request = self._luminance_request()
                 preflight_fullscreen_display(profile)
                 validate_luminance_session(request, profile)
+                self._save_fullscreen_navigation("luminance_session")
                 self.app.exit(request)
             except (ValueError, TypeError, OSError) as exc:
                 status.update(f"[red]Luminance test NOT launched: {exc}[/red]")
@@ -1004,6 +1098,7 @@ class DisplayCheckScreen(HubPage):
                 preflight_fullscreen_display(profile)
                 if profile.expected_resolution_px:
                     resolve_test(profile, request, profile.expected_resolution_px)
+                self._save_fullscreen_navigation(request.test_kind)
                 self.app.exit(request)
             except Exception as exc:
                 status.update(f"[red]Calibration NOT launched: {exc}[/red]")
@@ -1354,6 +1449,11 @@ class ExperimentConfigScreen(Screen):
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         self.draft_key = (self.participant_id, self.experiment.id, self.monitor_profile_id)
         self.defaults.update(self.app.config_drafts.get(self.draft_key, {}))
+        mapping = self.app.mapping_drafts.get(self.draft_key, {})
+        self._mapping_requires_confirmation = bool(mapping.get("pending", False))
+        self._mapping_manual = bool(mapping.get("manual", False))
+        if mapping.get("identity"):
+            self._mapping_identity = tuple(mapping["identity"])
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
@@ -1422,22 +1522,53 @@ class ExperimentConfigScreen(Screen):
             self.call_after_refresh(widget.focus)
 
     def _refresh_mapping_choices(self):
-        if not self.is_mounted or self.experiment.id!='contrast_sensitivity': return
-        from ..config.calibration_dataset import luminance_state
-        profile=self.app.monitor_profiles[self.monitor_profile_id]
-        selector=self.query_one('#background-mapping',Select)
-        rows=profile.luminance_calibration
-        selector.set_options([('Manual pair (retain precise entries)','manual')]+[(f'{p.luminance_cdm2:g} cd/m² — Screen intensity {p.screen_intensity:g}',str(i)) for i,p in enumerate(rows)])
-        selected='manual'
+        if not self.is_mounted or self.experiment.id != 'contrast_sensitivity':
+            return
+        from ..config.background_mapping import mapping_choices
+        profile = self.app.monitor_profiles[self.monitor_profile_id]
+        selector = self.query_one('#background-mapping', Select)
+        old_identity = getattr(self, '_mapping_identity', None)
         try:
-            intensity=float(self.query_one('#field-Background-Screen-intensity',Input).value)
-            luminance=float(self.query_one('#field-Background-Luminance',Input).value)
-            selected=next((str(i) for i,p in enumerate(rows) if p.screen_intensity==intensity and p.luminance_cdm2==luminance),'manual')
-        except ValueError: pass
-        self._mapping_refresh=True
-        selector.value=selected
-        self.call_after_refresh(setattr,self,'_mapping_refresh',False)
-        self.query_one('#mapping-provenance',Static).update(luminance_state(profile)+'\nOnly this display’s measured rows are offered; no interpolation. Starting probe intensity remains separate.')
+            rows, dataset, state = mapping_choices(self.app.local_config_root, profile)
+            identity = (profile.id, profile.profile_uuid, content_hash(dataset['observations']))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            rows, state = [], str(exc)
+            identity = (profile.id, profile.profile_uuid, 'unavailable')
+        self._mapping_rows = rows
+        self._mapping_identity = identity
+        selected = 'manual'
+        try:
+            intensity = float(self.query_one('#field-Background-Screen-intensity', Input).value)
+            luminance = float(self.query_one('#field-Background-Luminance', Input).value)
+            selected = next((str(i) for i, p in enumerate(rows) if p['screen_intensity'] == intensity and p['luminance_cdm2'] == luminance), 'manual')
+        except ValueError:
+            pass
+        if old_identity is not None and old_identity != identity:
+            self._mapping_requires_confirmation = True
+        pending = getattr(self, '_mapping_requires_confirmation', False)
+        options = [('Manual pair (retain precise entries)', 'manual')]
+        if pending:
+            options.insert(0, ('Display/mapping changed — choose a pair or explicitly choose Manual', 'confirm'))
+            selected = 'confirm'
+        elif getattr(self, '_mapping_manual', False):
+            selected = 'manual'
+        options += [(f"{p['luminance_cdm2']:g} cd/m² — Digital intensity {p['screen_intensity']:g}", str(i)) for i, p in enumerate(rows)]
+        with self.prevent(Select.Changed):
+            selector.set_options(options)
+            selector.value = selected
+        text = state + '\nOnly this display’s saved mean pairs are offered; repetitions remain in the raw dataset. No interpolation. Starting probe intensity remains separate.'
+        if pending:
+            text += '\nPrevious scientific values retained for review. Select a current pair or deliberately choose Manual before Review.'
+        else:
+            from ..config.background_mapping import background_provenance
+            try:
+                evidence = background_provenance(self.app.local_config_root, profile, {'Background_Screen_intensity': intensity, 'Background_Luminance': luminance})
+                matched = evidence['selection_basis'] == 'exact_saved_mean_pair'
+                text += f"\nCurrent pair: {luminance:g} cd/m² — Digital intensity {intensity:g}. "
+                text += 'Exact saved mean pair.' if matched else 'MANUAL: does not match a saved pair; not a verified calibrated pair.'
+            except (UnboundLocalError, ValueError):
+                text += '\nEnter finite numeric background values.'
+        self.query_one('#mapping-provenance', Static).update(text)
 
     def _refresh_constraints(self):
         if not self.is_mounted: return
@@ -1501,7 +1632,8 @@ class ExperimentConfigScreen(Screen):
     def _save_calibration_draft(self):
         save_preferences(self.app.local_config_root, active_monitor_profile_id=self.monitor_profile_id, calibration_experiment_draft={
             "participant": self.participant_id, "experiment": self.experiment.id,
-            "profile": self.monitor_profile_id, "values": dict(self.app.config_drafts[self.draft_key])})
+            "profile": self.monitor_profile_id, "values": dict(self.app.config_drafts[self.draft_key]),
+            "background_selection": dict(self.app.mapping_drafts.get(self.draft_key, {}))})
 
     def _apply_display(self, profile_id):
         if profile_id not in self.app.monitor_profiles:
@@ -1511,8 +1643,9 @@ class ExperimentConfigScreen(Screen):
         self.monitor_profile_id = profile_id
         self.draft_key = (self.participant_id, self.experiment.id, profile_id)
         self.app.config_drafts[self.draft_key] = draft
-        self._save_calibration_draft()
         self.on_screen_resume()
+        self.remember_draft()
+        self._save_calibration_draft()
         self.query_one("#config-status", Static).update("Display changed. Draft experiment values retained; Review revalidates against this profile.")
 
     def _compose_field(self, field):
@@ -1561,28 +1694,46 @@ class ExperimentConfigScreen(Screen):
             value = widget.value
             raw[field.key] = None if _is_blank_select_value(value) else value
         self.app.config_drafts[self.draft_key] = raw
+        self.app.mapping_drafts[self.draft_key] = {
+            "pending": bool(getattr(self, "_mapping_requires_confirmation", False)),
+            "manual": bool(getattr(self, "_mapping_manual", False)),
+            "identity": getattr(self, "_mapping_identity", None),
+        }
 
     def on_input_changed(self, event: Input.Changed) -> None:
         self._refresh_contrast_help()
         self._refresh_constraints()
+        if event.input.id in {'field-Background-Screen-intensity', 'field-Background-Luminance'}:
+            self._refresh_mapping_choices()
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
     def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id=='background-mapping' and not getattr(self,'_mapping_refresh',False):
-            if event.value!='manual' and not _is_blank_select_value(event.value):
-                profile=self.app.monitor_profiles[self.monitor_profile_id]
-                point=profile.luminance_calibration[int(str(event.value))]
-                self.query_one('#field-Background-Screen-intensity',Input).value=str(point.screen_intensity)
-                self.query_one('#field-Background-Luminance',Input).value=str(point.luminance_cdm2)
-                endpoint=next((p for p in profile.luminance_calibration if p.screen_intensity==1),None)
-                if endpoint is not None: self.query_one('#field-Max-monitor-Luminance',Input).value=str(endpoint.luminance_cdm2)
+        if event.select.id == 'background-mapping':
+            if event.value != event.select.value:
+                return  # Ignore queued events from a replaced option list.
+            if _is_blank_select_value(event.value) or event.value == 'confirm':
+                return
+            self._mapping_requires_confirmation = False
+            self._mapping_manual = event.value == 'manual'
+            if event.value != 'manual':
+                point = self._mapping_rows[int(str(event.value))]
+                with self.prevent(Input.Changed):
+                    self.query_one('#field-Background-Screen-intensity', Input).value = repr(point['screen_intensity'])
+                    self.query_one('#field-Background-Luminance', Input).value = repr(point['luminance_cdm2'])
+                    endpoint = next((p for p in self._mapping_rows if p['screen_intensity'] == 1), None)
+                    if endpoint is not None:
+                        self.query_one('#field-Max-monitor-Luminance', Input).value = repr(endpoint['luminance_cdm2'])
+            self._refresh_mapping_choices()
+            self._refresh_contrast_help()
         if hasattr(self, "draft_key"):
             self.remember_draft()
             self._refresh_unit_help()
             self._refresh_constraints()
 
     def _collect(self) -> dict[str, Any]:
+        if getattr(self, '_mapping_requires_confirmation', False):
+            raise ValueError("Display or mapping changed. Select a saved background pair or explicitly select Manual before Review.")
         values: dict[str, Any] = {}
         for field in self.experiment.fields:
             widget_id = _field_widget_id(field)
@@ -1669,6 +1820,8 @@ class ExperimentConfigScreen(Screen):
                             values[field.key] if field.kind == "choice" else str(values[field.key])
                         )
                     self.remember_draft()
+                    self._mapping_manual = False
+                    self._refresh_mapping_choices()
                 notice = f"Preset '{name}' {verb} successfully."
                 self.query_one("#config-status", Static).update(f"[green]{notice}[/green]")
                 self.app.notify(notice, title=f"Preset {verb}", timeout=6)
@@ -2121,11 +2274,13 @@ class PsyCoLabSetupApp(App):
         self.local_config_root = config_root(self.repo_root, self.data_root)
         self.monitor_profiles = load_monitor_profiles(repo_root)
         self.config_drafts = {}
+        self.mapping_drafts = {}
         saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft")
         if isinstance(saved_draft, dict) and isinstance(saved_draft.get("values"), dict):
             keys = tuple(saved_draft.get(k) for k in ("participant", "experiment", "profile"))
             if all(isinstance(k, str) for k in keys):
                 self.config_drafts[keys] = saved_draft["values"]
+                self.mapping_drafts[keys] = saved_draft.get("background_selection", {})
         self.display_draft = {}
         self.display_guide_target_profile_id = None
 
@@ -2308,30 +2463,39 @@ class PsyCoLabSetupApp(App):
             self.call_after_refresh(self._restore_diagnostic_review)
 
     async def _restore_diagnostic_review(self):
-        saved = preferences(self.local_config_root).get("calibration_review_return")
-        if not isinstance(saved, dict):
+        local = preferences(self.local_config_root)
+        navigation = local.get("calibration_navigation")
+        saved = local.get("calibration_review_return")
+        if not isinstance(navigation, dict) and not isinstance(saved, dict):
             return
-        save_preferences(self.local_config_root, calibration_review_return=None)
+        # Consume the one-shot navigation request. The Review return destination
+        # remains represented by its restored screen until an explicit Return.
+        save_preferences(self.local_config_root, calibration_navigation=None)
         try:
-            request = SetupRequest(**saved["request"])
-            get_experiment(request.experiment_id)
-            if request.monitor_profile_id not in self.monitor_profiles:
-                raise ValueError("Selected display is unavailable")
-            review = ReviewScreen(request=request)
-            await self.push_screen(review)
-            # Preserve the earlier physical snapshot, so material changes cannot
-            # be silently accepted merely because the Textual process restarted.
-            review.reviewed_profile_snapshot = saved.get("snapshot")
-            review.on_screen_resume()
-            self.display_draft["geometry-monitor"] = request.monitor_profile_id
-            self.display_guide_target_profile_id = request.monitor_profile_id
+            from_review = navigation.get("return_to_review", False) if isinstance(navigation, dict) else True
+            if from_review and isinstance(saved, dict):
+                request = SetupRequest(**saved["request"])
+                get_experiment(request.experiment_id)
+                review = ReviewScreen(request=request)
+                await self.push_screen(review)
+                review.reviewed_profile_snapshot = saved.get("snapshot")
+                review.on_screen_resume()
+            profile_id = navigation["profile"] if isinstance(navigation, dict) else request.monitor_profile_id
+            if profile_id not in self.monitor_profiles:
+                raise ValueError("Selected display is unavailable; select it explicitly in Calibrate")
+            if isinstance(navigation, dict):
+                self.display_draft = dict(navigation.get("settings", {}))
+            self.display_draft["geometry-monitor"] = profile_id
+            self.display_guide_target_profile_id = profile_id
             page = DisplayCheckScreen()
-            page.return_to_configuration = True
-            page.return_to_review = True
+            page.return_to_configuration = from_review and isinstance(saved, dict)
+            page.return_to_review = page.return_to_configuration
             await self.push_screen(page)
+            if isinstance(navigation, dict):
+                page._go_to_stage(navigation.get("stage", "bind"), remember=False)
         except (KeyError, TypeError, ValueError) as exc:
             self.screen_stack[0].query_one("#setup-status", Static).update(
-                f"Cannot restore experiment Review after diagnostic: {exc}. Select current settings and Review again.")
+                f"Cannot restore calibration context: {exc}. Select current settings explicitly.")
 
     def _compatible_profiles(self, experiment: ExperimentSpec) -> dict[str, Any]:
         # Availability is independent of human qualification.

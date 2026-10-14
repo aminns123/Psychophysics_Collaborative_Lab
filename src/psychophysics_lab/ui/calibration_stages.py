@@ -27,7 +27,7 @@ def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]
         if key == "review":
             return ("SETUP COMPLETE; " if item["completed"] else "SETUP INCOMPLETE; ") + item["message"]
         if key == "spatial" and item["completed"]:
-            return "SOFTWARE DIAGNOSTIC SAVED; NOT INDEPENDENT PHYSICAL CERTIFICATION: " + item["message"]
+            return "RESEARCHER-REVIEWED VISUAL CONSISTENCY; NOT INDEPENDENT PHYSICAL CERTIFICATION: " + item["message"]
         if key == "bind" and item["completed"]:
             return "CONFIGURATION SAVED: " + item["message"]
         status = ("STAGE SAVED; VERIFICATION PENDING" if item["completed"] and not item["ready"]

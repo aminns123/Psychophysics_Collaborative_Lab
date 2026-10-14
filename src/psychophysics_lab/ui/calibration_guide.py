@@ -54,7 +54,9 @@ STAGE_HELP = {
         "[b]How:[/b] Calibrate -> Spatial sine grating -> cpd 2, 4, 8 "
         "in turn; inspect horizontal and vertical orientations and the "
         "patch extent. Check against pixel sampling/Nyquist. Presenting the "
-        "diagnostic does NOT independently certify optical frequency."
+        "diagnostic does NOT independently certify optical frequency. On return, "
+        "record whether the pattern was visually consistent and any abnormalities. "
+        "One complete light–dark period is a cycle; bright maxima depend on phase and edges."
     ),
     "luminance": (
         "[b]You need:[/b] a real photometer, known digital grayscale "
@@ -118,6 +120,7 @@ def guide_statuses(readiness: dict, profile, values: dict) -> tuple[tuple[str, s
     resolution = profile.expected_resolution_px is not None
     geometry = readiness.get("geometry_check")
     spatial = readiness.get("spatial_check")
+    spatial_reviewed = (readiness.get("calibration_stages") or {}).get("spatial", {}).get("completed", False)
     timing = readiness.get("temporal_check")
     photo = readiness.get("photometrically_calibrated")
     qualified = readiness.get("experiment_qualified")
@@ -130,8 +133,9 @@ def guide_statuses(readiness: dict, profile, values: dict) -> tuple[tuple[str, s
         ("recorded" if geometry else "missing",
          "Ruler measurement recorded for this revision; review its error" if geometry
          else "No measured ruler result for this profile revision"),
-        ("recorded" if spatial else "missing",
-         "Spatial diagnostic displayed; physical frequency still needs review" if spatial
+        ("recorded" if spatial_reviewed else "partial" if spatial else "missing",
+         "Researcher-reviewed visual consistency; NOT physical certification" if spatial_reviewed
+         else "Spatial diagnostic displayed; awaiting a consistent researcher observation" if spatial
          else "No spatial diagnostic found for this profile revision"),
         ("verified" if photo else "missing",
          "Verified luminance mapping declared in profile" if photo

@@ -20,7 +20,7 @@ def review_summary(profile, root):
         if key == 'bind':
             verification = 'Configuration recorded; not physical certification' if item['completed'] else 'Binding / measured dimensions missing'
         elif key == 'spatial':
-            verification = 'Geometry-dependent; software grating is not independent certification'
+            verification = 'Researcher-reviewed visual consistency; NOT physical certification' if item['completed'] else item['message']
         else:
             verification = 'Manually declared verified' if item['verified'] else 'Physical verification pending'
         lines.append(f'{name}: {saved} ({item["state"].upper().replace("_", " ")})\n  {verification}')

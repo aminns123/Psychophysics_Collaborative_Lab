@@ -53,10 +53,25 @@ def calibration_progress(profile, root: Path):
                        "Software ruler presentation completed; enter the physical ruler measurement" if valid else
                        "Run a ruler presentation, record its physical length, then review the error")
         elif stage == "spatial":
-            ready = result["geometry"]["ready"] and bool(valid)
-            state = "complete" if ready else "awaiting_review" if valid else "incomplete"
-            message = ("Software spatial diagnostic completed; inspect cycles/orientation independently. "
-                       + ("Geometry explicitly verified; grating output is not physically certified" if ready else "Complete geometry measurement/review") if valid else "Present and inspect a spatial grating")
+            from .spatial_observation import observations, visually_consistent, read_report
+            observation = None
+            if valid:
+                latest = valid[0]
+                try:
+                    path, payload = read_report(root, root / latest["path"], profile)
+                    recorded = observations(path, payload)
+                    observation = recorded[-1] if recorded else None
+                except (OSError, ValueError, TypeError):
+                    pass
+            consistent = visually_consistent(observation)
+            ready = result["geometry"]["ready"] and consistent
+            state = ("visually_consistent" if consistent else "observation_discrepancy" if observation
+                     else "awaiting_observation" if valid and valid[0]["payload"].get("diagnostic_uuid")
+                     else "software_presented" if valid else "not_tested")
+            message = ("Researcher observation recorded — visually consistent; NOT independent physical certification" if consistent
+                       else "Observation recorded — discrepancy, uncertainty or not assessed; inspect and record a new assessment" if observation
+                       else "Software spatial diagnostic presented; awaiting researcher observation on Spatial" if valid
+                       else "Present a spatial grating, then record what you observed")
         else:
             ready = bound and declaration == "verified"
             state = "complete" if ready else "awaiting_measurement" if valid else "incomplete"
@@ -70,12 +85,16 @@ def calibration_progress(profile, root: Path):
             message += "; latest attempt failed, prior compatible evidence retained"
         # Completion means the required workflow observation was SAVED.
         # Readiness remains a separate, stricter physical verification flag.
-        completed = (bool(measurements) if stage == "geometry" else bool(valid)) or ready
+        completed = (consistent if stage == "spatial" else
+                     (bool(measurements) if stage == "geometry" else bool(valid)) or ready)
         result[stage] = {"ready": ready, "completed": completed,
                          "verified": ready if stage != "spatial" else False, "state": state, "message": message,
                          "software_completed": bool(valid), "measurement_recorded": bool(measurements),
                          "verification_declared": declaration == "verified",
                          "reports": [row["path"] for row in valid]}
+        if stage == "spatial":
+            result[stage]["observation"] = observation
+            result[stage]["physical_spatial_frequency_certified"] = False
     measured = len(profile.luminance_calibration) >= 2
     session_message = ""
     if not measured:
