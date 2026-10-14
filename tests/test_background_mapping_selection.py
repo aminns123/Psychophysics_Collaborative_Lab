@@ -81,6 +81,10 @@ def test_tui_pair_updates_both_values_and_only_real_endpoint(tmp_path,endpoint):
             assert float(editor.query_one('#field-Background-Luminance',Input).value)==100
             assert float(editor.query_one('#field-Max-monitor-Luminance',Input).value)==(500 if endpoint else 700)
             assert float(editor.query_one('#field-starting-probe-intensity',Input).value)==.55
+            # The measured command-1.0 endpoint is a maximum, not a valid
+            # background command (< 1); it remains available for Max L.
+            assert all(point['screen_intensity'] < 1 for point in editor._mapping_rows)
+            assert any(point['screen_intensity'] == 1 for point in editor._all_mapping_rows) == endpoint
             assert 'Digital intensity 0.5' in str(editor.query_one('#mapping-provenance',Static).render())
     asyncio.run(scenario())
 
