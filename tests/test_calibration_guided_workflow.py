@@ -47,7 +47,7 @@ def test_incomplete_stages_do_not_advance_without_user_direction(tmp_path):
     assert next_stage("review") is None
 
 
-def test_profile_save_advances_luminance_to_timing_without_metadata(tmp_path, monkeypatch):
+def test_profile_save_stays_on_luminance_until_explicit_next(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
 
     async def scenario():
@@ -73,14 +73,17 @@ def test_profile_save_advances_luminance_to_timing_without_metadata(tmp_path, mo
             editor.query_one("#profile-save", Button).press()
             await pilot.pause()
             assert app.screen is screen
-            assert screen.active_calibration_stage == "timing"
-            assert screen.query_one("#calibration-pages", ContentSwitcher).current == "cal-panel-timing"
+            assert screen.active_calibration_stage == "luminance"
+            assert screen.query_one("#calibration-pages", ContentSwitcher).current == "cal-panel-luminance"
             saved = app.monitor_profiles["legacy_reference_display_local"]
             assert len(saved.luminance_calibration) == 2
             assert saved.calibration_status == "manual_unverified"
             assert stage_states(saved, app.local_config_root)["luminance"][0]
             assert not saved.has_verified_luminance_mapping
-            assert preferences(app.local_config_root)["calibration_active_stage"] == "timing"
+            assert preferences(app.local_config_root)["calibration_active_stage"] == "luminance"
+            screen.query_one("#calibration-next", Button).press()
+            await pilot.pause()
+            assert screen.active_calibration_stage == "timing"
             screen.query_one("#calibration-previous", Button).press()
             await pilot.pause()
             assert screen.active_calibration_stage == "luminance"
