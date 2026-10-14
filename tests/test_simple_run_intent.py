@@ -69,15 +69,15 @@ def test_review_shows_selected_mode_only_and_keeps_human_blockers(tmp_path, monk
             assert review.query_one("#review-run-intent",Select).value=="test"
             assert not review.query_one("#human-review-checks",Vertical).display
             assert review.query_one("#run-presentation-test",Button).display
-            assert not review.query_one("#run",Button).display
+            assert review.query_one("#run",Button).variant=="default"
             assert not review.readiness_report["human_ready"]
             review.query_one("#review-run-intent",Select).value="human"
             await pilot.pause()
             assert review.query_one("#human-review-checks",Vertical).display
-            assert review.query_one("#run",Button).display
+            assert review.query_one("#run",Button).variant=="success"
             assert review.readiness_report["blockers"]
             review.query_one("#review-run-intent",Select).value="simulation"
             await pilot.pause()
             assert not review.query_one("#human-review-checks",Vertical).display
-            assert review.query_one("#run-simulation",Button).display
+            assert review.query_one("#run-simulation",Button).variant=="primary"
     asyncio.run(scenario())
