@@ -9,7 +9,7 @@ from textual.widgets import Button, Input, Select, Static
 from test_calibration_review_completion import ROOT, fixture_profile, values
 from psychophysics_lab.config.local import config_root, save_profile, save_preset
 from psychophysics_lab.config.calibration_dataset import load_active, save_active, merge_observations, observation, active_directory
-from psychophysics_lab.config.background_mapping import mapping_choices, background_provenance
+from psychophysics_lab.config.background_mapping import mapping_choices, configuration_mapping_choices, background_provenance
 from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
@@ -58,13 +58,15 @@ def test_synthetic_means_are_selectable_but_not_human_qualification():
     assert not p.has_verified_luminance_mapping and not p.qualified_experiments
 
 
-def test_stale_physical_mapping_is_not_offered():
+def test_stale_physical_mapping_is_not_trusted_for_photometry():
     p=measured()
     changed=replace(p,viewing_distance_m=2)
     with pytest.raises(ValueError,match='stale'):
         mapping_choices(config_root(ROOT),changed)
     evidence=background_provenance(config_root(ROOT),changed,selected_values())
-    assert evidence['mapping_state']=='unavailable'
+    assert evidence['mapping_state']=='profile_only_test'
+    assert evidence['selection_basis']=='profile_summary_unverified'
+    assert not evidence['physically_verified_mapping']
 
 
 @pytest.mark.parametrize('endpoint',[True,False])
@@ -81,6 +83,10 @@ def test_tui_pair_updates_both_values_and_only_real_endpoint(tmp_path,endpoint):
             assert float(editor.query_one('#field-Background-Luminance',Input).value)==100
             assert float(editor.query_one('#field-Max-monitor-Luminance',Input).value)==(500 if endpoint else 700)
             assert float(editor.query_one('#field-starting-probe-intensity',Input).value)==.55
+            # The measured command-1.0 endpoint is a maximum, not a valid
+            # background command (< 1); it remains available for Max L.
+            assert all(point['screen_intensity'] < 1 for point in editor._mapping_rows)
+            assert any(point['screen_intensity'] == 1 for point in editor._all_mapping_rows) == endpoint
             assert 'Digital intensity 0.5' in str(editor.query_one('#mapping-provenance',Static).render())
     asyncio.run(scenario())
 
@@ -141,3 +147,61 @@ def test_run_snapshots_keep_exact_pair_mean_provenance_and_monitor(tmp_path):
     assert evidence['profile_uuid']==profile['profile_uuid']
     assert evidence['luminance_source_hash']==profile['luminance_source_hash']
     assert manifest['data_kind']=='synthetic' and not evidence['physically_verified_mapping']
+
+
+def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_stale():
+    p = measured(kind='synthetic')
+    changed = replace(p, viewing_distance_m=p.viewing_distance_m + 0.1)
+    with pytest.raises(ValueError, match='stale'):
+        mapping_choices(config_root(ROOT), changed)
+    rows, dataset, message, source = configuration_mapping_choices(config_root(ROOT), changed)
+    assert source == 'profile_only' and dataset is None
+    assert len(rows) == len(changed.luminance_calibration)
+    assert rows[1]['screen_intensity'] == .25
+    assert rows[1]['luminance_cdm2'] == 19
+    assert all(row['summary_only'] for row in rows)
+    assert 'TEST VALUES' in message and 'NOT physically verified'.lower() in message.lower()
+    assert not changed.has_verified_luminance_mapping
+    provenance = background_provenance(config_root(ROOT), changed, selected_values())
+    assert provenance['selection_basis'] == 'profile_summary_unverified'
+    assert provenance['mapping_state'] == 'profile_only_test'
+    assert not provenance['physically_verified_mapping']
+
+
+def test_verified_profile_must_not_offer_stale_untrusted_raw_mapping():
+    p = measured(kind='genuine')
+    verified = replace(p, calibration_status='verified', calibration_method='Laboratory photometer')
+    assert verified.has_verified_luminance_mapping
+    changed = replace(verified, viewing_distance_m=verified.viewing_distance_m + 0.1)
+    rows, dataset, message, source = configuration_mapping_choices(config_root(ROOT), changed)
+    assert rows == [] and dataset is None and source == 'unavailable'
+    assert 'repair' in message.lower()
+
+
+def test_background_dropdown_is_adjacent_to_fields_and_locks_linked_pair(tmp_path):
+    p = measured()
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        async with app.run_test() as pilot:
+            editor = editor_for(p, tmp_path / 'data')
+            await app.push_screen(editor)
+            await pilot.pause()
+            picker = editor.query_one('#background-mapping', Select)
+            luminance = editor.query_one('#field-Background-Luminance', Input)
+            intensity = editor.query_one('#field-Background-Screen-intensity', Input)
+            assert picker.value == '1'
+            assert luminance.disabled and intensity.disabled
+            assert editor.query_one('#edit-background-calibration', Button)
+            picker.value = '2'
+            await pilot.pause()
+            assert float(luminance.value) == 100
+            assert float(intensity.value) == .5
+            assert luminance.disabled and intensity.disabled
+            picker.value = 'manual'
+            await pilot.pause()
+            assert not luminance.disabled and not intensity.disabled
+            luminance.value = '90'
+            await pilot.pause()
+            assert picker.value == 'manual'
+            assert float(intensity.value) == .5
+    asyncio.run(scenario())

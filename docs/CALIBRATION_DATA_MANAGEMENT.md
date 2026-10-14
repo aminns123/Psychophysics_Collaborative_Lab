@@ -57,6 +57,51 @@ Legacy means are migrated in memory first, then persisted only on an explicit Sa
 
 Writes use the established atomic JSON replacement and file locks. Expected profile and dataset versions reject stale concurrent edits. A matching recovery dataset is durable before committing its corresponding profile revision. If the final active-file write fails, the committed unverified profile and matching recovery observations remain available; reopening finds that matching recovery snapshot and an explicit Save repairs the active file without creating another profile revision. Current projections are conveniences; immutable profile revisions remain the acquisition/replay authority.
 
+## Choosing background luminance while configuring an experiment
+
+Open **Experiment → Configure → Experiment** (Contrast Sensitivity).
+Immediately above the **Background luminance** field, use **Select background
+luminance and digital intensity from this monitor**. Options pair an intensity
+command (0–1) with the **mean cd/m²** of all saved observations at that
+intensity; repetitions are **not** separate choices. The full-command
+endpoint at intensity 1.0 can determine the measured maximum, but is **not**
+offered as a background selection because the CSF background must be below 1.
+
+- Choose a saved row to populate **both** `Background_Luminance` and
+  `Background_Screen_intensity` together. Those two fields become
+  read-only while the linked choice is active. **Starting probe digital
+  intensity** is separate and must satisfy the live shader-safe range.
+- Choose **Manual entry** to unlock both background fields and type a
+  deliberately unpaired configuration. Previously saved values/presets are
+  retained rather than silently changed when a different monitor is selected.
+- Use **Review / repair saved luminance measurements** directly next to the
+  selector to examine/add/correct the active dataset. On return, select the
+  appropriate saved row and review the new contrast limits.
+- If the active raw dataset is missing or stale **but the saved profile is
+  unverified**, the selector may display historical profile-stored summary
+  pairs prefixed **TEST ONLY**. These preserve a useful software/simulation
+  workflow, not calibrated photometry. The recorded run provenance says
+  `profile_summary_unverified`; none of these values can certify human
+  acquisition. Repair/re-measure the actual display before laboratory use.
+- If a physically verified profile has inconsistent active measurements,
+  **no fallback calibration row is offered**. Review and reconcile the
+  dataset; do not silently trust one of two conflicting physical records.
+- Changing the selected monitor or active calibration data requires a
+  deliberate new selection or explicit Manual confirmation. No interpolation
+  and no transfer of calibration from another display occurs.
+- Synthetic pilot observations may be selected for simulation and explicitly
+  uncalibrated test presentation, but never qualify human acquisition.
+
+The digital-bound warning is independent of the measured cd/m² mapping:
+the current CSF shader draws digital pixels
+`I_rgb = I_b + (C_disp/2) sin(phi)`, with
+`C_disp = (I_start - I_b)/(1-I_b)`. To avoid negative values or commands
+greater than 1, the live allowed range for `I_start` depends on `I_b`.
+For example, at `I_b = 0.3`, `I_start` cannot exceed `0.72` under
+this specific shader. This is a **digital rendering bound**, not a
+universal physical contrast or luminance ceiling. No value is silently
+clamped, and later staircase steps are checked at human presentation.
+
 ## Dynamic input domains
 
 Experiment fields show their domain beside the input, retain invalid entries for correction and highlight them. Dropdowns contain registered choices. Fixed field bounds come from `ConfigField`; cross-field and monitor checks reuse specification/preflight and existing geometry/contrast validators. They run during edits and again on submission. Live feedback is separate from Save/Review success messages. An enabled Review button does not bypass validation: configuration submission revalidates the current values, including immediately after the last keystroke.

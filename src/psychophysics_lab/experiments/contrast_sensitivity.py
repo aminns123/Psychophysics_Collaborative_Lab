@@ -216,9 +216,9 @@ CSF_SPEC = ExperimentSpec(
             default=None,
             minimum=0.0,
             help_text=(
-                "Measured physical background luminance. If the selected monitor profile contains "
-                "a verified luminance calibration table, PsyCoLab enforces the corresponding "
-                "digital command."
+                "Choose a saved intensity/luminance pair above to set both values from this "
+                "display's calibration table. Choose Manual only when necessary; verified "
+                "profiles enforce the corresponding measured digital command."
             ),
         ),
         ConfigField(
@@ -228,9 +228,9 @@ CSF_SPEC = ExperimentSpec(
             default=None,
             minimum=0.0, maximum=1.0,
             help_text=(
-                "Normalised digital display command. The current legacy monitor profile has no "
-                "trusted command-to-luminance table encoded yet, so this pair is saved as "
-                "manual/unverified until that calibration is supplied."
+                "Normalised digital display command for the selected background. Saved luminance "
+                "pairs set this automatically; profile-only test values are NOT certified "
+                "photometry. Manual values require separate review for human acquisition."
             ),
         ),
         ConfigField(
