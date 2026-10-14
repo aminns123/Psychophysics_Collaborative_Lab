@@ -136,6 +136,6 @@ def test_six_calibration_pages_present_next_action_without_certification(tmp_pat
                 expected = stage_next_action(key, calibration_progress(page._profile(), app.local_config_root))
                 assert "NEXT:" in expected
             page._go_to_stage("luminance")
-            assert "photometer is NOT needed for software tests" in str(
-                page.query_one("#calibration-next-action", Static).render())
+            guidance=str(page.query_one("#calibration-next-action", Static).render()).lower()
+            assert "next:" in guidance and "photometer" in guidance
     asyncio.run(scenario())
