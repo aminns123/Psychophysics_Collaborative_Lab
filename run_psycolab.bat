@@ -24,6 +24,15 @@ if not errorlevel 1 (
 )
 
 if not defined PSYCOLAB_PYTHON (
+    for /f "delims=" %%P in ('where python3.11.exe 2^>nul') do (
+        if not defined PSYCOLAB_PYTHON (
+            "%%P" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+            if not errorlevel 1 set "PSYCOLAB_PYTHON="%%P""
+        )
+    )
+)
+
+if not defined PSYCOLAB_PYTHON (
     where python >nul 2>nul
     if not errorlevel 1 (
         python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
