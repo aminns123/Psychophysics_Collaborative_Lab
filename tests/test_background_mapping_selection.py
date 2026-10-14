@@ -156,6 +156,10 @@ def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_sta
     assert all(row['summary_only'] for row in rows)
     assert 'TEST VALUES' in message and 'NOT physically verified'.lower() in message.lower()
     assert not changed.has_verified_luminance_mapping
+    provenance = background_provenance(config_root(ROOT), changed, selected_values())
+    assert provenance['selection_basis'] == 'profile_summary_unverified'
+    assert provenance['mapping_state'] == 'profile_only_test'
+    assert not provenance['physically_verified_mapping']
 
 
 def test_verified_profile_must_not_offer_stale_untrusted_raw_mapping():
