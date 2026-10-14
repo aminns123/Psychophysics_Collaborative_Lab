@@ -2022,28 +2022,34 @@ class ReviewScreen(Screen):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            yield Label("What would you like to run?")
+            yield Select([
+                ("Test experiment presentation on the real display", "test"),
+                ("Human experiment — verified laboratory acquisition", "human"),
+                ("Simulation — virtual observer", "simulation"),
+            ], value=self.app.run_intent, allow_blank=False, id="review-run-intent")
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
+                yield Button("Start uncalibrated test presentation", id="run-presentation-test", variant="warning")
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
-            with Horizontal(classes="buttons"):
-                yield Button("Test experiment presentation (UNCALIBRATED)",id="run-presentation-test",variant="warning")
-            with Horizontal(classes="buttons"):
-                yield Button("Resolve blockers / Calibration guide →",
-                             id="review-calibration-guide", variant="primary")
+            yield Button("Resolve human acquisition requirements",
+                         id="review-calibration-guide")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
-            yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
-            yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
-            from ..config.human_readiness import experiment_readiness
-            report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
-            for row in report["requirements"]:
-                yield Static("", id="readiness-" + row["key"], classes="info-card")
-                if row.get("action"):
-                    yield Button(row["action"], id="resolve-" + row["key"])
-            with Collapsible(title="Technical preflight details", collapsed=True):
+            yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
+            with Vertical(id="human-review-checks"):
+                yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
+                yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
+                from ..config.human_readiness import experiment_readiness
+                report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
+                for row in report["requirements"]:
+                    yield Static("", id="readiness-" + row["key"], classes="info-card")
+                    if row.get("action"):
+                        yield Button(row["action"], id="resolve-" + row["key"])
+            with Collapsible(title="Advanced — run settings and technical preflight", collapsed=True):
+                yield Static(self._summary_text(experiment, profile), id="review-text")
                 yield Static("", id="readiness-technical", markup=False)
-            yield Static(self._summary_text(experiment, profile), id="review-text")
         yield Footer()
 
     def _summary_text(self, experiment, profile):
@@ -2134,6 +2140,48 @@ class ReviewScreen(Screen):
 
     def on_mount(self):
         self._refresh_readiness()
+        self._apply_run_intent()
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "review-run-intent" and self.is_mounted:
+            if event.value in ("test", "human", "simulation"):
+                self.app.run_intent = str(event.value)
+                self._apply_run_intent()
+
+    def _apply_run_intent(self) -> None:
+        if not self.is_mounted:
+            return
+        intent=self.app.run_intent
+        self.query_one("#human-review-checks", Vertical).display = intent=="human"
+        self.query_one("#review-calibration-guide", Button).display = intent=="human"
+        for action, mode in (("run-presentation-test","test"),
+                             ("run-simulation","simulation"),("run","human")):
+            self.query_one("#" + action, Button).display = intent==mode
+        report=self.readiness_report
+        if intent=="human":
+            status=("READY for human acquisition — final hardware preflight still applies."
+                    if report["human_ready"] else
+                    f"Human acquisition requires {len(report['blockers'])} more item(s). "
+                    "Use the actions below to resolve them.")
+        elif intent=="simulation":
+            status=("READY to simulate using the registered virtual observer."
+                    if report["simulation_available"] else
+                    "Simulation unavailable for these settings; revise the experiment configuration.")
+        else:
+            from ..config.preflight import human_requirements
+            profile=self.app.monitor_profiles.get(self.request.monitor_profile_id)
+            if profile is None:
+                status="TEST BLOCKED — selected display is unavailable. Select a current monitor."
+            else:
+                needed=[row for row in human_requirements(
+                    get_experiment(self.request.experiment_id),profile,
+                    self.request.experiment_values)
+                    if row["key"] in ("binding","sampling","contrast") and not row["passed"]]
+                status=("READY FOR TEST PRESENTATION — physical photometry and human qualification "
+                        "are not needed. Fullscreen mode and digital safety are checked at launch."
+                        if not needed else
+                        "TEST SETUP NEEDS ATTENTION: " + "; ".join(row["detail"] for row in needed))
+        self.query_one("#selected-run-readiness", Static).update(status)
 
     def on_screen_resume(self):
         if not self.is_mounted:
@@ -2183,6 +2231,7 @@ class ReviewScreen(Screen):
         self.query_one("#readiness-technical", Static).update(
             "\n\n".join(row["detail"] for row in report["blockers"]) + "\n\n" + report["simulation_detail"])
         self.query_one("#run-simulation", Button).disabled = not report["simulation_available"]
+        self._apply_run_intent()
 
     def resolve_requirement(self, key):
         # Fullscreen diagnostics restart the app; preserve the exact experiment draft.
@@ -2331,7 +2380,7 @@ class PsyCoLabSetupApp(App):
         margin-top: 1;
     }
     #code-text { width: 100%; }
-    #human-participant-panel { height: auto; width: 100%; }
+    #human-participant-panel, #human-review-checks { height: auto; width: 100%; }
     #calibration-stage-nav { height: 3; width: 100%; }
     #calibration-stage-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
     #calibration-stage-nav Button.calibration-active {
