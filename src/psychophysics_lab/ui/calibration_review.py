@@ -25,6 +25,10 @@ class PhysicalVerificationScreen(Screen):
             yield Static('', id='verification-feedback', markup=False)
         with VerticalScroll(classes='page-body'):
             yield Static('Physical verification is an explicit laboratory declaration. Saved software tests and a green setup page do not measure emitted light or photon timing. Changing verification does not qualify an experiment.')
+            from ..config.calibration_review import luminance_verification_guidance
+            yield Static(luminance_verification_guidance(self.profile, self.app.local_config_root),
+                         markup=False, id='verification-luminance-guidance')
+            yield Button('Inspect existing luminance measurements', id='verification-open-luminance')
             for key, label, explanation in (
                 ('geometry_status','Geometry','Review the compatible ruler measurement, measured active dimensions and eye distance against your laboratory criteria.'),
                 ('calibration_status','Photometry','Use actual photometer observations. Test/fake data cannot be verified. Notes are optional for setup completion.'),
@@ -54,6 +58,21 @@ class PhysicalVerificationScreen(Screen):
     def on_button_pressed(self,event):
         if event.button.id=='verification-back':
             self.app.pop_screen()
+        elif event.button.id=='verification-open-luminance':
+            from ..config.calibration_dataset import load_active
+            try:
+                load_active(self.app.local_config_root, self.profile)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                self.query_one('#verification-feedback', Static).update(
+                    'Could not load current readings: ' + str(exc)
+                    + ' Original records remain intact. Review the selected '
+                      'display under Calibrate → Luminance.'
+                )
+            else:
+                from .luminance_data import LuminanceDataScreen
+                self.app.push_screen(
+                    LuminanceDataScreen(self.profile, experiment_id=self.experiment_id)
+                )
         elif event.button.id=='verification-save':
             try:
                 result=save_verification(self.profile,self.app.local_config_root,
