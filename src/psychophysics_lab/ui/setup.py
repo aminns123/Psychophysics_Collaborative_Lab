@@ -460,7 +460,7 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="", placeholder="e.g. 99.5", id="geometry-measured")
                 yield Button("Record measurement in latest diagnostic",
                              id="record-geometry-measurement")
-                yield Button("Review / verify geometry in profile editor",
+                yield Button("Review physical Geometry (only if measured)",
                              id="edit-geometry-profile")
                 with Collapsible(title="Further help · Worked example", collapsed=True):
                     yield Static(
@@ -557,13 +557,12 @@ class DisplayCheckScreen(HubPage):
                         "For interactive measurement: Left/Right changes intensity; type the meter "
                         "reading (cd/m²) and Enter records one value. Repeat Enter with another "
                         "reading at the same command for repetitions. Esc ends the session.\n"
-                        "Open pilot/test JSON, fill at least TWO real cd/m² readings. "
-                        "Method/date/notes may be blank (shown as warnings). "
-                        "Paste the file path above, then click Import + SAVE to commit "
-                        "your real pairs directly into a new local monitor profile revision. "
-                        "The Luminance tab turns GREEN and the wizard moves to Timing. "
-                        "The Advanced editor remains available for manual edits. "
-                        "Saving does NOT auto-verify physical photometry."
+                        "To import genuine photometer readings instead of using the editor, "
+                        "open a pilot JSON and enter at least TWO real cd/m² pairs. "
+                        "Method, date and notes are optional. Import + Save keeps you "
+                        "on Luminance to inspect the outcome; choose Next stage explicitly. "
+                        "Fake/pilot data are only for software Test mode and cannot certify "
+                        "physical photometry."
                     )
 
             with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
@@ -583,7 +582,7 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="7.5", id="geometry-temporal")
                 yield Button("Launch fullscreen timing diagnostic", id="launch-temporal",
                              variant="primary")
-                yield Button("Review / verify physical timing in profile editor",
+                yield Button("Review physical photon timing (if independently measured)",
                              id="edit-timing-profile")
                 with Collapsible(title="Further help · What is verified?", collapsed=True):
                     yield Static(
