@@ -1,3 +1,15 @@
+## Choose what you are running
+
+On **Experiment**, choose the intended run before configuring its conditions:
+
+| Choice | What happens |
+| --- | --- |
+| **Test experiment presentation** (default) | Real fullscreen stimulus and keyboard test, separate test data; no photometer or human-qualification declaration required. Physical monitor binding, framebuffer and digital contrast safety still checked before display. |
+| **Human experiment** | Pseudonymous participant ID required; full physical calibration, experiment qualification and strict final preflight remain mandatory. |
+| **Simulation** | Virtual observer only, with no physical display or photometer required; uses the registered simulation scenario. |
+
+The next **Review** page defaults to that choice and shows **only its relevant readiness panel**, rather than displaying a list of human blockers while testing the software. You can change your choice on Review. Test runs use a synthetic-only ID, never a real participant identity, and still ask for a short explicit TEST DATA confirmation before fullscreen launch.
+
 # Researcher quickstart: creating a PsyCoLab experiment
 
 The aim is to keep research contributors focused on two files: a **stimulus**

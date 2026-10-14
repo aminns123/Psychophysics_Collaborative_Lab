@@ -2022,28 +2022,34 @@ class ReviewScreen(Screen):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            yield Label("What would you like to run?")
+            yield Select([
+                ("Test experiment presentation on the real display", "test"),
+                ("Human experiment — verified laboratory acquisition", "human"),
+                ("Simulation — virtual observer", "simulation"),
+            ], value=self.app.run_intent, allow_blank=False, id="review-run-intent")
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
+                yield Button("Start uncalibrated test presentation", id="run-presentation-test", variant="warning")
                 yield Button("Run human experiment", id="run", variant="success")
                 yield Button("Run simulation", id="run-simulation", variant="primary")
-            with Horizontal(classes="buttons"):
-                yield Button("Test experiment presentation (UNCALIBRATED)",id="run-presentation-test",variant="warning")
-            with Horizontal(classes="buttons"):
-                yield Button("Resolve blockers / Calibration guide →",
-                             id="review-calibration-guide", variant="primary")
+            yield Button("Resolve human acquisition requirements",
+                         id="review-calibration-guide")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
-            yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
-            yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
-            from ..config.human_readiness import experiment_readiness
-            report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
-            for row in report["requirements"]:
-                yield Static("", id="readiness-" + row["key"], classes="info-card")
-                if row.get("action"):
-                    yield Button(row["action"], id="resolve-" + row["key"])
-            with Collapsible(title="Technical preflight details", collapsed=True):
+            yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
+            with Vertical(id="human-review-checks"):
+                yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
+                yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
+                from ..config.human_readiness import experiment_readiness
+                report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
+                for row in report["requirements"]:
+                    yield Static("", id="readiness-" + row["key"], classes="info-card")
+                    if row.get("action"):
+                        yield Button(row["action"], id="resolve-" + row["key"])
+            with Collapsible(title="Advanced — run settings and technical preflight", collapsed=True):
+                yield Static(self._summary_text(experiment, profile), id="review-text")
                 yield Static("", id="readiness-technical", markup=False)
-            yield Static(self._summary_text(experiment, profile), id="review-text")
         yield Footer()
 
     def _summary_text(self, experiment, profile):
@@ -2134,6 +2140,55 @@ class ReviewScreen(Screen):
 
     def on_mount(self):
         self._refresh_readiness()
+        self._apply_run_intent()
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "review-run-intent" and self.is_mounted:
+            if event.value in ("test", "human", "simulation"):
+                self.app.run_intent = str(event.value)
+                self._apply_run_intent()
+
+    def _apply_run_intent(self) -> None:
+        if not self.is_mounted:
+            return
+        intent=self.app.run_intent
+        self.query_one("#human-review-checks", Vertical).display = intent=="human"
+        # Keep alternative actions reachable from existing saved Review screens
+        # and keyboard workflows. Highlight the selected mode, but do not hide
+        # or disable the other safe entry points; each still runs its own strict
+        # preflight at invocation.
+        for action, mode in (("run-presentation-test","test"),
+                             ("run-simulation","simulation"),("run","human")):
+            button=self.query_one("#" + action, Button)
+            button.display=True
+            button.variant=("warning" if mode=="test" else
+                            "success" if mode=="human" else "primary") if mode==intent else "default"
+        self.query_one("#review-calibration-guide", Button).display=True
+        report=self.readiness_report
+        if intent=="human":
+            status=("READY for human acquisition — final hardware preflight still applies."
+                    if report["human_ready"] else
+                    f"Human acquisition requires {len(report['blockers'])} more item(s). "
+                    "Use the actions below to resolve them.")
+        elif intent=="simulation":
+            status=("READY to simulate using the registered virtual observer."
+                    if report["simulation_available"] else
+                    "Simulation unavailable for these settings; revise the experiment configuration.")
+        else:
+            from ..config.preflight import human_requirements
+            profile=self.app.monitor_profiles.get(self.request.monitor_profile_id)
+            if profile is None:
+                status="TEST BLOCKED — selected display is unavailable. Select a current monitor."
+            else:
+                needed=[row for row in human_requirements(
+                    get_experiment(self.request.experiment_id),profile,
+                    self.request.experiment_values)
+                    if row["key"] in ("binding","sampling","contrast") and not row["passed"]]
+                status=("READY FOR TEST PRESENTATION — physical photometry and human qualification "
+                        "are not needed. Fullscreen mode and digital safety are checked at launch."
+                        if not needed else
+                        "TEST SETUP NEEDS ATTENTION: " + "; ".join(row["detail"] for row in needed))
+        self.query_one("#selected-run-readiness", Static).update(status)
 
     def on_screen_resume(self):
         if not self.is_mounted:
@@ -2183,6 +2238,7 @@ class ReviewScreen(Screen):
         self.query_one("#readiness-technical", Static).update(
             "\n\n".join(row["detail"] for row in report["blockers"]) + "\n\n" + report["simulation_detail"])
         self.query_one("#run-simulation", Button).disabled = not report["simulation_available"]
+        self._apply_run_intent()
 
     def resolve_requirement(self, key):
         # Fullscreen diagnostics restart the app; preserve the exact experiment draft.
@@ -2331,6 +2387,7 @@ class PsyCoLabSetupApp(App):
         margin-top: 1;
     }
     #code-text { width: 100%; }
+    #human-participant-panel, #human-review-checks { height: auto; width: 100%; }
     #calibration-stage-nav { height: 3; width: 100%; }
     #calibration-stage-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
     #calibration-stage-nav Button.calibration-active {
@@ -2366,6 +2423,8 @@ class PsyCoLabSetupApp(App):
                 self.mapping_drafts[keys] = saved_draft.get("background_selection", {})
         self.display_draft = {}
         self.display_guide_target_profile_id = None
+        # Researcher intent is UI-only: it never downgrades acquisition preflight.
+        self.run_intent = "test"
 
     def inspect_source(self, path: Path) -> None:
         try:
@@ -2486,12 +2545,15 @@ class PsyCoLabSetupApp(App):
                 yield Button("Configure Experiment", id="configure", variant="primary")
             yield Static("", id="setup-status")
         with VerticalScroll(id="setup-body"):
-            yield Static(
-                "[b]Configure an experiment — human or simulated[/b]\n"
-                "Set up one experiment with the same conditions, physical units and adaptive "
-                "rules. At final review choose a human participant or a virtual observer. "
-                "The TUI closes before acquisition begins."
-            )
+            yield Static("[b]What would you like to do?[/b]")
+            yield Select([
+                ("Test an experiment on this monitor (no photometer required)", "test"),
+                ("Run a human experiment (physical verification required)", "human"),
+                ("Run a simulation with a virtual observer", "simulation"),
+            ], value=self.run_intent, allow_blank=False, id="run-intent")
+            yield Static("", id="run-intent-help", markup=False)
+            yield Static("Configure the experiment and its stimuli. The chosen run type "
+                         "decides which final checks are shown.", markup=False)
             if self.simulation_summary:
                 yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
@@ -2505,19 +2567,12 @@ class PsyCoLabSetupApp(App):
             yield Button("Load Data Workspace", id="load-data-root")
             yield Static(last_summary, id="last-run-summary", classes="field-help")
 
-            yield Label("Existing participant")
-            yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
-            yield Label("Participant ID")
-            yield Input(
-                value=participant_default,
-                placeholder="e.g. S001 or subject_1",
-                id="participant",
-            )
-            yield Static(
-                "A pseudonymous participant ID is required only if you choose Run human experiment "
-                "on the final review. Leave blank for a virtual observer.",
-                classes="field-help",
-            )
+            with Vertical(id="human-participant-panel"):
+                yield Label("Existing participant")
+                yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
+                yield Label("Participant ID (pseudonymous)")
+                yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
+                yield Static("Only needed for real human acquisition.", classes="field-help")
 
             yield Label("Starting settings")
             yield Select(
@@ -2547,6 +2602,7 @@ class PsyCoLabSetupApp(App):
 
     def on_mount(self) -> None:
         self._refresh_experiment_context()
+        self._refresh_run_intent()
         if self.geometry_summary:
             self.call_after_refresh(self._restore_diagnostic_review)
 
@@ -2584,6 +2640,31 @@ class PsyCoLabSetupApp(App):
         except (KeyError, TypeError, ValueError) as exc:
             self.screen_stack[0].query_one("#setup-status", Static).update(
                 f"Cannot restore calibration context: {exc}. Select current settings explicitly.")
+
+    def _refresh_run_intent(self) -> None:
+        if not self.screen_stack:
+            return
+        home=self.screen_stack[0]
+        try:
+            selected=home.query_one("#run-intent",Select).value
+            explanation=home.query_one("#run-intent-help",Static)
+            human_panel=home.query_one("#human-participant-panel",Vertical)
+        except Exception:
+            return  # Another hub screen is mounting, or startup is incomplete.
+        intent=str(selected) if selected in ("test","human","simulation") else "test"
+        self.run_intent=intent
+        human_panel.display=intent=="human"
+        if intent=="test":
+            explanation.update("TEST MODE — draw real fullscreen stimuli using saved test settings. "
+                               "No photometer or human qualification required. "
+                               "Digital bounds and physical display safety still apply.")
+        elif intent=="simulation":
+            explanation.update("SIMULATION — use a virtual observer. No fullscreen stimulus "
+                               "or physical laboratory certification required.")
+        else:
+            explanation.update("HUMAN ACQUISITION — use a participant ID. Physical geometry, "
+                               "photometry and any experiment-specific timing requirements "
+                               "must be genuinely reviewed and qualified.")
 
     def _compatible_profiles(self, experiment: ExperimentSpec) -> dict[str, Any]:
         # Availability is independent of human qualification.
@@ -2691,6 +2772,8 @@ class PsyCoLabSetupApp(App):
         if event.select.id == "participant-select":
             if not _is_blank_select_value(event.value) and str(event.value) != "__new__":
                 self.screen_stack[0].query_one("#participant", Input).value = str(event.value)
+        elif event.select.id == "run-intent":
+            self._refresh_run_intent()
         elif event.select.id == "experiment":
             self._refresh_experiment_context()
         elif event.select.id == "monitor-profile":
@@ -2724,9 +2807,15 @@ class PsyCoLabSetupApp(App):
             self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
             entered_participant = self.screen_stack[0].query_one("#participant", Input).value.strip()
-            # The final review chooses human or synthetic mode. Only the human
-            # path requires a participant identifier; no virtual run uses it.
-            participant = validate_participant_id(entered_participant or "synthetic_preview")
+            # Keep an existing draft's identifier stable for backward
+            # compatibility. Actual presentation tests override it with a new
+            # synthetic-only ID at the isolated runtime boundary; simulations
+            # never record it as a human participant.
+            if self.run_intent == "human" and not entered_participant:
+                raise ValueError("Enter a pseudonymous participant ID for human acquisition.")
+            participant = validate_participant_id(
+                entered_participant or "synthetic_preview"
+            )
             session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
             experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
             monitor_id = self.screen_stack[0].query_one("#monitor-profile", Select).value
