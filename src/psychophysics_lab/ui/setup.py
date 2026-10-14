@@ -1533,9 +1533,13 @@ class ExperimentConfigScreen(Screen):
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         selector = self.query_one('#background-mapping', Select)
         old_identity = getattr(self, '_mapping_identity', None)
-        rows, dataset, state, source = configuration_mapping_choices(
+        all_rows, dataset, state, source = configuration_mapping_choices(
             self.app.local_config_root, profile
         )
+        # Full command 1.0 may define the measured luminance endpoint,
+        # but is not a valid CSF background (the background must be < 1).
+        self._all_mapping_rows = all_rows
+        rows = [row for row in all_rows if 0 <= row['screen_intensity'] < 1]
         # The source and the actual physical setup are part of selection identity.
         # Notes-only revisions should not invalidate a selection.
         mapping_hash = dataset_hash(dataset) if dataset is not None else content_hash({
@@ -1749,7 +1753,7 @@ class ExperimentConfigScreen(Screen):
                 with self.prevent(Input.Changed):
                     self.query_one('#field-Background-Screen-intensity', Input).value = repr(point['screen_intensity'])
                     self.query_one('#field-Background-Luminance', Input).value = repr(point['luminance_cdm2'])
-                    endpoint = next((p for p in self._mapping_rows if p['screen_intensity'] == 1), None)
+                    endpoint = next((p for p in self._all_mapping_rows if p['screen_intensity'] == 1), None)
                     if endpoint is not None:
                         self.query_one('#field-Max-monitor-Luminance', Input).value = repr(endpoint['luminance_cdm2'])
             self._refresh_mapping_choices()
