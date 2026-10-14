@@ -20,9 +20,12 @@ at final review.
    physical framebuffer resolution.
 2. In Calibrate, inspect **pixel pitch (mm)**, **pixels per degree at gaze
    centre** on both axes and the **spatial Nyquist limit**. Run a fullscreen
-   ruler/geometry diagnostic, record the measured bar width and try the spatial
-   grating diagnostic. Repeat whenever the monitor, resolution, eye distance,
-   or image scaling changes.
+   ruler/geometry diagnostic, record the measured bar width, and launch a
+   spatial grating diagnostic. On returning to **Calibrate → Spatial**, inspect
+   the saved report and **record a researcher observation**: visually consistent,
+   discrepancy, uncertain or not assessed; identify any rendering abnormality.
+   Merely closing the fullscreen grating does not complete this stage. Repeat
+   whenever the monitor, resolution, eye distance or image scaling changes.
 3. Open **Experiment → Configure Experiment** and choose **Stimulus
    conditions**. Enter the number of conditions, a unit and the values. For
    example `cycles_per_degree` with `2,4,8`, or `degrees_per_cycle` with
@@ -37,6 +40,64 @@ at final review.
    **Run simulation** to supply observer thresholds/slope/preference/seeds.
    Both use exactly the same condition and adaptive configuration. A separate
    *Scenarios* screen remains for older direct scenario tests.
+
+## Researcher assessment after fullscreen presentation (October 2026)
+
+**Calibrate → Page 3 — Spatial** now separates the software presentation
+from the researcher's observation:
+
+1. Enter the desired frequency (cycles/degree) and set the grating's angular
+   extent/orientation. Launch **Fullscreen spatial grating**. The TUI closes
+   temporarily to allow the Pyglet fullscreen window to run.
+2. Press **Esc** or **Enter** to finish the presentation. PsyCoLab restarts the
+   TUI and returns to the **same Calibration subsection** and selected physical
+   display, including on a recoverable diagnostic error. It does **not**
+   automatically proceed to Luminance or return to Experiment.
+3. Under **Presentation to review**, select the corresponding diagnostic
+   (date/UUID); read its requested cpd, resolved angular extent, pixel sampling
+   and nominal number of cycles. A complete light–dark period is **one cycle**.
+   Counting bright maxima is a separate, phase/edge-dependent observation.
+4. Choose whether the pattern was **visually consistent**, had a
+   **discrepancy**, was **uncertain**, or was **not assessed**. Also select
+   **No obvious abnormality**, or report aliasing, orientation, nonuniform
+   spacing, clipping/cutoff or another abnormality. Optional count and notes
+   are useful records, not an automatic numerical acceptance tolerance.
+5. Click **Record observation**. Spatial turns green only when the **latest
+   compatible spatial presentation** has a saved *visually consistent* answer
+   with **no obvious abnormality**. Uncertain, discrepant or unassessed answers
+   remain saved but do not complete the stage. Use **Next stage** deliberately
+   when ready.
+
+**Interpretation:** a green Spatial stage means an applicable *subjective*
+visual-consistency observation was recorded. It **never independently
+certifies the optical spatial frequency** or photometric contrast. For
+instrument-supported frequency accuracy use the dedicated Windows hardware
+acceptance procedure. A material change to display binding, geometry,
+resolution, refresh or viewing distance makes prior incompatible evidence stale;
+a metadata-only profile revision does not automatically erase it.
+
+The observation files are separate from the presentation report, located in
+that report's `spatial_observations/` directory. Each observation includes
+the matching diagnostic identity/content hash and is append-only. A second
+presentation produces its own report and must be assessed separately.
+
+## Saved luminance choices during experiment configuration
+
+For the **Contrast Sensitivity** experiment, the **Background from this
+display's saved measurements** selector lists only the selected monitor's
+committed *mean luminance per digital command*. Choosing a row writes **both**
+`Background_Luminance` and `Background_Screen_intensity`; the starting
+probe intensity remains a separate parameter. There is no interpolation.
+If the selected display or its active measurement dataset changes, previously
+entered values are retained for review and the researcher must explicitly
+select a new measured pair or Manual mode. Synthetic test mappings remain
+usable for software/presentation tests but never qualify human acquisition.
+The configured pair and mapping provenance are recorded in the run metadata.
+
+If a saved pair does not appear, verify the selected monitor profile and its
+active luminance dataset under **Calibrate → Luminance → Open / edit active
+luminance measurements**. An unavailable or stale mapping should not be
+silently replaced with another screen's measurements.
 
 ## Mathematical basis
 

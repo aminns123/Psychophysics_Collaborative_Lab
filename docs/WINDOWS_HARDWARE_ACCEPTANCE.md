@@ -1,5 +1,7 @@
 # Windows laboratory acceptance — profile revision and protocol specific
 
+For the **14 October 2026 spatial-observation and fullscreen-return changes**, first follow the focused [interrupted-Work acceptance checklist](INTERRUPTED_SPATIAL_WORK_FOLLOWUP_2026-10-14.md). It covers the new requirement to record a researcher assessment after fullscreen presentation, preserving Calibrate navigation and selecting saved luminance pairs. Both Windows/Linux CI suites pass, but these manual monitor checks remain outstanding.
+
 This procedure separates software checks, ruler geometry, spatial frequency, photometry and physical timing. Record the actual result for each step. A saved/qualified flag is a laboratory declaration; software cannot supply missing measurement evidence.
 
 ## 1. Protect existing records and record the software
