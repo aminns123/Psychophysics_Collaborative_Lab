@@ -112,6 +112,10 @@ def test_direct_json_import_one_click_saves_local_revision_and_advances(tmp_path
             screen.query_one("#cal-luminance-json-path", Input).value = str(file)
             screen.query_one("#calibration-import-luminance", Button).press()
             await pilot.pause()
+            # Save remains on Luminance for review; the researcher chooses Next.
+            assert screen.active_calibration_stage == "luminance"
+            screen.query_one("#calibration-next", Button).press()
+            await pilot.pause()
             assert screen.active_calibration_stage == "timing"
             saved = app.monitor_profiles["legacy_reference_display_local"]
             assert len(saved.luminance_calibration) == 2
