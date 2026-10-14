@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from textual.screen import Screen
 from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.widgets import Header, Footer, Button, Input, Select, Checkbox, Static, Label
+from textual.widgets import Header, Footer, Button, Input, Select, Checkbox, Static, Label, Collapsible
 from ..config.calibration_dataset import (load_active,save_active,observation,summary,merge_observations,
     import_observations,luminance_state,physical_snapshot,active_directory)
 
@@ -42,36 +42,54 @@ class LuminanceDataScreen(Screen):
                 yield Button('Save active dataset',id='dataset-save',variant='primary')
             yield Static('',id='dataset-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
+            yield Static('Saved readings for this display. You can use test values for software testing without a photometer. They never certify human acquisition.', markup=False)
             yield Static('',id='dataset-state',markup=False)
             yield Static('',id='dataset-statistics',markup=False)
-            yield Label('Edit mode — earlier readings are retained unless replacement is confirmed')
-            yield Select([('Continue / add repetitions','merge'),('Add a new intensity','append'),('Replace selected intensity readings','replace_selected'),('Replace whole dataset / Reset','replace_all')],value='merge',allow_blank=False,id='dataset-mode')
-            yield Label('Existing intensity to inspect/edit (New keeps manual command entry)')
-            yield Select([('New intensity','new')]+[(f"{r['screen_intensity']:g} — {r['luminance_cdm2']:g} cd/m²",str(r['screen_intensity'])) for r in summary(self.draft)],value='new',allow_blank=False,id='dataset-selected')
-            yield Button('Load selected raw readings for correction',id='dataset-load-readings')
-            yield Label('Intensity command: allowed range 0–1, finite')
+            yield Label('Choose an action')
+            yield Select([('Add a luminance reading','add'),('Correct saved readings','correct'),('Import measurements (Advanced)','import')],
+                         value='add',allow_blank=False,id='dataset-task')
+            yield Label('Digital intensity (0–1)')
+            yield Select([('New intensity','new')]+[(f"{r['screen_intensity']:g} — {r['luminance_cdm2']:g} cd/m²",str(r['screen_intensity'])) for r in summary(self.draft)],
+                         value='new',allow_blank=False,id='dataset-selected')
             yield Input(value='0.5',id='dataset-command')
-            yield Label('Individual readings (comma separated cd/m², finite ≥ 0; means/SD calculated)')
-            yield Input(value='',id='dataset-readings')
-            yield Select([('Unspecified provenance — unverified','unspecified'),('Actual instrument observations — requires independent verification','genuine'),('Synthetic pilot / UI test values','synthetic')],value='unspecified',allow_blank=False,id='dataset-kind')
-            yield Checkbox('I confirm replacement/reset; earlier saved data will remain in recovery history.',id='dataset-confirm')
-            yield Button('Apply readings to unsaved draft',id='dataset-add')
-            yield Button('Reset to empty draft (confirmation required)',id='dataset-reset')
-            yield Label('Instrument / method (optional to save; required for physical verification)')
-            yield Input(value=self.draft['method'],id='dataset-method')
-            yield Label('Optional date (YYYY-MM-DD) and notes')
-            yield Input(value=self.draft.get('date',''),id='dataset-date')
-            yield Input(value=self.draft.get('notes',''),id='dataset-notes')
-            yield Label('Earlier measurement JSON: select an edit mode, then preview import')
-            yield Input(value='',id='dataset-import-path')
-            yield Button('Preview import into draft',id='dataset-import')
-            yield Label('Export copy path — only written when explicitly requested')
-            yield Input(value='',id='dataset-export-path')
-            yield Button('Export saved dataset copy',id='dataset-export')
-            yield Button('Review physical photometry',id='dataset-verify')
+            yield Label('Luminance (cd/m²) — enter one value or repeat readings separated by commas')
+            yield Input(value='',id='dataset-readings',placeholder='e.g. 25.1, 24.9, 25.2')
+            yield Label('Where did these values come from?')
+            yield Select([('Test values — not physically calibrated','synthetic'),
+                          ('Actual photometer readings — verification still required','genuine'),
+                          ('Source not recorded — unverified','unspecified')],
+                         value='synthetic' if (self.draft.get('data_kind')=='synthetic' or 'fake' in self.draft.get('method','').lower()) else 'unspecified',
+                         allow_blank=False,id='dataset-kind')
+            yield Button('Use selected readings for correction',id='dataset-load-readings')
+            yield Checkbox('Yes — replace this intensity’s old readings; history is kept.',id='dataset-confirm')
+            yield Button('Add readings to draft',id='dataset-add')
+            yield Static('No changes to the saved measurements until you choose Save active dataset.',markup=False)
+            with Collapsible(title='Advanced — import, reset, export and metadata',collapsed=True):
+                yield Label('How to combine observations')
+                yield Select([('Keep existing readings and add repetitions','merge'),
+                              ('Add a new intensity','append'),
+                              ('Replace readings at one intensity','replace_selected'),
+                              ('Replace the entire dataset','replace_all')],
+                             value='merge',allow_blank=False,id='dataset-mode')
+                yield Button('Reset to empty draft (confirmation required)',id='dataset-reset')
+                yield Label('Photometer instrument / method (optional for test data)')
+                yield Input(value=self.draft.get('method',''),id='dataset-method')
+                yield Label('Optional measurement date (YYYY-MM-DD)')
+                yield Input(value=self.draft.get('date',''),id='dataset-date')
+                yield Label('Optional notes')
+                yield Input(value=self.draft.get('notes',''),id='dataset-notes')
+                yield Label('Import existing measurement JSON (advanced)')
+                yield Input(value='',id='dataset-import-path')
+                yield Button('Preview JSON import into draft',id='dataset-import')
+                yield Label('Export saved dataset to a new absolute JSON file')
+                yield Input(value='',id='dataset-export-path')
+                yield Button('Export saved dataset copy',id='dataset-export')
+            yield Button('Review physical photometry (only for actual laboratory readings)',id='dataset-verify')
         yield Footer()
 
-    def on_mount(self): self.refresh_data()
+    def on_mount(self):
+        self.refresh_data()
+        self._update_measurement_controls()
 
     def on_screen_resume(self):
         if not self.is_mounted: return
@@ -85,29 +103,85 @@ class LuminanceDataScreen(Screen):
     def refresh_data(self):
         self.query_one('#dataset-state',Static).update(luminance_state(self.profile,self.saved)+'\nActive file: '+str(active_directory(self.app.local_config_root,self.profile)/'luminance.json')+'\nTest data are permitted for simulation and uncalibrated presentation, never physical certification. Replace readings explicitly with actual observations; metadata alone cannot convert synthetic readings.')
         rows=summary(self.draft)
-        text='Draft measurements (not saved until Save):\nIntensity | n | mean cd/m² | sample SD cd/m²\n'
+        picker=self.query_one('#dataset-selected',Select)
+        previous=picker.value
+        options=[('New intensity','new')]+[(f"{r['screen_intensity']:g} — {r['luminance_cdm2']:g} cd/m²",str(r['screen_intensity'])) for r in rows]
+        with self.prevent(Select.Changed):
+            picker.set_options(options)
+            picker.value=previous if previous in [value for _,value in options] else 'new'
+        text='Saved + unsaved draft (Save active dataset to commit changes):\nIntensity | readings | mean cd/m² | SD cd/m²\n'
         text+='\n'.join(f"{r['screen_intensity']:g} | {r['n'] if r['n'] is not None else 'unknown (legacy summary)'} | {r['luminance_cdm2']:.6g} | "+('not estimated (single observation)' if r['sample_sd_cdm2'] is None else f"{r['sample_sd_cdm2']:.6g}") for r in rows)
         text+='\nRaw readings: '+ '; '.join(f"{r['screen_intensity']:g}: {r.get('readings_cdm2','unknown — legacy summary only')}" for r in rows)
         if any(r.get('source')=='legacy_summary_only' for r in self.draft['observations']): text+='\nLegacy means are labelled summary-only; raw repetitions were not present in the profile. Import original raw files to replace these summaries.'
         self.query_one('#dataset-statistics',Static).update(text)
 
     def on_select_changed(self,event):
-        if event.select.id=='dataset-selected' and event.value!='new' and self.is_mounted:
+        if not self.is_mounted:
+            return
+        if event.select.id=='dataset-selected' and event.value!='new':
             self.query_one('#dataset-command',Input).value=str(event.value)
+        if event.select.id=='dataset-task':
+            task=event.value
+            if task=='correct':
+                self.query_one('#dataset-mode',Select).value='replace_selected'
+                self.query_one('#dataset-feedback',Static).update(
+                    'Choose a saved intensity, load its readings, then confirm replacement. '
+                    'Existing measurements stay saved until Save active dataset.')
+            elif task=='add':
+                self.query_one('#dataset-mode',Select).value='merge'
+                self.query_one('#dataset-confirm',Checkbox).value=False
+            else:
+                self.query_one('#dataset-feedback',Static).update(
+                    'Expand Advanced below to import an existing JSON measurement file.')
+        self._update_measurement_controls()
+
+    def _parsed_readings(self):
+        raw=self.query_one('#dataset-readings',Input).value.strip()
+        if not raw:
+            raise ValueError('Enter one or more luminance readings (cd/m²), or leave this field empty until ready.')
+        values=[value.strip() for value in raw.split(',')]
+        if any(not value for value in values):
+            raise ValueError('Separate readings with commas; remove empty entries.')
+        command=self.query_one('#dataset-command',Input).value.strip()
+        if not command:
+            raise ValueError('Enter a digital intensity between 0 and 1.')
+        try:
+            return [observation(command,value,kind=str(self.query_one('#dataset-kind',Select).value))
+                    for value in values]
+        except ValueError as exc:
+            raise ValueError('Use a digital intensity from 0 to 1 and nonnegative finite luminance readings.') from exc
+
+    def _update_measurement_controls(self):
+        if not self.is_mounted:
+            return
+        mode=self.query_one('#dataset-mode',Select).value
+        self.query_one('#dataset-confirm',Checkbox).display=mode in ('replace_selected','replace_all')
+        command=self.query_one('#dataset-command',Input).value.strip()
+        readings=self.query_one('#dataset-readings',Input).value.strip()
+        self.query_one('#dataset-add',Button).disabled=not (command and readings)
 
     def on_input_changed(self,event):
-        if not self.is_mounted: return
+        if not self.is_mounted:
+            return
+        # Optional method, date, notes and JSON paths are not readings.
+        # An empty readings field is a normal neutral state, never a float error.
+        if event.input.id not in ('dataset-command','dataset-readings'):
+            return
+        self._update_measurement_controls()
+        command=self.query_one('#dataset-command',Input).value.strip()
+        raw=self.query_one('#dataset-readings',Input).value.strip()
+        if not command or not raw:
+            event.input.remove_class('invalid-input')
+            return
         try:
-            observation(self.query_one('#dataset-command',Input).value,0)
-            raw=self.query_one('#dataset-readings',Input).value.strip()
-            if raw:
-                for value in raw.split(','): observation(0,value)
-            self.query_one('#dataset-feedback',Static).update('Allowed: intensity 0–1; readings finite ≥ 0. Values are retained for correction; nothing saved yet.')
-            # The Apply handler revalidates every reading before changing the draft.
+            self._parsed_readings()
         except ValueError as exc:
-            event.input.add_class('invalid-input'); self.query_one('#dataset-feedback',Static).update(str(exc))
+            event.input.add_class('invalid-input')
+            self.query_one('#dataset-feedback',Static).update(str(exc))
             return
         event.input.remove_class('invalid-input')
+        self.query_one('#dataset-feedback',Static).update(
+            'Readings valid. Select Add readings to draft, then Save active dataset.')
 
     def _metadata(self):
         for key in ('method','date','notes'): self.draft[key]=self.query_one('#dataset-'+key,Input).value.strip()
@@ -135,17 +209,26 @@ class LuminanceDataScreen(Screen):
             if key in ('dataset-add','dataset-import'):
                 mode=str(self.query_one('#dataset-mode',Select).value)
                 confirmed=self.query_one('#dataset-confirm',Checkbox).value
-                command=float(self.query_one('#dataset-command',Input).value)
                 if key=='dataset-add':
-                    rows=[observation(command,v,kind=str(self.query_one('#dataset-kind',Select).value)) for v in self.query_one('#dataset-readings',Input).value.split(',')]
+                    rows=self._parsed_readings()
+                    command=rows[0]['screen_intensity']
                 else:
-                    rows,metadata=import_observations(self.query_one('#dataset-import-path',Input).value,self.profile,self.app.local_config_root)
+                    raw_path=self.query_one('#dataset-import-path',Input).value.strip()
+                    if not raw_path:
+                        raise ValueError('Select a measurement JSON file before importing.')
+                    rows,metadata=import_observations(raw_path,self.profile,self.app.local_config_root)
+                    selected=self.query_one('#dataset-command',Input).value.strip()
+                    command=float(selected) if selected else None
                 self.draft=merge_observations(self.draft,rows,mode=mode,selected_command=command,confirmed=confirmed)
                 if mode=='replace_all': self.draft['physical_snapshot']=physical_snapshot(self.profile)
                 if key=='dataset-import':
                     for target,source in (('method','calibration_method'),('date','calibration_date'),('notes','calibration_notes')):
                         if metadata[source]: self.query_one('#dataset-'+target,Input).value=metadata[source]
-                self.refresh_data(); self.query_one('#dataset-feedback',Static).update('Preview applied to draft. Review statistics and provenance, then Save or Discard.'); return
+                self.refresh_data()
+                self.query_one('#dataset-readings',Input).value=''
+                self.query_one('#dataset-feedback',Static).update('Readings added to draft. Review the table, then Save active dataset (or Discard).')
+                self._update_measurement_controls()
+                return
             if key=='dataset-save':
                 self._metadata()
                 previous=self.saved
