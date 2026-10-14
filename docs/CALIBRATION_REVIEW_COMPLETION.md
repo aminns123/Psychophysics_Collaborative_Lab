@@ -1,3 +1,37 @@
+## Simple laboratory verification (October 2026)
+
+The **Calibrate → Review → Review physical verification** screen now asks you
+to select just one physical category:
+
+- **Geometry:** review your saved physical width/height, viewing distance and
+  ruler measurement; choose **Yes** only when the measurement satisfies the
+  laboratory's criteria.
+- **Photometry:** real, compatible photometer readings are required. Synthetic
+  test values and historical readings from a changed physical setup remain
+  available for software testing but **cannot** be certified as physical
+  photometry. When the saved method or readings indicate synthetic data,
+  **Yes** is not offered.
+- **Photon timing:** choose **Yes** only after an independent physical timing
+  measurement (e.g., a photodiode), not merely after a software-frame check.
+
+Each category uses **No / Measurements saved but not verified / Yes** and an
+explicit **Save this check** action. Only the selected category is changed;
+another category with outstanding evidence no longer blocks a supported
+Geometry or Timing declaration. A concise **Yes — I reviewed real laboratory
+evidence for this check** confirmation is requested when a new category is
+declared verified. Saved reports and observations remain immutable. The
+underlying `save_verification` scientific validation is unchanged.
+
+Experiment qualification then shows a compact pass/fail summary and targeted
+buttons, with the full technical requirements under **Advanced**. Qualification
+is a separate action and does not occur automatically when a measurement is
+saved.
+
+**For software testing without a photometer**, choose **Test experiment
+presentation** during Experiment setup (see `RESEARCHER_QUICKSTART.md`) and
+keep Photometry unverified. Your synthetic luminance pairs can still be offered
+for the test workflow, but must not be used to qualify human acquisition.
+
 # Calibration Review and completion
 
 Calibration setup, physical verification and experiment qualification are separate actions. A green setup page means saved observations/configuration; it does not certify emitted light, photon timing or human acquisition.
