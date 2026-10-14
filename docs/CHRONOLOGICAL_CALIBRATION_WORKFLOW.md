@@ -29,7 +29,7 @@ If Luminance shows **Saved data belong to an earlier display configuration**, th
 
 ### A. Continue software testing with old test values
 
-Choose **Keep saved TEST values — return without changing data**.
+Choose **Keep saved TEST values → Experiment Test mode**. PsyCoLab returns directly to Experiment with Test mode selected.
 
 Old readings are preserved and marked as test-only for your present physical configuration. Choose **Test an experiment** when configuring a run. This does **not** re-verify the old measurements and does **not** qualify human data acquisition.
 
