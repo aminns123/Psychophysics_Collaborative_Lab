@@ -39,6 +39,69 @@ def review_summary(profile, root):
     return '\n\n'.join(lines), '\n\n'.join(outstanding) or 'No setup/review actions outstanding. Human acquisition still checks its actual configuration and connected display.'
 
 
+
+def luminance_verification_guidance(profile, root):
+    """Read-only explanation of what needs review, never an auto-certification."""
+    from .calibration_dataset import load_active, physical_snapshot_differences
+    from .models import photometry_is_test_data
+
+    if not profile.luminance_calibration:
+        return ("No saved luminance pairs on this monitor. Setup can still be "
+                "finished; actual photometry is needed before human acquisition.")
+    parts = [f"{len(profile.luminance_calibration)} saved digital-command / cd/m² pairs. "
+             "Saved readings remain available; reopening Calibration does NOT "
+             "require repeating unchanged measurements."]
+    try:
+        dataset = load_active(root, profile)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        parts.append("The active measurement record needs inspection: " + str(exc)
+                     + " Earlier records are preserved. Open Calibrate → Luminance "
+                       "to inspect recovery history; do not declare Verified.")
+        return "\n".join(parts)
+
+    differences = physical_snapshot_differences(profile, dataset)
+    if differences:
+        names = {
+            'physical_width_m': 'screen width',
+            'physical_height_m': 'screen height',
+            'viewing_distance_m': 'viewing distance',
+            'expected_resolution_px': 'pixel resolution',
+            'display_binding': 'display binding',
+            'refresh_rate_hz': 'refresh rate',
+            'profile_uuid': 'physical profile identity',
+            'id': 'display profile ID',
+        }
+        changes = ', '.join(
+            f"{names.get(key, key)} ({before} → {after})"
+            for key, (before, after) in differences.items()
+        )
+        parts.append(
+            "Earlier measurement snapshot does not match this physical setup: "
+            + changes + ". This is NOT caused by simply reopening the TUI or "
+            "editing notes. Keep the old readings for reference/test workflows; "
+            "obtain applicable real photometry for the changed display before "
+            "declaring physical verification."
+        )
+    if photometry_is_test_data(profile) or any(
+        obs.get('data_kind') == 'synthetic'
+        for obs in dataset.get('observations', ())
+    ):
+        parts.append(
+            "TEST/SYNTHETIC photometry detected. These saved values remain usable "
+            "for simulation and designated presentation tests, but cannot be "
+            "marked physically Verified or qualify human acquisition. "
+            "Replacing the method label does not convert synthetic readings."
+        )
+    elif not differences:
+        parts.append(
+            "Saved measurements match the recorded physical configuration. "
+            "Physical verification still requires genuine instrument readings "
+            "and explicit independent laboratory review; no new measurements "
+            "are demanded merely because this page was opened."
+        )
+    return "\n".join(parts)
+
+
 def save_verification(profile, root, *, geometry_status, calibration_status,
                       timing_status, calibration_method, reviewed):
     from .models import photometry_is_test_data
@@ -57,12 +120,21 @@ def save_verification(profile, root, *, geometry_status, calibration_status,
     if 'geometry_status' in newly_verified and not progress['geometry']['measurement_recorded']:
         raise ValueError('Geometry needs a compatible saved ruler measurement. Record it on Geometry before verification.')
     if 'calibration_status' in newly_verified or 'calibration_method' in newly_verified:
-        from .calibration_dataset import load_active,physical_snapshot
+        from .calibration_dataset import load_active,physical_snapshot_differences
         dataset=load_active(root,profile)
         if any(r['data_kind']=='synthetic' for r in dataset['observations']):
-            raise ValueError('Fake/synthetic photometer data cannot be declared physically verified. Replace actual observations explicitly; changing metadata alone is not evidence.')
-        if dataset['physical_snapshot']!=physical_snapshot(profile):
-            raise ValueError('Saved luminance evidence belongs to an earlier physical configuration. Replace measurements explicitly before verification.')
+            raise ValueError('Fake/synthetic photometer data cannot be declared physically verified. Existing readings remain usable for test/simulation. Replace with actual observations before human acquisition; changing metadata alone is not evidence.')
+        differences = physical_snapshot_differences(profile, dataset)
+        if differences:
+            changed_fields = ', '.join(sorted(differences))
+            raise ValueError(
+                'Saved luminance evidence was recorded for a different physical '
+                f'configuration ({changed_fields}). It remains preserved and '
+                'usable as historical/test data. Review the changed physical '
+                'setup and obtain applicable real photometer readings before '
+                'declaring Verified; reopening Calibration or editing notes alone '
+                'does not invalidate measurements.'
+            )
         if len(candidate.luminance_calibration) < 2 or not candidate.calibration_method:
             raise ValueError('Photometry verification needs saved pairs and the actual instrument/method. Optional notes do not block setup completion.')
         if photometry_is_test_data(candidate):
