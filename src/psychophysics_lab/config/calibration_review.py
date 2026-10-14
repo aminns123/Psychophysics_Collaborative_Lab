@@ -160,6 +160,28 @@ def save_verification(profile, root, *, geometry_status, calibration_status,
     return save_profile(root, candidate, expected_revision=profile.revision)
 
 
+
+def save_one_verification(profile, root, *, category, status, reviewed, calibration_method=None):
+    """Review/save one category without accidentally changing the other two.
+
+    Delegates to the existing strict save_verification checks: test photometry
+    cannot become certified and geometry/timing still require laboratory review.
+    """
+    keys=('geometry_status','calibration_status','timing_status')
+    if category not in keys:
+        raise ValueError('Select Geometry, Photometry or Timing.')
+    if status not in ('unverified','manual_unverified','verified'):
+        raise ValueError('Choose Yes, No, or Measurements saved but not verified.')
+    statuses={key:getattr(profile,key) for key in keys}
+    statuses[category]=status
+    method=(profile.calibration_method if category!='calibration_status'
+            else profile.calibration_method if calibration_method is None
+            else calibration_method)
+    return save_verification(profile, root,
+                             **statuses, calibration_method=method,
+                             reviewed=reviewed)
+
+
 def qualify_experiment(profile, root, spec, *, reviewed, values=None):
     if not reviewed:
         raise ValueError('Explicitly confirm that the laboratory reviewed this experiment on this display.')
