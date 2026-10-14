@@ -49,6 +49,31 @@ class PhysicalVerificationScreen(Screen):
             yield Checkbox('I independently reviewed the changed Verified declarations with actual instruments and the laboratory criteria; supporting evidence is retained by the laboratory.',id='verification-reviewed')
         yield Footer()
 
+    def on_screen_resume(self):
+        """Refresh saved evidence after a child editor, without creating revisions."""
+        if not self.is_mounted:
+            return
+        from ..config.calibration_review import luminance_verification_guidance
+        self.app.reload_profiles()
+        current = self.app.monitor_profiles.get(self.profile.id)
+        if current is None:
+            self.query_one('#verification-feedback', Static).update(
+                'Selected monitor profile is no longer available. Return to Calibrate and select it explicitly.'
+            )
+            return
+        if current != self.profile:
+            self.profile = current
+            for key in ('geometry_status', 'calibration_status', 'timing_status'):
+                self.query_one('#verification-' + key, Select).value = getattr(current, key)
+            self.query_one('#verification-method', Input).value = current.calibration_method
+            self.query_one('#verification-feedback', Static).update(
+                'Saved calibration has changed. Verification fields were refreshed; '
+                'review instrument evidence before making declarations.'
+            )
+        self.query_one('#verification-luminance-guidance', Static).update(
+            luminance_verification_guidance(self.profile, self.app.local_config_root)
+        )
+
     def on_mount(self):
         if self.focus_category:
             target=self.query_one('#verification-'+self.focus_category,Select)
