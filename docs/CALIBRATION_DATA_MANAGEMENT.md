@@ -63,7 +63,9 @@ Open **Experiment → Configure → Experiment** (Contrast Sensitivity).
 Immediately above the **Background luminance** field, use **Select background
 luminance and digital intensity from this monitor**. Options pair an intensity
 command (0–1) with the **mean cd/m²** of all saved observations at that
-intensity; repetitions are **not** separate choices.
+intensity; repetitions are **not** separate choices. The full-command
+endpoint at intensity 1.0 can determine the measured maximum, but is **not**
+offered as a background selection because the CSF background must be below 1.
 
 - Choose a saved row to populate **both** `Background_Luminance` and
   `Background_Screen_intensity` together. Those two fields become
