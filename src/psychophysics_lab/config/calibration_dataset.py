@@ -28,6 +28,21 @@ def physical_snapshot(profile):
     return {key:profile.to_dict()[key] for key in (*_DIAGNOSTIC_PHYSICAL_FIELDS,'profile_uuid','id')}
 
 
+
+def physical_snapshot_differences(profile, dataset):
+    """Explain incompatible measurement geometry without modifying old evidence.
+
+    Only differences in the established physical snapshot are reported.
+    Metadata-only revisions intentionally do not enter the comparison.
+    """
+    current = physical_snapshot(profile)
+    saved = dataset.get('physical_snapshot')
+    if not isinstance(saved, dict):
+        return {'physical_snapshot': (saved, current)}
+    return {key: (saved.get(key), value)
+            for key, value in current.items() if saved.get(key) != value}
+
+
 def observation(command, reading, *, kind='unspecified', source='manual', identifier=None, recorded_utc=None):
     if isinstance(command,bool) or isinstance(reading,bool): raise ValueError('Measurements must be numbers, not booleans.')
     point=LuminanceCalibrationPoint(float(command),float(reading)); point.validate()

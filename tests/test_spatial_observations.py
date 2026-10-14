@@ -256,3 +256,59 @@ def test_application_loop_returns_without_advancing_on_success_failure_or_abort(
     assert prompts[1]['geometry_summary']
     assert preferences(config_root(ROOT))['calibration_active_stage']==stage
     if failure: assert str(tmp_path/'error.log') in prompts[1]['geometry_summary']
+
+
+def test_calibration_draft_with_old_report_path_does_not_crash_or_restore_dynamic_select(tmp_path, display):
+    """Reproduces Windows InvalidSelectValueError from check_005 saved report."""
+    stale_path = 'diagnostics/display_geometry/' + display.id + '/2026-10-14/check_005/geometry_check.json'
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        # A prior UI revision could save *all* Select values in display_draft.
+        app.display_draft = {
+            'spatial-report': stale_path,
+            'geometry-monitor': display.id,
+            'geometry-value': '4.2',
+        }
+        async with app.run_test(size=(110, 40)) as pilot:
+            app.open_hub_page('display')
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, DisplayCheckScreen)
+            assert screen.query_one('#geometry-value', Input).value == '4.2'
+            assert screen.query_one('#geometry-monitor', Select).value == display.id
+            assert screen.query_one('#spatial-report', Select).value != stale_path
+            # Leaving the page only remembers actual diagnostic input fields.
+            app.open_hub_page('setup')
+            await pilot.pause()
+            assert 'spatial-report' not in app.display_draft
+            app.open_hub_page('display')
+            await pilot.pause()
+            assert isinstance(app.screen, DisplayCheckScreen)
+    asyncio.run(scenario())
+
+
+def test_dynamic_report_selection_is_never_saved_as_fullscreen_navigation(tmp_path, display):
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        async with app.run_test(size=(110, 40)) as pilot:
+            app.open_hub_page('display')
+            await pilot.pause()
+            app.screen._go_to_stage('spatial')
+            app.screen._save_fullscreen_navigation('spatial')
+            settings = preferences(config_root(ROOT))['calibration_navigation']['settings']
+            assert 'spatial-report' not in settings
+            assert 'geometry-value' in settings
+    asyncio.run(scenario())
+
+
+def test_removed_monitor_in_calibration_draft_uses_available_default(tmp_path):
+    """Previously saved Select choices must never crash a new monitor setup."""
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app.display_draft = {'geometry-monitor': 'no-longer-connected-monitor'}
+        async with app.run_test(size=(110, 40)) as pilot:
+            app.open_hub_page('display')
+            await pilot.pause()
+            assert isinstance(app.screen, DisplayCheckScreen)
+            assert app.screen.query_one('#geometry-monitor', Select).value in app.monitor_profiles
+    asyncio.run(scenario())

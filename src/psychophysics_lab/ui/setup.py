@@ -11,6 +11,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher
+from textual.widgets._select import InvalidSelectValueError
 
 from ..analysis.thresholds import analyse_thresholds
 from ..config.models import SetupRequest
@@ -73,6 +74,18 @@ def _is_blank_select_value(value: Any) -> bool:
         value is getattr(Select, "BLANK", None)
         or value is getattr(Select, "NULL", None)
     )
+
+
+def _restorable_calibration_field(widget_id: str | None) -> bool:
+    """Only draft actual diagnostic inputs, never dynamic report selectors.
+
+    A saved spatial-report value is a *path*, and Select's options are built
+    later from the current diagnostic index. Restoring that path during mount
+    raises InvalidSelectValueError and used to terminate PsyCoLab.
+    """
+    return bool(widget_id and (
+        widget_id.startswith("geometry-") or widget_id == "cal-temporal-mode"
+    ))
 
 
 def _workspace_request(data_root: Path) -> SetupRequest | None:
@@ -660,12 +673,20 @@ class DisplayCheckScreen(HubPage):
 
     def on_mount(self) -> None:
         for key, value in self.app.display_draft.items():
+            # Old preferences and navigation drafts may include a selected
+            # spatial diagnostic path, populated only after this screen mounts.
+            # Ignore that transient selector instead of crashing at startup.
+            if not _restorable_calibration_field(key):
+                continue
             matches = self.query("#" + key)
             if matches:
                 try:
                     matches.first().value = value
-                except ValueError:
-                    pass
+                except (ValueError, TypeError, InvalidSelectValueError):
+                    # A saved monitor/diagnostic option can disappear following
+                    # a physical display change or upgrade. Retain the current
+                    # safe default rather than terminate the full TUI.
+                    continue
         self._refresh_preview()
         self._refresh_latest()
         self._refresh_stage_status()
@@ -837,7 +858,7 @@ class DisplayCheckScreen(HubPage):
     def _save_fullscreen_navigation(self, kind):
         # Temporary UI state only; no monitor revision or certification write.
         settings = {widget.id: widget.value for widget in self.query("Input, Select")
-                    if widget.id and (widget.id.startswith("geometry-") or widget.id == "cal-temporal-mode")
+                    if _restorable_calibration_field(widget.id)
                     and not _is_blank_select_value(widget.value)}
         save_preferences(self.app.local_config_root, calibration_navigation={
             "section": "calibrate", "profile": self._profile().id,
@@ -894,8 +915,12 @@ class DisplayCheckScreen(HubPage):
                 self.query_one("#geometry-status", Static).update(f"Observation not saved: {exc}")
             return
         if event.button.id == "open-active-luminance":
-            from .luminance_data import LuminanceDataScreen
-            self.app.push_screen(LuminanceDataScreen(self._profile()))
+            event.stop()
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(self.app, self._profile())
+            if error:
+                self.query_one("#geometry-status", Static).update(error)
+                self.app.notify(error, title="Luminance data need inspection", severity="warning", timeout=12)
             return
         if event.button.id in {"calibration-finish", "review-physical-verification", "review-qualification"}:
             event.stop()
@@ -1804,8 +1829,10 @@ class ExperimentConfigScreen(Screen):
                     "Luminance data need repair in Calibrate → Luminance: " + str(exc)
                 )
             else:
-                from .luminance_data import LuminanceDataScreen
-                self.app.push_screen(LuminanceDataScreen(profile, experiment_id=self.experiment.id))
+                from .luminance_data import open_luminance_editor
+                error = open_luminance_editor(self.app, profile, experiment_id=self.experiment.id)
+                if error:
+                    self.query_one("#config-status", Static).update(error)
             return
         if event.button.id == "change-display":
             event.stop()
@@ -2166,8 +2193,11 @@ class ReviewScreen(Screen):
         row = next(item for item in self.readiness_report["requirements"] if item["key"] == key)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
         if key == "luminance":
-            from .luminance_data import LuminanceDataScreen
-            self.app.push_screen(LuminanceDataScreen(profile,experiment_id=self.request.experiment_id))
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(self.app, profile, experiment_id=self.request.experiment_id)
+            if error:
+                self.query_one('#review-status', Static).update(error)
+                self.app.notify(error, title="Luminance data need inspection", severity="warning", timeout=12)
             return
         if row["destination"] in {"verification", "qualification"}:
             from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
@@ -2354,7 +2384,12 @@ class PsyCoLabSetupApp(App):
 
     def open_hub_page(self, page: str) -> None:
         if isinstance(self.screen, DisplayCheckScreen):
-            self.display_draft = {w.id: w.value for w in self.screen.query("Input, Select") if w.id}
+            self.display_draft = {
+                w.id: w.value
+                for w in self.screen.query("Input, Select")
+                if _restorable_calibration_field(w.id)
+                and not _is_blank_select_value(w.value)
+            }
         for screen in self.screen_stack:
             if isinstance(screen, ExperimentConfigScreen):
                 screen.remember_draft()

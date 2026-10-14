@@ -25,6 +25,10 @@ class PhysicalVerificationScreen(Screen):
             yield Static('', id='verification-feedback', markup=False)
         with VerticalScroll(classes='page-body'):
             yield Static('Physical verification is an explicit laboratory declaration. Saved software tests and a green setup page do not measure emitted light or photon timing. Changing verification does not qualify an experiment.')
+            from ..config.calibration_review import luminance_verification_guidance
+            yield Static(luminance_verification_guidance(self.profile, self.app.local_config_root),
+                         markup=False, id='verification-luminance-guidance')
+            yield Button('Inspect existing luminance measurements', id='verification-open-luminance')
             for key, label, explanation in (
                 ('geometry_status','Geometry','Review the compatible ruler measurement, measured active dimensions and eye distance against your laboratory criteria.'),
                 ('calibration_status','Photometry','Use actual photometer observations. Test/fake data cannot be verified. Notes are optional for setup completion.'),
@@ -45,6 +49,31 @@ class PhysicalVerificationScreen(Screen):
             yield Checkbox('I independently reviewed the changed Verified declarations with actual instruments and the laboratory criteria; supporting evidence is retained by the laboratory.',id='verification-reviewed')
         yield Footer()
 
+    def on_screen_resume(self):
+        """Refresh saved evidence after a child editor, without creating revisions."""
+        if not self.is_mounted:
+            return
+        from ..config.calibration_review import luminance_verification_guidance
+        self.app.reload_profiles()
+        current = self.app.monitor_profiles.get(self.profile.id)
+        if current is None:
+            self.query_one('#verification-feedback', Static).update(
+                'Selected monitor profile is no longer available. Return to Calibrate and select it explicitly.'
+            )
+            return
+        if current != self.profile:
+            self.profile = current
+            for key in ('geometry_status', 'calibration_status', 'timing_status'):
+                self.query_one('#verification-' + key, Select).value = getattr(current, key)
+            self.query_one('#verification-method', Input).value = current.calibration_method
+            self.query_one('#verification-feedback', Static).update(
+                'Saved calibration has changed. Verification fields were refreshed; '
+                'review instrument evidence before making declarations.'
+            )
+        self.query_one('#verification-luminance-guidance', Static).update(
+            luminance_verification_guidance(self.profile, self.app.local_config_root)
+        )
+
     def on_mount(self):
         if self.focus_category:
             target=self.query_one('#verification-'+self.focus_category,Select)
@@ -54,6 +83,13 @@ class PhysicalVerificationScreen(Screen):
     def on_button_pressed(self,event):
         if event.button.id=='verification-back':
             self.app.pop_screen()
+        elif event.button.id=='verification-open-luminance':
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(
+                self.app, self.profile, experiment_id=self.experiment_id
+            )
+            if error:
+                self.query_one('#verification-feedback', Static).update(error)
         elif event.button.id=='verification-save':
             try:
                 result=save_verification(self.profile,self.app.local_config_root,
@@ -133,8 +169,10 @@ class ExperimentQualificationScreen(Screen):
             if isinstance(parent,ReviewScreen) and parent.request.experiment_id==spec.id:
                 self.app.pop_screen(); parent.resolve_requirement(key); return
             if key=='luminance':
-                from .luminance_data import LuminanceDataScreen
-                self.app.push_screen(LuminanceDataScreen(self.profile,experiment_id=spec.id))
+                from .luminance_data import open_luminance_editor
+                error = open_luminance_editor(self.app, self.profile, experiment_id=spec.id)
+                if error:
+                    self.query_one('#qualification-feedback', Static).update(error)
             elif key=='binding':
                 from .profiles import ProfileScreen
                 self.app.push_screen(ProfileScreen(profile=self.profile,focus_field='profile-binding'))
