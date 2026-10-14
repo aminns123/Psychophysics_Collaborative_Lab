@@ -64,7 +64,9 @@ class LuminanceDataScreen(Screen):
             yield Checkbox('Yes — replace this intensity’s old readings; history is kept.',id='dataset-confirm')
             yield Button('Add readings to draft',id='dataset-add')
             yield Static('No changes to the saved measurements until you choose Save active dataset.',markup=False)
-            with Collapsible(title='Advanced — import, reset, export and metadata',collapsed=True):
+            with Collapsible(title='Advanced — raw readings, JSON import/export, reset',collapsed=True):
+                yield Static('',id='dataset-raw',markup=False)
+                yield Static('',id='dataset-data-location',markup=False)
                 yield Label('How to combine observations')
                 yield Select([('Keep existing readings and add repetitions','merge'),
                               ('Add a new intensity','append'),
@@ -101,7 +103,12 @@ class LuminanceDataScreen(Screen):
         self.refresh_data()
 
     def refresh_data(self):
-        self.query_one('#dataset-state',Static).update(luminance_state(self.profile,self.saved)+'\nActive file: '+str(active_directory(self.app.local_config_root,self.profile)/'luminance.json')+'\nTest data are permitted for simulation and uncalibrated presentation, never physical certification. Replace readings explicitly with actual observations; metadata alone cannot convert synthetic readings.')
+        state=luminance_state(self.profile,self.saved)
+        self.query_one('#dataset-state',Static).update(
+            state+'\nSaved values remain available for test presentation and simulation. '
+            'Actual photometer measurements must be physically reviewed before human acquisition.')
+        self.query_one('#dataset-data-location',Static).update(
+            'Local dataset: '+str(active_directory(self.app.local_config_root,self.profile)/'luminance.json'))
         rows=summary(self.draft)
         picker=self.query_one('#dataset-selected',Select)
         previous=picker.value
@@ -111,9 +118,13 @@ class LuminanceDataScreen(Screen):
             picker.value=previous if previous in [value for _,value in options] else 'new'
         text='Saved + unsaved draft (Save active dataset to commit changes):\nIntensity | readings | mean cd/m² | SD cd/m²\n'
         text+='\n'.join(f"{r['screen_intensity']:g} | {r['n'] if r['n'] is not None else 'unknown (legacy summary)'} | {r['luminance_cdm2']:.6g} | "+('not estimated (single observation)' if r['sample_sd_cdm2'] is None else f"{r['sample_sd_cdm2']:.6g}") for r in rows)
-        text+='\nRaw readings: '+ '; '.join(f"{r['screen_intensity']:g}: {r.get('readings_cdm2','unknown — legacy summary only')}" for r in rows)
-        if any(r.get('source')=='legacy_summary_only' for r in self.draft['observations']): text+='\nLegacy means are labelled summary-only; raw repetitions were not present in the profile. Import original raw files to replace these summaries.'
+        raw='Raw readings by digital command:\n' + '; '.join(
+            f"{r['screen_intensity']:g}: {r.get('readings_cdm2','unknown — legacy summary only')}"
+            for r in rows)
+        if any(r.get('source')=='legacy_summary_only' for r in self.draft['observations']):
+            raw+='\nLegacy means have no recorded repetitions. Use Replace after reviewing original source data.'
         self.query_one('#dataset-statistics',Static).update(text)
+        self.query_one('#dataset-raw',Static).update(raw)
 
     def on_select_changed(self,event):
         if not self.is_mounted:
