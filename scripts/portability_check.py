@@ -25,6 +25,17 @@ FORBIDDEN_TRACKED_PREFIXES = (
     "local_psychophysics_data/",
 )
 
+# Match directory components so nested local folders are rejected too.
+LOCAL_DIRECTORY_NAMES = {
+    ".venv", ".vscode", ".idea", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".psycolab_logs", "local_psychophysics_config", "local_psychophysics_data",
+    "psycolab_data",
+}
+LOCAL_FILE_NAMES = {
+    "desktop.ini", "thumbs.db", ".ds_store", ".psycolab_local.json",
+    ".psycolab_preferences.lock",
+}
+
 SCAN_PREFIXES = (
     "src/",
     "simulations/",
@@ -135,6 +146,15 @@ def main() -> int:
 
     for path in tracked:
         normalized = path.replace("\\", "/")
+        parts = normalized.lower().split("/")
+        name = parts[-1]
+        if any(part in LOCAL_DIRECTORY_NAMES or part.startswith(".venv.incompatible-")
+               for part in parts[:-1]):
+            failures.append(f"tracked local configuration/environment/data: {path}")
+        if name in LOCAL_FILE_NAMES or name == ".env" or (
+            name.startswith(".env.") and name != ".env.example"
+        ):
+            failures.append(f"tracked machine metadata/preferences/environment file: {path}")
         if normalized.endswith((".pyc", ".pyo")) or "/__pycache__/" in f"/{normalized}":
             failures.append(f"tracked Python cache: {path}")
         if any(normalized.startswith(prefix) for prefix in FORBIDDEN_TRACKED_PREFIXES):
@@ -164,8 +184,8 @@ def main() -> int:
         for failure in failures:
             print(f" - {failure}")
         print(
-            "\nRun scripts/cleanup_git_tracking.py for tracked local artefacts, "
-            "then review any genuine hard-coded path finding."
+            "\nReview flagged paths and use git rm --cached for confirmed local-only files, "
+            "preserving their local copies. Review any hard-coded path findings separately."
         )
         return 1
 

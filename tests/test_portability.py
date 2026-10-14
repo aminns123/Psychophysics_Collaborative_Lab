@@ -75,10 +75,26 @@ def test_shared_runtime_files_do_not_contain_author_specific_path_literals():
 
 @pytest.mark.parametrize("name", ["tmp/archive-audit/dependency.whl", "temp/probe.py",
                                  ".idea/workspace.xml", "local_psychophysics_data/S001/trials.tsv",
-                                 "run.log", "state.json.tmp", ".venv.incompatible-old/file.py"])
+                                 "run.log", "state.json.tmp", ".venv.incompatible-old/file.py",
+                                 "desktop.ini", "nested/Thumbs.db", ".DS_Store", ".env",
+                                 "nested/.env.local", ".psycolab_local.json", ".psycolab_preferences.lock",
+                                 "local_psychophysics_config/profiles/display/current/luminance.json",
+                                 "PsyCoLab_Data/S001/trials.tsv", "nested/.mypy_cache/cache.json",
+                                 ".ruff_cache/cache", "nested/.venv.incompatible-old/file.py"])
 def test_portability_checker_rejects_tracked_temporary_data_and_runtime_files(monkeypatch, name):
     from scripts import portability_check
 
     monkeypatch.setattr(portability_check, "tracked_files", lambda: [name])
     monkeypatch.setattr(portability_check, "text_files", lambda: [])
     assert portability_check.main() == 1
+
+
+@pytest.mark.parametrize("name", [".env.example", "nested/.env.example",
+                                 "configs/monitors/legacy_reference_display.json",
+                                 "tests/fixtures/curated.csv", "docs/figure.png", "packages.zip"])
+def test_portability_checker_keeps_shared_examples_and_resources(monkeypatch, name):
+    from scripts import portability_check
+
+    monkeypatch.setattr(portability_check, "tracked_files", lambda: [name])
+    monkeypatch.setattr(portability_check, "text_files", lambda: [])
+    assert portability_check.main() == 0

@@ -47,9 +47,13 @@ temporary compatibility code during incremental migration:
 - `Functions/functionsForUse.py` supplies legacy file and geometry helpers.
 
 The runner temporarily establishes the checkout working directory/import path
-for this layer. `packages.zip` remains a runtime dependency archive pending a
-separate contents, dependency and licensing audit. A source checkout is still
-needed for acquisition; the package installation alone does not replace it.
+for this layer. `packages.zip` remains a runtime dependency archive: static
+inspection found bundled Pyglet 1.5.19, `wmi.py`, and five Python 3.7 cache files.
+`libC.py` prepends this archive to the import path, so loading Pyglet from it is
+import-order dependent despite the installed Pyglet 1.5.27 requirement. The archive
+is retained unchanged until a separate renderer-equivalence and provenance review;
+see [installation and dependency limitations](INSTALLATION.md). A source checkout
+is still needed for acquisition; package installation alone does not replace it.
 
 ## Acquisition and lifecycle
 

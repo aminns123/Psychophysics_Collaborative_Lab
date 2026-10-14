@@ -38,3 +38,18 @@ local_psychophysics_data/
 
 # Local advisory preference lock
 .psycolab_preferences.lock
+
+# Windows/macOS filesystem metadata
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Local environment variables and secrets; keep a shareable example trackable
+.env
+.env.*
+!.env.example
+
+# Defensive exclusions if local folders are accidentally placed in the checkout.
+# The application's normal configuration/data roots remain outside the checkout.
+local_psychophysics_config/
+PsyCoLab_Data/

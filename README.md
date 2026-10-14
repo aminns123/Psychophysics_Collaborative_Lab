@@ -55,6 +55,9 @@ presentation or response times.
 
 ## First launch on Windows
 
+See [installation and moving to another laboratory computer](docs/INSTALLATION.md)
+for interpreter detection, local environments, data separation and validation.
+
 1. Clone/download the repository.
 2. Install Python **3.11**.
 3. Double-click `run_psycolab.bat`.
