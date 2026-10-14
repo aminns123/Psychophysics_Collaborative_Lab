@@ -380,30 +380,9 @@ class ProfileScreen(Screen):
                 status.update(notice)
                 self.query_one("#profile-save-feedback", Static).update(f"[green]{notice}[/green]")
                 self.app.notify(notice, title="Display profile saved", timeout=8)
-                # If this editor was opened from a calibration stage and that
-                # stage now has SAVED evidence, resume on the next chronological
-                # page. Do not auto-verify any physical instrument or experiment.
-                try:
-                    from .setup import DisplayCheckScreen
-                    from ..config.calibration_workflow import advance_if_completed
-                    previous = (self.app.screen_stack[-2]
-                                if len(self.app.screen_stack) >= 2 else None)
-                    if isinstance(previous, DisplayCheckScreen) and not no_changes:
-                        stage = previous.active_calibration_stage
-                        following = advance_if_completed(
-                            persisted, self.app.local_config_root, stage
-                        )
-                        if following:
-                            self.app.notify(
-                                f"Saved {stage} data. Continuing to {following}. "
-                                "Physical verification remains separate.",
-                                timeout=9,
-                            )
-                except (OSError, ValueError) as exc:
-                    self.app.notify(
-                        f"Profile was saved, but automatic page advance failed: {exc}",
-                        severity="warning", timeout=8,
-                    )
+                # Saving a profile must not silently change the current
+                # calibration page. Researchers review the saved result and
+                # choose Next stage themselves when ready.
                 self.app.pop_screen()
         except Exception as exc:
             action = event.button.id
