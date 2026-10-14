@@ -37,9 +37,13 @@ def test_blank_reading_is_neutral_and_test_add_keeps_existing_values(tmp_path, m
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()
             screen = app.screen
-            assert screen.query_one("#dataset-add", Button).disabled
             assert screen.query_one("#dataset-readings", Input).value == ""
             assert "could not convert" not in str(screen.query_one("#dataset-feedback", Static).render()).lower()
+            screen.query_one("#dataset-add", Button).press()
+            await pilot.pause()
+            assert "Enter one or more luminance readings" in str(
+                screen.query_one("#dataset-feedback", Static).render()
+            )
 
             # Optional notes or export paths should not be parsed as floating point readings.
             screen.query_one("#dataset-notes", Input).value = "pilot configuration"
@@ -50,7 +54,6 @@ def test_blank_reading_is_neutral_and_test_add_keeps_existing_values(tmp_path, m
             screen.query_one("#dataset-readings", Input).value = "60, 62"
             screen.query_one("#dataset-kind", Select).value = "synthetic"
             await pilot.pause()
-            assert not screen.query_one("#dataset-add", Button).disabled
             screen.query_one("#dataset-add", Button).press()
             await pilot.pause()
             assert len(summary(screen.draft)) == 4
@@ -58,7 +61,7 @@ def test_blank_reading_is_neutral_and_test_add_keeps_existing_values(tmp_path, m
             row = next(p for p in summary(screen.draft) if p["screen_intensity"] == .6)
             assert row["n"] == 2 and row["luminance_cdm2"] == 61
             assert screen.query_one("#dataset-readings", Input).value == ""
-            assert screen.query_one("#dataset-add", Button).disabled
+            assert screen.query_one("#dataset-readings", Input).value == ""
 
             screen.query_one("#dataset-save", Button).press()
             await pilot.pause()
