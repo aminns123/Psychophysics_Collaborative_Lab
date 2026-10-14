@@ -2331,6 +2331,7 @@ class PsyCoLabSetupApp(App):
         margin-top: 1;
     }
     #code-text { width: 100%; }
+    #human-participant-panel { height: auto; width: 100%; }
     #calibration-stage-nav { height: 3; width: 100%; }
     #calibration-stage-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
     #calibration-stage-nav Button.calibration-active {
@@ -2366,6 +2367,8 @@ class PsyCoLabSetupApp(App):
                 self.mapping_drafts[keys] = saved_draft.get("background_selection", {})
         self.display_draft = {}
         self.display_guide_target_profile_id = None
+        # Researcher intent is UI-only: it never downgrades acquisition preflight.
+        self.run_intent = "test"
 
     def inspect_source(self, path: Path) -> None:
         try:
@@ -2486,12 +2489,15 @@ class PsyCoLabSetupApp(App):
                 yield Button("Configure Experiment", id="configure", variant="primary")
             yield Static("", id="setup-status")
         with VerticalScroll(id="setup-body"):
-            yield Static(
-                "[b]Configure an experiment — human or simulated[/b]\n"
-                "Set up one experiment with the same conditions, physical units and adaptive "
-                "rules. At final review choose a human participant or a virtual observer. "
-                "The TUI closes before acquisition begins."
-            )
+            yield Static("[b]What would you like to do?[/b]")
+            yield Select([
+                ("Test an experiment on this monitor (no photometer required)", "test"),
+                ("Run a human experiment (physical verification required)", "human"),
+                ("Run a simulation with a virtual observer", "simulation"),
+            ], value=self.run_intent, allow_blank=False, id="run-intent")
+            yield Static("", id="run-intent-help", markup=False)
+            yield Static("Configure the experiment and its stimuli. The chosen run type "
+                         "decides which final checks are shown.", markup=False)
             if self.simulation_summary:
                 yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
@@ -2505,19 +2511,12 @@ class PsyCoLabSetupApp(App):
             yield Button("Load Data Workspace", id="load-data-root")
             yield Static(last_summary, id="last-run-summary", classes="field-help")
 
-            yield Label("Existing participant")
-            yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
-            yield Label("Participant ID")
-            yield Input(
-                value=participant_default,
-                placeholder="e.g. S001 or subject_1",
-                id="participant",
-            )
-            yield Static(
-                "A pseudonymous participant ID is required only if you choose Run human experiment "
-                "on the final review. Leave blank for a virtual observer.",
-                classes="field-help",
-            )
+            with Vertical(id="human-participant-panel"):
+                yield Label("Existing participant")
+                yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
+                yield Label("Participant ID (pseudonymous)")
+                yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
+                yield Static("Only needed for real human acquisition.", classes="field-help")
 
             yield Label("Starting settings")
             yield Select(
@@ -2547,6 +2546,7 @@ class PsyCoLabSetupApp(App):
 
     def on_mount(self) -> None:
         self._refresh_experiment_context()
+        self._refresh_run_intent()
         if self.geometry_summary:
             self.call_after_refresh(self._restore_diagnostic_review)
 
@@ -2584,6 +2584,31 @@ class PsyCoLabSetupApp(App):
         except (KeyError, TypeError, ValueError) as exc:
             self.screen_stack[0].query_one("#setup-status", Static).update(
                 f"Cannot restore calibration context: {exc}. Select current settings explicitly.")
+
+    def _refresh_run_intent(self) -> None:
+        if not self.screen_stack:
+            return
+        home=self.screen_stack[0]
+        try:
+            selected=home.query_one("#run-intent",Select).value
+            explanation=home.query_one("#run-intent-help",Static)
+            human_panel=home.query_one("#human-participant-panel",Vertical)
+        except Exception:
+            return  # Another hub screen is mounting, or startup is incomplete.
+        intent=str(selected) if selected in ("test","human","simulation") else "test"
+        self.run_intent=intent
+        human_panel.display=intent=="human"
+        if intent=="test":
+            explanation.update("TEST MODE — draw real fullscreen stimuli using saved test settings. "
+                               "No photometer or human qualification required. "
+                               "Digital bounds and physical display safety still apply.")
+        elif intent=="simulation":
+            explanation.update("SIMULATION — use a virtual observer. No fullscreen stimulus "
+                               "or physical laboratory certification required.")
+        else:
+            explanation.update("HUMAN ACQUISITION — use a participant ID. Physical geometry, "
+                               "photometry and any experiment-specific timing requirements "
+                               "must be genuinely reviewed and qualified.")
 
     def _compatible_profiles(self, experiment: ExperimentSpec) -> dict[str, Any]:
         # Availability is independent of human qualification.
@@ -2691,6 +2716,8 @@ class PsyCoLabSetupApp(App):
         if event.select.id == "participant-select":
             if not _is_blank_select_value(event.value) and str(event.value) != "__new__":
                 self.screen_stack[0].query_one("#participant", Input).value = str(event.value)
+        elif event.select.id == "run-intent":
+            self._refresh_run_intent()
         elif event.select.id == "experiment":
             self._refresh_experiment_context()
         elif event.select.id == "monitor-profile":
@@ -2724,9 +2751,12 @@ class PsyCoLabSetupApp(App):
             self.local_config_root = config_root(self.repo_root, data_root)
             self.data_root = data_root
             entered_participant = self.screen_stack[0].query_one("#participant", Input).value.strip()
-            # The final review chooses human or synthetic mode. Only the human
-            # path requires a participant identifier; no virtual run uses it.
-            participant = validate_participant_id(entered_participant or "synthetic_preview")
+            # Never carry a real participant ID into a software test/simulation.
+            # Test presentation reserves its own synthetic-only run identity.
+            participant = validate_participant_id(
+                entered_participant if self.run_intent == "human"
+                else "synthetic_preview"
+            )
             session_mode = self.screen_stack[0].query_one("#session-mode", Select).value
             experiment_id = self.screen_stack[0].query_one("#experiment", Select).value
             monitor_id = self.screen_stack[0].query_one("#monitor-profile", Select).value
