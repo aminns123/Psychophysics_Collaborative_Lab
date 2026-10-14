@@ -2,9 +2,9 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import Vertical, VerticalScroll, Horizontal
-from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Static, Label
+from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Static, Label, Collapsible
 
-from ..config.calibration_review import save_verification, qualify_experiment
+from ..config.calibration_review import save_verification, save_one_verification, qualify_experiment
 from ..config.preflight import qualification_checks
 from ..experiments.registry import list_experiments, get_experiment
 
@@ -17,37 +17,90 @@ class PhysicalVerificationScreen(Screen):
         self.focus_category = focus_category
 
     def compose(self) -> ComposeResult:
+        from ..config.calibration_review import luminance_verification_guidance
+        from ..config.calibration_progress import calibration_progress
+        from ..config.models import photometry_is_test_data
+        progress=calibration_progress(self.profile,self.app.local_config_root)
+        category=self.focus_category if self.focus_category in (
+            'geometry_status','calibration_status','timing_status') else 'geometry_status'
         with Vertical(id='fixed-shell'):
             yield Header()
             with Horizontal(classes='buttons'):
                 yield Button('Back to Review', id='verification-back')
-                yield Button('Save verification declarations', id='verification-save', variant='primary')
+                yield Button('Save this check', id='verification-save-category', variant='primary')
             yield Static('', id='verification-feedback', markup=False)
         with VerticalScroll(classes='page-body'):
-            yield Static('Physical verification is an explicit laboratory declaration. Saved software tests and a green setup page do not measure emitted light or photon timing. Changing verification does not qualify an experiment.')
-            from ..config.calibration_review import luminance_verification_guidance
-            yield Static(luminance_verification_guidance(self.profile, self.app.local_config_root),
-                         markup=False, id='verification-luminance-guidance')
-            yield Button('Inspect existing luminance measurements', id='verification-open-luminance')
-            for key, label, explanation in (
-                ('geometry_status','Geometry','Review the compatible ruler measurement, measured active dimensions and eye distance against your laboratory criteria.'),
-                ('calibration_status','Photometry','Use actual photometer observations. Test/fake data cannot be verified. Notes are optional for setup completion.'),
-                ('timing_status','Photon timing','Use independently recorded photodiode or equivalent evidence. OS refresh and software flips are insufficient.'),
+            yield Static('Select one check. Choose No / Saved / Yes. '
+                         'Save each category independently. Test data are never physical proof.',
+                         markup=False)
+            yield Label('Which measurement are you reviewing?')
+            yield Select([('Geometry — ruler and measured display','geometry_status'),
+                          ('Photometry — actual luminance meter','calibration_status'),
+                          ('Photon timing — external sensor','timing_status')],
+                         value=category, allow_blank=False, id='verification-category')
+            yield Static('',id='verification-category-guidance',markup=False)
+            for key,label,detail in (
+                ('geometry_status','Geometry','Check measured active image size, eye distance and the saved ruler error.'),
+                ('calibration_status','Photometry','Actual photometer readings are required for physical verification.'),
+                ('timing_status','Photon timing','Independent photodiode or equivalent timing evidence is required.'),
             ):
-                yield Label(label)
-                from ..config.calibration_progress import calibration_progress
-                state_key = {"geometry_status":"geometry","calibration_status":"luminance","timing_status":"timing"}[key]
-                state = calibration_progress(self.profile,self.app.local_config_root)[state_key]
-                required = self.experiment_id is not None and state_key in get_experiment(self.experiment_id).calibration_requirements
-                evidence = (f"{len(self.profile.luminance_calibration)} pairs saved; method: {self.profile.calibration_method or 'not recorded'}" if state_key=="luminance" else
-                            "Compatible diagnostic reports: " + (", ".join(state.get("reports",())) or "none"))
-                yield Static(explanation + "\nCurrent status: " + getattr(self.profile,key) + "\n" + evidence
-                    + ("\nRequired for selected experiment." if required else "\nNot required by a selected experiment / independent laboratory review."),markup=False)
-                yield Select([('Unverified','unverified'),('Measurements entered; unverified','manual_unverified'),('Verified — manually declared','verified')],value=getattr(self.profile,key),allow_blank=False,id='verification-'+key)
-            yield Label('Actual photometer instrument / method (needed to declare photometry verified)')
-            yield Input(value=self.profile.calibration_method,id='verification-method')
-            yield Checkbox('I independently reviewed the changed Verified declarations with actual instruments and the laboratory criteria; supporting evidence is retained by the laboratory.',id='verification-reviewed')
+                with Vertical(id='verification-panel-'+key):
+                    yield Static(label+' — '+detail,markup=False)
+                    stage={'geometry_status':'geometry',
+                           'calibration_status':'luminance',
+                           'timing_status':'timing'}[key]
+                    evidence=(f"{len(self.profile.luminance_calibration)} intensity/luminance pairs saved"
+                              if stage=='luminance' else
+                              'Compatible reports: '+(', '.join(progress[stage].get('reports',())) or 'none'))
+                    yield Static('Current: '+getattr(self.profile,key).replace('_',' ')+'\n'+evidence,
+                                 markup=False,id='verification-evidence-'+key)
+                    if key=='calibration_status':
+                        yield Static(luminance_verification_guidance(
+                            self.profile,self.app.local_config_root),
+                            markup=False,id='verification-luminance-guidance')
+                        yield Button('Inspect saved luminance readings',id='verification-open-luminance')
+                    options=[('No — not verified','unverified'),
+                             ('Measurements saved — not verified','manual_unverified'),
+                             ('Yes — I have reviewed physical evidence','verified')]
+                    if key=='calibration_status' and photometry_is_test_data(self.profile):
+                        options=options[:-1]  # Synthetic readings cannot be certified.
+                    initial=getattr(self.profile,key)
+                    if initial not in [value for _,value in options]:
+                        initial='manual_unverified'
+                    yield Select(options,value=initial,allow_blank=False,id='verification-'+key)
+                    if key=='calibration_status':
+                        yield Label('Photometer name / model (only for actual readings)')
+                        yield Input(value=self.profile.calibration_method,id='verification-method')
+            yield Checkbox('Yes — I reviewed real laboratory evidence for this check.',
+                           id='verification-reviewed')
+            with Collapsible(title='Advanced — save all declarations together',collapsed=True):
+                yield Button('Save verification declarations',id='verification-save')
         yield Footer()
+
+    def _refresh_category(self):
+        if not self.is_mounted:
+            return
+        selected=self.query_one('#verification-category',Select).value
+        labels={'geometry_status':'Geometry','calibration_status':'Photometry','timing_status':'Photon timing'}
+        for key in labels:
+            self.query_one('#verification-panel-'+key,Vertical).display=key==selected
+        if selected not in labels:
+            return
+        from ..config.models import photometry_is_test_data
+        if selected=='calibration_status' and photometry_is_test_data(self.profile):
+            explanation='TEST VALUES SAVED — real photometer readings required before physical verification. Do not change their source label.'
+        elif selected=='geometry_status':
+            explanation='Review the saved ruler measurement and actual screen geometry, then choose Yes only when they agree under laboratory criteria.'
+        elif selected=='timing_status':
+            explanation='Software timing is not photon timing. Choose Yes only with independently measured physical timing evidence.'
+        else:
+            explanation='Check actual photometer readings and the current display before choosing Yes. Saved values alone are not a physical certificate.'
+        self.query_one('#verification-category-guidance',Static).update(explanation)
+
+    def on_select_changed(self,event):
+        if event.select.id=='verification-category' and self.is_mounted:
+            self.query_one('#verification-reviewed',Checkbox).value=False
+            self._refresh_category()
 
     def on_screen_resume(self):
         """Refresh saved evidence after a child editor, without creating revisions."""
@@ -63,8 +116,18 @@ class PhysicalVerificationScreen(Screen):
             return
         if current != self.profile:
             self.profile = current
-            for key in ('geometry_status', 'calibration_status', 'timing_status'):
-                self.query_one('#verification-' + key, Select).value = getattr(current, key)
+            from ..config.models import photometry_is_test_data
+            photo=self.query_one('#verification-calibration_status',Select)
+            with self.prevent(Select.Changed):
+                choices=[('No — not verified','unverified'),
+                         ('Measurements saved — not verified','manual_unverified')]
+                if not photometry_is_test_data(current):
+                    choices.append(('Yes — I have reviewed physical evidence','verified'))
+                photo.set_options(choices)
+                for key in ('geometry_status', 'calibration_status', 'timing_status'):
+                    selector=self.query_one('#verification-' + key,Select)
+                    status=getattr(current,key)
+                    selector.value=status if status in [val for _,val in selector._options] else 'manual_unverified'
             self.query_one('#verification-method', Input).value = current.calibration_method
             self.query_one('#verification-feedback', Static).update(
                 'Saved calibration has changed. Verification fields were refreshed; '
@@ -73,12 +136,12 @@ class PhysicalVerificationScreen(Screen):
         self.query_one('#verification-luminance-guidance', Static).update(
             luminance_verification_guidance(self.profile, self.app.local_config_root)
         )
+        self._refresh_category()
 
     def on_mount(self):
-        if self.focus_category:
-            target=self.query_one('#verification-'+self.focus_category,Select)
-            self.call_after_refresh(target.scroll_visible)
-            self.call_after_refresh(target.focus)
+        self._refresh_category()
+        if self.focus_category in ('geometry_status','calibration_status','timing_status'):
+            self.call_after_refresh(self.query_one('#verification-category',Select).focus)
 
     def on_button_pressed(self,event):
         if event.button.id=='verification-back':
@@ -90,6 +153,36 @@ class PhysicalVerificationScreen(Screen):
             )
             if error:
                 self.query_one('#verification-feedback', Static).update(error)
+        elif event.button.id=='verification-save-category':
+            try:
+                category=str(self.query_one('#verification-category',Select).value)
+                status=str(self.query_one('#verification-'+category,Select).value)
+                result=save_one_verification(
+                    self.profile,self.app.local_config_root,category=category,
+                    status=status,reviewed=self.query_one('#verification-reviewed',Checkbox).value,
+                    calibration_method=(self.query_one('#verification-method',Input).value
+                                        if category=='calibration_status' else None),
+                )
+                self.app.reload_profiles()
+                if self.app.monitor_profiles.get(result.id)!=result:
+                    raise RuntimeError('Saved verification could not be reloaded.')
+                changed=result.revision!=self.profile.revision
+                self.profile=result
+                for key in ('geometry_status','calibration_status','timing_status'):
+                    selector=self.query_one('#verification-'+key,Select)
+                    if getattr(result,key) in [value for _,value in selector._options]:
+                        selector.value=getattr(result,key)
+                    self.query_one('#verification-evidence-'+key,Static).update(
+                        'Current: '+getattr(result,key).replace('_',' '))
+                self.query_one('#verification-reviewed',Checkbox).value=False
+                self.query_one('#verification-feedback',Static).update(
+                    ('Saved '+{'geometry_status':'Geometry','calibration_status':'Photometry',
+                               'timing_status':'Photon timing'}[category]+'. Other categories unchanged.'
+                     if changed else 'Already saved — nothing changed.')
+                )
+                self._refresh_category()
+            except (OSError,ValueError,RuntimeError,TypeError) as exc:
+                self.query_one('#verification-feedback',Static).update(str(exc))
         elif event.button.id=='verification-save':
             try:
                 result=save_verification(self.profile,self.app.local_config_root,
@@ -123,10 +216,12 @@ class ExperimentQualificationScreen(Screen):
             yield Static(f'Selected display: {self.profile.display_name}. Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
             specs=list_experiments()
             yield Select([(spec.display_name,spec.id) for spec in specs],value=self.experiment_id or specs[0].id,allow_blank=False,id='qualification-experiment')
-            yield Static('',id='qualification-checks',markup=False)
+            yield Static('',id='qualification-overview',markup=False)
             for key,label in [('binding','Bind display / resolution'),('geometry','Review geometry evidence'),('luminance','Open luminance measurements and verification'),('timing','Review photon timing evidence'),('contrast','Edit starting probe intensity / current range')]:
                 yield Button(label,id='qualification-resolve-'+key)
-            yield Checkbox('The laboratory reviewed this experiment on this display, including its stimulus/protocol requirements and supporting physical evidence.',id='qualification-reviewed')
+            yield Checkbox('Yes — I reviewed this experiment and its physical evidence.',id='qualification-reviewed')
+            with Collapsible(title='Advanced — detailed scientific qualification checks',collapsed=True):
+                yield Static('',id='qualification-checks',markup=False)
         yield Footer()
 
     def _spec_values(self):
@@ -147,7 +242,14 @@ class ExperimentQualificationScreen(Screen):
         for key in ('binding','geometry','luminance','timing','contrast'):
             self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='contrast_sensitivity'
         self.query_one('#qualification-checks',Static).update(text)
-        self.query_one('#qualification-save',Button).disabled=not all(item['passed'] for item in checks)
+        failures=[item for item in checks if not item['passed']]
+        self.query_one('#qualification-overview',Static).update(
+            'Ready to qualify this experiment.' if not failures else
+            str(len(failures))+' requirement(s) still need attention: '+
+            ', '.join(item['name'] for item in failures)+
+            '. Use the corresponding action above; details are under Advanced.'
+        )
+        self.query_one('#qualification-save',Button).disabled=bool(failures)
 
     def on_mount(self): self._refresh()
 

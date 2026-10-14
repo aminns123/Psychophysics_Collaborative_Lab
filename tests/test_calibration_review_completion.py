@@ -331,3 +331,80 @@ def test_calibration_luminance_editor_button_handles_unreadable_active_json(tmp_
             )
     asyncio.run(scenario())
     assert path.read_bytes() == original
+
+
+def test_save_one_geometry_does_not_force_fake_photometry_or_timing(tmp_path):
+    from psychophysics_lab.config.calibration_review import save_one_verification
+    p=fixture_profile()
+    fake=save_profile(config_root(ROOT),replace(p,calibration_method='photometer fake'),
+                      expected_revision=p.revision)
+    previous_calibration=fake.calibration_status
+    previous_timing=fake.timing_status
+    with pytest.raises(ValueError,match='Confirm independent'):
+        save_one_verification(fake,config_root(ROOT),category='geometry_status',
+                              status='verified',reviewed=False)
+    changed=save_one_verification(fake,config_root(ROOT),category='geometry_status',
+                                  status='verified',reviewed=True)
+    assert changed.geometry_status=='verified'
+    assert changed.calibration_status==previous_calibration
+    assert changed.timing_status==previous_timing
+    assert not changed.has_verified_luminance_mapping
+    assert changed.luminance_calibration==fake.luminance_calibration
+    assert changed.revision==fake.revision+1
+    again=save_one_verification(changed,config_root(ROOT),category='geometry_status',
+                                status='verified',reviewed=False)
+    assert again.revision==changed.revision
+    with pytest.raises(ValueError,match='Fake/synthetic'):
+        save_one_verification(changed,config_root(ROOT),category='calibration_status',
+                              status='verified',reviewed=True)
+
+
+def test_simple_verification_ui_saves_category_and_keeps_others(tmp_path):
+    from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
+    p=fixture_profile()
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test(size=(125,48)) as pilot:
+            page=PhysicalVerificationScreen(p,experiment_id=CSF_SPEC.id)
+            await app.push_screen(page)
+            await pilot.pause()
+            assert page.query_one('#verification-category',Select).value=='geometry_status'
+            assert page.query_one('#verification-panel-geometry_status').display
+            assert not page.query_one('#verification-panel-calibration_status').display
+            page.query_one('#verification-geometry_status',Select).value='verified'
+            page.query_one('#verification-save-category',Button).press()
+            await pilot.pause()
+            assert 'Confirm independent' in str(page.query_one('#verification-feedback',Static).render())
+            page.query_one('#verification-reviewed',Checkbox).value=True
+            page.query_one('#verification-save-category',Button).press()
+            await pilot.pause()
+            assert app.screen is page
+            assert page.profile.geometry_status=='verified'
+            assert page.profile.calibration_status==p.calibration_status
+            assert page.profile.timing_status==p.timing_status
+            assert 'Other categories unchanged' in str(page.query_one('#verification-feedback',Static).render())
+            page.query_one('#verification-category',Select).value='calibration_status'
+            await pilot.pause()
+            assert not page.query_one('#verification-panel-geometry_status').display
+            assert page.query_one('#verification-panel-calibration_status').display
+            assert not page.query_one('#verification-reviewed',Checkbox).value
+    asyncio.run(scenario())
+
+
+def test_synthetic_photometry_has_no_yes_verified_selection(tmp_path):
+    from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
+    p=fixture_profile()
+    fake=save_profile(config_root(ROOT),replace(p,calibration_method='photometer fake'),
+                      expected_revision=p.revision)
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        async with app.run_test(size=(125,48)) as pilot:
+            page=PhysicalVerificationScreen(fake,experiment_id=CSF_SPEC.id,
+                                            focus_category='calibration_status')
+            await app.push_screen(page)
+            await pilot.pause()
+            assert page.query_one('#verification-category',Select).value=='calibration_status'
+            photo=page.query_one('#verification-calibration_status',Select)
+            assert 'verified' not in [value for _,value in photo._options]
+            assert 'TEST VALUES' in str(page.query_one('#verification-category-guidance',Static).render())
+    asyncio.run(scenario())
