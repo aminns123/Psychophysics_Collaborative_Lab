@@ -58,13 +58,15 @@ def test_synthetic_means_are_selectable_but_not_human_qualification():
     assert not p.has_verified_luminance_mapping and not p.qualified_experiments
 
 
-def test_stale_physical_mapping_is_not_offered():
+def test_stale_physical_mapping_is_not_trusted_for_photometry():
     p=measured()
     changed=replace(p,viewing_distance_m=2)
     with pytest.raises(ValueError,match='stale'):
         mapping_choices(config_root(ROOT),changed)
     evidence=background_provenance(config_root(ROOT),changed,selected_values())
-    assert evidence['mapping_state']=='unavailable'
+    assert evidence['mapping_state']=='profile_only_test'
+    assert evidence['selection_basis']=='profile_summary_unverified'
+    assert not evidence['physically_verified_mapping']
 
 
 @pytest.mark.parametrize('endpoint',[True,False])
