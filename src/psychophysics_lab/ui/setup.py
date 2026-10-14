@@ -1474,10 +1474,6 @@ class ExperimentConfigScreen(Screen):
             for field in self.experiment.fields:
                 group = "Adaptive settings" if field.key in controls else field.section
                 groups.setdefault(group, []).append(field)
-            if self.experiment.id == "contrast_sensitivity":
-                yield Label("Background from this display's saved measurements")
-                yield Select([("Manual pair (unverified unless it matches a verified mapping)","manual")],value="manual",allow_blank=False,id="background-mapping")
-                yield Static("",id="mapping-provenance",markup=False)
             for group, fields in groups.items():
                 with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"}):
                     if group == "Adaptive settings":
@@ -1489,6 +1485,14 @@ class ExperimentConfigScreen(Screen):
                             id="condition-unit-help", classes="field-help",
                         )
                     for field in fields:
+                        if self.experiment.id == "contrast_sensitivity" and field.key == "Background_Luminance":
+                            yield Label("Select background luminance and digital intensity from this monitor")
+                            yield Select(
+                                [("Manual entry (only when deliberately selected)", "manual")],
+                                value="manual", allow_blank=False, id="background-mapping",
+                            )
+                            yield Static("", id="mapping-provenance", markup=False, classes="field-help")
+                            yield Button("Review / repair saved luminance measurements", id="edit-background-calibration")
                         yield from self._compose_field(field)
                         yield Static("", id="domain-"+field.key.replace('_','-'), markup=False, classes="field-help")
                         if self.experiment.id == "contrast_sensitivity" and field.key == "starting_probe_intensity":
@@ -1524,50 +1528,74 @@ class ExperimentConfigScreen(Screen):
     def _refresh_mapping_choices(self):
         if not self.is_mounted or self.experiment.id != 'contrast_sensitivity':
             return
-        from ..config.background_mapping import mapping_choices
+        from ..config.background_mapping import configuration_mapping_choices, background_provenance
+        from ..config.calibration_dataset import dataset_hash, physical_snapshot
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         selector = self.query_one('#background-mapping', Select)
         old_identity = getattr(self, '_mapping_identity', None)
-        try:
-            rows, dataset, state = mapping_choices(self.app.local_config_root, profile)
-            identity = (profile.id, profile.profile_uuid, content_hash(dataset['observations']))
-        except (OSError, ValueError, KeyError, TypeError) as exc:
-            rows, state = [], str(exc)
-            identity = (profile.id, profile.profile_uuid, 'unavailable')
+        rows, dataset, state, source = configuration_mapping_choices(
+            self.app.local_config_root, profile
+        )
+        # The source and the actual physical setup are part of selection identity.
+        # Notes-only revisions should not invalidate a selection.
+        mapping_hash = dataset_hash(dataset) if dataset is not None else content_hash({
+            "saved_pairs": [(p.screen_intensity, p.luminance_cdm2)
+                            for p in profile.luminance_calibration],
+            "physical_setup": physical_snapshot(profile),
+        })
+        identity = (profile.id, profile.profile_uuid, source, mapping_hash)
         self._mapping_rows = rows
         self._mapping_identity = identity
         selected = 'manual'
+        intensity = luminance = None
         try:
             intensity = float(self.query_one('#field-Background-Screen-intensity', Input).value)
             luminance = float(self.query_one('#field-Background-Luminance', Input).value)
-            selected = next((str(i) for i, p in enumerate(rows) if p['screen_intensity'] == intensity and p['luminance_cdm2'] == luminance), 'manual')
-        except ValueError:
+            selected = next((str(i) for i, point in enumerate(rows)
+                             if point['screen_intensity'] == intensity
+                             and point['luminance_cdm2'] == luminance), 'manual')
+        except (ValueError, TypeError):
             pass
         if old_identity is not None and old_identity != identity:
             self._mapping_requires_confirmation = True
         pending = getattr(self, '_mapping_requires_confirmation', False)
-        options = [('Manual pair (retain precise entries)', 'manual')]
+        options = [('Manual entry — retain or edit values independently', 'manual')]
         if pending:
-            options.insert(0, ('Display/mapping changed — choose a pair or explicitly choose Manual', 'confirm'))
+            options.insert(0, ('DISPLAY/CALIBRATION CHANGED — explicitly choose a new pair or Manual', 'confirm'))
             selected = 'confirm'
         elif getattr(self, '_mapping_manual', False):
             selected = 'manual'
-        options += [(f"{p['luminance_cdm2']:g} cd/m² — Digital intensity {p['screen_intensity']:g}", str(i)) for i, p in enumerate(rows)]
+        if rows:
+            prefix = 'TEST ONLY — profile-stored, unverified: ' if source == 'profile_only' else ''
+            options += [(f"{prefix}{p['luminance_cdm2']:g} cd/m² — intensity {p['screen_intensity']:g}",
+                         str(i)) for i, p in enumerate(rows)]
         with self.prevent(Select.Changed):
             selector.set_options(options)
             selector.value = selected
-        text = state + '\nOnly this display’s saved mean pairs are offered; repetitions remain in the raw dataset. No interpolation. Starting probe intensity remains separate.'
+        # Linked selection is the normal control. Manual inputs become editable
+        # only after deliberately choosing Manual (or for an unmatched old draft).
+        linked = selected not in ('manual', 'confirm')
+        self.query_one('#field-Background-Screen-intensity', Input).disabled = linked
+        self.query_one('#field-Background-Luminance', Input).disabled = linked
+        text = state + '\nSelect a saved pair to set BOTH fields. Repeated readings contribute to one mean; no interpolation. Starting probe intensity is independent.'
+        if source == 'profile_only':
+            text += '\nThese values come from a saved, UNVERIFIED profile summary, not a matching active raw dataset. Repair calibration before human acquisition.'
+        if not rows:
+            text += '\nNo usable calibrated choices. Choose Manual for tests, or review/repair this monitor’s luminance dataset.'
         if pending:
-            text += '\nPrevious scientific values retained for review. Select a current pair or deliberately choose Manual before Review.'
-        else:
-            from ..config.background_mapping import background_provenance
-            try:
-                evidence = background_provenance(self.app.local_config_root, profile, {'Background_Screen_intensity': intensity, 'Background_Luminance': luminance})
-                matched = evidence['selection_basis'] == 'exact_saved_mean_pair'
-                text += f"\nCurrent pair: {luminance:g} cd/m² — Digital intensity {intensity:g}. "
-                text += 'Exact saved mean pair.' if matched else 'MANUAL: does not match a saved pair; not a verified calibrated pair.'
-            except (UnboundLocalError, ValueError):
-                text += '\nEnter finite numeric background values.'
+            text += '\nPrevious experimental values were retained. Select a current pair or choose Manual explicitly before Review.'
+        elif intensity is not None and luminance is not None:
+            evidence = background_provenance(
+                self.app.local_config_root, profile,
+                {'Background_Screen_intensity': intensity, 'Background_Luminance': luminance},
+            )
+            text += f"\nCurrent: {luminance:g} cd/m² at digital intensity {intensity:g}. "
+            if linked and source == 'active':
+                text += 'Exact saved mean pair; physical verification depends on the source evidence.'
+            elif linked:
+                text += 'PROFILE-ONLY TEST PAIR — not calibrated or physically verified.'
+            else:
+                text += 'Manual / unmatched pair. Use the selector for a saved pair.'
         self.query_one('#mapping-provenance', Static).update(text)
 
     def _refresh_constraints(self):
@@ -1753,6 +1781,27 @@ class ExperimentConfigScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "edit-background-calibration":
+            event.stop()
+            self.remember_draft()
+            self._save_calibration_draft()
+            profile = self.app.monitor_profiles[self.monitor_profile_id]
+            try:
+                from ..config.calibration_dataset import load_active
+                load_active(self.app.local_config_root, profile)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                # Even an unreadable raw dataset must not trap the user here.
+                self.app.display_guide_target_profile_id = profile.id
+                self.app.display_draft["geometry-monitor"] = profile.id
+                save_preferences(self.app.local_config_root, calibration_active_stage="luminance")
+                self.app.push_screen(DisplayCheckScreen())
+                self.query_one("#config-status", Static).update(
+                    "Luminance data need repair in Calibrate → Luminance: " + str(exc)
+                )
+            else:
+                from .luminance_data import LuminanceDataScreen
+                self.app.push_screen(LuminanceDataScreen(profile, experiment_id=self.experiment.id))
             return
         if event.button.id == "change-display":
             event.stop()
