@@ -136,9 +136,17 @@ class LuminanceDataScreen(Screen):
                           'Add new readings only when needed; opening this page does not require recalibration.')
         self.query_one('#dataset-replacement-guidance',Static).update(summary_text)
         if self._replacement_started:
-            next_text=('STEP 2 OF 3 — Enter a digital intensity and one or more readings, '
-                       'select Test or Actual photometer, then Add readings to draft. '
-                       'Repeat for each intensity. STEP 3 — Save active dataset (top right).')
+            count=len(summary(self.draft))
+            if count < 2:
+                next_text=(f'STEP 2 OF 3 — {count} / 2 different intensities entered. '
+                           'Enter a digital intensity, its cd/m² reading(s), and source; '
+                           'click Add readings to draft. Two distinct intensities are '
+                           'the minimum for a completed luminance stage. '
+                           'You can save partial data, but the stage stays incomplete.')
+            else:
+                next_text=(f'STEP 3 OF 3 — {count} intensities ready. '
+                           'Review the table, then choose Save active dataset (top right). '
+                           'Synthetic values remain test-only.')
         elif changed:
             next_text=('STEP 1 OF 3 — Either Keep saved TEST values and return, or tick '
                        'Yes → Start new measurements for THIS display. '
