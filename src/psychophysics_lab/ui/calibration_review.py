@@ -116,8 +116,18 @@ class PhysicalVerificationScreen(Screen):
             return
         if current != self.profile:
             self.profile = current
-            for key in ('geometry_status', 'calibration_status', 'timing_status'):
-                self.query_one('#verification-' + key, Select).value = getattr(current, key)
+            from ..config.models import photometry_is_test_data
+            photo=self.query_one('#verification-calibration_status',Select)
+            with self.prevent(Select.Changed):
+                choices=[('No — not verified','unverified'),
+                         ('Measurements saved — not verified','manual_unverified')]
+                if not photometry_is_test_data(current):
+                    choices.append(('Yes — I have reviewed physical evidence','verified'))
+                photo.set_options(choices)
+                for key in ('geometry_status', 'calibration_status', 'timing_status'):
+                    selector=self.query_one('#verification-' + key,Select)
+                    status=getattr(current,key)
+                    selector.value=status if status in [val for _,val in selector._options] else 'manual_unverified'
             self.query_one('#verification-method', Input).value = current.calibration_method
             self.query_one('#verification-feedback', Static).update(
                 'Saved calibration has changed. Verification fields were refreshed; '
