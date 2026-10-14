@@ -84,20 +84,12 @@ class PhysicalVerificationScreen(Screen):
         if event.button.id=='verification-back':
             self.app.pop_screen()
         elif event.button.id=='verification-open-luminance':
-            from ..config.calibration_dataset import load_active
-            try:
-                load_active(self.app.local_config_root, self.profile)
-            except (OSError, ValueError, KeyError, TypeError) as exc:
-                self.query_one('#verification-feedback', Static).update(
-                    'Could not load current readings: ' + str(exc)
-                    + ' Original records remain intact. Review the selected '
-                      'display under Calibrate → Luminance.'
-                )
-            else:
-                from .luminance_data import LuminanceDataScreen
-                self.app.push_screen(
-                    LuminanceDataScreen(self.profile, experiment_id=self.experiment_id)
-                )
+            from .luminance_data import open_luminance_editor
+            error = open_luminance_editor(
+                self.app, self.profile, experiment_id=self.experiment_id
+            )
+            if error:
+                self.query_one('#verification-feedback', Static).update(error)
         elif event.button.id=='verification-save':
             try:
                 result=save_verification(self.profile,self.app.local_config_root,
@@ -177,8 +169,10 @@ class ExperimentQualificationScreen(Screen):
             if isinstance(parent,ReviewScreen) and parent.request.experiment_id==spec.id:
                 self.app.pop_screen(); parent.resolve_requirement(key); return
             if key=='luminance':
-                from .luminance_data import LuminanceDataScreen
-                self.app.push_screen(LuminanceDataScreen(self.profile,experiment_id=spec.id))
+                from .luminance_data import open_luminance_editor
+                error = open_luminance_editor(self.app, self.profile, experiment_id=spec.id)
+                if error:
+                    self.query_one('#qualification-feedback', Static).update(error)
             elif key=='binding':
                 from .profiles import ProfileScreen
                 self.app.push_screen(ProfileScreen(profile=self.profile,focus_field='profile-binding'))
