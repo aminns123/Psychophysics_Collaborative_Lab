@@ -139,3 +139,26 @@ def test_six_calibration_pages_present_next_action_without_certification(tmp_pat
             guidance=str(page.query_one("#calibration-next-action", Static).render()).lower()
             assert "next:" in guidance and "photometer" in guidance
     asyncio.run(scenario())
+
+
+def test_keep_old_test_values_goes_to_experiment_without_modifying_measurements(tmp_path, monkeypatch):
+    root, old_profile, changed, previous = _saved_profile(monkeypatch, tmp_path)
+    active=active_directory(root, changed)/"luminance.json"
+    original=active.read_bytes()
+
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"participants")
+        async with app.run_test(size=(120, 40)) as pilot:
+            await app.push_screen(LuminanceDataScreen(changed))
+            await pilot.pause()
+            page=app.screen
+            page.query_one("#dataset-keep-test",Button).press()
+            await pilot.pause()
+            assert len(app.screen_stack)==1
+            assert app.query_one("#run-intent",Select).value=="test"
+            assert "retained unchanged" in str(
+                app.query_one("#setup-status",Static).render()
+            )
+    asyncio.run(scenario())
+    assert active.read_bytes()==original
+    assert load_active(root, changed)==previous
