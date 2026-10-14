@@ -1589,7 +1589,7 @@ class ExperimentConfigScreen(Screen):
                 self.app.local_config_root, profile,
                 {'Background_Screen_intensity': intensity, 'Background_Luminance': luminance},
             )
-            text += f"\nCurrent: {luminance:g} cd/m² at digital intensity {intensity:g}. "
+            text += f"\nCurrent: {luminance:g} cd/m² — Digital intensity {intensity:g}. "
             if linked and source == 'active':
                 text += 'Exact saved mean pair; physical verification depends on the source evidence.'
             elif linked:
