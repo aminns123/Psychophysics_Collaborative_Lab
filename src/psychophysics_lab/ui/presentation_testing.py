@@ -6,9 +6,11 @@ class PresentationTestScreen(ModalScreen):
     def __init__(self,request): super().__init__(); self.request=request
     def compose(self):
         with Vertical():
-            yield Static('UNCALIBRATED PRESENTATION TEST\nReal fullscreen rendering and keyboard responses, isolated test files. These are not scientifically valid human participant records. This does not verify or qualify the monitor. Unsafe shader commands and framebuffer configurations remain blocked.',markup=False)
-            yield Checkbox('I understand these are uncalibrated test records, excluded from human acquisition.',id='presentation-ack')
-            yield Button('Launch uncalibrated presentation',id='presentation-launch',variant='warning')
+            yield Static('TEST PRESENTATION — real fullscreen stimuli, isolated test files.\n'
+                         'No photometer required. Monitor binding, framebuffer and digital '
+                         'contrast safeguards still apply. NOT for real participant data.',markup=False)
+            yield Checkbox('Yes — save this run as TEST DATA, not a human record.',id='presentation-ack')
+            yield Button('Start test presentation',id='presentation-launch',variant='warning')
             yield Button('Cancel',id='presentation-cancel')
             yield Static('',id='presentation-feedback',markup=False)
     def on_button_pressed(self,event):
