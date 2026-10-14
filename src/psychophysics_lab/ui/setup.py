@@ -2153,10 +2153,17 @@ class ReviewScreen(Screen):
             return
         intent=self.app.run_intent
         self.query_one("#human-review-checks", Vertical).display = intent=="human"
-        self.query_one("#review-calibration-guide", Button).display = intent=="human"
+        # Keep alternative actions reachable from existing saved Review screens
+        # and keyboard workflows. Highlight the selected mode, but do not hide
+        # or disable the other safe entry points; each still runs its own strict
+        # preflight at invocation.
         for action, mode in (("run-presentation-test","test"),
                              ("run-simulation","simulation"),("run","human")):
-            self.query_one("#" + action, Button).display = intent==mode
+            button=self.query_one("#" + action, Button)
+            button.display=True
+            button.variant=("warning" if mode=="test" else
+                            "success" if mode=="human" else "primary") if mode==intent else "default"
+        self.query_one("#review-calibration-guide", Button).display=True
         report=self.readiness_report
         if intent=="human":
             status=("READY for human acquisition — final hardware preflight still applies."
