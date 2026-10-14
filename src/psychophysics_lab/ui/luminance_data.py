@@ -53,7 +53,7 @@ class LuminanceDataScreen(Screen):
             yield Checkbox('Yes — keep the previous readings in history and start a NEW dataset for this screen.',
                            id='dataset-start-confirm')
             yield Button('Start new measurements for THIS display',id='dataset-start-current',variant='warning')
-            yield Button('Keep saved TEST values — return without changing data',id='dataset-keep-test')
+            yield Button('Keep saved TEST values → Experiment Test mode',id='dataset-keep-test')
             yield Static('',id='dataset-next-step',markup=False,classes='info-card')
             yield Static('',id='dataset-state',markup=False)
             yield Static('',id='dataset-statistics',markup=False)
@@ -262,8 +262,19 @@ class LuminanceDataScreen(Screen):
     def on_button_pressed(self,event):
         key=event.button.id
         try:
-            if key in ('dataset-back','dataset-keep-test'):
+            if key=='dataset-back':
                 self.app.pop_screen()
+                return
+            if key=='dataset-keep-test':
+                # This deliberately chooses a test-only route; existing
+                # measurements never become qualified by navigating away.
+                self.app.open_hub_page('setup')
+                home=self.app.screen_stack[0]
+                home.query_one('#run-intent',Select).value='test'
+                home.query_one('#setup-status',Static).update(
+                    'Saved test luminance values retained unchanged. '
+                    'Choose Configure to test stimuli. These readings are '
+                    'not physically verified for this display.')
                 return
             if key=='dataset-start-current':
                 confirmed=self.query_one('#dataset-start-confirm',Checkbox).value
