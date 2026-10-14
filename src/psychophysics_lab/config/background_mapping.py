@@ -67,6 +67,17 @@ def background_provenance(root, profile, values):
     try:
         rows, dataset, state = mapping_choices(root, profile)
     except (OSError, ValueError, KeyError, TypeError):
+        # A committed unverified profile summary can be selected for *testing*;
+        # never mislabel it as a trusted active mapping or physical calibration.
+        if not profile.has_verified_luminance_mapping:
+            match = next((point for point in profile.luminance_calibration
+                          if point.screen_intensity == intensity
+                          and point.luminance_cdm2 == luminance), None)
+            if match is not None:
+                result.update(selection_basis="profile_summary_unverified",
+                              mapping_state="profile_only_test",
+                              mapping_warning="Test-only profile means; active luminance measurements are unavailable/stale. Repair them before human acquisition.")
+                return result
         result.update(mapping_state="unavailable", mapping_warning="Active calibration unavailable or stale; inspect local calibration before reuse.")
         return result
     match = next((row for row in rows if row["screen_intensity"] == intensity and row["luminance_cdm2"] == luminance), None)
