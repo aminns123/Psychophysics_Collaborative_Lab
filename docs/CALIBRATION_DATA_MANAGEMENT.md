@@ -23,6 +23,47 @@ The unique command-to-luminance mapping is the arithmetic mean at each intensity
 
 Interactive fullscreen photometer sessions continue known active raw observations. Summary-only legacy values are retained in the saved dataset, but cannot be silently combined into new raw statistics. Session/pilot files remain recovery evidence; use the editor's preview and explicit Save to merge them into the active dataset. Running a session alone does not verify or qualify the display.
 
+## Reopening Calibration, old reports and saved test measurements
+
+Reopening a calibration page or switching among PsyCoLab hub tabs **does not
+require a new physical calibration**. The TUI only carries editable diagnostic
+inputs between pages; old saved diagnostic-report selections are reconstructed
+after the report list loads, rather than restored as invalid dropdown values.
+A report that has been removed or is incompatible with the current monitor
+must not crash PsyCoLab.
+
+**Saved data and verified measurements are different:** a profile may contain
+many recorded intensity/cd/m² pairs, including synthetic pilot data, without
+the computer having a physically verified luminance curve. The **Review
+physical verification** page now summarises what is already saved and explains
+whether the active observation snapshot matches the selected physical setup.
+It identifies changed physical fields (such as width, resolution, viewing
+distance, binding or refresh) rather than merely instructing the researcher
+to recalibrate.
+
+- **Unchanged physical setup, genuine readings:** keep the existing evidence;
+  do not repeat readings merely because the app restarted or a note changed.
+  Declare Verified only after an actual independent laboratory review.
+- **Synthetic/fake photometry:** preserve the saved data and use them only for
+  simulation or designated uncalibrated presentation tests. A label such as
+  `photometer fake` is not evidence. Do not change that label to make the
+  software accept it; actual instrument readings must replace synthetic
+  data before physical verification/human acquisition.
+- **Changed physical setup:** preserve earlier records (for reproducibility)
+  but do not silently reuse old photometry as if it were verified for a
+  different screen arrangement. The review screen lists which settings are
+  different. Retake only the relevant measurements under laboratory criteria.
+- **Unreadable or stale active dataset:** use **Inspect existing luminance
+  measurements** in physical verification or **Calibrate → Luminance** to
+  inspect the active dataset and recovery files. No current data are deleted
+  by these inspection actions. Correct/rewrite only via explicitly
+  acknowledged draft replacement and Save.
+
+**Finish calibration setup → Return to Experiment** remains available even
+if physical qualification is outstanding. The actual human-acquisition
+preflight remains strict; unverified, synthetic or incompatible data cannot
+qualify it.
+
 ## Physical verification and qualification
 
 Record actual observations, their instrument/method and any known optional date/notes. Inspect counts, raw readings, means and SD. Save first, then select **Review physical photometry**. The focused verification page describes the saved evidence and requires explicit laboratory acknowledgement before changed Verified declarations. Return through the measurement page to Experiment Review; its profile and readiness reload immediately.
