@@ -167,9 +167,10 @@ class LuminanceDataScreen(Screen):
             return
         mode=self.query_one('#dataset-mode',Select).value
         self.query_one('#dataset-confirm',Checkbox).display=mode in ('replace_selected','replace_all')
-        command=self.query_one('#dataset-command',Input).value.strip()
-        readings=self.query_one('#dataset-readings',Input).value.strip()
-        self.query_one('#dataset-add',Button).disabled=not (command and readings)
+        # Keep the button actionable even before queued Input.Changed events
+        # run: programmatic/TUI rapid entry + immediate click must not get lost.
+        # _parsed_readings provides a concise field-specific message for blanks.
+        self.query_one('#dataset-add',Button).disabled=False
 
     def on_input_changed(self,event):
         if not self.is_mounted:
