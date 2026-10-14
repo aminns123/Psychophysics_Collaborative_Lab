@@ -11,6 +11,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher
+from textual.widgets._select import InvalidSelectValueError
 
 from ..analysis.thresholds import analyse_thresholds
 from ..config.models import SetupRequest
@@ -681,9 +682,10 @@ class DisplayCheckScreen(HubPage):
             if matches:
                 try:
                     matches.first().value = value
-                except (ValueError, TypeError):
-                    # A valid draft from an earlier software version may not
-                    # be valid for the current field; keep the current default.
+                except (ValueError, TypeError, InvalidSelectValueError):
+                    # A saved monitor/diagnostic option can disappear following
+                    # a physical display change or upgrade. Retain the current
+                    # safe default rather than terminate the full TUI.
                     continue
         self._refresh_preview()
         self._refresh_latest()
