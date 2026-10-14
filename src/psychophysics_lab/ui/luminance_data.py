@@ -8,6 +8,27 @@ from ..config.calibration_dataset import (load_active,save_active,observation,su
     import_observations,luminance_state,physical_snapshot,active_directory)
 
 
+def open_luminance_editor(app, profile, *, experiment_id=None):
+    """Open safely or return an actionable message instead of crashing Textual.
+
+    An active dataset can be missing, unreadable or inconsistent with a
+    committed profile. Such records must be inspected/recovered rather than
+    silently overwritten on opening an editor.
+    """
+    try:
+        dataset = load_active(app.local_config_root, profile)
+        summary(dataset)  # Validate the rows needed to compose the editor.
+    except (OSError, ValueError, TypeError, KeyError, IndexError) as exc:
+        return (
+            "Cannot open the active luminance dataset: " + str(exc)
+            + " Original profile history and observations are preserved. "
+              "Inspect this display's current luminance.json and .history "
+              "before replacing data; no measurements have been changed."
+        )
+    app.push_screen(LuminanceDataScreen(profile, experiment_id=experiment_id))
+    return None
+
+
 class LuminanceDataScreen(Screen):
     def __init__(self,profile,*,experiment_id=None):
         super().__init__(); self.profile=profile; self.experiment_id=experiment_id
