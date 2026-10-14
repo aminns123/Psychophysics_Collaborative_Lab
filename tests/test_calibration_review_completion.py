@@ -298,3 +298,31 @@ def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_pa
             await pilot.pause()
             assert app.screen is screen
     asyncio.run(scenario())
+
+
+def test_calibration_luminance_editor_button_handles_unreadable_active_json(tmp_path):
+    """Damaged active data must not crash when researcher clicks its editor."""
+    from psychophysics_lab.config.calibration_dataset import active_directory
+    from psychophysics_lab.ui.setup import DisplayCheckScreen, PsyCoLabSetupApp
+    p = fixture_profile(verified=False)
+    path = active_directory(config_root(ROOT), p) / 'luminance.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{broken json', encoding='utf-8')
+    original = path.read_bytes()
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        async with app.run_test(size=(110, 40)) as pilot:
+            app.open_hub_page('display')
+            await pilot.pause()
+            page = app.screen
+            assert isinstance(page, DisplayCheckScreen)
+            page.query_one('#geometry-monitor', Select).value = p.id
+            page.query_one('#open-active-luminance', Button).press()
+            await pilot.pause()
+            assert app.screen is page
+            assert 'Cannot open the active luminance dataset' in str(
+                page.query_one('#geometry-status', Static).render()
+            )
+    asyncio.run(scenario())
+    assert path.read_bytes() == original
