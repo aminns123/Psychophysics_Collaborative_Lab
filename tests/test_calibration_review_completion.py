@@ -243,3 +243,58 @@ def test_changing_timing_does_not_require_unrelated_old_ruler_entry():
     assert updated.timing_status=='manual_unverified'
     assert updated.geometry_status==p.geometry_status
     assert updated.luminance_calibration==p.luminance_calibration
+
+
+def test_verification_explains_fake_saved_photometry_without_requiring_new_test_data():
+    from psychophysics_lab.config.calibration_review import luminance_verification_guidance
+    p = fixture_profile(verified=False)
+    fake = replace(p, calibration_method='photometer fake',
+                   calibration_status='manual_unverified')
+    message = luminance_verification_guidance(fake, config_root(ROOT))
+    assert 'saved digital-command' in message
+    assert 'does NOT require repeating unchanged measurements' in message
+    assert 'TEST/SYNTHETIC' in message
+    assert 'simulation' in message
+    assert not fake.has_verified_luminance_mapping
+
+
+def test_verification_identifies_changed_physical_fields_and_preserves_raw_file():
+    from psychophysics_lab.config.calibration_review import luminance_verification_guidance
+    from psychophysics_lab.config.calibration_dataset import active_directory, load_active
+    p = fixture_profile(verified=False)
+    raw = load_active(config_root(ROOT), p)
+    path = active_directory(config_root(ROOT), p) / 'luminance.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(raw), encoding='utf-8')
+    original = path.read_bytes()
+    changed = replace(p, viewing_distance_m=p.viewing_distance_m + .1)
+    message = luminance_verification_guidance(changed, config_root(ROOT))
+    assert 'viewing distance' in message
+    assert 'does not match this physical setup' in message
+    assert 'editing notes' in message
+    assert path.read_bytes() == original
+
+
+def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_path):
+    from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
+    from psychophysics_lab.ui.luminance_data import LuminanceDataScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp
+    p = fixture_profile(verified=False)
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        async with app.run_test(size=(110, 40)) as pilot:
+            screen = PhysicalVerificationScreen(
+                replace(p, calibration_method='photometer fake'),
+                experiment_id='contrast_sensitivity'
+            )
+            await app.push_screen(screen)
+            await pilot.pause()
+            text = str(screen.query_one('#verification-luminance-guidance', Static).render())
+            assert 'TEST/SYNTHETIC' in text
+            screen.query_one('#verification-open-luminance', Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, LuminanceDataScreen)
+            app.pop_screen()
+            await pilot.pause()
+            assert app.screen is screen
+    asyncio.run(scenario())
