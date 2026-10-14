@@ -32,7 +32,7 @@ from ..experiments.registry import get_experiment, list_experiments
 from ..experiments.spec import ConfigField, ExperimentSpec
 from ..paths import resolve_data_root
 from ..stimuli.geometry import physical_length_for_visual_angle
-from .calibration_stages import STAGES, stage_states
+from .calibration_stages import STAGES, stage_states, stage_next_action
 from ..config.readiness import diagnostic_matches_profile
 
 
@@ -382,6 +382,7 @@ class DisplayCheckScreen(HubPage):
                 for stage, label in STAGES:
                     yield Button(label, id=f"cal-stage-{stage}", variant="error")
             yield Static("", id="calibration-stage-summary")
+            yield Static("", id="calibration-next-action", markup=False, classes="info-card")
             with Horizontal(classes="buttons"):
                 if getattr(self, "return_to_configuration", False):
                     yield Button("Return to Experiment Review" if getattr(self,"return_to_review",False) else "Return to display choice", id="calibration-return")
@@ -395,10 +396,11 @@ class DisplayCheckScreen(HubPage):
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
             with VerticalScroll(id="cal-panel-bind", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 1 / 6 · Display profile and physical screen[/b]\n"
-                    "Choose your actual monitor. Detect its OS pixel grid, then enter the "
-                    "measured ACTIVE image width, height and viewing distance. "
-                    "The monitor bezel size and Windows scaling are NOT physical calibration.",
+                    "[b]1 / 6 — DISPLAY[/b]\n"
+                    "1. Bind the correct monitor and copy its detected pixel resolution.\n"
+                    "2. Measure the illuminated image width/height and eye distance.\n"
+                    "3. Save the profile, then choose Next stage. "
+                    "Windows scaling and bezel size are not physical measurements.",
                     classes="info-card",
                 )
                 yield Label("Monitor profile (shared across all six stages)")
@@ -419,10 +421,11 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-geometry", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 2 / 6 · Geometry and ruler measurement[/b]\n"
-                    "Display a known-length bar, physically measure it, enter the length below "
-                    "and record its discrepancy. Then review the result before explicitly "
-                    "marking Geometry status Verified in the profile editor.",
+                    "[b]2 / 6 — GEOMETRY[/b]\n"
+                    "1. Choose a bar length, then Launch ruler.\n"
+                    "2. Measure the displayed bar with a physical ruler (mm).\n"
+                    "3. Enter the measured length, click Record, and inspect the percent error. "
+                    "Only declare physical Geometry verified when real measurements support it.",
                     classes="info-card",
                 )
                 yield Label("Fullscreen test (choose Size / ruler bar for this stage)")
@@ -457,7 +460,7 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="", placeholder="e.g. 99.5", id="geometry-measured")
                 yield Button("Record measurement in latest diagnostic",
                              id="record-geometry-measurement")
-                yield Button("Review / verify geometry in profile editor",
+                yield Button("Review physical Geometry (only if measured)",
                              id="edit-geometry-profile")
                 with Collapsible(title="Further help · Worked example", collapsed=True):
                     yield Static(
@@ -471,10 +474,11 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-spatial", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 3 / 6 · Spatial frequency (cycles per degree)[/b]\n"
-                    "Verify the geometry first. Then display a grating and check its "
-                    "period and any visible aliasing. The software's computed "
-                    "pixels/degree depends on physical dimensions and viewing distance.",
+                    "[b]3 / 6 — SPATIAL FREQUENCY[/b]\n"
+                    "1. Enter cycles/degree and Launch grating.\n"
+                    "2. Return here, choose its report and compare the observed cycles.\n"
+                    "3. Select Yes / No / Uncertain and any abnormality, then Record observation. "
+                    "A visual assessment is not independent optical certification.",
                     classes="info-card",
                 )
                 yield Static("", id="spatial-calibration-summary", classes="info-card")
@@ -511,16 +515,15 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-luminance", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 4 / 6 · Luminance (photometer required)[/b]\n"
-                    "Method A: Import JSON containing REAL measured pairs of normalized "
-                    "screen intensity and cd/m². Method B: Present a fullscreen 6-degree "
-                    "square and type meter readings repeatedly at each intensity. "
-                    "Import and SAVE at least two real pairs to complete this stage. "
-                    "Method, date and notes are optional. Physical verification "
-                    "remains a separate researcher declaration.",
+                    "[b]4 / 6 — LUMINANCE: TEST VALUES OR PHOTOMETER[/b]\n"
+                    "1. Open saved measurements below. Keep the old TEST values for software testing, "
+                    "or explicitly start a new dataset if the display configuration changed.\n"
+                    "2. Enter digital intensity and one or more cd/m² values, marking Test or Actual meter.\n"
+                    "3. Add readings, Save active dataset, then choose Next stage. "
+                    "Only real photometry can support human-acquisition verification.",
                     classes="info-card",
                 )
-                yield Button("Open / edit active luminance measurements", id="open-active-luminance", variant="primary")
+                yield Button("Step 1 — Review or add saved luminance readings", id="open-active-luminance", variant="primary")
                 yield Label("Single-patch normalized digital command (0 to 1)")
                 yield Input(value="0.5", id="geometry-luminance")
                 yield Button("Launch one static photometer patch", id="launch-patch")
@@ -538,10 +541,10 @@ class DisplayCheckScreen(HubPage):
                              id="open-luminance-pilot")
                 yield Button("Open completed FAKE example JSON (education only)",
                              id="open-luminance-demo")
-                yield Label("Absolute path to your real measurement JSON (pilot file or your own JSON)")
+                yield Label("Optional: full path to a REAL measurement JSON")
                 yield Input(value=str(pilot_json) if pilot_json else "",
                             placeholder="C:\\...\\pilot_luminance.json", id="cal-luminance-json-path")
-                yield Button("Import + SAVE real readings → Continue to Timing",
+                yield Button("Import and save REAL photometer measurements",
                              id="calibration-import-luminance", variant="success")
                 yield Static("", id="cal-luminance-import-feedback")
                 yield Button("Advanced: edit all monitor fields / manual entry",
@@ -554,20 +557,21 @@ class DisplayCheckScreen(HubPage):
                         "For interactive measurement: Left/Right changes intensity; type the meter "
                         "reading (cd/m²) and Enter records one value. Repeat Enter with another "
                         "reading at the same command for repetitions. Esc ends the session.\n"
-                        "Open pilot/test JSON, fill at least TWO real cd/m² readings. "
-                        "Method/date/notes may be blank (shown as warnings). "
-                        "Paste the file path above, then click Import + SAVE to commit "
-                        "your real pairs directly into a new local monitor profile revision. "
-                        "The Luminance tab turns GREEN and the wizard moves to Timing. "
-                        "The Advanced editor remains available for manual edits. "
-                        "Saving does NOT auto-verify physical photometry."
+                        "To import genuine photometer readings instead of using the editor, "
+                        "open a pilot JSON and enter at least TWO real cd/m² pairs. "
+                        "Method, date and notes are optional. Import + Save keeps you "
+                        "on Luminance to inspect the outcome; choose Next stage explicitly. "
+                        "Fake/pilot data are only for software Test mode and cannot certify "
+                        "physical photometry."
                     )
 
             with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 5 / 6 · Temporal frequency and photon timing[/b]\n"
-                    "Fullscreen flicker can test software frame-cycle planning. "
-                    "Actual photon-onset/persistence timing needs a photodiode or equivalent.",
+                    "[b]5 / 6 — TIMING[/b]\n"
+                    "1. Choose binary or sine flicker and a frequency in Hz.\n"
+                    "2. Launch the fullscreen diagnostic and review its frame-cycle report.\n"
+                    "3. Choose Next stage. Only independent photodiode/equivalent "
+                    "measurements can verify physical photon timing.",
                     classes="info-card",
                 )
                 yield Label("Timing diagnostic type")
@@ -578,7 +582,7 @@ class DisplayCheckScreen(HubPage):
                 yield Input(value="7.5", id="geometry-temporal")
                 yield Button("Launch fullscreen timing diagnostic", id="launch-temporal",
                              variant="primary")
-                yield Button("Review / verify physical timing in profile editor",
+                yield Button("Review physical photon timing (if independently measured)",
                              id="edit-timing-profile")
                 with Collapsible(title="Further help · What is verified?", collapsed=True):
                     yield Static(
@@ -593,11 +597,12 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-review", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]PAGE 6 / 6 · Review, verify and qualify experiments[/b]\n"
-                    "GREEN means this stage's observation/data were saved. "
-                    "RED means its workflow data remain incomplete. "
-                    "Laboratory verification is SEPARATE and is never inferred "
-                    "from a green page. Human-acquisition preflight remains authoritative.",
+                    "[b]6 / 6 — REVIEW[/b]\n"
+                    "1. Review the saved results. Green means saved evidence, NOT physical certification.\n"
+                    "2. For Human acquisition, review real Geometry, Photometry and Timing "
+                    "evidence individually, then qualify the experiment.\n"
+                    "3. For software Test/Simulation, finish setup and return to Experiment. "
+                    "A photometer is not required for those modes.",
                     classes="info-card",
                 )
                 yield Static("", id="calibration-review-detail", classes="info-card")
@@ -658,6 +663,11 @@ class DisplayCheckScreen(HubPage):
                 for k, title in STAGES
             )
             + "\n" + states[self.active_calibration_stage][1]
+        )
+        from ..config.calibration_progress import calibration_progress
+        progress = calibration_progress(profile, self.app.local_config_root)
+        self.query_one("#calibration-next-action", Static).update(
+            stage_next_action(self.active_calibration_stage, progress)
         )
         self.query_one("#calibration-finish", Button).display = self.active_calibration_stage == "review"
         if self.active_calibration_stage == "review":
@@ -990,8 +1000,14 @@ class DisplayCheckScreen(HubPage):
             self._refresh_latest()
             self._refresh_stage_status()
             return
-        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile",
-                                      "edit-geometry-profile", "edit-timing-profile"}:
+        if event.button.id in {"edit-geometry-profile", "edit-timing-profile"}:
+            event.stop()
+            from .calibration_review import PhysicalVerificationScreen
+            focus = ("geometry_status" if event.button.id == "edit-geometry-profile"
+                     else "timing_status")
+            self.app.push_screen(PhysicalVerificationScreen(self._profile(), focus_category=focus))
+            return
+        if event.button.id in {"edit-profile", "edit-luminance-profile", "edit-review-profile"}:
             event.stop()
             from .profiles import ProfileScreen
             save_preferences(self.app.local_config_root, active_monitor_profile_id=self._profile().id)
@@ -1034,10 +1050,8 @@ class DisplayCheckScreen(HubPage):
                 )
                 if warnings:
                     message += "\n[yellow]Optional information: " + "; ".join(warnings) + "[/yellow]"
-                following = advance_if_completed(saved, self.app.local_config_root, "luminance")
-                if following and self.active_calibration_stage == "luminance":
-                    self._go_to_stage(following, remember=False)
-                    message += "\nContinuing to Timing. Return to Luminance to review the saved data."
+                if self.active_calibration_stage == "luminance":
+                    message += "\nSaved. Review the values here, then select Next stage → Timing when ready."
                 status.update(message)
                 self.query_one("#cal-luminance-import-feedback", Static).update(message)
                 self.app.notify("Real luminance measurements saved to profile. No automatic certification.",
@@ -1151,14 +1165,9 @@ class DisplayCheckScreen(HubPage):
                 self._refresh_latest()
                 self._refresh_stage_status()
                 from ..config.calibration_workflow import advance_if_completed
-                following = advance_if_completed(
-                    self._profile(), self.app.local_config_root, "geometry"
-                )
-                if following and self.active_calibration_stage == "geometry":
-                    self._go_to_stage(following, remember=False)
+                if self.active_calibration_stage == "geometry":
                     self.app.notify(
-                        "Ruler measurement saved. Continuing to Spatial. "
-                        "Physical geometry verification can still be reviewed.",
+                        "Ruler measurement saved. Review the error, then choose Next stage → Spatial.",
                         timeout=9,
                     )
             except Exception as exc:

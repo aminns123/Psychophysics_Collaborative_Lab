@@ -43,6 +43,32 @@ def physical_snapshot_differences(profile, dataset):
             for key, value in current.items() if saved.get(key) != value}
 
 
+
+def replacement_draft_for_current_display(profile, saved_dataset, *, confirmed=False):
+    """Prepare a new *unsaved* dataset for a changed display while keeping history.
+
+    Callers must obtain an explicit yes first. The returned draft carries the
+    current physical snapshot, but not any old readings or photometer claims.
+    save_active() later archives the old file, and only a separate Save commits.
+    """
+    if not confirmed:
+        raise ValueError(
+            "Choose Yes — preserve the old readings and start a new dataset first."
+        )
+    if saved_dataset.get('monitor_profile_id') != profile.id:
+        raise ValueError("The existing readings belong to another display.")
+    draft = deepcopy(saved_dataset)
+    draft['physical_snapshot'] = physical_snapshot(profile)
+    draft['observations'] = []
+    draft['method'] = ''
+    draft['date'] = ''
+    draft['notes'] = ''
+    draft.pop('summary', None)
+    draft.pop('data_kind', None)
+    draft.pop('migration_notice', None)
+    return draft
+
+
 def observation(command, reading, *, kind='unspecified', source='manual', identifier=None, recorded_utc=None):
     if isinstance(command,bool) or isinstance(reading,bool): raise ValueError('Measurements must be numbers, not booleans.')
     point=LuminanceCalibrationPoint(float(command),float(reading)); point.validate()

@@ -5,7 +5,8 @@ from textual.screen import Screen
 from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.widgets import Header, Footer, Button, Input, Select, Checkbox, Static, Label, Collapsible
 from ..config.calibration_dataset import (load_active,save_active,observation,summary,merge_observations,
-    import_observations,luminance_state,physical_snapshot,active_directory)
+    import_observations,luminance_state,physical_snapshot,active_directory,
+    physical_snapshot_differences,replacement_draft_for_current_display)
 
 
 def open_luminance_editor(app, profile, *, experiment_id=None):
@@ -32,9 +33,12 @@ def open_luminance_editor(app, profile, *, experiment_id=None):
 class LuminanceDataScreen(Screen):
     def __init__(self,profile,*,experiment_id=None):
         super().__init__(); self.profile=profile; self.experiment_id=experiment_id
+        self._replacement_started = False
+        self._physical_changes = {}
 
     def compose(self):
         self.saved=load_active(self.app.local_config_root,self.profile); self.draft=deepcopy(self.saved)
+        self._physical_changes=physical_snapshot_differences(self.profile,self.saved)
         with Vertical(id='fixed-shell'):
             yield Header()
             with Horizontal(classes='buttons'):
@@ -42,7 +46,15 @@ class LuminanceDataScreen(Screen):
                 yield Button('Save active dataset',id='dataset-save',variant='primary')
             yield Static('',id='dataset-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
-            yield Static('Saved readings for this display. You can use test values for software testing without a photometer. They never certify human acquisition.', markup=False)
+            yield Static('[b]LUMINANCE — 3 STEPS[/b]   1. Choose whether to keep or start readings. '
+                         '2. Enter intensity + cd/m² measurements. 3. Save the new dataset. '
+                         'Test values remain unverified.', markup=True, classes='info-card')
+            yield Static('',id='dataset-replacement-guidance',markup=False,classes='info-card')
+            yield Checkbox('Yes — keep the previous readings in history and start a NEW dataset for this screen.',
+                           id='dataset-start-confirm')
+            yield Button('Start new measurements for THIS display',id='dataset-start-current',variant='warning')
+            yield Button('Keep saved TEST values → Experiment Test mode',id='dataset-keep-test')
+            yield Static('',id='dataset-next-step',markup=False,classes='info-card')
             yield Static('',id='dataset-state',markup=False)
             yield Static('',id='dataset-statistics',markup=False)
             yield Label('Choose an action')
@@ -100,7 +112,52 @@ class LuminanceDataScreen(Screen):
             self.saved=load_active(self.app.local_config_root,self.profile)
             self.draft=deepcopy(self.saved)
             for key in ('method','date','notes'): self.query_one('#dataset-'+key,Input).value=self.saved.get(key,'')
+        self._physical_changes=physical_snapshot_differences(self.profile,self.saved)
         self.refresh_data()
+
+    def _refresh_chronological_guidance(self):
+        changed=self._physical_changes
+        self.query_one('#dataset-start-confirm',Checkbox).display=bool(changed) and not self._replacement_started
+        self.query_one('#dataset-start-current',Button).display=bool(changed) and not self._replacement_started
+        self.query_one('#dataset-keep-test',Button).display=bool(changed) and not self._replacement_started
+        summary_text=''
+        if changed:
+            changes='; '.join(
+                f"{key.replace('_', ' ')}: saved {old} → current {new}"
+                for key,(old,new) in changed.items()
+            )
+            summary_text=('SAVED DATA ARE FOR AN EARLIER DISPLAY CONFIGURATION.\n'
+                          +changes+'\n'
+                          'For software tests, keep these values labelled TEST; no new measurements are needed.\n'
+                          'For new physical measurements, tick Yes and press Start new measurements. '
+                          'Your old records are kept. They are not silently treated as physically verified.')
+        else:
+            summary_text=('Saved readings match the recorded display configuration. '
+                          'Add new readings only when needed; opening this page does not require recalibration.')
+        self.query_one('#dataset-replacement-guidance',Static).update(summary_text)
+        if self._replacement_started:
+            count=len(summary(self.draft))
+            if count < 2:
+                next_text=(f'STEP 2 OF 3 — {count} / 2 different intensities entered. '
+                           'Enter a digital intensity, its cd/m² reading(s), and source; '
+                           'click Add readings to draft. Two distinct intensities are '
+                           'the minimum for a completed luminance stage. '
+                           'You can save partial data, but the stage stays incomplete.')
+            else:
+                next_text=(f'STEP 3 OF 3 — {count} intensities ready. '
+                           'Review the table, then choose Save active dataset (top right). '
+                           'Synthetic values remain test-only.')
+        elif changed:
+            next_text=('STEP 1 OF 3 — Either Keep saved TEST values and return, or tick '
+                       'Yes → Start new measurements for THIS display. '
+                       'Do not simply press Save on old data.')
+        elif self.draft!=self.saved:
+            next_text=('STEP 3 OF 3 — Review the new rows and choose Save active dataset '
+                       'at the top. Discard draft / Back keeps the previous saved data.')
+        else:
+            next_text=('To add measurements: 1. Choose intensity. 2. Enter cd/m² readings '
+                       'and their source. 3. Add readings to draft → Save active dataset.')
+        self.query_one('#dataset-next-step',Static).update(next_text)
 
     def refresh_data(self):
         state=luminance_state(self.profile,self.saved)
@@ -125,6 +182,7 @@ class LuminanceDataScreen(Screen):
             raw+='\nLegacy means have no recorded repetitions. Use Replace after reviewing original source data.'
         self.query_one('#dataset-statistics',Static).update(text)
         self.query_one('#dataset-raw',Static).update(raw)
+        self._refresh_chronological_guidance()
 
     def on_select_changed(self,event):
         if not self.is_mounted:
@@ -204,10 +262,46 @@ class LuminanceDataScreen(Screen):
     def on_button_pressed(self,event):
         key=event.button.id
         try:
-            if key=='dataset-back': self.app.pop_screen(); return
+            if key=='dataset-back':
+                self.app.pop_screen()
+                return
+            if key=='dataset-keep-test':
+                # This deliberately chooses a test-only route; existing
+                # measurements never become qualified by navigating away.
+                self.app.open_hub_page('setup')
+                home=self.app.screen_stack[0]
+                home.query_one('#run-intent',Select).value='test'
+                home.query_one('#setup-status',Static).update(
+                    'Saved test luminance values retained unchanged. '
+                    'Choose Configure to test stimuli. These readings are '
+                    'not physically verified for this display.')
+                return
+            if key=='dataset-start-current':
+                confirmed=self.query_one('#dataset-start-confirm',Checkbox).value
+                if not self._physical_changes:
+                    raise ValueError('Current display already matches the saved data. Use Add or Correct.')
+                self.draft=replacement_draft_for_current_display(
+                    self.profile,self.saved,confirmed=confirmed
+                )
+                self._replacement_started=True
+                for field in ('method','date','notes'):
+                    self.query_one('#dataset-'+field,Input).value=''
+                with self.prevent(Select.Changed):
+                    self.query_one('#dataset-mode',Select).value='merge'
+                    self.query_one('#dataset-task',Select).value='add'
+                    self.query_one('#dataset-kind',Select).value='synthetic'
+                    self.query_one('#dataset-selected',Select).value='new'
+                self.query_one('#dataset-readings',Input).value=''
+                self.query_one('#dataset-confirm',Checkbox).value=False
+                self.refresh_data()
+                self.query_one('#dataset-feedback',Static).update(
+                    'New UNSAVED dataset started for this physical display. '
+                    'Step 2: enter fresh readings. Old records remain intact until you Save.')
+                return
             if key=='dataset-reset':
                 self.draft=merge_observations(self.draft,[],mode='replace_all',confirmed=self.query_one('#dataset-confirm',Checkbox).value)
                 self.draft['physical_snapshot']=physical_snapshot(self.profile)
+                self._replacement_started=self._replacement_started or bool(self._physical_changes)
                 for field in ('method','date','notes'): self.query_one('#dataset-'+field,Input).value=''
                 self.refresh_data(); self.query_one('#dataset-feedback',Static).update('Empty reset draft prepared. Saved readings remain intact until Save; Discard cancels.'); return
             if key=='dataset-load-readings':
@@ -242,11 +336,30 @@ class LuminanceDataScreen(Screen):
                 self._update_measurement_controls()
                 return
             if key=='dataset-save':
+                if self._physical_changes and not self._replacement_started:
+                    raise ValueError(
+                        'Old readings belong to another display setup. '
+                        'Tick Yes → Start new measurements above, or return to TEST mode without saving.'
+                    )
+                if self._replacement_started and not self.draft['observations']:
+                    raise ValueError(
+                        'New dataset has no readings yet. Add at least one intensity '
+                        'and luminance reading, or Discard to keep the old dataset.'
+                    )
                 self._metadata()
                 previous=self.saved
                 self.profile,self.saved=save_active(self.app.local_config_root,self.profile,self.draft,expected_version=self.saved['version'])
-                self.draft=deepcopy(self.saved); self.app.reload_profiles(); self.refresh_data()
-                self.query_one('#dataset-feedback',Static).update('No changes to save.' if previous==self.saved else 'Active dataset saved. Changed observations require fresh laboratory verification and experiment qualification.'); return
+                self.draft=deepcopy(self.saved)
+                self._replacement_started=False
+                self._physical_changes=physical_snapshot_differences(self.profile,self.saved)
+                self.app.reload_profiles()
+                self.refresh_data()
+                self.query_one('#dataset-feedback',Static).update(
+                    'No changes to save.' if previous==self.saved
+                    else 'Saved for the selected display. Previous readings retained in recovery '
+                         'history. Test readings do NOT qualify human acquisition.'
+                )
+                return
             if key=='dataset-verify':
                 self._metadata()
                 if self.draft!=self.saved: raise ValueError('Save or discard the measurement draft before physical verification.')
