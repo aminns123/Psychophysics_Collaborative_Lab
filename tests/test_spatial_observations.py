@@ -299,3 +299,16 @@ def test_dynamic_report_selection_is_never_saved_as_fullscreen_navigation(tmp_pa
             assert 'spatial-report' not in settings
             assert 'geometry-value' in settings
     asyncio.run(scenario())
+
+
+def test_removed_monitor_in_calibration_draft_uses_available_default(tmp_path):
+    """Previously saved Select choices must never crash a new monitor setup."""
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app.display_draft = {'geometry-monitor': 'no-longer-connected-monitor'}
+        async with app.run_test(size=(110, 40)) as pilot:
+            app.open_hub_page('display')
+            await pilot.pause()
+            assert isinstance(app.screen, DisplayCheckScreen)
+            assert app.screen.query_one('#geometry-monitor', Select).value in app.monitor_profiles
+    asyncio.run(scenario())
