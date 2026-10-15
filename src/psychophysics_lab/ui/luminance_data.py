@@ -314,7 +314,7 @@ class LuminanceDataScreen(Screen):
         if experiment:
             home.query_one('#run-intent',Select).value='test'
             self.app.run_intent='test'
-            message=('Saved values retained for TEST presentation; no physical verification or '
+            message=('Saved test luminance values retained unchanged for TEST presentation; no physical verification or '
                      'human qualification was recorded.')
             self.app.open_hub_page('setup')
             home.query_one('#setup-status',Static).update(message)
