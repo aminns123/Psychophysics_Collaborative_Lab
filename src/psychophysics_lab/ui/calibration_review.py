@@ -65,6 +65,8 @@ class PhysicalVerificationScreen(Screen):
                     if key=='calibration_status' and photometry_is_test_data(self.profile):
                         options=options[:-1]  # Synthetic readings cannot be certified.
                     initial=getattr(self.profile,key)
+                    if key=='calibration_status' and initial=='accepted':
+                        options.append(('Mapping accepted by researcher (physical verification still pending)','accepted'))
                     if initial not in [value for _,value in options]:
                         initial='manual_unverified'
                     yield Select(options,value=initial,allow_blank=False,id='verification-'+key)
@@ -87,7 +89,9 @@ class PhysicalVerificationScreen(Screen):
         if selected not in labels:
             return
         from ..config.models import photometry_is_test_data
-        if selected=='calibration_status' and photometry_is_test_data(self.profile):
+        if selected=='calibration_status' and self.profile.calibration_status=='accepted':
+            explanation='Mapping accepted; this does NOT verify physical photometry. Fake/example values remain test evidence only.'
+        elif selected=='calibration_status' and photometry_is_test_data(self.profile):
             explanation='TEST VALUES SAVED — real photometer readings required before physical verification. Do not change their source label.'
         elif selected=='geometry_status':
             explanation='Review the saved ruler measurement and actual screen geometry, then choose Yes only when they agree under laboratory criteria.'
@@ -123,6 +127,8 @@ class PhysicalVerificationScreen(Screen):
                          ('Measurements saved — not verified','manual_unverified')]
                 if not photometry_is_test_data(current):
                     choices.append(('Yes — I have reviewed physical evidence','verified'))
+                if current.calibration_status=='accepted':
+                    choices.append(('Mapping accepted by researcher (not physically verified)','accepted'))
                 photo.set_options(choices)
                 for key in ('geometry_status', 'calibration_status', 'timing_status'):
                     selector=self.query_one('#verification-' + key,Select)
