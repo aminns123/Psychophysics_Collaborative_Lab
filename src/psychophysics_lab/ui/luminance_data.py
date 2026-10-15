@@ -300,8 +300,8 @@ class LuminanceDataScreen(Screen):
         home.query_one('#run-intent',Select).value='test'
         home.query_one('#monitor-profile',Select).value=self.profile.id
         self.app.run_intent='test'
-        message=('Saved test luminance values retained unchanged. Not physically verified; '
-                 'human acquisition still requires genuine photometry and qualification.')
+        message=('Saved luminance values retained unchanged for TEST. Acceptance does not '
+                 'physically verify readings or qualify human acquisition.')
         self.app.notify(message,title='Luminance accepted for TEST',timeout=8)
         if experiment:
             self.app.open_hub_page('setup')
