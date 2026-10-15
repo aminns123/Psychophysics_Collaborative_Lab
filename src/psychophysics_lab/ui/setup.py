@@ -515,12 +515,11 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-luminance", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]4 / 6 — LUMINANCE: TEST VALUES OR PHOTOMETER[/b]\n"
-                    "1. Open saved measurements below and review the values and their source.\n"
-                    "2. To keep them as-is, choose Accept saved values for TEST → Timing. No Save is needed.\n"
-                    "3. Only to change measurements: enter intensity and cd/m² readings, mark their source, "
-                    "Add readings, then Save active dataset. "
-                    "Only real photometry can support human-acquisition verification.",
+                    "[b]4 / 6 — LUMINANCE MAPPING[/b]\n"
+                    "1. Open the selected display's intensity / luminance table.\n"
+                    "2. Keep the saved mapping or add/correct readings with their original source.\n"
+                    "3. Choose Accept luminance values → Timing. Acceptance records your "
+                    "selection, not physical verification. Human acquisition still needs real instrument evidence.",
                     classes="info-card",
                 )
                 yield Button("Step 1 — Review or add saved luminance readings", id="open-active-luminance", variant="primary")
@@ -945,7 +944,7 @@ class DisplayCheckScreen(HubPage):
                 if event.button.id == "calibration-finish":
                     from ..config.calibration_progress import calibration_progress
                     progress = calibration_progress(profile, self.app.local_config_root)
-                    pending = [name for name in ("bind", "geometry", "spatial", "luminance", "timing") if not progress[name]["completed"] or (name in {"geometry", "luminance", "timing"} and not progress[name]["verified"])]
+                    pending = [name for name in ("bind", "geometry", "spatial", "luminance", "timing") if not progress[name]["completed"] or (name in {"geometry", "timing"} and not progress[name]["verified"]) or (name=="luminance" and not progress[name].get("accepted"))]
                     draft = preferences(self.app.local_config_root).get("calibration_experiment_draft")
                     if isinstance(draft, dict):
                         save_preferences(self.app.local_config_root, calibration_experiment_draft=dict(draft, profile=profile_id))
