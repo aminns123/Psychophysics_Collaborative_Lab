@@ -108,11 +108,13 @@ def calibration_progress(profile, root: Path):
                     break
             except (OSError, ValueError, TypeError):
                 continue
-    ready = bound and profile.has_verified_luminance_mapping
+    ready = bound and profile.has_accepted_luminance_mapping
     result["luminance"] = {"ready": ready, "completed": measured,
                            "verified": bool(profile.has_verified_luminance_mapping),
+                           "accepted": bool(profile.has_accepted_luminance_mapping),
                            "state": "complete" if ready else "awaiting_review" if measured else "awaiting_import" if session_message else "awaiting_measurement",
-                           "message": "Saved photometer mapping explicitly verified" if ready else
+                           "message": "Researcher accepted the saved mapping; this does not certify physical photometry" if ready and not profile.has_verified_luminance_mapping else
+                           "Saved photometer mapping explicitly verified" if ready else
                            "Entered intensity / cd/m² values SAVED (not independently certified). Measurement stage finished; physical certification remains unverified (optional method/date/notes do not block saving)." if measured else
                            session_message or "Enter at least two real intensity / cd/m² pairs, import and save. Instrument details are optional."}
     setup_completed = all(result[key]["completed"] for key in ("bind", "geometry", "spatial", "luminance", "timing"))

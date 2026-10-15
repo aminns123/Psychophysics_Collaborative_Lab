@@ -203,6 +203,40 @@ def import_observations(path, profile, root):
     return rows, draft
 
 
+def accept_active(root, profile, dataset, *, expected_version, confirmed):
+    """Record researcher acceptance of the ACTIVE mapping, without changing evidence.
+
+    Synthetic/genuine provenance and original raw readings are retained.
+    Human physical-verification checks remain separate and authoritative.
+    """
+    if not confirmed:
+        raise ValueError('Explicitly confirm acceptance of the saved mapping.')
+    if profile.origin != 'local':
+        raise ValueError('Select a local monitor profile before accepting luminance values.')
+    current = load_active(root, profile)
+    if current['version'] != expected_version:
+        raise ValueError('Measurement dataset changed. Reload before accepting.')
+    if dataset.get('monitor_profile_id') != profile.id or dataset.get('physical_snapshot') != physical_snapshot(profile):
+        raise ValueError('The measurements belong to a different physical display configuration. Start a new dataset for this display.')
+    values = summary(dataset)
+    if len(values) < 2:
+        raise ValueError('Enter at least two distinct intensity/luminance pairs.')
+    if [(r['screen_intensity'], r['luminance_cdm2']) for r in values] != [
+        (p.screen_intensity, p.luminance_cdm2)
+        for p in sorted(profile.luminance_calibration, key=lambda p: p.screen_intensity)
+    ] and dataset == current:
+        raise ValueError('Profile and active measurements disagree; reload the monitor profile.')
+    # Only real modifications write measurement files and immutable recovery
+    # history. Repeated acceptance of unchanged values writes nothing.
+    if dataset != current:
+        profile, current = save_active(root, profile, dataset, expected_version=expected_version)
+    if profile.calibration_status in ('verified', 'accepted'):
+        return profile, current
+    accepted = save_profile(root, replace(profile, calibration_status='accepted'),
+                            expected_revision=profile.revision)
+    return accepted, current
+
+
 def save_active(root, profile, dataset, *, expected_version):
     if profile.origin!='local': raise ValueError('Save a local display copy before editing its active calibration.')
     directory=active_directory(root,profile)
@@ -253,6 +287,7 @@ def save_active(root, profile, dataset, *, expected_version):
 def luminance_state(profile, dataset=None):
     if dataset is not None and (dataset['physical_snapshot']!=physical_snapshot(profile) or [(r['screen_intensity'],r['luminance_cdm2']) for r in summary(dataset)]!=[(p.screen_intensity,p.luminance_cdm2) for p in sorted(profile.luminance_calibration,key=lambda p:p.screen_intensity)]): return 'INVALIDATED — physical display configuration changed'
     if not profile.luminance_calibration: return 'No luminance measurements saved'
+    if profile.calibration_status == 'accepted': return 'RESEARCHER ACCEPTED — saved values selected for this display; physical verification remains separate'
     if photometry_is_test_data(profile): return 'TEST DATA — NOT PHYSICALLY VERIFIED'
     if profile.has_verified_luminance_mapping: return 'Genuine measurements explicitly verified (laboratory declaration)'
     if profile.calibration_method.strip(): return 'Measurements saved — awaiting independent laboratory verification'

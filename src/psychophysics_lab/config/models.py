@@ -68,7 +68,7 @@ class MonitorProfile:
             if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be positive and finite.")
         for name in ("calibration_status", "geometry_status", "timing_status"):
-            if getattr(self, name) not in {"unverified", "manual_unverified", "verified"}:
+            if getattr(self, name) not in ({"unverified", "manual_unverified", "verified", "accepted"} if name == "calibration_status" else {"unverified", "manual_unverified", "verified"}):
                 raise ValueError(f"Unknown {name}.")
         if self.origin not in {"reference", "local"}:
             raise ValueError("Profile origin must be reference or local.")
@@ -109,6 +109,13 @@ class MonitorProfile:
         ordered = sorted(self.luminance_calibration, key=lambda point: point.screen_intensity)
         if any(a.luminance_cdm2 >= b.luminance_cdm2 for a, b in zip(ordered, ordered[1:])):
             raise ValueError("Measured luminance must increase with the digital command.")
+
+    @property
+    def has_accepted_luminance_mapping(self) -> bool:
+        """Mapping reviewed for use; never itself proves physical luminance."""
+        return len(self.luminance_calibration) >= 2 and (
+            self.calibration_status == "accepted" or self.has_verified_luminance_mapping
+        )
 
     @property
     def has_verified_luminance_mapping(self) -> bool:

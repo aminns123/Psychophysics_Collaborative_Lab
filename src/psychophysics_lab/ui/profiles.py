@@ -115,7 +115,10 @@ class ProfileScreen(Screen):
             )
             for name in ("calibration_status", "geometry_status", "timing_status"):
                 yield Label(name.replace("_", " ").title())
-                yield Select([(v, v) for v in ("unverified", "manual_unverified", "verified")], value=getattr(p, name), allow_blank=False, id="profile-" + name)
+                statuses = ["unverified", "manual_unverified", "verified"]
+                if name == "calibration_status" and p.calibration_status == "accepted":
+                    statuses.append("accepted")
+                yield Select([(v, v) for v in statuses], value=getattr(p, name), allow_blank=False, id="profile-" + name)
             yield Static(
                 "[b]STEP 3 — Luminance: measured command-to-cd/m² pairs[/b]\n"
                 "This needs a PHOTOMETER, not a ruler or Windows brightness slider. "

@@ -30,6 +30,8 @@ def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]
             return "RESEARCHER-REVIEWED VISUAL CONSISTENCY; NOT INDEPENDENT PHYSICAL CERTIFICATION: " + item["message"]
         if key == "bind" and item["completed"]:
             return "CONFIGURATION SAVED: " + item["message"]
+        if key == "luminance":
+            return ("ACCEPTED BY RESEARCHER: " if item.get("accepted") else "SAVED; ACCEPTANCE PENDING / PHYSICAL VERIFICATION PENDING: ") + item["message"]
         status = ("STAGE SAVED; VERIFICATION PENDING" if item["completed"] and not item["ready"]
                   else "STAGE SAVED; MANUALLY DECLARED VERIFIED" if item["completed"] and item["ready"]
                   else item["state"].upper().replace("_", " "))
@@ -57,11 +59,10 @@ def stage_next_action(stage: str, progress: dict) -> str:
             return 'NEXT: Select the report, record Yes / No / Uncertain and any abnormality.'
         return 'Observation saved. NEXT: Choose Luminance when ready.'
     if stage == 'luminance':
-        return ('Saved test/photometer pairs remain available. NEXT: Choose Timing; '
-                'real human acquisition still needs genuine photometry.'
-                if item['completed'] else
-                'NEXT: Open luminance readings. Choose TEST values or actual meter observations, '
-                'then Add and Save. A photometer is NOT needed for software tests.')
+        return ('Mapping accepted. NEXT: Choose Timing. Physical verification remains separate.'
+                if item.get('accepted') else
+                'NEXT: Open saved luminance readings; review or add intensity / cd/m² pairs, '
+                'then choose Accept luminance values. A photometer is needed for physical verification, not test presentation.')
     if stage == 'timing':
         return ('Saved. NEXT: Review; independent photon timing is a separate check.'
                 if item['completed'] else

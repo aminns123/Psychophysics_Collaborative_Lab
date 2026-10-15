@@ -42,14 +42,9 @@ def evidence(root):
 
 
 @pytest.mark.parametrize('size', [(80, 24), (120, 44)])
-@pytest.mark.parametrize('changed', [False, True])
-def test_accept_saved_test_values_continues_to_timing_without_writes(tmp_path, size, changed):
+def test_researcher_accepts_existing_mapping_once_without_rewriting_readings(tmp_path, size):
     root, profile = saved_test_profile()
-    if changed:
-        profile = save_profile(root, replace(profile, viewing_distance_m=profile.viewing_distance_m+.1),
-                               expected_revision=profile.revision)
     before = evidence(root)
-
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test(size=size) as pilot:
@@ -59,29 +54,52 @@ def test_accept_saved_test_values_continues_to_timing_without_writes(tmp_path, s
             await pilot.pause()
             calibration = app.screen
             calibration._go_to_stage('luminance')
-            assert calibration.query_one('#cal-stage-luminance', Button).variant == 'success'
             calibration.query_one('#open-active-luminance', Button).press()
             await pilot.pause()
-            page = app.screen
-            assert page.query_one('#dataset-keep-test', Button).display
-            assert 'no unsaved dataset changes' in str(page.query_one('#dataset-statistics', Static).render())
-            # The continuation must be clickable even in a small terminal.
             assert await pilot.click('#dataset-accept')
             await pilot.pause()
             assert app.screen is calibration
             assert calibration.active_calibration_stage == 'timing'
-            assert calibration._profile().id == profile.id
-            assert app.run_intent == 'test'
-            assert calibration.query_one('#cal-stage-luminance', Button).variant == 'success'
-
+            assert app.run_intent == 'human'
+            assert calibration._profile().has_accepted_luminance_mapping
+            assert not calibration._profile().has_verified_luminance_mapping
+            snapshot = evidence(root)
+            calibration.query_one('#open-active-luminance', Button).press()
+            await pilot.pause()
+            app.screen.query_one('#dataset-accept', Button).press()
+            await pilot.pause()
+            assert evidence(root) == snapshot
     asyncio.run(scenario())
-    assert evidence(root) == before
+    after = evidence(root)
+    for path, payload in before.items():
+        if '/.history/' in path or '/revision_' in path or path.endswith('/luminance.json'):
+            assert after[path] == payload
     current = load_monitor_profiles(ROOT)[profile.id]
-    assert current == profile
-    assert calibration_progress(current, root)['luminance']['completed']
+    assert current.revision == profile.revision + 1
+    assert current.luminance_calibration == profile.luminance_calibration
+    assert current.has_accepted_luminance_mapping
     assert not current.has_verified_luminance_mapping
+    assert current.luminance_data_kind == 'synthetic'
     assert not current.qualified_experiments
     assert human_blockers(CSF_SPEC, current, CSF_SPEC.field_defaults())
+
+
+def test_stale_physical_configuration_blocks_acceptance(tmp_path):
+    root, profile = saved_test_profile()
+    changed = save_profile(root, replace(profile, viewing_distance_m=profile.viewing_distance_m+.1),
+                           expected_revision=profile.revision)
+    before = evidence(root)
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        async with app.run_test() as pilot:
+            await app.push_screen(LuminanceDataScreen(changed))
+            await pilot.pause()
+            app.screen.query_one('#dataset-accept', Button).press()
+            await pilot.pause()
+            assert 'different physical display configuration' in str(
+                app.screen.query_one('#dataset-feedback', Static).render())
+    asyncio.run(scenario())
+    assert evidence(root) == before
 
 
 @pytest.mark.parametrize('edit', ['metadata', 'typed_readings', 'added_readings'])
@@ -102,7 +120,7 @@ def test_accept_requires_explicit_resolution_of_real_unsaved_edits(tmp_path, edi
                 if edit == 'added_readings':
                     page.query_one('#dataset-add', Button).press()
             await pilot.pause()
-            for button in ('dataset-accept', 'dataset-keep-test'):
+            for button in ('dataset-keep-test',):
                 page.query_one('#'+button, Button).press()
                 await pilot.pause()
                 assert app.screen is page
@@ -157,7 +175,7 @@ def test_no_saved_values_cannot_be_accepted(tmp_path):
     assert evidence(root) == before
 
 
-def test_accept_returns_to_existing_experiment_review_in_test_mode(tmp_path):
+def test_accept_returns_to_existing_experiment_review_preserving_human_mode(tmp_path):
     root, profile = saved_test_profile()
     before = evidence(root)
     values = CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
@@ -180,8 +198,16 @@ def test_accept_returns_to_existing_experiment_review_in_test_mode(tmp_path):
             await pilot.pause()
             assert app.screen is review
             assert review.request.experiment_values == request.experiment_values
-            assert review.query_one('#review-run-intent', Select).value == 'test'
+            assert review.query_one('#review-run-intent', Select).value == 'human'
+            assert not next(row for row in review.readiness_report['requirements'] if row['key']=='luminance')['passed']
             assert not review.readiness_report['human_ready']
 
     asyncio.run(scenario())
-    assert evidence(root) == before
+    after=evidence(root)
+    for path,payload in before.items():
+        if '/.history/' in path or '/revision_' in path or path.endswith('/luminance.json'):
+            assert after[path] == payload
+    current=load_monitor_profiles(ROOT)[profile.id]
+    assert current.has_accepted_luminance_mapping
+    assert not current.has_verified_luminance_mapping
+    assert human_blockers(CSF_SPEC,current,request.experiment_values)
