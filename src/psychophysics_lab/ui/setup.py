@@ -2049,9 +2049,14 @@ class ReviewScreen(Screen):
             with Vertical(id="human-review-checks"):
                 yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
                 yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
-                from ..config.human_readiness import experiment_readiness
+                yield Static("", id="human-next-action", markup=False, classes="info-card readiness-next")
+                yield Button("Open the next required check", id="review-next-action", variant="warning")
+                yield Static("", id="human-checklist", markup=False, classes="info-card")
+                from ..config.human_readiness import experiment_readiness, human_readiness_checklist
                 report = experiment_readiness(self.request, experiment, profile, repo_root=self.app.repo_root)
-                for row in report["requirements"]:
+                ordered_rows = human_readiness_checklist(report) + [
+                    row for row in report["requirements"] if not row.get("required")]
+                for row in ordered_rows:
                     yield Static("", id="readiness-" + row["key"], classes="info-card")
                     if row.get("action"):
                         yield Button(row["action"], id="resolve-" + row["key"])
@@ -2237,12 +2242,44 @@ class ReviewScreen(Screen):
             ("Human experiment: Ready (final launch checks still apply)" if report["human_ready"] else f"Human acquisition blocked — {count} requirements outstanding")
             + "\nSimulation: " + ("Available" if report["simulation_available"] else "Unavailable")
             + "\nGreen calibration pages record saved observations; physical verification is a separate laboratory declaration.")
+        from ..config.human_readiness import next_human_requirement, human_readiness_checklist
+        next_row = next_human_requirement(report)
+        self.next_requirement_key = next_row["key"] if next_row else None
+        button = self.query_one("#review-next-action", Button)
+        button.disabled = next_row is None
+        button.label = (next_row["action"] or "Open next check") if next_row else "All required checks complete"
+        step_count = len(report["blockers"])
+        self.query_one("#human-next-action", Static).update(
+            ("NEXT REQUIRED ACTION — " + next_row["name"] + "\n"
+             + (next_row.get("action") or "Review the corresponding requirement") + "\n"
+             + next_row["detail"] if next_row else
+             "All required checks are complete. Final launch checks still apply.")
+        )
+        checks = human_readiness_checklist(report)
+        self.query_one("#human-checklist", Static).update(
+            "HUMAN ACQUISITION CHECKLIST — in the order to complete it\n"
+            + "\n".join(("☑ " if row["passed"] else "□ ") +
+                        row["name"] + (" — complete" if row["passed"] else
+                        " — NEXT" if next_row and row["key"] == next_row["key"] else " — outstanding")
+                        for row in checks)
+            + ("\n\n" + str(step_count) + " required check(s) remaining." if step_count else
+               "\n\nAll required checklist items complete.")
+        )
         for row in report["requirements"]:
             matches = self.query("#readiness-" + row["key"])
             if matches:
+                widget = matches.first()
+                for cls in ("readiness-blocked","readiness-done","readiness-next","readiness-optional"):
+                    widget.remove_class(cls)
+                widget.add_class("readiness-next" if next_row is not None and row["key"] == next_row["key"]
+                                 else "readiness-blocked" if row["required"] and not row["passed"]
+                                 else "readiness-done" if row["required"] else "readiness-optional")
                 color = "green" if row["passed"] and row["required"] else "yellow" if not row["required"] else "red"
-                matches.first().update(f"[{color}][b]{row['name']}: {row['status']}[/b][/] "
+                widget.update(f"[{color}][b]{row['name']}: {row['status']}[/b][/] "
                     + ("Required for human acquisition" if row["required"] else "Recommended / informational") + "\n" + row["detail"])
+            action = self.query("#resolve-" + row["key"])
+            if action and row.get("action"):
+                action.first().label = row["action"]
         self.query_one("#readiness-technical", Static).update(
             "\n\n".join(row["detail"] for row in report["blockers"]) + "\n\n" + report["simulation_detail"])
         self.query_one("#run-simulation", Button).disabled = not report["simulation_available"]
@@ -2256,7 +2293,7 @@ class ReviewScreen(Screen):
                 "profile":self.request.monitor_profile_id,"values":dict(self.request.experiment_values)})
         row = next(item for item in self.readiness_report["requirements"] if item["key"] == key)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
-        if key == "luminance":
+        if key == "luminance" and row.get("destination") == "calibration":
             from .luminance_data import open_luminance_editor
             error = open_luminance_editor(self.app, profile, experiment_id=self.request.experiment_id)
             if error:
@@ -2302,19 +2339,25 @@ class ReviewScreen(Screen):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
             return
+        if button_id == "review-next-action":
+            event.stop()
+            if getattr(self, "next_requirement_key", None):
+                self.resolve_requirement(self.next_requirement_key)
+            return
         if button_id not in {"back", "run", "run-simulation", "run-presentation-test", "review-calibration-guide"}:
             return
         event.stop()
         try:
             if button_id == "review-calibration-guide":
                 from .calibration_guide import CalibrationGuideScreen
-                from ..config.preflight import human_blockers
-                profile = self.app.monitor_profiles[self.request.monitor_profile_id]
-                spec = get_experiment(self.request.experiment_id)
-                reasons = human_blockers(spec, profile, self.request.experiment_values)
-                stage = ("qualification" if any("not been qualified" in x for x in reasons)
-                         else "contrast" if any("Grating command may clip" in x for x in reasons)
-                         else "display" if not profile.display_binding else "geometry")
+                from ..config.human_readiness import next_human_requirement
+                row = next_human_requirement(self.readiness_report)
+                stage = {"binding":"display", "sampling":"display",
+                         "geometry":"geometry", "luminance":"luminance",
+                         "timing":"timing", "contrast":"contrast",
+                         "qualification":"qualification",
+                         "configuration":"contrast", "participant":"qualification"}.get(
+                             row["key"] if row else "", "qualification")
                 self.app.push_screen(CalibrationGuideScreen(
                     self.request, initial_stage=stage))
             elif button_id == "back":
@@ -2385,6 +2428,14 @@ class PsyCoLabSetupApp(App):
     Collapsible { padding: 0; margin: 0 0 1 0; }
     .field-help { color: $text-muted; margin-bottom: 1; }
     .info-card { border: solid $surface-lighten-2; padding: 1; margin-top: 1; margin-bottom: 1; }
+    /* Human acquisition checks use an obvious visible edge; the first
+       unresolved prerequisite gets the strongest warning border. */
+    .readiness-blocked { border: solid $warning; }
+    .readiness-next { border: heavy $warning; }
+    .readiness-done { border: solid $success; }
+    .readiness-optional { border: solid $surface-lighten-2; }
+    #human-next-action { margin-top: 1; }
+    #review-next-action { width: auto; margin: 0 0 1 1; }
     .section-title { margin-top: 2; }
     .buttons { height: 3; margin: 0; align-horizontal: right; }
     .buttons Button { min-width: 0; max-width: 50%; margin: 0; }

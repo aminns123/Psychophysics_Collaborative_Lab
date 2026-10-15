@@ -64,6 +64,9 @@ def makerect(x0,y0,w,h):
     return np.r_[w,h,0]*rc3 + np.r_[x0,y0,0]
 
 
+# The module name itself is used throughout libC (e.g. pyglet.clock.Clock).
+# Importing pyglet.gl and individual names does not bind `pyglet` reliably.
+import pyglet
 from pyglet.gl import *
 from pyglet.window import key
 from pyglet import clock, clock, font, graphics, window, text

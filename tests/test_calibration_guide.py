@@ -84,19 +84,22 @@ def test_review_guide_is_persistent_navigable_and_user_dismissible(tmp_path,monk
             await pilot.pause()
             guide=app.screen
             assert isinstance(guide,CalibrationGuideScreen)
-            assert GUIDE_STEPS[guide.stage_index][0] == "contrast"
+            # The guide begins at the earliest prerequisite (Display),
+            # not at Contrast while monitor binding is still unresolved.
+            assert GUIDE_STEPS[guide.stage_index][0] == "display"
             assert "Step " in str(guide.query_one("#guide-progress",Static).render())
             assert "not an automatic" in str(guide.query_one("#guide-content",Static).render()).lower() or "NOT" in str(guide.query_one("#guide-content",Static).render())
             assert not guide.query_one("#guide-next",Button).disabled
-            guide.query_one("#guide-prev",Button).press()
-            await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="timing"
-            await pilot.press("left")
-            await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="luminance"
+            assert guide.query_one("#guide-prev",Button).disabled
             await pilot.press("right")
             await pilot.pause()
-            assert GUIDE_STEPS[guide.stage_index][0]=="timing"
+            assert GUIDE_STEPS[guide.stage_index][0]=="geometry"
+            await pilot.press("right")
+            await pilot.pause()
+            assert GUIDE_STEPS[guide.stage_index][0]=="spatial"
+            await pilot.press("left")
+            await pilot.pause()
+            assert GUIDE_STEPS[guide.stage_index][0]=="geometry"
             guide.query_one("#guide-close",Button).press()
             await pilot.pause()
             assert app.screen is review
@@ -180,6 +183,11 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
             app.screen.query_one("#review-calibration-guide",Button).press()
             await pilot.pause()
             guide=app.screen
+            assert GUIDE_STEPS[guide.stage_index][0]=="display"
+            # Navigate deliberately to Contrast to edit those settings.
+            for _ in range(5):
+                await pilot.press("right")
+                await pilot.pause()
             assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
             guide.query_one("#guide-open",Button).press()
             await pilot.pause()
