@@ -47,7 +47,7 @@ def experiment_readiness(request, spec, profile, *, repo_root):
         count=len(profile.luminance_calibration)
         synthetic=photometry_is_test_data(profile)
         row['detail']=f'{count} intensity/luminance pairs saved. ' + (
-            'Their recorded source is synthetic/test: researcher acceptance does NOT make '
+            'Their recorded source is synthetic/test data: researcher acceptance does NOT make '
             'them measured photometry. ' if synthetic else ''
         ) + row['detail']
         if not row['passed'] and (count<2 or synthetic):
