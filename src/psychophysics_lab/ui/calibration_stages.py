@@ -31,7 +31,7 @@ def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]
         if key == "bind" and item["completed"]:
             return "CONFIGURATION SAVED: " + item["message"]
         if key == "luminance":
-            return ("ACCEPTED BY RESEARCHER: " if item.get("accepted") else "SAVED; ACCEPTANCE PENDING: ") + item["message"]
+            return ("ACCEPTED BY RESEARCHER: " if item.get("accepted") else "SAVED; ACCEPTANCE PENDING / PHYSICAL VERIFICATION PENDING: ") + item["message"]
         status = ("STAGE SAVED; VERIFICATION PENDING" if item["completed"] and not item["ready"]
                   else "STAGE SAVED; MANUALLY DECLARED VERIFIED" if item["completed"] and item["ready"]
                   else item["state"].upper().replace("_", " "))
