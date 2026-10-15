@@ -65,14 +65,14 @@ def test_verification_then_qualification_refresh_same_review_and_restart(tmp_pat
             assert 'BLOCKED' in str(app.screen.query_one('#qualification-checks',Static).render())
             app.screen.query_one('#qualification-back',Button).press(); await pilot.pause()
             review.resolve_requirement('luminance'); await pilot.pause()
-            app.screen.query_one('#dataset-verify',Button).press(); await pilot.pause()
+            # The pair table already exists; the missing check is physical
+            # verification, so open it directly (no redundant editor hop).
             assert isinstance(app.screen,PhysicalVerificationScreen)
             for key in ('geometry_status','calibration_status','timing_status'):
                 app.screen.query_one('#verification-'+key,Select).value='verified'
             app.screen.query_one('#verification-method',Input).value='Laboratory meter fixture'
             app.screen.query_one('#verification-reviewed',Checkbox).value=True
             app.screen.query_one('#verification-save',Button).press(); await pilot.pause()
-            app.screen.query_one('#dataset-back',Button).press(); await pilot.pause()
             assert app.screen is review
             assert review.request.monitor_profile_hash!=original_hash
             assert all(r['passed'] for r in review.readiness_report['requirements'] if r['key'] in ('geometry','luminance','timing'))
