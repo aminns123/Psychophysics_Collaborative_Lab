@@ -170,8 +170,10 @@ def save_one_verification(profile, root, *, category, status, reviewed, calibrat
     keys=('geometry_status','calibration_status','timing_status')
     if category not in keys:
         raise ValueError('Select Geometry, Photometry or Timing.')
-    if status not in ('unverified','manual_unverified','verified'):
+    if status not in ('unverified','manual_unverified','verified','accepted'):
         raise ValueError('Choose Yes, No, or Measurements saved but not verified.')
+    if status=='accepted' and (category!='calibration_status' or profile.calibration_status!='accepted'):
+        raise ValueError('Accept the mapping directly from the Luminance page.')
     statuses={key:getattr(profile,key) for key in keys}
     statuses[category]=status
     method=(profile.calibration_method if category!='calibration_status'
