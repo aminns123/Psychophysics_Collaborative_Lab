@@ -4,6 +4,28 @@ from .preflight import human_requirements, validate_setup
 from .calibration_progress import calibration_progress
 from .models import photometry_is_test_data
 
+# Dependencies come before experiment qualification: the latter cannot be
+# completed until the physical calibration checks are satisfied.
+HUMAN_CHECK_ORDER = (
+    "binding", "geometry", "luminance", "timing", "sampling", "contrast",
+    "configuration", "participant", "qualification",
+)
+
+
+def next_human_requirement(report):
+    """First actionable required failure, independently of display order."""
+    blocked = [row for row in report["requirements"]
+               if row.get("required") and not row["passed"]]
+    rank = {key: i for i, key in enumerate(HUMAN_CHECK_ORDER)}
+    return min(blocked, key=lambda row: rank.get(row["key"], len(rank))) if blocked else None
+
+
+def human_readiness_checklist(report):
+    """Required steps in dependency order, with source-backed completion."""
+    rank = {key: i for i, key in enumerate(HUMAN_CHECK_ORDER)}
+    return sorted((row for row in report["requirements"] if row.get("required")),
+                  key=lambda row: rank.get(row["key"], len(rank)))
+
 
 def experiment_readiness(request, spec, profile, *, repo_root):
     stages = calibration_progress(profile, config_root(repo_root))
@@ -17,14 +39,26 @@ def experiment_readiness(request, spec, profile, *, repo_root):
     if 'luminance' in by_key:
         row=by_key['luminance']
         from .calibration_dataset import luminance_state,load_active
-        row['status']=luminance_state(profile,load_active(config_root(repo_root),profile))
-        row['action']='Open luminance measurements and verification'
+        try:
+            row['status']=luminance_state(profile,load_active(config_root(repo_root),profile))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            row['status']='Saved dataset requires inspection'
+            row['detail']='Active luminance dataset could not be read: ' + str(exc) + '. ' + row['detail']
         count=len(profile.luminance_calibration)
-        row['detail']=f'{count} intensity/luminance pairs saved. ' + ('Recorded method labels these as synthetic/test data; they cannot verify physical photometry. ' if photometry_is_test_data(profile) else '') + row['detail']
+        synthetic=photometry_is_test_data(profile)
+        row['detail']=f'{count} intensity/luminance pairs saved. ' + (
+            'Their recorded source is synthetic/test: researcher acceptance does NOT make '
+            'them measured photometry. ' if synthetic else ''
+        ) + row['detail']
+        if not row['passed'] and (count<2 or synthetic):
+            row.update(destination='calibration',stage='luminance',
+                       action='Record real photometer readings' if synthetic
+                       else 'Add at least two measured luminance pairs')
+        elif not row['passed']:
+            row.update(destination='verification',
+                       action='Review physical photometry declaration')
     if 'geometry' in by_key and not by_key['geometry']['passed'] and not stages['geometry']['measurement_recorded']:
         by_key['geometry'].update(destination='calibration',stage='geometry',action='Record a ruler measurement')
-    if 'luminance' in by_key and not by_key['luminance']['passed'] and (len(profile.luminance_calibration)<2 or photometry_is_test_data(profile)):
-        by_key['luminance'].update(destination='calibration',stage='luminance',action='Record genuine photometer observations')
     configuration_error=None
     try:
         validate_setup(request,spec,profile,mode='configuration')
