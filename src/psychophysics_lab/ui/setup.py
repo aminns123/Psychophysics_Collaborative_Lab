@@ -516,10 +516,10 @@ class DisplayCheckScreen(HubPage):
             with VerticalScroll(id="cal-panel-luminance", classes="page-body calibration-panel"):
                 yield Static(
                     "[b]4 / 6 — LUMINANCE: TEST VALUES OR PHOTOMETER[/b]\n"
-                    "1. Open saved measurements below. Keep the old TEST values for software testing, "
-                    "or explicitly start a new dataset if the display configuration changed.\n"
-                    "2. Enter digital intensity and one or more cd/m² values, marking Test or Actual meter.\n"
-                    "3. Add readings, Save active dataset, then choose Next stage. "
+                    "1. Open saved measurements below and review the values and their source.\n"
+                    "2. To keep them as-is, choose Accept saved values for TEST → Timing. No Save is needed.\n"
+                    "3. Only to change measurements: enter intensity and cd/m² readings, mark their source, "
+                    "Add readings, then Save active dataset. "
                     "Only real photometry can support human-acquisition verification.",
                     classes="info-card",
                 )

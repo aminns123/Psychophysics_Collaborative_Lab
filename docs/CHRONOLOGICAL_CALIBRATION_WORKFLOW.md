@@ -17,11 +17,24 @@ Select the purpose under **Experiment**. You may enter Calibration and return wi
 1. **Display:** Bind your physical screen; use the OS resolution and refresh; measure the illuminated active width/height and eye-to-screen distance. Save the monitor profile. *Next: Geometry.*
 2. **Geometry:** Present a ruler bar. Measure the displayed length with a physical ruler; enter it in mm and **Record measurement**. Inspect the percent error. A saved measurement is **not** by itself physical verification. *Next: Spatial.*
 3. **Spatial:** Enter grating cycles/degree and launch. Return to the same page, select its presentation report, and record **Yes / No / Uncertain** and any abnormality. A complete light–dark period is one cycle; bright maxima depend on phase and edges. *Next: Luminance.*
-4. **Luminance:** For **Test** or **Simulation**, keep the saved values labelled Test, or record new synthetic values without pretending to own a meter. For actual laboratory photometry, record digital command (0–1), actual photometer cd/m² readings, and source. Multiple readings at the same command produce a mean/SD. Click **Add readings to draft**, then **Save active dataset**. *Next: Timing.*
+4. **Luminance:** Open the saved readings and choose **Accept saved values for TEST → Timing** to use them as-is for software testing. No Save or new measurement is needed. To change values, enter digital command (0–1), cd/m² readings and their source, then **Add readings to draft → Save active dataset**. Multiple readings at the same command produce a mean/SD. Only actual laboratory photometry should be marked as real meter readings. *Next: Timing.*
 5. **Timing:** Choose frame flicker/sine, select a frequency, and launch the test. Review software frame timing. It cannot alone verify emitted photon onset (use a separate sensor for physical verification). *Next: Review.*
 6. **Review:** Examine saved setup. Choose **Finish calibration setup → Return to Experiment** for test/simulation. For real human acquisition, review the physically measured Geometry, Photometry and Timing categories separately and then **Check / qualify experiment**. The final human-run preflight still decides whether acquisition is allowed.
 
 The top of each page shows a single **NEXT** instruction. Use **Next stage** when *you* are ready; merely saving a diagnostic should not unexpectedly leave the page.
+
+## Accept existing luminance values
+
+All reading, editing and acceptance controls are in **Calibrate → Luminance → Step 1 — Review or add saved luminance readings**. Geometry and timing remain on their respective pages; Review summarises the saved evidence.
+
+- **Accept saved values for TEST → Timing** acknowledges the saved dataset for test use and opens Timing. When opened from Experiment Review, the button returns to **Review** with Test selected instead.
+- **Keep saved TEST values → Experiment Test mode** returns directly to configuring a test presentation. Both actions are available whether or not display settings changed.
+- If there are unsaved rows, metadata edits or typed readings, first save the changes or choose **Discard draft; keep saved values** on the Luminance page. Acceptance never silently discards them.
+- **Saved values — no unsaved dataset changes** means no Save is needed. Acceptance does not rewrite the dataset, create a revision, change its provenance, physically verify it or qualify human acquisition.
+
+Two or more saved intensity points already complete the green Luminance stage. **TEST DATA — NOT PHYSICALLY VERIFIED** remains correct after acceptance; green records setup completion, not physical certification.
+
+On versions without the acceptance button, **Discard draft / Back → 5 · Timing** (or **6 · Review**) keeps saved values and discards only unsaved edits. The older “Saved + unsaved draft” heading appears even when the draft is unchanged.
 
 ## Display settings changed? (especially resolution)
 
