@@ -44,16 +44,18 @@ class LuminanceDataScreen(Screen):
             with Horizontal(classes='buttons'):
                 yield Button('Discard draft / Back',id='dataset-back')
                 yield Button('Save active dataset',id='dataset-save',variant='primary')
+            yield Button('Accept saved values for TEST → Timing',id='dataset-accept',variant='primary')
             yield Static('',id='dataset-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
-            yield Static('[b]LUMINANCE — 3 STEPS[/b]   1. Choose whether to keep or start readings. '
-                         '2. Enter intensity + cd/m² measurements. 3. Save the new dataset. '
-                         'Test values remain unverified.', markup=True, classes='info-card')
+            yield Static('[b]LUMINANCE[/b]   Keep the saved values: Accept for TEST and continue. '
+                         'To change values: 1. Enter readings. 2. Add to draft. 3. Save. '
+                         'Accepting test values does not physically verify them.', markup=True, classes='info-card')
             yield Static('',id='dataset-replacement-guidance',markup=False,classes='info-card')
             yield Checkbox('Yes — keep the previous readings in history and start a NEW dataset for this screen.',
                            id='dataset-start-confirm')
             yield Button('Start new measurements for THIS display',id='dataset-start-current',variant='warning')
             yield Button('Keep saved TEST values → Experiment Test mode',id='dataset-keep-test')
+            yield Button('Discard draft; keep saved values',id='dataset-discard')
             yield Static('',id='dataset-next-step',markup=False,classes='info-card')
             yield Static('',id='dataset-state',markup=False)
             yield Static('',id='dataset-statistics',markup=False)
@@ -102,13 +104,16 @@ class LuminanceDataScreen(Screen):
         yield Footer()
 
     def on_mount(self):
+        from .setup import ReviewScreen
+        if isinstance(self.app.screen_stack[-2], ReviewScreen):
+            self.query_one('#dataset-accept',Button).label='Accept saved values for TEST → Review'
         self.refresh_data()
         self._update_measurement_controls()
 
     def on_screen_resume(self):
         if not self.is_mounted: return
         self.app.reload_profiles(); self.profile=self.app.monitor_profiles[self.profile.id]
-        if self.draft==self.saved:
+        if not self._has_unsaved_changes() and not self._has_pending_readings():
             self.saved=load_active(self.app.local_config_root,self.profile)
             self.draft=deepcopy(self.saved)
             for key in ('method','date','notes'): self.query_one('#dataset-'+key,Input).value=self.saved.get(key,'')
@@ -119,7 +124,10 @@ class LuminanceDataScreen(Screen):
         changed=self._physical_changes
         self.query_one('#dataset-start-confirm',Checkbox).display=bool(changed) and not self._replacement_started
         self.query_one('#dataset-start-current',Button).display=bool(changed) and not self._replacement_started
-        self.query_one('#dataset-keep-test',Button).display=bool(changed) and not self._replacement_started
+        has_saved=bool(self.saved['observations'])
+        self.query_one('#dataset-keep-test',Button).disabled=not has_saved
+        self.query_one('#dataset-accept',Button).disabled=not has_saved
+        self.query_one('#dataset-discard',Button).display=self._has_unsaved_changes() or self._has_pending_readings()
         summary_text=''
         if changed:
             changes='; '.join(
@@ -151,12 +159,14 @@ class LuminanceDataScreen(Screen):
             next_text=('STEP 1 OF 3 — Either Keep saved TEST values and return, or tick '
                        'Yes → Start new measurements for THIS display. '
                        'Do not simply press Save on old data.')
-        elif self.draft!=self.saved:
+        elif self._has_unsaved_changes():
             next_text=('STEP 3 OF 3 — Review the new rows and choose Save active dataset '
                        'at the top. Discard draft / Back keeps the previous saved data.')
         else:
-            next_text=('To add measurements: 1. Choose intensity. 2. Enter cd/m² readings '
-                       'and their source. 3. Add readings to draft → Save active dataset.')
+            next_text=('Saved values can be accepted as-is for TEST. Use Accept saved values '
+                       'above to continue, or Keep saved TEST values for Experiment Test mode. '
+                       'No Save or new measurement is needed.' if has_saved else
+                       'Enter intensity and cd/m² readings, Add readings to draft, then Save active dataset.')
         self.query_one('#dataset-next-step',Static).update(next_text)
 
     def refresh_data(self):
@@ -173,7 +183,9 @@ class LuminanceDataScreen(Screen):
         with self.prevent(Select.Changed):
             picker.set_options(options)
             picker.value=previous if previous in [value for _,value in options] else 'new'
-        text='Saved + unsaved draft (Save active dataset to commit changes):\nIntensity | readings | mean cd/m² | SD cd/m²\n'
+        text=('Unsaved draft — saved values unchanged until Save active dataset:\n'
+              if self._has_unsaved_changes() else 'Saved values — no unsaved dataset changes:\n')
+        text+='Intensity | readings | mean cd/m² | SD cd/m²\n'
         text+='\n'.join(f"{r['screen_intensity']:g} | {r['n'] if r['n'] is not None else 'unknown (legacy summary)'} | {r['luminance_cdm2']:.6g} | "+('not estimated (single observation)' if r['sample_sd_cdm2'] is None else f"{r['sample_sd_cdm2']:.6g}") for r in rows)
         raw='Raw readings by digital command:\n' + '; '.join(
             f"{r['screen_intensity']:g}: {r.get('readings_cdm2','unknown — legacy summary only')}"
@@ -233,11 +245,15 @@ class LuminanceDataScreen(Screen):
     def on_input_changed(self,event):
         if not self.is_mounted:
             return
+        if event.input.id in ('dataset-method','dataset-date','dataset-notes'):
+            self.refresh_data()
+            return
         # Optional method, date, notes and JSON paths are not readings.
         # An empty readings field is a normal neutral state, never a float error.
         if event.input.id not in ('dataset-command','dataset-readings'):
             return
         self._update_measurement_controls()
+        self._refresh_chronological_guidance()
         command=self.query_one('#dataset-command',Input).value.strip()
         raw=self.query_one('#dataset-readings',Input).value.strip()
         if not command or not raw:
@@ -259,6 +275,48 @@ class LuminanceDataScreen(Screen):
             from datetime import date
             date.fromisoformat(self.draft['date'])
 
+    def _has_unsaved_changes(self):
+        return self.draft!=self.saved or any(
+            self.query_one('#dataset-'+key,Input).value.strip()!=self.saved.get(key,'')
+            for key in ('method','date','notes'))
+
+    def _has_pending_readings(self):
+        return bool(self.query_one('#dataset-readings',Input).value.strip())
+
+    def _accept_saved(self, *, experiment=False):
+        if not self.saved['observations']:
+            raise ValueError('No saved values to accept. Add readings and Save first.')
+        if self._has_unsaved_changes() or self._has_pending_readings():
+            raise ValueError('Unsaved edits remain. Add any typed readings and Save, or choose '
+                             'Discard draft; keep saved values before accepting the saved dataset.')
+        # Acceptance is navigation and test intent only, never an evidence write.
+        from .setup import DisplayCheckScreen, ReviewScreen
+        from ..config.local import save_preferences
+        parent=self.app.screen_stack[-2]
+        if not experiment and not isinstance(parent,ReviewScreen):
+            save_preferences(self.app.local_config_root,active_monitor_profile_id=self.profile.id,
+                             calibration_active_stage='timing')
+        home=self.app.screen_stack[0]
+        home.query_one('#run-intent',Select).value='test'
+        home.query_one('#monitor-profile',Select).value=self.profile.id
+        self.app.run_intent='test'
+        message=('Saved luminance values retained unchanged for TEST. Acceptance does not '
+                 'physically verify readings or qualify human acquisition.')
+        self.app.notify(message,title='Luminance accepted for TEST',timeout=8)
+        if experiment:
+            self.app.open_hub_page('setup')
+            home.query_one('#setup-status',Static).update(message+' Choose Configure Experiment to test stimuli.')
+        elif isinstance(parent,ReviewScreen):
+            parent.query_one('#review-run-intent',Select).value='test'
+            self.app.pop_screen()
+            parent.query_one('#review-status',Static).update(message)
+        elif isinstance(parent,DisplayCheckScreen):
+            self.app.pop_screen()
+        else:
+            self.app.display_guide_target_profile_id=self.profile.id
+            self.app.display_draft['geometry-monitor']=self.profile.id
+            self.app.switch_screen(DisplayCheckScreen())
+
     def on_button_pressed(self,event):
         key=event.button.id
         try:
@@ -266,15 +324,20 @@ class LuminanceDataScreen(Screen):
                 self.app.pop_screen()
                 return
             if key=='dataset-keep-test':
-                # This deliberately chooses a test-only route; existing
-                # measurements never become qualified by navigating away.
-                self.app.open_hub_page('setup')
-                home=self.app.screen_stack[0]
-                home.query_one('#run-intent',Select).value='test'
-                home.query_one('#setup-status',Static).update(
-                    'Saved test luminance values retained unchanged. '
-                    'Choose Configure to test stimuli. These readings are '
-                    'not physically verified for this display.')
+                self._accept_saved(experiment=True)
+                return
+            if key=='dataset-accept':
+                self._accept_saved()
+                return
+            if key=='dataset-discard':
+                self.draft=deepcopy(self.saved)
+                self._replacement_started=False
+                for field in ('method','date','notes'):
+                    self.query_one('#dataset-'+field,Input).value=self.saved.get(field,'')
+                self.query_one('#dataset-readings',Input).value=''
+                self.refresh_data()
+                self.query_one('#dataset-feedback',Static).update(
+                    'Draft discarded. Saved values are unchanged; choose Accept to continue for TEST.')
                 return
             if key=='dataset-start-current':
                 confirmed=self.query_one('#dataset-start-confirm',Checkbox).value
@@ -336,6 +399,12 @@ class LuminanceDataScreen(Screen):
                 self._update_measurement_controls()
                 return
             if key=='dataset-save':
+                if not self._has_unsaved_changes() and not self.saved.get('_needs_recovery'):
+                    self.query_one('#dataset-feedback',Static).update(
+                        'No changes to save. Accept saved values for TEST to continue.'
+                        if not self._physical_changes else
+                        'No changes to save. Keep saved TEST values, or Tick Yes → Start new measurements.')
+                    return
                 if self._physical_changes and not self._replacement_started:
                     raise ValueError(
                         'Old readings belong to another display setup. '
