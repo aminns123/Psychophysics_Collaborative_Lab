@@ -63,6 +63,9 @@ def resolve_data_root(value: str | Path, repo_root: Path, *, allow_synthetic: bo
     path = path.resolve()
 
     if not allow_synthetic:
+        # A dedicated USER_env workspace is never a human acquisition folder.
+        if any((folder / ".psycolab_user_env.json").is_file() for folder in (path, *path.parents)):
+            raise ValueError("USER_env development data cannot be used for human acquisition.")
         from .core.presentation_testing import MARKER as TEST_MARKER
         if any((p/TEST_MARKER).exists() for p in (path,*path.parents)):
             raise ValueError("Presentation-test folders cannot be used for certified human acquisition.")

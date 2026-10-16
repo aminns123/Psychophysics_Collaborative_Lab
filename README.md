@@ -435,3 +435,7 @@ When development dependencies are available:
 
 Real stimulus rendering/timing requires additional validation on the laboratory
 display.
+
+## Develop new stimuli and experiments (USER_env)
+
+Use `run_user_env.bat` on Windows (Python 3.11, separate editable environment), or `python -m psychophysics_lab --user-env`. Build draft Python+JSON modules, preview/simulate without human calibration or data, then explicitly publish the tested source as Ready so it appears in the normal TUI. See [the researcher development guide](docs/USER_ENV.md). USER_env is a Python virtual environment, **not** a security sandbox; hardware timing and luminance must still be verified in the lab.
