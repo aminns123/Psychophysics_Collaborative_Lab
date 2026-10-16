@@ -116,7 +116,10 @@ class Presentation:
             self.held.add(symbol)
             key = pyglet.window.key.symbol_string(symbol).removeprefix("_")
             if accepting and key in self.responses.keys and answer is None:
-                answer = Response(self.responses.decode(key), key, time.perf_counter() - onset)
+                elapsed = time.perf_counter() - onset
+                if phase.duration_ms and elapsed * 1000 >= phase.duration_ms:
+                    return True  # A late queued key cannot turn a timeout into acceptance.
+                answer = Response(self.responses.decode(key), key, elapsed)
                 return True
 
         self.window.push_handlers(on_key_press=keypress)

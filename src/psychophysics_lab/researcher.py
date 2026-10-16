@@ -193,6 +193,11 @@ class RunContext:
                 if response is None:
                     raise ValueError("Response stage ended without a valid response.")
                 correct = self.responses.correct(target, response.alternative)
+                import math
+                if (response.key != self.responses.keys[response.alternative] or
+                        type(response.reaction_time_s) not in (int, float) or
+                        not math.isfinite(response.reaction_time_s) or response.reaction_time_s < 0):
+                    raise ValueError("Response key, alternative and finite nonnegative reaction time must agree.")
                 accepted_response = response
                 response_data = {"alternative": response.alternative, "key": response.key,
                                  "meaning": self.responses.alternatives[response.alternative],
