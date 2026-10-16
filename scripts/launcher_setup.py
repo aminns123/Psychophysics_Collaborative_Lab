@@ -78,18 +78,37 @@ def _load_state() -> dict:
         return {}
 
 
-def _write_state(pyproject_hash: str) -> None:
-    STATE.write_text(
-        json.dumps(
-            {
-                "pyproject_sha256": pyproject_hash,
-                "python": ".".join(map(str, EXPECTED_PYTHON)),
-                "updated_utc": datetime.now(timezone.utc).isoformat(),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+def _extra_requirements() -> Path | None:
+    """USER_env-only optional libraries for researcher-authored Python files."""
+    if VENV.name != "USER_env":
+        return None
+    path = ROOT / "user_requirements.txt"
+    if not path.exists():
+        path.write_text(
+            "# Optional packages for user-authored Python scripts.\n"
+            "# One pip requirement per line; relaunch run_user_env.bat.\n",
+            encoding="utf-8",
+        )
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("USER_env requirements must be a regular file.")
+    return path
+
+
+def _install_extra_requirements(python: Path, extra: Path | None) -> None:
+    if extra is not None:
+        _run([str(python), "-m", "pip", "install",
+              "--disable-pip-version-check", "--requirement", str(extra)])
+
+
+def _write_state(pyproject_hash: str, requirements_hash: str | None = None) -> None:
+    values = {
+        "pyproject_sha256": pyproject_hash,
+        "python": ".".join(map(str, EXPECTED_PYTHON)),
+        "updated_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    if VENV.name == "USER_env":
+        values["user_requirements_sha256"] = requirements_hash
+    STATE.write_text(json.dumps(values, indent=2), encoding="utf-8")
 
 
 def _validate_environment(python: Path) -> None:
@@ -143,8 +162,11 @@ def main() -> int:
         return 2
 
     pyproject_hash = _hash_file(PYPROJECT)
+    extra = _extra_requirements()
+    extra_hash = _hash_file(extra) if extra is not None else None
     state = _load_state()
-    needs_install = state.get("pyproject_sha256") != pyproject_hash
+    needs_install = (state.get("pyproject_sha256") != pyproject_hash or
+                     (extra is not None and state.get("user_requirements_sha256") != extra_hash))
 
     if needs_install:
         print("Installing/updating PsyCoLab dependencies...")
@@ -182,13 +204,14 @@ def main() -> int:
             return 1
 
         try:
+            _install_extra_requirements(venv_python, extra)
             _validate_environment(venv_python)
         except subprocess.CalledProcessError:
-            print("Environment validation failed after installation. Review dependency/import errors above; no experiment was started.")
+            print("Dependency installation/validation failed. Review errors above; no script was started.")
             return 1
-        _write_state(pyproject_hash)
+        _write_state(pyproject_hash, extra_hash)
     else:
-        print("Dependency configuration is unchanged; reusing the existing .venv.")
+        print(f"Dependency configuration is unchanged; reusing {VENV.name}.")
         try:
             _validate_environment(venv_python)
         except subprocess.CalledProcessError:
@@ -205,8 +228,9 @@ def main() -> int:
                         str(ROOT),
                     ]
                 )
+                _install_extra_requirements(venv_python, extra)
                 _validate_environment(venv_python)
-                _write_state(pyproject_hash)
+                _write_state(pyproject_hash, extra_hash)
             except subprocess.CalledProcessError:
                 return 1
 

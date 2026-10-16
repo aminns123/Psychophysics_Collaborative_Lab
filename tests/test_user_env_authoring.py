@@ -1,15 +1,14 @@
 """Developer workbench acceptance: draft registration, edits, promotion and safe paths."""
-import asyncio
 import json
 from pathlib import Path
 
 import pytest
-from textual.widgets import Button, Select, TextArea
 
 from psychophysics_lab.authoring import (
     inventory, scaffold_draft, mark_tested, publish, fingerprint, stage,
 )
-from psychophysics_lab.user_env import UserEnvApp, DeveloperAction, _validate_selected_values, _source_files
+from psychophysics_lab.development import user_data_root
+from psychophysics_lab.app import build_parser
 from psychophysics_lab.experiments.registry import get_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,34 +52,36 @@ def test_inventory_rejects_untrusted_module_names_and_invalid_manifest(tmp_path)
         inventory(tmp_path)
 
 
-def test_source_files_and_configuration_use_standard_public_apis():
+def test_source_files_and_configuration_use_public_experiment_api():
     spec = get_experiment("orientation_task")
-    result = _validate_selected_values(spec.id, json.dumps({"trial_count":2,"random_seed":42,"response_keys":"F,J","fixation_ms":300}))
+    result = spec.normalise_values({"trial_count": 2, "random_seed": 42,
+                                    "response_keys": "F,J", "fixation_ms": 300})
     assert result["trial_count"] == 2
     assert result["fixation_ms"] == 300
     with pytest.raises(ValueError):
-        _validate_selected_values(spec.id, '{"unknown_input": 4}')
-    assert _source_files(ROOT, "experiment", "orientation_task")[0].is_file()
-    assert _source_files(ROOT, "experiment", "orientation_task")[1].is_file()
+        spec.normalise_values({"unknown_input": 4})
+    assert (ROOT / "src/psychophysics_lab/experiments/orientation_task.py").is_file()
+    assert (ROOT / "configs/experiments/orientation_task.json").is_file()
 
 
-def test_user_env_screen_exposes_experiments_and_virtual_actions():
-    async def scenario():
-        app = UserEnvApp(ROOT)
-        async with app.run_test(size=(120, 45)) as pilot:
-            assert app.query_one("#dev-experiment", Select)
-            assert app.query_one("#dev-values", TextArea)
-            assert app.query_one("#dev-new-experiment")
-            assert app.query_one("#dev-new-stimulus")
-            assert "trial_count" in app.query_one("#dev-values", TextArea).text or app.query_one("#dev-values", TextArea).text
-            app.query_one("#dev-experiment", Select).value = "orientation_task"
-            await pilot.pause()
-            app.query_one("#dev-values", TextArea).text = '{"trial_count":2}'
-            app.query_one("#dev-test", Button).scroll_visible(animate=False)
-            await pilot.pause()
-            await pilot.click("#dev-test")
-        assert app.return_value == DeveloperAction("test", "orientation_task", {"trial_count":2})
-    asyncio.run(scenario())
+def test_plain_terminal_cli_does_not_load_user_env_tui():
+    from psychophysics_lab import development
+    assert callable(development.execute_user_action)
+    assert callable(development.preview_trial_storyboard)
+    assert not (ROOT / "src/psychophysics_lab/user_env.py").exists()
+    parser = build_parser()
+    assert parser.parse_args(["--dev-test", "student_task"]).dev_test == "student_task"
+    assert parser.parse_args(["--dev-preview", "student_patch"]).dev_preview == "student_patch"
+    assert parser.parse_args(["--dev-ready", "stimulus", "student_patch"]).dev_ready == ["stimulus", "student_patch"]
+    assert parser.parse_args(["--dev-list"]).dev_list
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--user-env"])
+
+
+def test_synthetic_development_root_is_outside_checkout(tmp_path):
+    data_root = user_data_root(tmp_path)
+    assert data_root.is_relative_to(Path.home())
+    assert not data_root.is_relative_to(tmp_path)
 
 
 def test_human_cannot_reuse_user_env_output_folder(tmp_path):
@@ -126,17 +127,13 @@ def test_published_revision_reverts_to_unavailable_after_edit(tmp_path):
         importlib.invalidate_caches()
 
 
-def test_normal_tui_opens_development_workspace_without_launching_human_acquisition(tmp_path):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentsScreen
-    from psychophysics_lab.user_env import UserEnvRequest
-    async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
-        async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.click("#nav-experiments")
-            await pilot.pause()
-            assert isinstance(app.screen, ExperimentsScreen)
-            app.screen.query_one("#launch-user-env-experiments", Button).scroll_visible(animate=False)
-            await pilot.pause()
-            await pilot.click("#launch-user-env-experiments")
-        assert isinstance(app.return_value, UserEnvRequest)
-    asyncio.run(scenario())
+def test_main_tui_retains_build_and_source_inspection():
+    from psychophysics_lab.ui.setup import ExperimentsScreen, StimuliScreen
+    assert ExperimentsScreen.page_title == "Experiments"
+    assert StimuliScreen.page_title == "Stimuli"
+    source = (ROOT / "src/psychophysics_lab/ui/setup.py").read_text(encoding="utf-8")
+    assert 'id="build-new-experiment"' in source
+    assert 'id="build-new-stimulus"' in source
+    assert 'id="view-selected-source"' in source
+    assert 'launch-user-env-experiments' not in source
+    assert 'launch-user-env-stimuli' not in source

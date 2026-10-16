@@ -1,141 +1,107 @@
-# USER_env: develop scientific components before publishing them
+# USER_env — interactive Python terminal
 
-**Researcher objective:** choose or create a stimulus, edit its Python/parameter
-JSON, assemble trial phases and timing in experiment Python/timeline JSON,
-simulate the response/adaptive loop, inspect reproducible saved data, then
-explicitly mark the tested revision **Ready**. You should not need to edit the
-runner, calibration engine, data storage or TUI for a new static experiment.
+**USER_env is a regular Windows Command Prompt with an activated Python
+environment, not a second PsyCoLab TUI.** It uses its own Python 3.11 virtual
+environment to let you run and debug trusted scripts by typing normal commands.
 
-## Architecture and scope
+## Start a session
 
-| You author | PsyCoLab manages |
-|---|---|
-| `stimuli/my_stimulus.py` and `configs/stimuli/my_stimulus.json` | parameter schema checks, degree-coordinate grid, preview |
-| `experiments/my_experiment.py` and `configs/experiments/my_experiment.json` | ordered trial phases, response events, standard saving |
-| Optional adaptive algorithm and selected response mappings | simulator, virtual observer, adaptive recording, trial metadata |
+Double-click `run_user_env.bat` in the repository root. The launcher:
 
-Both the CSF and new experiments use a common *chronological phase model*;
-the validated legacy CSF OpenGL presentation remains retained. USER_env's
-teaching presenter currently supports **sequential static grayscale phases**.
-It does **not** implement verified subframe/flicker/SOA timing, arbitrary
-compositing or dynamic animations. Those belong to subsequent development
-stages and require frame/photodiode verification on laboratory hardware.
+1. Finds a working Python 3.11 interpreter, reusing PsyCoLab's `.venv` Python
+   as a bootstrap if the Windows `py -3.11` launcher cannot find it.
+2. Creates `USER_env/` if needed. Installs PsyCoLab and all dependencies
+   declared in `pyproject.toml` (including NumPy, Pyglet, Textual, Matplotlib).
+3. Reuses installed packages when requirements have not changed, checks
+   dependencies on each launch, and updates changed package requirements.
+4. Activates `USER_env` and leaves a **plain persistent Command Prompt** open.
 
-## 1. Open the interactive Python terminal
-
-On Windows, double-click **`run_user_env.bat`**. On first use it creates a
-separate Python **3.11** virtual environment in `USER_env/`, installs the
-project in editable mode and checks dependencies. Afterwards it activates
-that environment and leaves a **normal Command Prompt open**. It does **not**
-automatically launch a PsyCoLab TUI. A first-time install may require network
-access; subsequent launches reuse the environment.
-
-You can paste any normal Python command into that prompt, for example:
+You can immediately paste ordinary commands, such as:
 
 ```cmd
-python "C:\path\to\my_experiment.py"
 python --version
+python "C:\path\to\my_experiment.py"
+python -m pip list
 ```
 
-The working directory starts at the PsyCoLab repository root. Quotes allow
-Windows paths containing spaces. The terminal remains open after a Python
-script finishes; run another command or type `exit` to close it. A script
-must have its own runnable entry point; simply executing a stimulus module
-containing declarations may not produce a window.
+The terminal remains open when your script exits. Type `exit` to close it.
+Quoted paths may contain spaces. The starting directory is the PsyCoLab repository
+root, and any Python module you run directly needs a runnable entry point.
 
-**Optional visual authoring TUI:** if you want the earlier Draft → Preview →
-Simulate → Ready interface, type this explicitly **inside the activated terminal**:
+You can also activate USER_env manually in Command Prompt using
+`call USER_env\Scripts\activate.bat`, or in PowerShell with
+`.\USER_env\Scripts\Activate.ps1` if local execution policy permits.
+
+**No separate USER_env graphical TUI is launched or installed.** The normal
+PsyCoLab TUI still provides Build Stimuli, Build Experiments, source inspection,
+experiment configuration and human-acquisition preflight.
+
+## Automatic dependencies, including optional user packages
+
+All built-in PsyCoLab dependencies are managed by the launcher. You do not need
+to download or install them separately.
+
+A new, researcher-authored script may import additional third-party libraries
+that PsyCoLab cannot predict. On first launch, the setup automatically creates
+`user_requirements.txt` alongside the BAT. This file is intentionally ignored
+by Git. To request your own optional packages, add one pip requirement per line:
+
+```text
+# For my experiment (examples only)
+scipy>=1.11
+pandas>=2
+```
+
+Exit the terminal and double-click `run_user_env.bat` again. The bootstrap
+detects changes to `user_requirements.txt`, installs those dependencies and
+checks the resulting environment. You may instead use
+`python -m pip install package-name` manually from the terminal. The
+environment retains these installations between runs.
+
+The *first* installation and genuinely new dependencies may need internet access
+or a local pip cache; this launcher does not bundle offline wheels. A package
+installation failure is shown rather than silently running an unvalidated
+environment.
+
+## Optional build/test/publish commands (no extra TUI)
+
+The normal PsyCoLab TUI can scaffold experiment/stimulus files and open their
+source code. You can also use these **optional command-line tools** inside the
+USER_env terminal:
 
 ```cmd
-python -m psychophysics_lab --user-env
+python -m psychophysics_lab --scaffold my_patch --blueprint stimulus
+python -m psychophysics_lab --dev-preview my_patch
+python -m psychophysics_lab --dev-ready stimulus my_patch
+
+python -m psychophysics_lab --scaffold my_task --blueprint experiment
+python -m psychophysics_lab --dev-test my_task
+python -m psychophysics_lab --dev-ready experiment my_task
+python -m psychophysics_lab --dev-list
 ```
 
-Alternatively, the normal PsyCoLab TUI's **Build Stimuli → Open USER_env test
-workbench** and **Build Experiments → Open USER_env test workbench** controls
-still launch that optional visual workbench. They are separate from the
-plain terminal opened by `run_user_env.bat`.
+Use a JSON file for experiment settings when required:
 
-You can also manually activate the same environment in an existing
-Command Prompt with `call USER_env\Scripts\activate.bat`, or in PowerShell
-with `.\USER_env\Scripts\Activate.ps1` (subject to local script policy).
+```cmd
+python -m psychophysics_lab --dev-test my_task --dev-values "C:\path\to\settings.json"
+```
 
-**Security:** a Python virtual environment is **not** an operating-system
-sandbox. Authored Python has the permissions of the logged-in user. Only run
-code you trust. When using PsyCoLab's built-in virtual observer, development
-outputs go under `~/PsyCoLab_USER_env_data/<checkout-hash>/`, separate from
-human runs and saved monitor measurements. **Arbitrary Python scripts run from
-this terminal can write anywhere your user can write**; USER_env does not
-automatically redirect their output. The virtual observer never certifies
-physical calibration.
+These commands retain the existing Draft → Tested → Ready mechanism. The
+underlying scientific components are automatically added to the normal experiment
+list after they pass virtual validation and are published Ready. **Ready is a
+software-readiness status, not a physical calibration certificate.**
 
-## 2. Build or edit scientific source
+Built-in virtual tests still use a protected data root
+`~/PsyCoLab_USER_env_data/<checkout-hash>/` and create internally consistent
+synthetic records; they never count as real participant measurements.
 
-**Build a stimulus:** enter a new lowercase identifier; choose Create stimulus
-draft. PsyCoLab generates a Python renderer and parameter JSON. Open either
-file from the workbench. Keep the parameters and units consistent, and return
-an array of valid [0,1] digital grayscale values. Preview the generated stimulus
-using the real renderer; the preview PNG is saved under USER_env_data/previews.
+## Scientific and safety boundaries
 
-**Build an experiment:** choose Create experiment draft. PsyCoLab generates a
-working procedure and a timeline JSON describing sequential phases, such as
-fixation → target → blank → response. Python determines experimental conditions,
-responses and optional adaptive updates. JSON declares phase order and durations;
-`{"field":"fixation_ms"}` refers to an experiment configuration field.
-
-Use the **Experiment configuration JSON** editor inside USER_env to change the
-same public configuration values and response mappings used by normal Configure
-Experiment. After changing Python declarations, close and reopen USER_env to
-refresh imported metadata. Each test itself starts in a fresh Python subprocess
-and always imports the current source. Invalid or unfinished drafts report their
-own errors; they do not register as ordinary human experiments.
-
-## 3. Test and inspect
-
-1. Select the draft experiment and check the fields in its JSON configuration.
-2. Choose **Test experiment (virtual)**. PsyCoLab executes the real public
-   scientific procedure with a virtual observer, never a participant.
-3. The test must finish with `status=completed`, and the full saved-run validator
-   must pass. Otherwise the draft remains untested.
-4. Inspect the recorded run folder, `trials.tsv`, source/config snapshots,
-   `trial_presentations.json`, `phase_events.json` where present, and the
-   independent static storyboard `previews/<experiment>_timeline.png` when
-   available. A storyboard depicts the *intended default phase order*, not
-   measured display onset or condition-dependent overrides.
-5. Edit the scientific files and retest as often as needed. File changes
-   invalidate the old tested source fingerprint for publication.
-
-**Stimulus test:** choose **Preview stimulus**; it validates the current JSON and
-renders through the same grayscale function used for presentation. No actual
-luminance or timing is measured. The old and new human acquisition paths remain
-outside USER_env. A simulation PASS is not a human-readiness pass.
-
-## 4. Mark a component Ready
-
-When a stimulus preview or experiment simulation passes, USER_env records a SHA-256
-fingerprint of the Python source and corresponding parameter/timeline JSON in
-`authoring/components.json` (automatically maintained). Choose **Mark stimulus
-Ready** or **Mark experiment Ready**. Publication fails when source or JSON has
-changed since its last successful test. Authored stimulus/adaptive dependencies
-must also be Ready before an authored experiment can be published.
-
-Only components marked **Ready** join the **normal experiment catalogue** after
-returning from USER_env or restarting the normal TUI. Drafts stay separate. Users
-never edit `contributions.py` manually for these generated components. These
-statuses are *software-development statuses*, not calibration certificates:
-normal human-experiment preflight still applies its full scientific hardware
-and participant/session requirements.
-
-Existing built-in CSF and Orientation examples remain available regardless of
-student drafts. A broken or incomplete draft cannot block the built-in run list.
-
-## 5. Limits and stages beyond this pull request
-
-- **Stage 2:** dynamic animation, multiple simultaneous stimuli, high precision
-  frame-indexed timing, SOA/flicker and hardware-onset validation.
-- **Stage 3:** rebuild one real ellipse/flanker experiment through the public
-  architecture to test comprehensibility and scientific correctness.
-- **Stage 4:** migrate CSF's presentation runtime only after scientific regression
-  and hardware parity; the existing CSF remains the reference meanwhile.
-
-Do not treat a virtual test or a digitally rendered storyboard as verification
-of physical luminance, temporal accuracy or participant response latency.
+- USER_env is a Python virtual environment, **not a security sandbox**. Only run
+  Python code and install packages you trust; they have your user permissions.
+- Running an *arbitrary* Python script in USER_env does **not** automatically
+  redirect its output. The script can save anywhere your user can write.
+  Isolation of synthetic test data applies to PsyCoLab's development commands.
+- This does not establish physical luminance, stimulus timing, flicker/SOA
+  accuracy, monitor geometry or keyboard latency.
+- Existing CSF presentation and human experiment preflight remain unchanged.

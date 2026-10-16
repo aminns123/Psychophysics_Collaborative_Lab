@@ -107,8 +107,15 @@ echo.
 echo Paste your own commands at the prompt, for example:
 echo   python "C:\path\to\my_experiment.py"
 echo.
-echo Optional graphical authoring workbench:
-echo   python -m psychophysics_lab --user-env
+echo Optional scientific development commands:
+echo   python -m psychophysics_lab --dev-list
+echo   python -m psychophysics_lab --dev-preview my_stimulus
+echo   python -m psychophysics_lab --dev-test my_experiment
+echo   python -m psychophysics_lab --dev-ready experiment my_experiment
+echo.
+echo PsyCoLab packages are installed and checked automatically.
+echo To add extra third-party packages, edit user_requirements.txt
+echo and reopen this launcher.
 echo.
 echo Type exit when you want to close this terminal.
 echo.
