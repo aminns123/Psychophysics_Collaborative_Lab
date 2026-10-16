@@ -1,6 +1,7 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
+
 echo ============================================================
 echo   PsyCoLab USER_env - Researcher Development Workspace
 echo ============================================================
@@ -8,28 +9,92 @@ echo This runs your authored Python code with your user permissions.
 echo This is not an OS sandbox; only open code you trust.
 echo Simulated data are isolated from human experiment data.
 echo.
-if exist "USER_env\Scripts\python.exe" goto launch
-where py >nul 2>&1
-if errorlevel 1 goto try_python
-py -3.11 -m venv "USER_env"
-if errorlevel 1 goto failed
-goto install
-:try_python
-python -m venv "USER_env"
-if errorlevel 1 goto failed
-:install
-"USER_env\Scripts\python.exe" -c "import sys; assert sys.version_info[:2] == (3,11), 'PsyCoLab requires Python 3.11'"
-if errorlevel 1 goto failed
-"USER_env\Scripts\python.exe" -m pip install -e .
-if errorlevel 1 goto failed
-:launch
-"USER_env\Scripts\python.exe" -m pip check
-if errorlevel 1 goto failed
+
+if not exist "pyproject.toml" (
+    echo ERROR: pyproject.toml was not found next to this launcher.
+    goto failed
+)
+
+rem Use a verified Python 3.11 interpreter. The Windows py launcher can
+rem exist without a registered 3.11 runtime, so never trust "where py" alone.
+rem A functioning main PsyCoLab .venv is a valid bootstrap for USER_env.
+set "USERENV_BOOTSTRAP="
+
+if exist "USER_env\Scripts\python.exe" (
+    "USER_env\Scripts\python.exe" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+    if not errorlevel 1 set "USERENV_BOOTSTRAP="USER_env\Scripts\python.exe""
+)
+
+if not defined USERENV_BOOTSTRAP (
+    if exist ".venv\Scripts\python.exe" (
+        ".venv\Scripts\python.exe" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+        if not errorlevel 1 set "USERENV_BOOTSTRAP=".venv\Scripts\python.exe""
+    )
+)
+
+if not defined USERENV_BOOTSTRAP (
+    where py >nul 2>nul
+    if not errorlevel 1 (
+        py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+        if not errorlevel 1 set "USERENV_BOOTSTRAP=py -3.11"
+    )
+)
+
+if not defined USERENV_BOOTSTRAP (
+    for /f "delims=" %%P in ('where python3.11.exe 2^>nul') do (
+        if not defined USERENV_BOOTSTRAP (
+            "%%P" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+            if not errorlevel 1 set "USERENV_BOOTSTRAP="%%P""
+        )
+    )
+)
+
+if not defined USERENV_BOOTSTRAP (
+    where python >nul 2>nul
+    if not errorlevel 1 (
+        python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+        if not errorlevel 1 set "USERENV_BOOTSTRAP=python"
+    )
+)
+
+if not defined USERENV_BOOTSTRAP (
+    where python3 >nul 2>nul
+    if not errorlevel 1 (
+        python3 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+        if not errorlevel 1 set "USERENV_BOOTSTRAP=python3"
+    )
+)
+
+if not defined USERENV_BOOTSTRAP (
+    echo ERROR: No working Python 3.11 interpreter was found.
+    echo If run_psycolab.bat works, verify .venv\Scripts\python.exe exists.
+    echo Otherwise run "py -0p" and "where python" to inspect installed interpreters.
+    goto failed
+)
+
+echo Preparing isolated USER_env with Python 3.11...
+%USERENV_BOOTSTRAP% "scripts\launcher_setup.py" --user-env
+if errorlevel 1 (
+    echo ERROR: USER_env dependency setup or validation failed.
+    goto failed
+)
+
+if not exist "USER_env\Scripts\python.exe" (
+    echo ERROR: USER_env\Scripts\python.exe was not created.
+    goto failed
+)
+
+echo Starting researcher development workbench...
 "USER_env\Scripts\python.exe" -m psychophysics_lab --user-env
-if errorlevel 1 goto failed
+if errorlevel 1 (
+    echo ERROR: The researcher workbench exited with an error.
+    goto failed
+)
+
 exit /b 0
+
 :failed
 echo.
-echo USER_env could not start. Install Python 3.11, check dependencies and try again.
+echo USER_env could not start. Please review the specific error above.
 pause
 exit /b 1

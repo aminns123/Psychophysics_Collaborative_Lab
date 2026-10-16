@@ -63,8 +63,8 @@ def _preserve_incompatible_venv() -> None:
     if not VENV.exists():
         return
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    destination = ROOT / f".venv.incompatible-{stamp}"
-    print(f"Existing .venv is not a Python 3.11 environment; preserving it as {destination.name}")
+    destination = ROOT / f"{VENV.name}.incompatible-{stamp}"
+    print(f"Existing {VENV.name} is not a Python 3.11 environment; preserving it as {destination.name}")
     shutil.move(str(VENV), str(destination))
 
 
@@ -103,6 +103,19 @@ def _validate_environment(python: Path) -> None:
     _run([str(python), "-c", code])
 
 
+def select_environment(name: str) -> None:
+    """Target one of the two supported local environments, never arbitrary paths.
+
+    The default .venv setup is unchanged. USER_env uses the same dependency
+    version tracking and validation but has its own interpreter and setup state.
+    """
+    if name not in {".venv", "USER_env"}:
+        raise ValueError("Unsupported PsyCoLab environment name.")
+    global VENV, STATE
+    VENV = ROOT / name
+    STATE = VENV / ".psycolab-setup.json"
+
+
 def main() -> int:
     if sys.version_info[:2] != EXPECTED_PYTHON:
         print(
@@ -121,12 +134,12 @@ def main() -> int:
         _preserve_incompatible_venv()
 
     if not VENV.exists():
-        print("Creating .venv with Python 3.11...")
+        print(f"Creating {VENV.name} with Python 3.11...")
         _run([sys.executable, "-m", "venv", str(VENV)])
 
     venv_python = _venv_python(VENV)
     if _python_version(venv_python) != EXPECTED_PYTHON:
-        print("ERROR: the newly created virtual environment is not Python 3.11.")
+        print(f"ERROR: newly created {VENV.name} is not a Python 3.11 environment.")
         return 2
 
     pyproject_hash = _hash_file(PYPROJECT)
@@ -201,4 +214,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--user-env"]:
+        select_environment("USER_env")
+    elif sys.argv[1:]:
+        print("Usage: launcher_setup.py [--user-env]")
+        raise SystemExit(2)
     raise SystemExit(main())
