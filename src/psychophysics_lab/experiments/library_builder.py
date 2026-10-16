@@ -255,7 +255,13 @@ def load_library(root=None, *, include_drafts=False, tolerate_errors=True):
                     raise ValueError("Library design or stimulus changed since validation.")
             spec = make_spec(root, name)
             if name in _REGISTRY:
-                raise ValueError(f"Duplicate registered experiment: {name}")
+                # A catalog refresh must not reject existing loaded versions.
+                # The running interpreter keeps its previous version; a source
+                # edit is detected by the procedure hash guard or on restart.
+                existing = _REGISTRY[name]
+                if getattr(existing.procedure, "__module__", "") == __name__:
+                    continue
+                raise ValueError(f"Experiment ID already belongs to another module: {name}")
             register_experiment(spec)
         except Exception as exc:
             if not tolerate_errors:
@@ -305,7 +311,7 @@ def default_design(name, probe="vertical_line_probe", fixation="fixation_cross",
         "actions": [
             {"type": "show", "name": "fixation", "duration": "fixation_ms", "slots": ["fixation"]},
             {"type": "record_state", "name": "before_probe"},
-            {"type": "show", "name": "probe", "duration": "stimulus_ms", "slots": ["probe", "fixation"]},
+            {"type": "show", "name": "probe", "duration": "stimulus_ms", "slots": ["fixation", "probe"]},
             {"type": "show", "name": "blank", "duration": "interval_ms", "slots": []},
             {"type": "collect_response", "name": "answer", "timeout": "response_timeout_ms"},
             {"type": "record_state", "name": "response_received"},
