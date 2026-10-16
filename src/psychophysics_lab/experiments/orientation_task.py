@@ -9,7 +9,13 @@ from pathlib import Path
 from psychophysics_lab.core.timeline import load_timeline
 from psychophysics_lab.researcher import (
     ConfigField, experiment, ResponseParadigm, AdaptiveSelection, StaircaseConfig, Step,
+    TrialTimeline, UpdateAdaptive, RecordState,
 )
+
+
+def next_contrast(state, response, step):
+    factor = .8 if step == Step.DOWN else 1.25 if step == Step.UP else 1
+    return max(.001, min(1., state["contrast"] * factor))
 
 
 def procedure(run):
@@ -41,12 +47,15 @@ def procedure(run):
     for target in targets:
         base = run.stimulus_parameters()
         parameters = run.stimulus_parameters(orientation_deg=(-1 if target == 0 else 1)*abs(base["orientation_deg"]), contrast=contrast)
-        correct = run.play_trial(timeline, target=target,
+        actions = TrialTimeline(timeline.phases + (
+            UpdateAdaptive(adaptive, 0, next_contrast, state_key="contrast"),
+            RecordState("after_adaptation"),
+        )) if adaptive else timeline
+        run.play_trial(actions, target=target, state={"contrast": contrast},
             condition=parameters["orientation_deg"], parameters_by_slot={"target": parameters},
             instructions=f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort")
         if adaptive:
-            _, contrast = run.update_adaptive(adaptive, 0, correct,
-                lambda step: max(.001, min(1., contrast * (.8 if step == Step.DOWN else 1.25 if step == Step.UP else 1))))
+            contrast = run.trial_state["contrast"]
     run.complete()
 
 

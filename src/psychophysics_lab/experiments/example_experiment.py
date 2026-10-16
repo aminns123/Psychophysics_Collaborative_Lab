@@ -1,86 +1,75 @@
-"""EXAMPLE EXPERIMENT: is a white line left or right of centre?
+"""START HERE: left/right line task. Edit the six labelled scientific sections.
 
-START HERE: Edit these three parts:
-    1. make_trial_order() — conditions and order.
-    2. procedure()       — parameters per trial and response-driven updates.
-    3. definition()      — settings, response keys and stimulus choice.
-
-The corresponding experiment JSON declares the chronological phases:
-fixation -> line -> blank -> response (and their durations).
-Do not write window, key-event, calibration or saving code; PsyCoLab owns those.
-This basic teaching task has NO adaptive method. For an advanced staircase
-example, inspect orientation_adaptive.py after understanding this example.
+The companion JSON supplies settings; the TUI can override them for a run.
+PsyCoLab owns geometry, display, keys, validation and all saving.
 """
-from pathlib import Path
-from psychophysics_lab.core.timeline import load_timeline
-from psychophysics_lab.researcher import ConfigField, ResponseParadigm, experiment
+from psychophysics_lab.researcher import (
+    ConfigField, ResponseParadigm, experiment, TrialTimeline, Show,
+    CollectResponse, RecordState, UpdateState,
+)
 
 
-# EDIT 1: WHICH TRIALS AND IN WHAT ORDER?
+# 1. STIMULUS: choose a registered stimulus in definition() below.
+# 2. CONDITIONS: 0 means left, 1 means right.
 def make_trial_order(trial_count):
-    """0 = line left, 1 = line right. Alternating is intentionally simple."""
     return [trial % 2 for trial in range(trial_count)]
 
 
-# EDIT 2: WHAT DO YOU SHOW, RECORD AND CHANGE AFTER A RESPONSE?
+# 4. RESPONSE MEANING / NEXT STATE: this function only returns scientific values.
+def update_from_response(state, response):
+    return dict(state) | {"correct_count": state["correct_count"] + int(response["correct"])}
+
+
+# 3. CHRONOLOGICAL ACTIONS: duration names refer to validated JSON/TUI settings.
+TRIAL = TrialTimeline((
+    Show("fixation", duration="fixation_ms", instructions="+"),
+    RecordState("before_line"),
+    Show("line", slot="target", duration="stimulus_ms"),
+    Show("blank", duration="interval_ms"),
+    CollectResponse(actions=("left", "right"), timeout="response_timeout_ms"),
+    RecordState("response_received"),
+    UpdateState(update_from_response),
+))
+
+
 def procedure(run):
     conditions = make_trial_order(run.values["trial_count"])
-
-    # FRAMEWORK: load the companion JSON for the ordered presentation phases.
-    timeline_file = (Path(__file__).resolve().parents[3] / "configs"
-                     / "experiments" / (run.spec.id + ".json"))
-    timeline = load_timeline(
-        timeline_file, timings=run.values, slots=run.stimulus_snapshots
-    )
     run.initialise(expected_trials=len(conditions), resolution={
         "task": "Report whether the line is left or right.",
         "condition_order": conditions,
-        "response_keys": run.responses.keys,
-        "trial_timeline": timeline.to_dict(),
-        "stimulus_slots": run.stimulus_snapshots,
+        "trial_timeline": TRIAL.resolve(run.values).to_dict(),
+        "measurement_units": {"line_offset_deg": "degrees", "correct_count": "responses"},
     })
-
+    state = {"correct_count": 0}
     for target in conditions:
-        # EDIT: set the scientific stimulus condition for this trial.
         distance = abs(run.stimulus_parameters()["offset_deg"])
         offset = -distance if target == 0 else distance
-        parameters = run.stimulus_parameters(offset_deg=offset)
-
-        # FRAMEWORK: show the ordered phases, collect the response, SAVE it.
-        correct = run.play_trial(
-            timeline,
-            target=target,
-            condition=offset,
-            parameters_by_slot={"target": parameters},
+        run.play_trial(
+            TRIAL, target=target, condition=offset,
+            parameters_by_slot={"target": run.stimulus_parameters(offset_deg=offset)},
+            # 6. EXTRA MEASUREMENTS: finite named scientific values; no file code.
             measurements={"line_offset_deg": offset},
-            instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}   Escape: abort",
+            state=state | {"line_offset_deg": offset},
+            instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
         )
-
-        # EDIT (OPTIONAL): use 'correct' to decide the NEXT stimulus state.
-        # To run an adaptive staircase, select a reusable adaptive algorithm.
-        # See orientation_adaptive.py rather than reimplementing the staircase.
-
-    run.complete()  # FRAMEWORK: finalise only after all responses were saved.
+        state = dict(run.trial_state)
+    run.complete()
 
 
-# EDIT 3: WHAT CAN BE CONFIGURED IN THE NORMAL TUI?
+# 5. OPTIONAL ADAPTATION: this beginner task has none.
+# See orientation_adaptive.py / orientation_task.py for UpdateAdaptive.
 def definition(identity="example_experiment", stimulus="example_stimulus"):
     return experiment(
-        id=identity,
-        name=identity.replace("_", " ").title(),
+        id=identity, name=identity.replace("_", " ").title(),
         description="Beginner left/right line-position discrimination.",
         procedure=procedure,
+        default_config=f"configs/experiments/{identity}.json",
         fields=(
-            ConfigField("trial_count", "Number of trials", "int", 6,
-                        minimum=1, maximum=200),
-            ConfigField("fixation_ms", "Fixation time", "int", 500,
-                        units="ms", minimum=1, section="Timing"),
-            ConfigField("stimulus_ms", "Line presentation time", "int", 200,
-                        units="ms", minimum=1, section="Timing"),
-            ConfigField("interval_ms", "Blank time", "int", 150,
-                        units="ms", minimum=1, section="Timing"),
-            ConfigField("response_timeout_ms", "Response timeout (0 waits)", "int", 0,
-                        units="ms", minimum=0, section="Timing"),
+            ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
+            ConfigField("fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1, section="Timing"),
+            ConfigField("stimulus_ms", "Line presentation time", "int", 200, units="ms", minimum=1, section="Timing"),
+            ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1, section="Timing"),
+            ConfigField("response_timeout_ms", "Response timeout (0 waits)", "int", 0, units="ms", minimum=0, section="Timing"),
         ),
         responses=ResponseParadigm("line_position", ("left", "right"), ("F", "J")),
         calibration_requirements=("geometry",),
@@ -92,5 +81,4 @@ def definition(identity="example_experiment", stimulus="example_stimulus"):
     )
 
 
-# FRAMEWORK: exporting SPEC makes the experiment discoverable.
 SPEC = definition()

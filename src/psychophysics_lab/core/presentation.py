@@ -56,6 +56,7 @@ def validate_geometry(profile, resolution, stimulus, parameters):
 
 
 class Presentation:
+    synthetic = False
     def __init__(self, profile, responses):
         import pyglet
         from .display import select_screen
@@ -76,18 +77,35 @@ class Presentation:
     def close(self):
         self.window.close()
 
-    def present(self, stimulus, parameters, instructions):
+
+    def prepare(self, timeline, parameters_by_slot):
+        """Prepare all images before the first timed phase; no disk IO."""
+        import pyglet
+        rendered = {}
+        for phase in timeline.phases:
+            if not hasattr(phase, "placements"):
+                continue
+            pictures = []
+            for placement in phase.placements:
+                stimulus_id, params = parameters_by_slot[placement.slot]
+                stimulus = get_stimulus(stimulus_id)
+                pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
+                x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
+                array = render_pixels(stimulus, params, pixels=pixels)
+                pictures.append((x, y, pyglet.image.ImageData(*pixels, "L", array.tobytes(), pitch=pixels[0])))
+            rendered[phase.name] = pictures
+        self._rendered = rendered
+
+    def play_phase(self, phase, event, *, instructions=""):
+        """Observe one visual phase; append partial timing even on Escape/timeout."""
         import pyglet
         from pyglet import gl
         from ..researcher import ParticipantAbort
-        parameters = stimulus.validate_parameters(parameters)
-        pixels = validate_geometry(self.profile, self.resolution, stimulus, parameters)
-        array = render_pixels(stimulus, parameters, pixels=pixels)
-        picture = pyglet.image.ImageData(*pixels, "L", array.tobytes(), pitch=pixels[0])
-        label = pyglet.text.Label(instructions, x=20, y=20, font_size=14)
         answer = None
         aborted = False
         onset = None
+        accepting = False
+
         def keypress(symbol, modifiers):
             nonlocal answer, aborted
             if symbol == pyglet.window.key.ESCAPE:
@@ -97,109 +115,80 @@ class Presentation:
                 return True
             self.held.add(symbol)
             key = pyglet.window.key.symbol_string(symbol).removeprefix("_")
-            if onset is not None and key in self.responses.keys and answer is None:
-                answer = Response(self.responses.decode(key), key, time.perf_counter()-onset)
+            if accepting and key in self.responses.keys and answer is None:
+                elapsed = time.perf_counter() - onset
+                if phase.duration_ms and elapsed * 1000 >= phase.duration_ms:
+                    return True  # A late queued key cannot turn a timeout into acceptance.
+                answer = Response(self.responses.decode(key), key, elapsed)
                 return True
+
         self.window.push_handlers(on_key_press=keypress)
         try:
-            # Drain old events before onset; a held response must not answer a new trial.
-            self.window.dispatch_events()
+            self.window.dispatch_events()  # discard stale/held responses before onset
+            if aborted or self.window.has_exit:
+                raise ParticipantAbort("Escape or window close before visual phase")
             gl.glClearColor(.5, .5, .5, 1)
             self.window.clear()
-            picture.blit((self.resolution[0]-pixels[0])/2, (self.resolution[1]-pixels[1])/2)
-            label.draw()
+            for x, y, picture in self._rendered[phase.name]:
+                picture.blit(x, y)
+            label = instructions if instructions and phase.kind == "response" else phase.instructions
+            if label:
+                pyglet.text.Label(label, x=self.resolution[0]//2,
+                                  y=25 if phase.placements else self.resolution[1]//2,
+                                  anchor_x="center", font_size=16).draw()
             self.window.flip()
             onset = time.perf_counter()
-            while answer is None and not aborted and not self.window.has_exit:
+            event["software_onset_s"] = onset
+            accepting = phase.kind == "response"
+            while True:
+                if aborted or self.window.has_exit:
+                    raise ParticipantAbort("Escape or window close during trial timeline")
+                if answer is not None:
+                    return answer
+                if phase.duration_ms and (time.perf_counter() - onset)*1000 >= phase.duration_ms:
+                    if accepting:
+                        raise TimeoutError("No valid response before the configured response timeout")
+                    return None
                 self.window.dispatch_events()
                 time.sleep(.001)
-            if aborted or self.window.has_exit:
-                raise ParticipantAbort("Participant closed the window or pressed Escape")
-            return answer
         finally:
+            event["software_offset_s"] = time.perf_counter()
+            event["timing_basis"] = "software flip/clock; photons and input latency unverified"
             self.window.remove_handlers(on_key_press=keypress)
 
     def play_timeline(self, timeline, parameters_by_slot, *, instructions=None):
-        """Present ordered static stages and respond only in the final response stage.
-
-        Times are software flip/keypress observations, NOT verified photon or HID
-        latency.  Use validated monitor timing before claiming temporal precision.
-        """
-        import pyglet
-        from pyglet import gl
-        from ..researcher import ParticipantAbort
-        from .timeline import TrialTimeline
-        if not isinstance(timeline, TrialTimeline):
-            raise TypeError("play_timeline requires a validated TrialTimeline.")
+        """Compatibility entrypoint; the public RunContext owns scientific actions."""
+        from .timeline import Phase
+        from .trial_execution import execute_timeline
+        if any(not isinstance(p, Phase) for p in timeline.phases):
+            raise ValueError("Scientific actions require RunContext.play_trial.")
         timeline.validate_slots(parameters_by_slot)
-        rendered = {}
-        for phase in timeline.phases:
-            if phase.slot is None or phase.slot in rendered:
-                continue
-            stimulus = get_stimulus(parameters_by_slot[phase.slot][0])
-            params = stimulus.validate_parameters(parameters_by_slot[phase.slot][1])
-            pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
-            array = render_pixels(stimulus, params, pixels=pixels)
-            rendered[phase.slot] = (pixels, pyglet.image.ImageData(*pixels, "L", array.tobytes(), pitch=pixels[0]))
+        self.prepare(timeline, parameters_by_slot)
         events = []
-        held = self.held
-        answered = None
-        aborted = False
-        active_onset = None
-        accepting = False
-        def on_key_press(symbol, modifiers):
-            nonlocal answered, aborted
-            if symbol == pyglet.window.key.ESCAPE:
-                aborted = True
-                return True
-            if symbol in held:
-                return True
-            held.add(symbol)
-            if not accepting or active_onset is None or answered is not None:
-                return None
-            key_name = pyglet.window.key.symbol_string(symbol).removeprefix("_")
-            if key_name in self.responses.keys:
-                answered = Response(self.responses.decode(key_name), key_name,
-                                    time.perf_counter() - active_onset)
-                return True
-        self.window.push_handlers(on_key_press=on_key_press)
-        try:
-            self.window.dispatch_events()
-            for phase in timeline.phases:
-                if aborted or self.window.has_exit:
-                    raise ParticipantAbort("Escape or window close during trial timeline")
-                accepting = False
-                active_onset = None
-                self.window.dispatch_events()
-                gl.glClearColor(.5, .5, .5, 1)
-                self.window.clear()
-                if phase.slot:
-                    (width, height), image = rendered[phase.slot]
-                    image.blit((self.resolution[0] - width) // 2, (self.resolution[1] - height) // 2)
-                label_text = phase.instructions
-                if instructions and phase.kind == "response":
-                    label_text = instructions
-                if label_text:
-                    pyglet.text.Label(label_text, x=self.resolution[0]//2,
-                                      y=self.resolution[1]//2 if phase.slot is None else 25,
-                                      anchor_x="center", font_size=16).draw()
-                self.window.flip()
-                active_onset = time.perf_counter()
-                accepting = phase.kind == "response"
-                while True:
-                    if aborted or self.window.has_exit:
-                        raise ParticipantAbort("Escape or window close during trial timeline")
-                    if accepting and answered is not None:
-                        break
-                    if phase.duration_ms and (time.perf_counter() - active_onset) * 1000 >= phase.duration_ms:
-                        if accepting:
-                            raise TimeoutError("No valid response before the configured response timeout")
-                        break
-                    self.window.dispatch_events()
-                    time.sleep(.001)
-                events.append({**phase.to_dict(), "software_onset_s": active_onset,
-                               "software_offset_s": time.perf_counter(),
-                               "timing_basis": "software flip/clock; photons and input latency unverified"})
-            return answered, events
-        finally:
-            self.window.remove_handlers(on_key_press=on_key_press)
+        response = execute_timeline(timeline, self, events, lambda a, r, e: None,
+                                    instructions=instructions or "")
+        return response, events
+
+    def present(self, stimulus, parameters, instructions):
+        """Compatibility self-paced display uses the same phase/input implementation."""
+        from .timeline import Phase, TrialTimeline
+        response, _ = self.play_timeline(
+            TrialTimeline((Phase("answer", "response", "target"),)),
+            {"target": (stimulus.id, parameters)}, instructions=instructions)
+        return response
+
+
+def placement_pixels(profile, resolution, pixels, placement):
+    """Position a patch in calibrated screen coordinates; reject clipped patches."""
+    import math
+    if abs(placement.x_deg) >= 90 or abs(placement.y_deg) >= 90:
+        raise ValueError("Stimulus position must be within the forward display field.")
+    x_offset = profile.viewing_distance_m * math.tan(math.radians(abs(placement.x_deg)))
+    y_offset = profile.viewing_distance_m * math.tan(math.radians(abs(placement.y_deg)))
+    x_offset *= (1 if placement.x_deg >= 0 else -1) * resolution[0] / profile.physical_width_m
+    y_offset *= (1 if placement.y_deg >= 0 else -1) * resolution[1] / profile.physical_height_m
+    x = (resolution[0] - pixels[0]) / 2 + x_offset
+    y = (resolution[1] - pixels[1]) / 2 + y_offset
+    if x < 0 or y < 0 or x + pixels[0] > resolution[0] or y + pixels[1] > resolution[1]:
+        raise ValueError("Positioned stimulus does not fit the calibrated display.")
+    return x, y

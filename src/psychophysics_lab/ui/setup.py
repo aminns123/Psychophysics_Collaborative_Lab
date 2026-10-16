@@ -20,6 +20,7 @@ from ..config.local import config_root, content_hash, preferences, save_preferen
 from ..config.preflight import compatible, validate_setup
 from ..config.readiness import readiness_text
 from .editor import open_source
+from .authoring import AuthoringPanel
 from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
     GeometryCheckRequest,
@@ -185,7 +186,7 @@ def _source_inventory(repo_root, experiment):
                 entries.append((f"Stimulus / renderer: {stimulus.id}", path))
     timeline = repo_root / "configs" / "experiments" / f"{experiment.id}.json"
     if timeline.is_file():
-        entries.append(("Trial timeline JSON", timeline))
+        entries.append(("Experiment settings JSON" if experiment.default_config else "Trial timeline JSON", timeline))
     return entries
 
 
@@ -273,14 +274,15 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
-            yield Static("[b]START HERE — simple examples[/b]\nExample Experiment shows how to order fixation → line → blank → response. Change scientific Python and timing JSON; PsyCoLab manages responses and saving.")
+            yield Static("[b]START HERE — simple examples[/b]\nExample Experiment shows fixation → state snapshot → line → blank → response → state update. Change scientific Python and settings JSON; PsyCoLab manages responses and saving.")
             with Horizontal(classes="buttons"):
                 yield Button("Read example experiment.py", id="read-example-experiment")
-                yield Button("Read example timeline JSON", id="read-example-timeline")
+                yield Button("Edit example settings JSON", id="read-example-timeline")
                 yield Button("Read CSF timeline JSON", id="read-csf-timeline")
-            yield Static("[b]Build a new experiment[/b]: generates a beginner copy of the example, not the Gabor/tilt task. Set conditions in make_trial_order(), trial updates in procedure(), and timings in its JSON. Test in run_user_env.bat, then mark Ready.")
+            yield Static("[b]Build a new experiment[/b]: generates a beginner copy of the example, not the Gabor/tilt task. Set conditions in make_trial_order(), actions in TRIAL, and timings/keys in its JSON. Simulate / validate below, then Mark Ready.")
             yield Input(placeholder="e.g. new_orientation_task", id="new-experiment-name")
             yield Button("Build new experiment", id="build-new-experiment", variant="primary")
+            yield AuthoringPanel("experiment")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -326,7 +328,8 @@ class ExperimentsScreen(HubPage):
             try:
                 from ..authoring import scaffold_draft
                 paths = scaffold_draft(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
-                self.app.notify(f"Created {len(paths)} draft files. Open run_user_env.bat; use --dev-test then --dev-ready.")
+                self.query_one(AuthoringPanel).refresh_inventory()
+                self.app.notify(f"Created {len(paths)} draft files. Edit, Simulate / validate, then Mark Ready here.")
                 self.app.inspect_source(paths[0])
             except (ValueError, OSError) as exc:
                 self.app.notify(str(exc), severity="error")
@@ -371,9 +374,10 @@ class StimuliScreen(HubPage):
                 yield Static("[b]START HERE — example white line[/b]\nRead its PARAMETERS and render() function first. The JSON holds starting values; the framework supplies degree coordinates and draws the result.")
                 yield Button("Read example stimulus.py", id="read-example-stimulus")
                 yield Button("Read example stimulus JSON", id="read-example-stimulus-json")
-                yield Static("[b]Build a new stimulus[/b]: creates a simple white-line example for you to edit, NOT a renamed Gabor grating. Preview using run_user_env.bat and publish when tested.")
+                yield Static("[b]Build a new stimulus[/b]: creates a simple white-line example for you to edit, NOT a renamed Gabor grating. Preview / validate below, then Mark Ready. The plain run_user_env.bat terminal is also available.")
                 yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
                 yield Button("Build new stimulus", id="build-new-stimulus")
+                yield AuthoringPanel("stimulus")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
         yield Footer()
@@ -418,7 +422,8 @@ class StimuliScreen(HubPage):
             try:
                 from ..authoring import scaffold_draft
                 paths = scaffold_draft(self.app.repo_root, self.query_one("#new-stimulus-name", Input).value.strip(), kind="stimulus")
-                self.app.notify(f"Created {len(paths)} draft files. Open run_user_env.bat; use --dev-preview then --dev-ready.")
+                self.query_one(AuthoringPanel).refresh_inventory()
+                self.app.notify(f"Created {len(paths)} draft files. Edit, Preview / validate, then Mark Ready here.")
                 self.app.inspect_source(paths[0])
             except (ValueError, OSError) as exc:
                 self.app.notify(str(exc), severity="error")

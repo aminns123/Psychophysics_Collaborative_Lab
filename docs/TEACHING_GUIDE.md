@@ -1,8 +1,8 @@
 # PsyCoLab: the beginner teaching workflow
 
-**Researcher development:** Open the plain Python [USER_env terminal](USER_ENV.md). The normal TUI retains Build and source inspection; the optional `--dev-preview`, `--dev-test` and `--dev-ready` commands preserve Draft → Tested → Ready without a second graphical TUI.
+**Researcher development:** Follow [START HERE](START_HERE_EXPERIMENTS.md) for the current normal-TUI Build → Edit → Preview/Simulate → Ready workflow. The [USER_env terminal](USER_ENV.md) provides equivalent optional commands.
 
-This is the authoritative guide for new scientific components. The older
+START_HERE_EXPERIMENTS is the authoritative chronological guide. This page retains extended teaching and rollback notes. The older
 RESEARCHER_QUICKSTART and EXPERIMENT_AUTHORING_PROPOSAL describe earlier stages;
 use this guide and PUBLIC_PROCEDURE_LIFECYCLE for the implemented public API.
 
@@ -43,7 +43,7 @@ retain their producing version and immutable run snapshots.
 Scientific modules live under `src/psychophysics_lab/stimuli`, `experiments` and
 `adaptive`. They import the public `psychophysics_lab.researcher` interface.
 `configs/stimuli` contains shared default parameter JSON. `contributions.py` is the
-documented registration list, not a framework registry implementation.
+built-in registration list. New authored modules use the Draft → Tested → Ready inventory, without editing that list.
 Normally do not edit `core`, `config`, `data` or `ui` to add an experiment.
 
 The supported teaching renderer is a static grayscale raster with an ordered

@@ -1,0 +1,102 @@
+"""Draft testing and Ready controls embedded in the normal authoring pages."""
+from pathlib import Path
+import subprocess
+import os
+import sys
+from textual import work
+from textual.containers import Vertical, Horizontal
+from textual.widgets import Select, Button, Static
+from ..authoring import inventory, fingerprint
+
+
+class AuthoringPanel(Vertical):
+    DEFAULT_CSS = "AuthoringPanel { height: auto; } AuthoringPanel Static { height: auto; }"
+
+    def __init__(self, kind):
+        super().__init__(id="authoring-panel")
+        self.kind = kind
+
+    def compose(self):
+        yield Static("Your components: edit Python/JSON, preview or simulate, then mark the tested version Ready.")
+        yield Select([], prompt="Choose your draft or Ready component", id="author-component")
+        with Horizontal(classes="buttons"):
+            yield Button("Edit Python", id="author-python")
+            yield Button("Edit JSON", id="author-json")
+            yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
+            yield Button("Mark Ready", id="author-ready")
+            yield Button("Refresh", id="author-refresh")
+        yield Static("", id="author-result", markup=False)
+
+    def on_mount(self):
+        self.refresh_inventory()
+
+    def refresh_inventory(self):
+        records = [i for i in inventory(self.app.repo_root) if i.kind == self.kind]
+        selected = self.query_one("#author-component", Select)
+        previous = selected.value
+        options = []
+        for item in records:
+            try:
+                tested = bool(item.tested_fingerprint and item.tested_fingerprint == fingerprint(self.app.repo_root, item))
+            except (OSError, ValueError):
+                tested = False
+            options.append((f"{item.name} — {item.status}, {'tested' if tested else 'needs testing'}", item.name))
+        selected.set_options(options)
+        if records:
+            selected.value = previous if previous in {i.name for i in records} else records[-1].name
+
+    def on_button_pressed(self, event):
+        identity = event.button.id or ""
+        if not identity.startswith("author-"):
+            return
+        event.stop()
+        if identity == "author-refresh":
+            self.refresh_inventory()
+            return
+        name = self.query_one("#author-component", Select).value
+        if name is Select.BLANK:
+            self.query_one("#author-result", Static).update("Choose a component first.")
+            return
+        if identity in {"author-python", "author-json"}:
+            folder = "stimuli" if self.kind == "stimulus" else "experiments"
+            relative = (f"src/psychophysics_lab/{folder}/{name}.py" if identity == "author-python"
+                        else f"configs/{folder}/{name}.json")
+            self.app.inspect_source(self.app.repo_root / relative)
+            return
+        self.perform(identity, str(name))
+
+    @work(thread=True, exclusive=True, group="authoring")
+    def perform(self, operation, name):
+        def update(message):
+            self.query_one("#author-result", Static).update(message)
+        def disable(disabled):
+            for button in self.query(Button):
+                button.disabled = disabled
+        self.app.call_from_thread(disable, True)
+        self.app.call_from_thread(update, "Running software validation…" if operation == "author-test" else "Checking tested revision…")
+        args = (["--dev-ready", self.kind, name] if operation == "author-ready" else
+                ["--dev-preview" if self.kind == "stimulus" else "--dev-test", name])
+        try:
+            result = subprocess.run([sys.executable, "-m", "psychophysics_lab", *args],
+                                    cwd=self.app.repo_root, env=os.environ | {"PSYCOLAB_REPO_ROOT": str(self.app.repo_root)}, capture_output=True, text=True,
+                                    timeout=300, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            message = (result.stdout + result.stderr).strip()
+            if result.returncode:
+                message = "Validation failed. Edit the component and try again.\n" + message
+            elif operation == "author-ready":
+                # New modules enter the same registries. Existing imported
+                # modules require a restart to avoid stale cross-module references.
+                module_name = f"psychophysics_lab.{'stimuli' if self.kind == 'stimulus' else 'experiments'}.{name}"
+                if module_name in sys.modules:
+                    message += "\nRestart PsyCoLab before running the newly tested revision."
+                else:
+                    from ..authoring import load_authored
+                    problems = load_authored(self.app.repo_root, tolerate_errors=True)
+                    if problems:
+                        message += "\nRestart PsyCoLab to refresh changed loaded modules: " + str(problems)
+            self.app.call_from_thread(update, message)
+            self.app.call_from_thread(self.refresh_inventory)
+        except Exception as exc:
+            self.app.call_from_thread(update, f"Could not finish: {exc}")
+        finally:
+            self.app.call_from_thread(disable, False)
