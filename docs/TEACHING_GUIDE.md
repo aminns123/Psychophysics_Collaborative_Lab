@@ -1,4 +1,10 @@
-# PsyCoLab: the beginner teaching workflow
+# PsyCoLab: extended teaching reference
+
+**For first-time authors, read [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md)
+instead.** This older page contains historical worked examples and extended
+scientific notes. It is not the canonical generator specification; use the
+[AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md) for stable file and ID rules.
+
 
 **Researcher development:** Follow [START HERE](START_HERE_EXPERIMENTS.md) for the current normal-TUI Build → Edit → Preview/Simulate → Ready workflow. The [USER_env terminal](USER_ENV.md) provides equivalent optional commands.
 

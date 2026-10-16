@@ -67,10 +67,12 @@ class LibraryExperimentBuilder(Vertical):
     def refresh_experiment_choices(self, preferred):
         """Show newly published experiments in the normal Build Experiments list."""
         from ..experiments.registry import list_experiments
+        from .setup import experiment_choice_label
         experiments = list_experiments()
         selector = self.screen.query_one("#inspect-experiment", Select)
         old = selector.value
-        selector.set_options([(spec.display_name, spec.id) for spec in experiments])
+        selector.set_options([(experiment_choice_label(spec, self.app.repo_root), spec.id)
+                              for spec in experiments])
         ids = {spec.id for spec in experiments}
         selector.value = preferred if preferred in ids else (old if old in ids else experiments[0].id)
         self.screen._refresh()

@@ -1,4 +1,4 @@
-"""START HERE: left/right line task. Edit the six labelled scientific sections.
+"""WORKED EXAMPLE ONLY: left/right line task (not an empty experiment template).
 
 The companion JSON supplies settings; the TUI can override them for a run.
 PsyCoLab owns geometry, display, keys, validation and all saving.

@@ -67,18 +67,20 @@ def test_new_scaffolds_start_from_simple_science_not_oriented_grating(tmp_path):
     assert stimulus.id == experiment.id == "my_white_line"
     assert experiment.stimulus_defaults == {"target": "my_white_line"}
     assert set(item.key for item in stimulus.parameters) == {
-        "size_deg", "offset_deg", "line_width_deg", "line_length_deg", "intensity"
+        "size_deg", "length_deg", "width_deg", "intensity"
     }
     assert "Gaussian-windowed" not in stimulus_file.read_text()
     assert "make_trial_order" in experiment_file.read_text()
+    assert "NotImplementedError" in experiment_file.read_text()
+    assert "left/right line task" not in experiment_file.read_text()
     with pytest.raises(ValueError, match="new files"):
         scaffold(tmp_path, "my_white_line", kind="pair")
 
 
-def test_new_experiment_only_reuses_builtin_example_stimulus(tmp_path):
+def test_new_advanced_experiment_reuses_builtin_line_stimulus(tmp_path):
     path, timeline = scaffold(tmp_path, "my_new_experiment", kind="experiment")
     spec = _load(path, "my_new_experiment").SPEC
-    assert spec.stimulus_defaults == {"target": "example_stimulus"}
+    assert spec.stimulus_defaults == {"target": "vertical_line_probe"}
     assert json.loads(timeline.read_text())["experiment_id"] == "my_new_experiment"
     assert spec.field_defaults()["stimulus_ms"] == 200
 

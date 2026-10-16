@@ -65,24 +65,25 @@ def test_scaffold_register_configure_simulate_save_validate(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="already"):
         register_stimulus(stimulus)
     document = json.loads(files[1].read_text())
-    document["parameters"]["line_width_deg"] = 0.25
+    document["parameters"]["width_deg"] = 0.25
     files[1].write_text(json.dumps(document))
     selected = load_parameters(files[1], stimulus)
-    # Example 1: a new line stimulus runs in the existing compatible example.
-    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data", experiment_id="example_experiment",
-        values={"trial_count": 3}, stimulus_snapshots={"target": selected})
+    # Example 1: a newly created line is reusable in the JSON-only above/below experiment.
+    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data", experiment_id="probe_above_below",
+        values={"trial_count": 3}, stimulus_snapshots={"probe": selected})
     assert all(c.passed for c in validate_run(artifacts.run_directory))
     before = (artifacts.run_directory / "stimulus_parameters.json").read_bytes()
     files[1].write_text("invalid later edit")
     assert (artifacts.run_directory / "stimulus_parameters.json").read_bytes() == before
-    # Example 2: a generated experiment reuses an existing registered stimulus.
-    experiment_file, timeline_file = scaffold(tmp_path, "student_task", kind="experiment")
-    assert timeline_file.name == "student_task.json"
+    # Example 2: advanced scaffolds have honest unfilled scientific decisions.
+    experiment_file, settings_file = scaffold(tmp_path, "student_task", kind="experiment")
+    assert settings_file.name == "student_task.json"
     spec = load_module(experiment_file, "student_task").SPEC
-    # This isolated test supplies generated source in its own checkout root.
-    register_experiment(replace(spec, source_paths=()))
-    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data", experiment_id=spec.id, values={"trial_count": 2})
-    assert all(c.passed for c in validate_run(artifacts.run_directory))
+    assert spec.stimulus_defaults == {"target": "vertical_line_probe"}
+    assert json.loads(settings_file.read_text())["experiment_id"] == "student_task"
+    fake_run = type("FakeRun", (), {"values": {"trial_count": 2}})()
+    with pytest.raises(NotImplementedError, match="scientific conditions"):
+        spec.procedure(fake_run)
 
 
 @pytest.mark.parametrize("change", [lambda d: d["parameters"].pop("contrast"),
