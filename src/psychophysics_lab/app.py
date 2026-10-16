@@ -92,6 +92,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="psycolab",
         description="PsyCoLab — Psychophysics Collaborative Lab",
     )
+    # Portable, TUI-independent first lesson.
+    parser.add_argument("--learn", action="store_true",
+                        help="Read the standalone start-to-finish authoring tutorial.")
     # The separate USER_env environment is a plain terminal, not another TUI.
     parser.add_argument("--library-list", action="store_true", help="List JSON-only stimulus-library experiments.")
     parser.add_argument("--library-create", metavar="NAME", help="Create a basic 2AFC experiment using registered library stimuli (JSON only).")
@@ -132,6 +135,11 @@ def _main(
     repo_root = find_repo_root()
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
+
+    if args.learn:
+        # The Markdown guide is readable in terminals, editors and GitHub alike.
+        print((repo_root / "docs" / "LEARN_PSYCOLAB.md").read_text(encoding="utf-8"))
+        return 0
 
     if args.library_list:
         from .experiments.library_builder import inventory

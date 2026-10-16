@@ -21,6 +21,7 @@ from ..config.preflight import compatible, validate_setup
 from ..config.readiness import readiness_text
 from .editor import open_source
 from .authoring import AuthoringPanel
+from .library_builder import LibraryExperimentBuilder
 from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
     GeometryCheckRequest,
@@ -44,7 +45,7 @@ NAV_PAGES = (
     ("display", "Calibrate"),
     ("simulations", "Scenarios"),
     ("data", "Data"),
-    ("help", "Developer"),
+    ("help", "Learn / Help"),
 )
 
 
@@ -252,6 +253,24 @@ class HubPage(Screen):
         _handle_nav(self, event)
 
 
+def experiment_choice_label(spec: ExperimentSpec, repo_root: Path) -> str:
+    """Make scientifically similar experiments distinguishable by provenance."""
+    from ..authoring import inventory as authored_inventory
+    authored = {(item.kind, item.name): item.status
+                for item in authored_inventory(repo_root)}
+    if ("experiment", spec.id) in authored:
+        origin = f"Researcher Python, {authored['experiment', spec.id].title()}"
+    elif spec.id == "probe_above_below":
+        origin = "Built-in JSON example"
+    elif getattr(spec.procedure, "__module__", "") == "psychophysics_lab.experiments.library_builder":
+        origin = "JSON library"
+    elif spec.id == "example_experiment":
+        origin = "Built-in left/right worked example"
+    else:
+        origin = "Built-in Python"
+    return f"{spec.display_name} — {origin} [{spec.id}]"
+
+
 class ExperimentsScreen(HubPage):
     page_title = "Experiments"
 
@@ -260,7 +279,8 @@ class ExperimentsScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
         specs = list_experiments()
-        options = [(spec.display_name, spec.id) for spec in specs]
+        options = [(experiment_choice_label(spec, self.app.repo_root), spec.id)
+                   for spec in specs]
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Registered experiments[/b]\n"
@@ -274,14 +294,17 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
-            yield Static("[b]START HERE — simple examples[/b]\nExample Experiment shows fixation → state snapshot → line → blank → response → state update. Change scientific Python and settings JSON; PsyCoLab manages responses and saving.")
+            yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. The old left/right example is a worked example, not a new-file template.")
+            yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
                 yield Button("Read example experiment.py", id="read-example-experiment")
                 yield Button("Edit example settings JSON", id="read-example-timeline")
                 yield Button("Read CSF timeline JSON", id="read-csf-timeline")
-            yield Static("[b]Build a new experiment[/b]: generates a beginner copy of the example, not the Gabor/tilt task. Set conditions in make_trial_order(), actions in TRIAL, and timings/keys in its JSON. Simulate / validate below, then Mark Ready.")
-            yield Input(placeholder="e.g. new_orientation_task", id="new-experiment-name")
-            yield Button("Build new experiment", id="build-new-experiment", variant="primary")
+            yield Static("[b]Preferred for simple two-choice spatial tasks[/b]\nChoose existing library stimuli and create one JSON experiment. No new experiment Python file.")
+            yield LibraryExperimentBuilder()
+            yield Static("[b]Advanced Python experiment (custom science)[/b]\nCreates a neutral, unfinished procedure and settings JSON. You must define condition meaning and actions yourself; unlike the left/right worked example, it will not pretend to be a completed experiment.")
+            yield Input(placeholder="e.g. my_custom_science", id="new-experiment-name")
+            yield Button("Create advanced Python experiment", id="build-new-experiment")
             yield AuthoringPanel("experiment")
         yield Footer()
 
@@ -314,6 +337,12 @@ class ExperimentsScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id == "learn-experiments":
+            event.stop()
+            self.app.push_screen(CodeViewScreen(
+                title="Learn PsyCoLab — standalone guide",
+                path=self.app.repo_root / "docs/LEARN_PSYCOLAB.md"))
+            return
         if event.button.id in {"read-example-experiment", "read-example-timeline", "read-csf-timeline"}:
             event.stop()
             examples = {
@@ -329,7 +358,7 @@ class ExperimentsScreen(HubPage):
                 from ..authoring import scaffold_draft
                 paths = scaffold_draft(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
                 self.query_one(AuthoringPanel).refresh_inventory()
-                self.app.notify(f"Created {len(paths)} draft files. Edit, Simulate / validate, then Mark Ready here.")
+                self.app.notify(f"Created {len(paths)} draft files. Complete the two scientific TODOs; simulate and then Mark Ready.")
                 self.app.inspect_source(paths[0])
             except (ValueError, OSError) as exc:
                 self.app.notify(str(exc), severity="error")
@@ -371,13 +400,13 @@ class StimuliScreen(HubPage):
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
                 yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
-                yield Static("[b]START HERE — example white line[/b]\nRead its PARAMETERS and render() function first. The JSON holds starting values; the framework supplies degree coordinates and draws the result.")
+                yield Static("[b]First exercise — reusable white line[/b]\nStart with the standalone learning guide. New stimuli use the small centred-line renderer (PARAMETERS and render()) plus defaults JSON.")
+                yield Button("Learn PsyCoLab — stimulus tutorial", id="learn-stimuli")
                 yield Button("Read example stimulus.py", id="read-example-stimulus")
                 yield Button("Read example stimulus JSON", id="read-example-stimulus-json")
-                yield Static("[b]Build a new stimulus[/b]: creates a simple white-line example for you to edit, NOT a renamed Gabor grating. Preview / validate below, then Mark Ready. The plain run_user_env.bat terminal is also available.")
+                yield Static("[b]Build a new stimulus[/b]: creates the canonical centred vertical-line Python + JSON pair. Edit appearance and defaults, Preview / validate (PNG only), then Mark Ready. No experiment Python is generated.")
                 yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
                 yield Button("Build new stimulus", id="build-new-stimulus")
-                yield Button("Start minimal vertical line", id="build-vertical-line")
                 yield AuthoringPanel("stimulus")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
@@ -411,24 +440,25 @@ class StimuliScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id == "learn-stimuli":
+            event.stop()
+            self.app.push_screen(CodeViewScreen(
+                title="Learn PsyCoLab — standalone guide",
+                path=self.app.repo_root / "docs/LEARN_PSYCOLAB.md"))
+            return
         if event.button.id in {"read-example-stimulus", "read-example-stimulus-json"}:
             event.stop()
-            path = ("src/psychophysics_lab/stimuli/example_stimulus.py"
+            path = ("src/psychophysics_lab/stimuli/vertical_line_probe.py"
                     if event.button.id == "read-example-stimulus"
-                    else "configs/stimuli/example_stimulus.json")
+                    else "configs/stimuli/vertical_line_probe.json")
             self.app.inspect_source(self.app.repo_root / path)
             return
-        if event.button.id in {"build-new-stimulus", "build-vertical-line"}:
+        if event.button.id == "build-new-stimulus":
             event.stop()
             try:
-                from ..authoring import scaffold_draft, stage
+                from ..authoring import scaffold_draft
                 name = self.query_one("#new-stimulus-name", Input).value.strip()
-                if event.button.id == "build-vertical-line":
-                    from ..scaffold import scaffold_vertical_line
-                    paths = scaffold_vertical_line(self.app.repo_root, name)
-                    stage(self.app.repo_root, "stimulus", name)
-                else:
-                    paths = scaffold_draft(self.app.repo_root, name, kind="stimulus")
+                paths = scaffold_draft(self.app.repo_root, name, kind="stimulus")
                 self.query_one(AuthoringPanel).refresh_inventory()
                 self.app.notify(f"Created {len(paths)} draft files. Edit, Preview / validate, then Mark Ready here.")
                 self.app.inspect_source(paths[0])
@@ -1507,7 +1537,7 @@ class DataScreen(HubPage):
 
 
 class HelpScreen(HubPage):
-    page_title = "Help / Developer"
+    page_title = "Learn / Help"
 
     def compose(self) -> ComposeResult:
         with Vertical(id="fixed-shell"):
@@ -1535,12 +1565,22 @@ class HelpScreen(HubPage):
                 "unrestricted source-code editor inside the acquisition TUI."
             )
             yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit generated scientific Python/JSON in your editor, test from run_user_env.bat with --dev-preview or --dev-test, then mark Ready with --dev-ready.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Button("Learn PsyCoLab — standalone tutorial", id="learn-guide", variant="primary")
+            yield Button("Authoring structure and ID rules", id="authoring-contract")
             yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"learn-guide", "authoring-contract"}:
+            event.stop()
+            path = ("LEARN_PSYCOLAB.md" if event.button.id == "learn-guide"
+                    else "AUTHORING_CONTRACT.md")
+            self.app.push_screen(CodeViewScreen(
+                title="Learn PsyCoLab" if event.button.id == "learn-guide" else "Authoring contract",
+                path=self.app.repo_root / "docs" / path))
             return
         if event.button.id == "edit-contributions":
             event.stop()
@@ -2664,7 +2704,8 @@ class PsyCoLabSetupApp(App):
 
     def compose(self) -> ComposeResult:
         experiments = list_experiments()
-        experiment_options = [(spec.display_name, spec.id) for spec in experiments]
+        experiment_options = [(experiment_choice_label(spec, self.repo_root), spec.id)
+                              for spec in experiments]
 
         last_request, state, warning = self._initial_values()
         saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft", {})

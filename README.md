@@ -13,45 +13,34 @@ The current reference experiment is a contrast sensitivity function (CSF)
 experiment. It is an example built with the framework; it is not the definition
 of the framework.
 
-## Researcher-facing development
+## Learn to build stimuli and experiments
 
-To create a new stimulus/experiment pair without editing the framework internals:
+**Start with the standalone [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) guide.**
+It is readable outside the TUI and includes the actual commands, worked
+white-line example, above/below experiment, virtual tests and human-run steps.
 
-```powershell
-.venv\\Scripts\\python.exe -m psychophysics_lab --scaffold orientation_task
+In the USER_env terminal, you can also type:
+
+```cmd
+python -m psychophysics_lab --learn
 ```
 
-Implement the generated modules in `src/psychophysics_lab/stimuli/` and
-`src/psychophysics_lab/experiments/`, then register them in
-`src/psychophysics_lab/contributions.py`. The scaffold is deliberately
-incomplete until you implement the actual experimental procedure.
+PsyCoLab uses one [authoring contract](docs/AUTHORING_CONTRACT.md):
+a stimulus owns its **appearance**; an experiment owns the **conditions,
+placement, timing and responses**; the framework handles calibration,
+recording and data saving. Basic two-choice spatial experiments can be
+made from registered stimuli by editing JSON only. Advanced procedures
+have their own Python file and a neutral (deliberately unfinished) starter.
 
-Start with the [researcher quickstart](docs/RESEARCHER_QUICKSTART.md),
-the [adaptive-methods guide](docs/ADAPTIVE_METHODS.md) and the
-[headless simulation guide](docs/SIMULATION_TESTING.md).
-The [simulation laboratory guide](simulations/README.md) explains how each
-experiment owns a separate virtual observer and its own test scenarios.
+New researcher Python modules are registered through the Draft → Test →
+Ready inventory automatically. **Do not edit `contributions.py` to register
+new researcher modules.** The older left/right `example_experiment.py` is
+a worked example, not the new experiment generator template.
 
-Virtual observers can exercise real staircase, recording, run validation
-and experiment-specific analysis without a display. **In the normal PsyCoLab TUI,
-open the Scenarios page** (advanced/direct scenarios); for unified studies use **Experiment → Review → Run simulation**, select an experiment/scenario, edit the model's
-declared parameters, review the configuration and select Run Virtual Experiment.
-The TUI reopens with a pass/fail report after the headless run.
-
-The equivalent command-line access remains available:
-
-```powershell
-.venv\\Scripts\\python.exe -m simulations --seed 123 --max-trials 400
-.venv\\Scripts\\python.exe -m simulations --list-scenarios
-.venv\\Scripts\\python.exe -m simulations --scenario csf_baseline
-.venv\\Scripts\\python.exe -m simulations --scaffold-simulation orientation_task
-```
-
-Synthetic runs are saved in the **same external data repository as human
-runs**, beneath reserved `synthetic_...` participant IDs, with per-participant
-markers and explicit synthetic provenance. The human TUI's saved setup is not
-overwritten. Virtual timestamps are reproducible but do not measure actual
-presentation or response times.
+For more detail see the [simulation guide](docs/SIMULATION_TESTING.md) and
+[CSF action migration status](docs/CSF_ACTION_MIGRATION.md). Synthetic runs
+are recorded separately from human acquisition and do not establish physical
+monitor calibration.
 
 ## First launch on Windows
 

@@ -88,7 +88,7 @@ def definition(identity="BLUEPRINT_ID", stimulus="BLUEPRINT_STIMULUS"):
         # Declare all relevant requirements for the actual task.
         calibration_requirements=("geometry", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
-        stimulus_slots={"target": "simple_line"},
+        stimulus_slots={"target": "line"},
         stimulus_defaults={"target": stimulus},
         supports_simulation=True,
         source_paths=(f"src/psychophysics_lab/experiments/{identity}.py",),

@@ -15,9 +15,9 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
     files = {}
     # Beginner projects start from explicit examples, NOT copied Gabor science.
     if kind in {"pair", "stimulus"}:
-        template = (source / "stimuli/example_stimulus.py").read_text(encoding="utf-8")
-        files[f"src/psychophysics_lab/stimuli/{name}.py"] = template.replace("example_stimulus", name)
-        from .stimuli.example_stimulus import SPEC
+        template = (source / "stimuli/vertical_line_probe.py").read_text(encoding="utf-8")
+        files[f"src/psychophysics_lab/stimuli/{name}.py"] = template.replace("vertical_line_probe", name)
+        from .stimuli.vertical_line_probe import SPEC
         from .config.stimulus_parameters import document_for
         document = document_for(SPEC)
         document["stimulus_id"] = name
@@ -27,7 +27,7 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
         # skeleton. Do NOT clone left/right example_experiment science.
         template = (source / "blueprints/experiment_starter.py.txt").read_text(encoding="utf-8")
         template = template.replace("BLUEPRINT_ID", name)
-        template = template.replace("BLUEPRINT_STIMULUS", name if kind == "pair" else "example_stimulus")
+        template = template.replace("BLUEPRINT_STIMULUS", name if kind == "pair" else "vertical_line_probe")
         files[f"src/psychophysics_lab/experiments/{name}.py"] = template
         document = json.loads((source.parent.parent / "configs/experiments/example_experiment.json").read_text(encoding="utf-8"))
         document["experiment_id"] = name

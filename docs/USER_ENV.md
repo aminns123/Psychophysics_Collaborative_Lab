@@ -1,5 +1,10 @@
 # USER_env — interactive Python terminal
 
+**Start here:** [Learn PsyCoLab](LEARN_PSYCOLAB.md) is the authoritative,
+standalone stimulus → experiment → preview → simulation → Ready → run tutorial.
+Type `python -m psychophysics_lab --learn` in USER_env to read it without the TUI.
+
+
 **USER_env is a regular Windows Command Prompt with an activated Python
 environment, not a second PsyCoLab TUI.** It uses its own Python 3.11 virtual
 environment to let you run and debug trusted scripts by typing normal commands.
