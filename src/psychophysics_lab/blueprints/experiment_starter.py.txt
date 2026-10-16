@@ -1,0 +1,98 @@
+"""ADVANCED EXPERIMENT STARTER — deliberately NOT a left/right task.
+
+A stimulus says WHAT something looks like. An experiment says WHERE, WHEN,
+WHICH CONDITIONS, WHAT RESPONSE MEANS, and WHAT TO RECORD.
+
+FIRST: read docs/LEARN_PSYCOLAB.md or run: python -m psychophysics_lab --learn
+For basic above/below experiments, use Build Experiments -> JSON-only builder
+instead: you do not need to write an experiment Python module.
+
+This is a scaffold, not a tested scientific experiment. Complete the two
+explicit TODOs in make_trial_order and make_trial before simulating.
+The framework handles monitor geometry, input, data, and provenance.
+"""
+from psychophysics_lab.researcher import (
+    ConfigField, ResponseParadigm, experiment, TrialTimeline, Show, Stimulus,
+    CollectResponse, RecordState, UpdateState,
+)
+
+
+# SCIENCE 1 — CONDITIONS AND TARGETS
+# Return a list of integer target indices: 0 for option_a, 1 for option_b.
+# Decide what these conditions REALLY mean scientifically, then rename them.
+def make_trial_order(trial_count):
+    raise NotImplementedError(
+        "Choose the scientific conditions and their order in make_trial_order(). "
+        "For a ready-to-use example, inspect probe_above_below.json."
+    )
+
+
+# SCIENCE 2 — STIMULUS PLACEMENT AND CHRONOLOGICAL ACTIONS
+# The 'target' role is linked to a registered library stimulus in definition().
+# Place it in degrees with Stimulus('target', x_deg=..., y_deg=...).
+# You can add Show, RecordState, CollectResponse and UpdateState in ANY valid
+# chronological order; never draw or write files inside this procedure.
+def make_trial(condition):
+    raise NotImplementedError(
+        "Declare a TrialTimeline for each condition using Show and Stimulus. "
+        "See docs/LEARN_PSYCOLAB.md for a complete above/below example."
+    )
+
+
+# SCIENCE 3 — RESPONSE INTERPRETATION / TRIAL STATE
+# Optional: this simple counter counts correct responses after each trial.
+def update_from_response(state, response):
+    return dict(state) | {
+        "correct_count": state["correct_count"] + int(response["correct"])
+    }
+
+
+# SCIENCE 4 — TRIAL LOOP (framework workflow, NOT stimulus drawing)
+def procedure(run):
+    conditions = make_trial_order(run.values["trial_count"])
+    run.initialise(expected_trials=len(conditions), resolution={
+        "task": "TODO: state the task and scientific meaning of condition 0/1",
+        "condition_order": conditions,
+        "measurement_units": {"correct_count": "responses"},
+    })
+    state = {"correct_count": 0}
+    for target in conditions:
+        run.play_trial(
+            make_trial(target),
+            target=target,
+            condition=target,
+            state=state,
+            instructions="TODO: explain response keys to the participant",
+        )
+        state = dict(run.trial_state)
+    run.complete()
+
+
+# SCIENCE 5 — DECLARATION (experiment ID MUST match the Python filename)
+def definition(identity="BLUEPRINT_ID", stimulus="BLUEPRINT_STIMULUS"):
+    return experiment(
+        id=identity,
+        name=identity.replace("_", " ").title(),
+        description="Unconfigured advanced 2-choice experiment starter.",
+        procedure=procedure,
+        default_config=f"configs/experiments/{identity}.json",
+        fields=(
+            ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
+            ConfigField("fixation_ms", "Fixation", "int", 500, units="ms", minimum=1),
+            ConfigField("stimulus_ms", "Stimulus", "int", 200, units="ms", minimum=1),
+            ConfigField("interval_ms", "Blank", "int", 150, units="ms", minimum=1),
+            ConfigField("response_timeout_ms", "Response timeout (0 waits)", "int", 0, units="ms", minimum=0),
+        ),
+        # TODO: replace generic alternatives with scientifically meaningful names.
+        responses=ResponseParadigm("choice", ("option_a", "option_b"), ("F", "J")),
+        # Declare all relevant requirements for the actual task.
+        calibration_requirements=("geometry", "timing"),
+        monitor_capabilities=("display_binding", "resolution"),
+        stimulus_slots={"target": "simple_line"},
+        stimulus_defaults={"target": stimulus},
+        supports_simulation=True,
+        source_paths=(f"src/psychophysics_lab/experiments/{identity}.py",),
+    )
+
+
+SPEC = definition()

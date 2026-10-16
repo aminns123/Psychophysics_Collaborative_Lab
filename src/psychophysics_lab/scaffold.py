@@ -23,10 +23,11 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
         document["stimulus_id"] = name
         files[f"configs/stimuli/{name}.json"] = json.dumps(document, indent=2) + "\n"
     if kind in {"pair", "experiment"}:
-        template = (source / "experiments/example_experiment.py").read_text(encoding="utf-8")
-        template = template.replace("example_experiment", name)
-        if kind == "pair":
-            template = template.replace("example_stimulus", name)
+        # Advanced authoring starts from an explicit, task-neutral research
+        # skeleton. Do NOT clone left/right example_experiment science.
+        template = (source / "blueprints/experiment_starter.py.txt").read_text(encoding="utf-8")
+        template = template.replace("BLUEPRINT_ID", name)
+        template = template.replace("BLUEPRINT_STIMULUS", name if kind == "pair" else "example_stimulus")
         files[f"src/psychophysics_lab/experiments/{name}.py"] = template
         document = json.loads((source.parent.parent / "configs/experiments/example_experiment.json").read_text(encoding="utf-8"))
         document["experiment_id"] = name
