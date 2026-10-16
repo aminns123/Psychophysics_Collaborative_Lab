@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "stimulus_id": "fixation_cross",
+  "parameters": {
+    "size_deg": 0.8,
+    "arm_length_deg": 0.35,
+    "width_deg": 0.06,
+    "intensity": 1
+  }
+}

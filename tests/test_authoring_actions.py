@@ -64,10 +64,12 @@ def test_normal_authoring_panel_exposes_sources_and_validated_ready_workflow(tmp
                 await pilot.pause()
             assert opened == list(files)
             app.query_one("#author-test", Button).press()
+            await pilot.pause()  # deliver button event before waiting for scheduled worker
             await app.workers.wait_for_complete()
             await pilot.pause()
             assert inventory(tmp_path)[0].tested_fingerprint
             app.query_one("#author-ready", Button).press()
+            await pilot.pause()  # deliver button event before waiting for scheduled worker
             await app.workers.wait_for_complete()
             await pilot.pause()
             assert inventory(tmp_path)[0].status == "ready"

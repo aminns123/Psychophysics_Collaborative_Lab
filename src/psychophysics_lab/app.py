@@ -93,6 +93,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="PsyCoLab — Psychophysics Collaborative Lab",
     )
     # The separate USER_env environment is a plain terminal, not another TUI.
+    parser.add_argument("--library-list", action="store_true", help="List JSON-only stimulus-library experiments.")
+    parser.add_argument("--library-create", metavar="NAME", help="Create a basic 2AFC experiment using registered library stimuli (JSON only).")
+    parser.add_argument("--library-probe", default="vertical_line_probe", help="Registered probe stimulus for --library-create.")
+    parser.add_argument("--library-fixation", default="fixation_cross", help="Registered fixation stimulus for --library-create.")
+    parser.add_argument("--library-separation", type=float, default=2.0, help="Above/below distance in degrees for --library-create.")
+    parser.add_argument("--library-test", metavar="NAME", help="Simulate and validate an authored JSON library experiment.")
+    parser.add_argument("--library-ready", metavar="NAME", help="Publish a successfully simulated JSON experiment.")
     parser.add_argument("--dev-list", action="store_true", help="List authored Draft/Tested/Ready components.")
     parser.add_argument("--dev-preview", metavar="STIMULUS", help="Preview/test a stimulus without a physical display.")
     parser.add_argument("--dev-test", metavar="EXPERIMENT", help="Simulate and validate an experiment with a virtual observer.")
@@ -125,6 +132,33 @@ def _main(
     repo_root = find_repo_root()
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
+
+    if args.library_list:
+        from .experiments.library_builder import inventory
+        for record in inventory(repo_root):
+            print(f"{record['id']:32} {record['status']}")
+        return 0
+
+    if args.library_create:
+        from .experiments.library_builder import create_design
+        path = create_design(repo_root, args.library_create, probe=args.library_probe,
+                             fixation=args.library_fixation, separation_deg=args.library_separation)
+        print(f"Created DRAFT JSON-only experiment: {path}")
+        print("Use --library-test NAME, then --library-ready NAME. No new Python experiment file.")
+        return 0
+
+    if args.library_test:
+        from .experiments.library_builder import test_design
+        path = test_design(repo_root, args.library_test)
+        print(f"PASS: validated synthetic run saved to {path}")
+        return 0
+
+    if args.library_ready:
+        from .experiments.library_builder import mark_ready
+        path = mark_ready(repo_root, args.library_ready)
+        print(f"READY: {path} (software-tested only; normal human preflight still required).")
+        print("Restart PsyCoLab to refresh its experiment catalogue.")
+        return 0
 
     if args.dev_list:
         from .authoring import inventory, fingerprint

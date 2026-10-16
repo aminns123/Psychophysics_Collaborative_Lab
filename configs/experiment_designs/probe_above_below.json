@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "experiment_id": "probe_above_below",
+  "display_name": "Probe Above or Below Fixation",
+  "description": "A white vertical line is shown above or below a central fixation cross.",
+  "stimuli": {
+    "fixation": "fixation_cross",
+    "probe": "vertical_line_probe"
+  },
+  "conditions": [
+    {
+      "alternative": "above",
+      "probe_position_deg": [
+        0,
+        2
+      ]
+    },
+    {
+      "alternative": "below",
+      "probe_position_deg": [
+        0,
+        -2
+      ]
+    }
+  ],
+  "response": {
+    "alternatives": [
+      "above",
+      "below"
+    ],
+    "keys": [
+      "F",
+      "J"
+    ]
+  },
+  "values": {
+    "trial_count": 6,
+    "random_seed": 123,
+    "fixation_ms": 500,
+    "stimulus_ms": 200,
+    "interval_ms": 150,
+    "response_timeout_ms": 0
+  },
+  "actions": [
+    {
+      "type": "show",
+      "name": "fixation",
+      "duration": "fixation_ms",
+      "slots": [
+        "fixation"
+      ]
+    },
+    {
+      "type": "record_state",
+      "name": "before_probe"
+    },
+    {
+      "type": "show",
+      "name": "probe",
+      "duration": "stimulus_ms",
+      "slots": [
+        "fixation",
+        "probe"
+      ]
+    },
+    {
+      "type": "show",
+      "name": "blank",
+      "duration": "interval_ms",
+      "slots": []
+    },
+    {
+      "type": "collect_response",
+      "name": "answer",
+      "timeout": "response_timeout_ms"
+    },
+    {
+      "type": "record_state",
+      "name": "response_received"
+    },
+    {
+      "type": "update_correct_count",
+      "name": "update_correct_count"
+    }
+  ]
+}
