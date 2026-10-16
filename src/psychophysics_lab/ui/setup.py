@@ -273,9 +273,10 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
-            yield Static("[b]Build a new experiment[/b]: enter a Python module name. A working procedure + editable trial timeline JSON will be created; open its source and register it in contributions.py.")
+            yield Static("[b]Build a new experiment[/b]: generates a draft procedure and chronological timeline JSON. Test in USER_env before marking Ready; no registry edits.")
             yield Input(placeholder="e.g. new_orientation_task", id="new-experiment-name")
             yield Button("Build new experiment", id="build-new-experiment", variant="primary")
+            yield Button("Open USER_env test workbench", id="launch-user-env-experiments")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -307,12 +308,17 @@ class ExperimentsScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id in {"launch-user-env-experiments", "launch-user-env-stimuli"}:
+            event.stop()
+            from ..user_env import UserEnvRequest
+            self.app.exit(UserEnvRequest())
+            return
         if event.button.id == "build-new-experiment":
             event.stop()
             try:
-                from ..scaffold import scaffold
-                paths = scaffold(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
-                self.app.notify(f"Created {len(paths)} files; add its module to contributions.py to register.")
+                from ..authoring import scaffold_draft
+                paths = scaffold_draft(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
+                self.app.notify(f"Created {len(paths)} draft files; test and publish in USER_env.")
                 self.app.inspect_source(paths[0])
             except (ValueError, OSError) as exc:
                 self.app.notify(str(exc), severity="error")
@@ -354,9 +360,10 @@ class StimuliScreen(HubPage):
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
                 yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
-                yield Static("[b]Build a new stimulus[/b]: generate editable renderer Python and its JSON parameters; register in contributions.py before selecting it in experiments.")
+                yield Static("[b]Build a new stimulus[/b]: generates Python and JSON parameters as a draft. Preview and mark Ready in USER_env; no registry edits.")
                 yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
                 yield Button("Build new stimulus", id="build-new-stimulus")
+                yield Button("Open USER_env test workbench", id="launch-user-env-stimuli")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
         yield Footer()
@@ -389,12 +396,17 @@ class StimuliScreen(HubPage):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
+        if event.button.id in {"launch-user-env-experiments", "launch-user-env-stimuli"}:
+            event.stop()
+            from ..user_env import UserEnvRequest
+            self.app.exit(UserEnvRequest())
+            return
         if event.button.id == "build-new-stimulus":
             event.stop()
             try:
-                from ..scaffold import scaffold
-                paths = scaffold(self.app.repo_root, self.query_one("#new-stimulus-name", Input).value.strip(), kind="stimulus")
-                self.app.notify(f"Created {len(paths)} files; register your module in contributions.py.")
+                from ..authoring import scaffold_draft
+                paths = scaffold_draft(self.app.repo_root, self.query_one("#new-stimulus-name", Input).value.strip(), kind="stimulus")
+                self.app.notify(f"Created {len(paths)} draft files; preview and publish in USER_env.")
                 self.app.inspect_source(paths[0])
             except (ValueError, OSError) as exc:
                 self.app.notify(str(exc), severity="error")
@@ -1498,7 +1510,7 @@ class HelpScreen(HubPage):
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
-            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then list their modules in contributions.py.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Static("[b]Start a contribution[/b]\nRun: python -m psychophysics_lab --scaffold my_task\nEdit the two generated stimuli/ and experiments/ files, then test and publish them in USER_env.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
             yield Button("Open researcher registration in editor", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()

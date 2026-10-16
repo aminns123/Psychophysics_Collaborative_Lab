@@ -92,6 +92,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="psycolab",
         description="PsyCoLab — Psychophysics Collaborative Lab",
     )
+    parser.add_argument("--user-env", action="store_true", help="Open researcher authoring workbench (synthetic tests only).")
+    parser.add_argument("--user-env-action", choices=("preview", "test"), help=argparse.SUPPRESS)
+    parser.add_argument("--user-env-identity", help=argparse.SUPPRESS)
+    parser.add_argument("--user-env-values", default="{}", help=argparse.SUPPRESS)
     parser.add_argument(
         "--diagnose",
         action="store_true",
@@ -120,11 +124,23 @@ def _main(
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
 
+    if args.user_env_action:
+        import json
+        from .user_env import execute_user_action
+        if not args.user_env_identity:
+            raise ValueError("Supply --user-env-identity for a developer test.")
+        return execute_user_action(repo_root, args.user_env_action, args.user_env_identity, json.loads(args.user_env_values))
+
+    if args.user_env:
+        from .user_env import run_user_env
+        run_user_env(repo_root)
+        return 0
+
     if args.scaffold:
-        from .scaffold import scaffold
-        for path in scaffold(repo_root, args.scaffold, kind=args.blueprint):
+        from .authoring import scaffold_draft
+        for path in scaffold_draft(repo_root, args.scaffold, kind=args.blueprint):
             print(path)
-        print("Next: edit the scientific module/JSON, add its module to contributions.py, then validate and simulate. See docs/TEACHING_GUIDE.md.")
+        print("Created DRAFT. Run USER_env, edit Python/JSON, preview or simulate, then mark Ready. No registry edits needed.")
         return 0
 
     if args.preview_stimulus:
@@ -181,6 +197,23 @@ def _main(
             else:
                 print("PsyCoLab exited normally.")
             return 0
+
+        from .user_env import UserEnvRequest
+        if isinstance(action, UserEnvRequest):
+            import subprocess, sys
+            preferred = repo_root / "USER_env" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+            executable = preferred if preferred.exists() else Path(sys.executable)
+            print(f"Launching USER_env via {executable} (virtual tests only).")
+            result = subprocess.run([str(executable), "-m", "psychophysics_lab", "--user-env"],
+                                    cwd=repo_root, check=False)
+            simulation_summary = ("USER_env closed. Any published modules will be available in Configure Experiment."
+                                  if result.returncode == 0 else f"USER_env failed with exit code {result.returncode}; inspect terminal.")
+            from .authoring import load_authored
+            try:
+                load_authored(repo_root, include_drafts=False, tolerate_errors=True)
+            except (ValueError, ImportError, AttributeError) as exc:
+                simulation_summary = f"Published component cannot load: {exc}"
+            continue
 
         from .core.presentation_testing import PresentationTestRequest,run_presentation_test
         if isinstance(action,PresentationTestRequest):

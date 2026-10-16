@@ -53,3 +53,6 @@ Thumbs.db
 # The application's normal configuration/data roots remain outside the checkout.
 local_psychophysics_config/
 PsyCoLab_Data/
+
+# Separate dependency environment for user-authored development modules
+/USER_env/

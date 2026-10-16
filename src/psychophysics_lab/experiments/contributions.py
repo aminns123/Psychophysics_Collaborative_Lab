@@ -23,6 +23,17 @@ def load_contributions():
             experiments.register_experiment(importlib.import_module(name).SPEC)
         for name in STIMULUS_MODULES:
             stimuli.register_stimulus(importlib.import_module(name).SPEC)
+        # Published researcher components join the ordinary experiment catalogue.
+        from ..paths import find_repo_root
+        from ..authoring import load_authored
+        # Skip and report broken/stale published modules; never block working
+        # built-in experiments or silently launch an untested revision.
+        problems = load_authored(find_repo_root(), include_drafts=False, tolerate_errors=True)
+        if problems:
+            import warnings
+            warnings.warn("Invalid or untested published components were NOT loaded: "
+                          + "; ".join(f"{name}: {reason}" for name, reason in problems.items()),
+                          RuntimeWarning)
         _loaded = True
     except Exception:
         experiments._REGISTRY.clear()

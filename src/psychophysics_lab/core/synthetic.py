@@ -50,7 +50,9 @@ def simulation_workspace(path: Path, repo_root: Path) -> Path:
     raw = Path(path).expanduser().absolute()
     if raw != raw.resolve() or any(part.is_symlink() for part in (raw, *raw.parents)):
         raise ValueError("Data root cannot use symlinks or redirected paths.")
-    root = resolve_data_root(raw, repo_root)
+    # Dedicated USER_env roots are tagged software-only. Normal human preflight
+    # must reject them, while virtual participants are permitted explicitly.
+    root = resolve_data_root(raw, repo_root, allow_synthetic=True)
     config_root(repo_root, root)
     if root.exists() and not root.is_dir():
         raise ValueError("The PsyCoLab data repository must be a directory.")

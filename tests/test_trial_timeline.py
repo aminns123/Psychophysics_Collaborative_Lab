@@ -132,13 +132,13 @@ def test_build_buttons_scaffold_scientific_files_without_editor_changes(tmp_path
     import asyncio
     from textual.widgets import Input, Button
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentsScreen, StimuliScreen
-    import psychophysics_lab.scaffold as authoring
+    import psychophysics_lab.authoring as authoring
     calls = []
     def scaffold_fake(root, name, *, kind):
         calls.append((name, kind))
         # The launcher is intentionally mocked: no files are written in this test.
         return (ROOT / "src/psychophysics_lab/experiments/orientation_task.py",)
-    monkeypatch.setattr(authoring, "scaffold", scaffold_fake)
+    monkeypatch.setattr(authoring, "scaffold_draft", scaffold_fake)
     # Inspecting a source file also goes through one public TUI method.
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
