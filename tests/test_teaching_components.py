@@ -65,11 +65,11 @@ def test_scaffold_register_configure_simulate_save_validate(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="already"):
         register_stimulus(stimulus)
     document = json.loads(files[1].read_text())
-    document["parameters"]["spatial_frequency_cpd"] = 4.
+    document["parameters"]["line_width_deg"] = 0.25
     files[1].write_text(json.dumps(document))
     selected = load_parameters(files[1], stimulus)
-    # Example 1: a new stimulus runs in the existing compatible experiment.
-    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data", experiment_id="orientation_task",
+    # Example 1: a new line stimulus runs in the existing compatible example.
+    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data", experiment_id="example_experiment",
         values={"trial_count": 3}, stimulus_snapshots={"target": selected})
     assert all(c.passed for c in validate_run(artifacts.run_directory))
     before = (artifacts.run_directory / "stimulus_parameters.json").read_bytes()

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "phases": [
+    {
+      "name": "fixation",
+      "kind": "show",
+      "slot": null,
+      "duration_ms": {
+        "field": "fixation_ms"
+      },
+      "instructions": "+"
+    },
+    {
+      "name": "line",
+      "kind": "show",
+      "slot": "target",
+      "duration_ms": {
+        "field": "stimulus_ms"
+      }
+    },
+    {
+      "name": "blank",
+      "kind": "show",
+      "slot": null,
+      "duration_ms": {
+        "field": "interval_ms"
+      }
+    },
+    {
+      "name": "answer",
+      "kind": "response",
+      "slot": null,
+      "duration_ms": {
+        "field": "response_timeout_ms"
+      }
+    }
+  ]
+}
