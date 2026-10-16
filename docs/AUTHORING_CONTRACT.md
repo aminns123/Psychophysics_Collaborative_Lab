@@ -59,7 +59,7 @@ calibration, human readiness checks and hardware verification.
 | ID | Type/status | Interpretation |
 |---|---|---|
 | `probe_above_below` | Built-in Ready JSON design | Canonical reusable-library demonstration |
-| `new_probe_vertical_line_stimulus` | Researcher-created Ready Python experiment | User's independently authored above/below task; retain for existing records |
+| `new_probe_vertical_line_stimulus` | Researcher-created Python experiment (Ready manifest entry) | User's above/below task; retain for past records. A later edit can make the source fingerprint stale, preventing loading until retested |
 | `new_probe_fixation_test` | Researcher-created Draft Python experiment | Older copy partially changed from left/right to up/down; **not** a validated above/below experiment |
 | `example_experiment` | Built-in Ready Python worked example | Left/right scientific demonstration, NOT a generator skeleton |
 

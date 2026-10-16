@@ -53,7 +53,10 @@ def test_stimulus_scaffold_uses_centered_line(tmp_path):
 def test_json_and_user_python_experiments_are_distinguishable():
     from psychophysics_lab.ui.setup import experiment_choice_label
     json_label = experiment_choice_label(get_experiment("probe_above_below"), ROOT)
-    user_label = experiment_choice_label(get_experiment("new_probe_vertical_line_stimulus"), ROOT)
+    # Inspect the preserved author definition, not the live acquisition
+    # registry: the latter properly excludes Ready IDs whose source hash is stale.
+    from psychophysics_lab.experiments.new_probe_vertical_line_stimulus import SPEC as authored_spec
+    user_label = experiment_choice_label(authored_spec, ROOT)
     assert "Built-in JSON" in json_label and "probe_above_below" in json_label
     assert "Researcher Python" in user_label
     assert "new_probe_vertical_line_stimulus" in user_label

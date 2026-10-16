@@ -234,7 +234,7 @@ separates development data from human acquisition.
 | `Source or JSON changed since last successful test` | Repeat `--dev-preview` or `--dev-test`, then `--dev-ready` |
 | Preview saved, but nothing appeared fullscreen | Correct: preview creates a PNG; open the printed path |
 | Two similar above/below experiments in the selector | `probe_above_below` is the built-in JSON example; `new_probe_vertical_line_stimulus` is your Ready Python experiment |
-| New experiment not listed in normal TUI | It may still be Draft, may have changed since testing, or needs a TUI restart |
+| New experiment not listed in normal TUI | It may be Draft, need a TUI restart, or have a **stale fingerprint despite saying Ready** in the authoring inventory. Run `--dev-test NAME` again, then `--dev-ready experiment NAME` |
 | `NotImplementedError` in a new advanced template | Deliberate: finish its scientific conditions and actions first; use JSON builder for the simple task |
 | Human experiment blocked by calibration | Software Ready is not calibration. Follow the explicit Review/Calibrate checklist; do not bypass it |
 
