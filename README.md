@@ -438,4 +438,8 @@ display.
 
 ## Develop new stimuli and experiments (USER_env)
 
+**New researcher? Begin with [the four-file beginner example](docs/START_HERE_EXPERIMENTS.md).**
+The Build Stimuli and Build Experiments pages in the normal TUI now let you open
+the example scientific code and companion JSON before creating your own draft.
+
 Double-click `run_user_env.bat` on Windows to automatically install/check PsyCoLab's Python 3.11 dependencies in a separate `USER_env` and open a **plain persistent Command Prompt**. Paste commands such as `python "C:\path\to\my_experiment.py"`; no separate USER_env graphical TUI exists. The normal PsyCoLab TUI still builds/inspects Python and JSON, while optional command-line `--dev-preview`, `--dev-test` and `--dev-ready` preserve Draft → Tested → Ready registration. Additional script-specific libraries can be placed in `user_requirements.txt` and installed automatically on the next launch. See [USER_env](docs/USER_ENV.md). A virtual environment is **not** a security sandbox; physical display/timing calibration remains separate.

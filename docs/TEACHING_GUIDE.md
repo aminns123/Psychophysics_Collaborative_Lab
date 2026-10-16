@@ -6,6 +6,8 @@ This is the authoritative guide for new scientific components. The older
 RESEARCHER_QUICKSTART and EXPERIMENT_AUTHORING_PROPOSAL describe earlier stages;
 use this guide and PUBLIC_PROCEDURE_LIFECYCLE for the implemented public API.
 
+**First-time researcher:** begin with [START HERE: simple stimulus and experiment](START_HERE_EXPERIMENTS.md) before editing any generated code. The older Gabor and orientation tasks are advanced examples, not the starting scaffold.
+
 ## 1. Install and establish a rollback point
 
 Use a checkout and Python 3.11. Create a virtual environment, activate it, then:
@@ -108,18 +110,18 @@ calibration. Existing CSF uses its established preview/presentation facility.
 ## 4. Create a new stimulus for an existing experiment
 
 ```text
-python -m psychophysics_lab --scaffold my_grating --blueprint stimulus
+python -m psychophysics_lab --scaffold my_white_line --blueprint stimulus
 ```
 
 The **Build Stimuli** TUI page also scaffolds the same pair of files. This
-copies the working Gabor science into `stimuli/my_grating.py` and generates
-`configs/stimuli/my_grating.json`. Edit the clearly marked PARAMETERS or render
+copies the beginner line example into `stimuli/my_white_line.py` and generates
+`configs/stimuli/my_white_line.json`. Edit the clearly marked PARAMETERS or render
 sections. The declaration is the only source of parameter types, units and ranges.
 Update JSON values to match any declaration changes. The framework supplies x/y
 coordinates in degrees; return an array with the same shape and values in [0,1].
 
-In the activated USER_env terminal, run `python -m psychophysics_lab --dev-preview my_grating` and `python -m psychophysics_lab --dev-ready stimulus my_grating` to test and publish the draft. Registration is automatic; manual editing of `contributions.py` is no longer required for new generated modules. Its
-`family="orientation_patch"` makes it selectable in Orientation Task. Preview it,
+In the activated USER_env terminal, run `python -m psychophysics_lab --dev-preview my_white_line` and `python -m psychophysics_lab --dev-ready stimulus my_white_line` to test and publish the draft. Registration is automatic; manual editing of `contributions.py` is no longer required for new generated modules. Its
+`family="simple_line"` makes it selectable in Example Experiment. Preview it,
 select it in Stimulus Parameters, then simulate. Duplicate IDs fail explicitly.
 Do not change the family merely to bypass scientific incompatibility.
 
@@ -132,7 +134,7 @@ python -m psychophysics_lab --scaffold my_task --blueprint experiment
 The **Build Experiments** TUI page provides this action as well. The scaffold
 creates `experiments/my_task.py` and `configs/experiments/my_task.json`.
 Edit `experiments/my_task.py` and its chronological phase JSON. The procedure
-already reuses `teaching_gabor`, collects mapped
+already reuses `example_stimulus`, collects mapped
 responses, saves data and supports simulation. Change trial count, ordering,
 conditions or interpretation in the labelled sections. In the activated USER_env terminal, run `python -m psychophysics_lab --dev-test my_task` and `python -m psychophysics_lab --dev-ready experiment my_task`; then select the experiment in the normal TUI.
 

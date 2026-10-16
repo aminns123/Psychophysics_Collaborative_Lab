@@ -1,11 +1,8 @@
-"""The only shared registration list contributors need to edit.
+"""Builtin examples and reference experiments.
 
-After scaffolding, add the dotted module name here, e.g.
-EXPERIMENT_MODULES = ("psychophysics_lab.experiments.my_task",)
-STIMULUS_MODULES = ("psychophysics_lab.stimuli.my_task",)
-Every listed module exports SPEC. Restart PsyCoLab after editing this file.
-Imports are explicit; no directory scanning or arbitrary plugin discovery.
+New Build-generated modules are tracked through authoring/components.json,
+tested in USER_env and promoted Ready without editing this file.
 """
-EXPERIMENT_MODULES = ("psychophysics_lab.experiments.orientation_task", "psychophysics_lab.experiments.orientation_adaptive")
-STIMULUS_MODULES = ("psychophysics_lab.stimuli.teaching_gabor",)
+EXPERIMENT_MODULES = ("psychophysics_lab.experiments.example_experiment", "psychophysics_lab.experiments.orientation_task", "psychophysics_lab.experiments.orientation_adaptive")
+STIMULUS_MODULES = ("psychophysics_lab.stimuli.example_stimulus", "psychophysics_lab.stimuli.teaching_gabor")
 ADAPTIVE_MODULES = ()

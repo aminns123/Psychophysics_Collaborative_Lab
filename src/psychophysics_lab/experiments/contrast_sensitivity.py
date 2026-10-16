@@ -1,3 +1,19 @@
+"""CSF reference EXPERIMENT DEFINITION.
+
+This is the scientific contract for the existing CSF experiment:
+* CONDITIONS + ADAPTIVE METHOD: CSF_SPEC fields below
+* CHRONOLOGICAL STIMULUS STATES: configs/experiments/contrast_sensitivity.json
+* RESPONSE MAPPING: LEFT_RIGHT and the legacy CSF trial event handler
+* DATA/VALIDATION: shared PsyCoLab output pipeline
+* LEGACY RENDERER AND STATE MACHINE: Experiments/contrast_sensitivity_function.py
+
+The CSF timeline already uses the same Phase/TrialTimeline description as
+example_experiment.py. Unlike the beginner example, the real CSF STILL runs
+its retained OpenGL/Trial_ADMs path to avoid altering validated science and
+historical data semantics. Do not interpret this adapter as a completed CSF
+runtime migration or measured timing equivalence.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping

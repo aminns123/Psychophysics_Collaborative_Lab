@@ -1,4 +1,4 @@
-"""Copy working scientific blueprints; never overwrite source or shared defaults."""
+"""Generate obvious beginner scientific templates; never overwrite existing work."""
 from pathlib import Path
 import json
 import keyword
@@ -13,21 +13,23 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
     root = repo_root.resolve()
     source = Path(__file__).parent
     files = {}
+    # Beginner projects start from explicit examples, NOT copied Gabor science.
     if kind in {"pair", "stimulus"}:
-        files[f"src/psychophysics_lab/stimuli/{name}.py"] = (source / "stimuli/teaching_gabor.py").read_text(encoding="utf-8").replace("teaching_gabor", name)
-        from .stimuli.teaching_gabor import SPEC
+        template = (source / "stimuli/example_stimulus.py").read_text(encoding="utf-8")
+        files[f"src/psychophysics_lab/stimuli/{name}.py"] = template.replace("example_stimulus", name)
+        from .stimuli.example_stimulus import SPEC
         from .config.stimulus_parameters import document_for
         document = document_for(SPEC)
         document["stimulus_id"] = name
         files[f"configs/stimuli/{name}.json"] = json.dumps(document, indent=2) + "\n"
     if kind in {"pair", "experiment"}:
-        text = (source / "experiments/orientation_task.py").read_text(encoding="utf-8").replace("orientation_task", name)
+        template = (source / "experiments/example_experiment.py").read_text(encoding="utf-8")
+        template = template.replace("example_experiment", name)
         if kind == "pair":
-            text = text.replace("teaching_gabor", name)
-        files[f"src/psychophysics_lab/experiments/{name}.py"] = text
-        # Copy an independently editable trial timeline without modifying the runner.
+            template = template.replace("example_stimulus", name)
+        files[f"src/psychophysics_lab/experiments/{name}.py"] = template
         files[f"configs/experiments/{name}.json"] = (
-            (source.parent.parent / "configs/experiments/orientation_task.json").read_text(encoding="utf-8")
+            (source.parent.parent / "configs/experiments/example_experiment.json").read_text(encoding="utf-8")
         )
     if kind == "adaptive":
         files[f"src/psychophysics_lab/adaptive/{name}.py"] = (source / "blueprints/adaptive_method.py.txt").read_text(encoding="utf-8").replace("BLUEPRINT_ID", name)

@@ -273,7 +273,12 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
-            yield Static("[b]Build a new experiment[/b]: generates Python and timeline JSON. Test it using the run_user_env.bat Python terminal, then mark Ready.")
+            yield Static("[b]START HERE — simple examples[/b]\nExample Experiment shows how to order fixation → line → blank → response. Change scientific Python and timing JSON; PsyCoLab manages responses and saving.")
+            with Horizontal(classes="buttons"):
+                yield Button("Read example experiment.py", id="read-example-experiment")
+                yield Button("Read example timeline JSON", id="read-example-timeline")
+                yield Button("Read CSF timeline JSON", id="read-csf-timeline")
+            yield Static("[b]Build a new experiment[/b]: generates a beginner copy of the example, not the Gabor/tilt task. Set conditions in make_trial_order(), trial updates in procedure(), and timings in its JSON. Test in run_user_env.bat, then mark Ready.")
             yield Input(placeholder="e.g. new_orientation_task", id="new-experiment-name")
             yield Button("Build new experiment", id="build-new-experiment", variant="primary")
         yield Footer()
@@ -306,6 +311,15 @@ class ExperimentsScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"read-example-experiment", "read-example-timeline", "read-csf-timeline"}:
+            event.stop()
+            examples = {
+                "read-example-experiment": "src/psychophysics_lab/experiments/example_experiment.py",
+                "read-example-timeline": "configs/experiments/example_experiment.json",
+                "read-csf-timeline": "configs/experiments/contrast_sensitivity.json",
+            }
+            self.app.inspect_source(self.app.repo_root / examples[event.button.id])
             return
         if event.button.id == "build-new-experiment":
             event.stop()
@@ -354,7 +368,10 @@ class StimuliScreen(HubPage):
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
                 yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
-                yield Static("[b]Build a new stimulus[/b]: generates Python and parameter JSON. Preview from run_user_env.bat and publish tested source.")
+                yield Static("[b]START HERE — example white line[/b]\nRead its PARAMETERS and render() function first. The JSON holds starting values; the framework supplies degree coordinates and draws the result.")
+                yield Button("Read example stimulus.py", id="read-example-stimulus")
+                yield Button("Read example stimulus JSON", id="read-example-stimulus-json")
+                yield Static("[b]Build a new stimulus[/b]: creates a simple white-line example for you to edit, NOT a renamed Gabor grating. Preview using run_user_env.bat and publish when tested.")
                 yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
                 yield Button("Build new stimulus", id="build-new-stimulus")
             else:
@@ -388,6 +405,13 @@ class StimuliScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"read-example-stimulus", "read-example-stimulus-json"}:
+            event.stop()
+            path = ("src/psychophysics_lab/stimuli/example_stimulus.py"
+                    if event.button.id == "read-example-stimulus"
+                    else "configs/stimuli/example_stimulus.json")
+            self.app.inspect_source(self.app.repo_root / path)
             return
         if event.button.id == "build-new-stimulus":
             event.stop()

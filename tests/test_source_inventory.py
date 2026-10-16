@@ -5,7 +5,10 @@ from psychophysics_lab.core.runner import _runtime_source_fingerprints
 
 
 def test_source_inventory_includes_new_runtime_helpers_and_excludes_local_files(tmp_path):
-    included = ["src/psychophysics_lab/core/new_lifecycle_helper.py", "Events/nested/runtime.py",
+    included = ["src/psychophysics_lab/core/new_lifecycle_helper.py",
+                "src/psychophysics_lab/experiments/test_probe.py",
+                "src/psychophysics_lab/stimuli/test_line.py",
+                "Events/nested/runtime.py",
                 "Experiments/new.py", "Functions/new.py", "Interface/new.py", "libC.py", "packages.zip"]
     excluded = ["tests/test_run.py", "src/psychophysics_lab/tests/helper.py",
                 "Events/test_runtime.py", "Events/runtime_test.py", "Events/conftest.py",

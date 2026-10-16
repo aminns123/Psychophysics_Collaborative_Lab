@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "stimulus_id": "example_stimulus",
+  "parameters": {
+    "size_deg": 5,
+    "offset_deg": 1,
+    "line_width_deg": 0.15,
+    "line_length_deg": 1.2,
+    "intensity": 1
+  }
+}
