@@ -3,11 +3,11 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ============================================================
-echo   PsyCoLab USER_env - Researcher Development Workspace
+echo   PsyCoLab USER_env - Interactive Python Terminal
 echo ============================================================
 echo This runs your authored Python code with your user permissions.
 echo This is not an OS sandbox; only open code you trust.
-echo Simulated data are isolated from human experiment data.
+echo USER_env isolates Python packages, not arbitrary script files or output.
 echo.
 
 if not exist "pyproject.toml" (
@@ -84,13 +84,36 @@ if not exist "USER_env\Scripts\python.exe" (
     goto failed
 )
 
-echo Starting researcher development workbench...
-"USER_env\Scripts\python.exe" -m psychophysics_lab --user-env
+rem Activate the environment in this process. A child Command Prompt inherits
+rem the Python/PATH environment, so "python" can run any trusted .py script.
+rem Do NOT auto-open the optional Textual development workbench.
+call "USER_env\Scripts\activate.bat"
 if errorlevel 1 (
-    echo ERROR: The researcher workbench exited with an error.
+    echo ERROR: Could not activate USER_env.
     goto failed
 )
 
+python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)"
+if errorlevel 1 (
+    echo ERROR: USER_env activation did not select Python 3.11.
+    goto failed
+)
+
+echo.
+echo ============================================================
+echo   USER_env is ready - Python 3.11
+echo ============================================================
+echo.
+echo Paste your own commands at the prompt, for example:
+echo   python "C:\path\to\my_experiment.py"
+echo.
+echo Optional graphical authoring workbench:
+echo   python -m psychophysics_lab --user-env
+echo.
+echo Type exit when you want to close this terminal.
+echo.
+rem Keep an interactive terminal open even when launched by double-click.
+"%ComSpec%" /D /K "title PsyCoLab USER_env - Python 3.11"
 exit /b 0
 
 :failed
