@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "stimulus_id": "legacy_csf",
+  "parameters": {
+    "number_conditions": 2,
+    "condition_unit": "cycles_per_degree",
+    "condition_values": "2,8"
+  }
+}

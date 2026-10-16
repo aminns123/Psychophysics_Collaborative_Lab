@@ -87,7 +87,10 @@ def test_scaffold_is_valid_python_and_never_overwrites(tmp_path):
     paths = scaffold(tmp_path, "orientation_task")
     before = [p.read_bytes() for p in paths]
     for p in paths:
-        compile(p.read_text(),str(p),"exec")
+        if p.suffix == ".py":
+            compile(p.read_text(),str(p),"exec")
+        else:
+            json.loads(p.read_text())
     with pytest.raises(ValueError, match="new files"):
         scaffold(tmp_path,"orientation_task")
     assert [p.read_bytes() for p in paths] == before
@@ -104,6 +107,8 @@ def test_contribution_loading_is_explicit_and_atomic(monkeypatch):
     monkeypatch.setattr(registry,"_REGISTRY",dict(registry._REGISTRY))
     monkeypatch.setattr(stimuli,"_REGISTRY",dict(stimuli._REGISTRY))
     monkeypatch.setattr(contributions,"EXPERIMENT_MODULES",("extension_a", "missing_extension"))
+    monkeypatch.setattr(contributions,"STIMULUS_MODULES",())
+    monkeypatch.setattr(contributions,"ADAPTIVE_MODULES",())
     def load(name):
         if name == "missing_extension":
             raise ImportError("missing")

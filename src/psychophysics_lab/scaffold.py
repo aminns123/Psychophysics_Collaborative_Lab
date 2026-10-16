@@ -1,49 +1,39 @@
-"""Create two small contributor modules without overwriting existing files."""
+"""Copy working scientific blueprints; never overwrite source or shared defaults."""
 from pathlib import Path
+import json
 import keyword
 import re
 
 
-def scaffold(repo_root: Path, name: str) -> tuple[Path, Path]:
+def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
     if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or keyword.iskeyword(name):
-        raise ValueError("Use a lowercase Python module name, e.g. orientation_task.")
+        raise ValueError("Use a lowercase Python module name, e.g. orientation_task_copy.")
+    if kind not in {"pair", "stimulus", "experiment", "adaptive"}:
+        raise ValueError("Choose pair, stimulus, experiment or adaptive blueprint.")
     root = repo_root.resolve()
-    base = root / "src" / "psychophysics_lab"
-    paths = (base / "stimuli" / (name + ".py"), base / "experiments" / (name + ".py"))
+    source = Path(__file__).parent
+    files = {}
+    if kind in {"pair", "stimulus"}:
+        files[f"src/psychophysics_lab/stimuli/{name}.py"] = (source / "stimuli/teaching_gabor.py").read_text(encoding="utf-8").replace("teaching_gabor", name)
+        from .stimuli.teaching_gabor import SPEC
+        from .config.stimulus_parameters import document_for
+        document = document_for(SPEC)
+        document["stimulus_id"] = name
+        files[f"configs/stimuli/{name}.json"] = json.dumps(document, indent=2) + "\n"
+    if kind in {"pair", "experiment"}:
+        text = (source / "experiments/orientation_task.py").read_text(encoding="utf-8").replace("orientation_task", name)
+        if kind == "pair":
+            text = text.replace("teaching_gabor", name)
+        files[f"src/psychophysics_lab/experiments/{name}.py"] = text
+    if kind == "adaptive":
+        files[f"src/psychophysics_lab/adaptive/{name}.py"] = (source / "blueprints/adaptive_method.py.txt").read_text(encoding="utf-8").replace("BLUEPRINT_ID", name)
+    paths = tuple(root / relative for relative in files)
     if any(p.exists() or p.is_symlink() or not p.resolve().is_relative_to(root) for p in paths):
         raise ValueError("Scaffold paths must be new files inside this checkout; nothing was overwritten.")
-    stimulus = f'''"""Define reusable stimulus parameters here; keep hardware imports lazy."""
-from dataclasses import dataclass
-from psychophysics_lab.researcher import StimulusSpec
-
-@dataclass(frozen=True)
-class Stimulus:
-    contrast: float = 0.1
-
-SPEC = StimulusSpec("{name}", "{name.replace('_',' ').title()}",
-    "Describe the stimulus and its units.", "src/psychophysics_lab/stimuli/{name}.py")
-'''
-    procedure = f'''"""Own only your scientific procedure: timing, presentation and responses."""
-from psychophysics_lab.researcher import ConfigField, experiment, LEFT_RIGHT
-from psychophysics_lab.stimuli.{name} import Stimulus
-
-def procedure(run):
-    stimulus = Stimulus(contrast=run.values["contrast"])
-    # Present stimulus with your renderer, accept a response, then run.record(...).
-    # See docs/RESEARCHER_QUICKSTART.md for the canonical trial contract.
-    raise NotImplementedError("Implement and validate this procedure before collecting data.")
-
-SPEC = experiment(id="{name}", name="{name.replace('_',' ').title()}",
-    description="Describe your experiment.", procedure=procedure, responses=LEFT_RIGHT,
-    calibration_requirements=("geometry", "luminance", "timing"),
-    monitor_capabilities=("display_binding", "resolution"),
-    fields=(ConfigField("contrast", "Contrast", "float", default=0.1, minimum=0, maximum=1),),
-    source_paths=("src/psychophysics_lab/experiments/{name}.py",
-                  "src/psychophysics_lab/stimuli/{name}.py"))
-'''
     created = []
     try:
-        for path, text in zip(paths, (stimulus, procedure)):
+        for path, text in zip(paths, files.values()):
+            path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("x", encoding="utf-8") as handle:
                 created.append(path)
                 handle.write(text)

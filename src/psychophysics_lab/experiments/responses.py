@@ -9,6 +9,9 @@ class ResponseParadigm:
     keys: tuple[str, ...]
 
     def __post_init__(self):
+        allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") | {"LEFT", "RIGHT", "UP", "DOWN", "SPACE", "ENTER"}
+        if any(key not in allowed for key in self.keys):
+            raise ValueError("Response keys must be letters, digits, arrows, SPACE or ENTER; Escape is reserved for abort.")
         if len(self.alternatives) < 2 or len(self.keys) != len(self.alternatives):
             raise ValueError("Provide one key for each of at least two alternatives.")
         if len(set(self.keys)) != len(self.keys) or len(set(self.alternatives)) != len(self.alternatives):

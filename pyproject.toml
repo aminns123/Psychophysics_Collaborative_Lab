@@ -30,6 +30,9 @@ psycolab = "psychophysics_lab.app:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+psychophysics_lab = ["blueprints/*.txt"]
+
 [tool.setuptools.dynamic]
 version = {attr = "psychophysics_lab.__version__"}
 

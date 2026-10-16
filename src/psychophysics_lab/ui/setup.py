@@ -164,6 +164,28 @@ def _stimulus_sources(repo_root: Path) -> tuple[Path, ...]:
                  if (repo_root / item.source_path).is_file())
 
 
+def _source_inventory(repo_root, experiment):
+    import importlib.util
+    from ..stimuli.registry import list_stimuli
+    sources = _source_candidates(repo_root, experiment)
+    entries = [("Definition", sources[0])] if sources else []
+    if experiment.procedure is not None:
+        import inspect
+        path = Path(inspect.getsourcefile(experiment.procedure))
+    else:
+        module = importlib.util.find_spec(experiment.legacy_module)
+        path = Path(module.origin) if module and module.origin else None
+    if path and path.is_file() and path.resolve().is_relative_to(repo_root.resolve()):
+        entries.append(("Procedure", path))
+    families = set(experiment.stimulus_slots.values())
+    for stimulus in list_stimuli():
+        if stimulus.family in families:
+            path = repo_root / stimulus.source_path
+            if path.is_file():
+                entries.append((f"Stimulus / renderer: {stimulus.id}", path))
+    return entries
+
+
 class HubNavigation(Horizontal):
     def on_mount(self):
         page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
@@ -243,6 +265,8 @@ class ExperimentsScreen(HubPage):
             )
             yield Select(options, value=specs[0].id, allow_blank=False, id="inspect-experiment")
             yield Static("", id="experiment-inspection")
+            yield Select([], id="inspect-source-file", prompt="Choose a definition, procedure or stimulus/renderer")
+            yield Button("Open selected source", id="view-selected-source")
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
@@ -260,6 +284,8 @@ class ExperimentsScreen(HubPage):
         profiles = ", ".join(spec.compatible_monitor_profiles) or "Any registered profile"
         fields = "\n".join(f"  • {field.label} ({field.kind})" for field in spec.fields)
         sources = _source_candidates(self.app.repo_root, spec)
+        inventory = _source_inventory(self.app.repo_root, spec)
+        self.query_one("#inspect-source-file", Select).set_options([(f"{role} — {path.relative_to(self.app.repo_root)}", str(path)) for role, path in inventory])
         source_text = "\n".join(f"  • {path.relative_to(self.app.repo_root)}" for path in sources)
         self.query_one("#experiment-inspection", Static).update(
             f"[b]{spec.display_name}[/b]\n{spec.description}\n\n"
@@ -277,18 +303,20 @@ class ExperimentsScreen(HubPage):
             return
         spec = self._selected()
         sources = _source_candidates(self.app.repo_root, spec)
+        if event.button.id == "view-selected-source":
+            event.stop()
+            value = self.query_one("#inspect-source-file", Select).value
+            if not _is_blank_select_value(value):
+                self.app.inspect_source(Path(str(value)))
+            return
         if event.button.id == "view-exp-definition" and sources:
             event.stop()
             self.app.inspect_source(sources[0])
         elif event.button.id == "view-exp-runtime":
             event.stop()
-            if len(sources) >= 2:
-                path = sources[-1]
-            elif sources:
-                path = sources[0]
-            else:
-                return
-            self.app.inspect_source(path)
+            path = next((path for role, path in _source_inventory(self.app.repo_root, spec) if role == "Procedure"), None)
+            if path:
+                self.app.inspect_source(path)
 
 
 class StimuliScreen(HubPage):
@@ -1511,6 +1539,11 @@ class ExperimentConfigScreen(Screen):
                 id="experiment-description",
             )
             groups = {}
+            from .stimulus_parameters import StimulusParametersPanel
+            if self.experiment.stimulus_slots:
+                yield Label("Stimulus Parameters")
+                for slot in self.experiment.stimulus_slots:
+                    yield StimulusParametersPanel(self, slot)
             controls = set(self.experiment.adaptive.controls) if self.experiment.adaptive else set()
             for field in self.experiment.fields:
                 group = "Adaptive settings" if field.key in controls else field.section
@@ -1553,6 +1586,9 @@ class ExperimentConfigScreen(Screen):
         yield Footer()
 
     def on_mount(self):
+        for group in self.query(Collapsible):
+            if group.title == "Stimulus conditions":
+                group.display = False  # Values remain the CSF adapter's authoritative fields.
         self._refresh_unit_help()
         self._refresh_contrast_help()
         self._refresh_constraints()
@@ -1818,10 +1854,12 @@ class ExperimentConfigScreen(Screen):
                 raw = self.query_one(f"#{widget_id}", Input).value
             values[field.key] = field.coerce(raw)
         values = self.experiment.normalise_values(values)
+        from .stimulus_parameters import StimulusParametersPanel
+        self.stimulus_snapshots = {panel.slot: panel.current() for panel in self.query(StimulusParametersPanel)}
 
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         request = SetupRequest(self.participant_id, self.session_mode, self.experiment.id,
-            self.monitor_profile_id, values)
+            self.monitor_profile_id, values, stimulus_snapshots=self.stimulus_snapshots)
         return validate_setup(request, self.experiment, profile, mode="configuration").experiment_values
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -1944,6 +1982,7 @@ class ExperimentConfigScreen(Screen):
                 monitor_profile_id=self.monitor_profile_id,
                 experiment_values=values,
                 data_root=str(self.data_root),
+                stimulus_snapshots=self.stimulus_snapshots,
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.remember_draft()
@@ -2482,6 +2521,7 @@ class PsyCoLabSetupApp(App):
         self.monitor_profiles = load_monitor_profiles(repo_root)
         self.config_drafts = {}
         self.mapping_drafts = {}
+        self.stimulus_drafts = {}
         saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft")
         if isinstance(saved_draft, dict) and isinstance(saved_draft.get("values"), dict):
             keys = tuple(saved_draft.get(k) for k in ("participant", "experiment", "profile"))
@@ -2498,7 +2538,12 @@ class PsyCoLabSetupApp(App):
             open_source(self.repo_root, path, executable=preferences(self.local_config_root).get("editor_executable"))
             self.notify(f"Opened {path.name} in the PsyCoLab VS Code project.")
         except (ValueError, OSError) as exc:
-            self.notify(str(exc), severity="error", timeout=10)
+            if path.resolve().is_relative_to(self.repo_root) and path.is_file():
+                from .source_view import SourceView
+                self.push_screen(SourceView(path))
+                self.notify("External editor unavailable; opened a read-only source view.")
+            else:
+                self.notify(str(exc), severity="error", timeout=10)
 
     def reload_profiles(self) -> None:
         self.monitor_profiles = load_monitor_profiles(self.repo_root)

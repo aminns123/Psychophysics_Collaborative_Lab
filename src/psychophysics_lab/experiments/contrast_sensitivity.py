@@ -289,4 +289,6 @@ CSF_SPEC = ExperimentSpec(
     validator=_validate,
     monitor_validator=_validate_monitor,
     source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py", "Experiments/contrast_sensitivity_function.py"),
+    stimulus_slots={"target": "csf"}, stimulus_defaults={"target": "legacy_csf"},
+    stimulus_field_bindings={"target": {key: key for key in ("number_conditions", "condition_unit", "condition_values")}},
 )

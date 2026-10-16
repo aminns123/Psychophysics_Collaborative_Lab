@@ -1,3 +1,7 @@
+> Historical workflow notes. For new stimuli, procedures, JSON presets and blueprints,
+> use the authoritative [Teaching guide](TEACHING_GUIDE.md). The old placeholder
+> scaffold and record-only public procedure description below are superseded.
+
 ## Choose what you are running
 
 On **Experiment**, choose the intended run before configuring its conditions:

@@ -9,12 +9,16 @@ def load_contributions():
     global _loaded, _loading
     if _loaded or _loading:
         return
-    from ..contributions import EXPERIMENT_MODULES, STIMULUS_MODULES
+    from ..contributions import EXPERIMENT_MODULES, STIMULUS_MODULES, ADAPTIVE_MODULES
+    from ..adaptive import registry as adaptive
     from . import registry as experiments
     from ..stimuli import registry as stimuli
     before_exp, before_stim = dict(experiments._REGISTRY), dict(stimuli._REGISTRY)
+    before_adaptive = dict(adaptive._REGISTRY)
     _loading = True
     try:
+        for name in ADAPTIVE_MODULES:
+            adaptive.register_algorithm(importlib.import_module(name).SPEC)
         for name in EXPERIMENT_MODULES:
             experiments.register_experiment(importlib.import_module(name).SPEC)
         for name in STIMULUS_MODULES:
@@ -25,6 +29,8 @@ def load_contributions():
         experiments._REGISTRY.update(before_exp)
         stimuli._REGISTRY.clear()
         stimuli._REGISTRY.update(before_stim)
+        adaptive._REGISTRY.clear()
+        adaptive._REGISTRY.update(before_adaptive)
         raise
     finally:
         _loading = False
