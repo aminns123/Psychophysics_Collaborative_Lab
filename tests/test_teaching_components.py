@@ -76,7 +76,8 @@ def test_scaffold_register_configure_simulate_save_validate(tmp_path, monkeypatc
     files[1].write_text("invalid later edit")
     assert (artifacts.run_directory / "stimulus_parameters.json").read_bytes() == before
     # Example 2: a generated experiment reuses an existing registered stimulus.
-    experiment_file, = scaffold(tmp_path, "student_task", kind="experiment")
+    experiment_file, timeline_file = scaffold(tmp_path, "student_task", kind="experiment")
+    assert timeline_file.name == "student_task.json"
     spec = load_module(experiment_file, "student_task").SPEC
     # This isolated test supplies generated source in its own checkout root.
     register_experiment(replace(spec, source_paths=()))

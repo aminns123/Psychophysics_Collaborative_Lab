@@ -145,6 +145,74 @@ class RunContext:
         atomic_write_json(self.run_directory / "trial_presentations.json", {"schema_version": 1, "trials": self._presentations})
         return correct
 
+    def play_trial(self, timeline, *, target, condition, parameters_by_slot=None, instructions="", measurements=None):
+        """Run ordered stages; save one response and phase observations per trial.
+
+        Experiments own the timeline, condition and adaptive update. PsyCoLab
+        owns rendering, response collection, accepted-trial state and files.
+        """
+        import random
+        from .core.timeline import TrialTimeline, simulated_phases
+        from .core.presentation import Response, render_pixels
+        from .stimuli.registry import get_stimulus
+        if not isinstance(timeline, TrialTimeline):
+            raise TypeError("play_trial requires a TrialTimeline; use load_timeline or Phase.")
+        # Extra scientific observations use the versioned presentation JSON,
+        # never undocumented columns in the fixed legacy trials.tsv schema.
+        import json
+        import math
+        observations = dict(measurements or {})
+        for key, value in observations.items():
+            if not isinstance(key, str) or not key.isidentifier():
+                raise ValueError("Custom measurement keys must be Python identifiers.")
+            if type(value) not in (int, float, str, bool) or (type(value) is float and not math.isfinite(value)):
+                raise ValueError(f"Measurement {key} must be a finite number, string or boolean.")
+        if self.status != "running" or self.accepted_trials >= self.expected_trials:
+            raise ValueError("Start a timeline only while a response is expected.")
+        timeline.validate_slots(self.stimulus_snapshots)
+        self.responses.correct(target, target)
+        resolved = {}
+        for stage in timeline.phases:
+            if stage.slot is None or stage.slot in resolved:
+                continue
+            selected = self.stimulus_snapshots[stage.slot]["document"]
+            stimulus = get_stimulus(selected["stimulus_id"])
+            overrides = (parameters_by_slot or {}).get(stage.slot, selected["parameters"])
+            params = stimulus.validate_parameters(overrides)
+            resolved[stage.slot] = (stimulus.id, params)
+        if self.synthetic:
+            # Validate ALL shown stimuli, not just the one paired with the response.
+            for name, params in resolved.values():
+                render_pixels(get_stimulus(name), params)
+            if not hasattr(self, "_rng"):
+                self._rng = random.Random(self.seed)
+            probability = float(self.observer_parameters.get("accuracy", .85))
+            alternative = target if self._rng.random() < probability else self._rng.choice(
+                [i for i in range(len(self.responses.keys)) if i != target])
+            response = Response(alternative, self.responses.keys[alternative], .25 + .25 * self._rng.random())
+            phase_events = simulated_phases(timeline)
+        else:
+            response, phase_events = self._presentation.play_timeline(
+                timeline, resolved, instructions=instructions)
+        correct = self.responses.correct(target, response.alternative)
+        self.record(stimulus_condition=condition, target_alternative=target,
+                    participant_response=response.alternative, response_key=response.key, correct=int(correct))
+        if not hasattr(self, "_presentations"):
+            self._presentations = []
+        # A response may use a blank screen: associate saved response with the
+        # last scientific stimulus slot presented in the timeline.
+        response_slot = next((p.slot for p in reversed(timeline.phases) if p.slot is not None), None)
+        if response_slot is None:
+            raise ValueError("An experimental timeline requires a stimulus slot.")
+        self._presentations.append({"trial_index": self.accepted_trials, "slot": response_slot,
+            "stimulus_id": resolved[response_slot][0], "parameters": resolved[response_slot][1],
+            "reaction_time_s": response.reaction_time_s,
+            "phase_events": phase_events, "measurements": observations,
+            "timing_basis": "virtual observer" if self.synthetic else "software flip to key event; latency unverified"})
+        atomic_write_json(self.run_directory / "trial_presentations.json",
+                          {"schema_version": 1, "trials": self._presentations})
+        return correct
+
     def update_adaptive(self, algorithm, identity, correct, update_value):
         """Use a registered staircase's update contract and save each accepted update."""
         result = algorithm.respond(identity, correct, update_value)

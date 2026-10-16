@@ -151,8 +151,9 @@ CSF_SPEC = ExperimentSpec(
     id="contrast_sensitivity",
     display_name="Contrast Sensitivity Function (reference experiment)",
     description=(
-        "Current reference experiment using the legacy Pyglet/OpenGL grating renderer "
-        "and the repaired independent adaptive staircase implementation."
+        "Reference CSF: same ordered fixation/condition/probe/interval/response "
+        "phase contract as new experiments, currently using the retained Pyglet/OpenGL "
+        "renderer for scientific and temporal compatibility."
     ),
     legacy_module="Experiments.contrast_sensitivity_function",
     legacy_experiment_type="contrast_sensitivity_function",

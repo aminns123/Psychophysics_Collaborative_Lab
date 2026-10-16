@@ -25,6 +25,10 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
         if kind == "pair":
             text = text.replace("teaching_gabor", name)
         files[f"src/psychophysics_lab/experiments/{name}.py"] = text
+        # Copy an independently editable trial timeline without modifying the runner.
+        files[f"configs/experiments/{name}.json"] = (
+            (source.parent.parent / "configs/experiments/orientation_task.json").read_text(encoding="utf-8")
+        )
     if kind == "adaptive":
         files[f"src/psychophysics_lab/adaptive/{name}.py"] = (source / "blueprints/adaptive_method.py.txt").read_text(encoding="utf-8").replace("BLUEPRINT_ID", name)
     paths = tuple(root / relative for relative in files)
