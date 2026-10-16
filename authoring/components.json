@@ -16,8 +16,8 @@
     {
       "kind": "stimulus",
       "name": "new_probe_vertical_line",
-      "status": "draft",
-      "tested_fingerprint": ""
+      "status": "ready",
+      "tested_fingerprint": "d0ce2a3aab889ad68fd15350fce7c35c6db0a59f4724a2ce2fa52ef4d995bbfb"
     },
     {
       "kind": "experiment",
@@ -28,8 +28,8 @@
     {
       "kind": "experiment",
       "name": "new_probe_vertical_line_stimulus",
-      "status": "draft",
-      "tested_fingerprint": ""
+      "status": "ready",
+      "tested_fingerprint": "99719a867fd72adf72c746cca12f87eb279ba45a056bb62950a09287f3d85926"
     }
   ]
 }

@@ -92,10 +92,8 @@ def procedure(run):
 
 # 5. OPTIONAL ADAPTATION: this beginner task has none.
 # See orientation_adaptive.py / orientation_task.py for UpdateAdaptive.
-def definition(
-    identity="new_probe_fixation_test",
-    stimulus="new_probe_vertical_line",
-):
+def definition(identity="new_probe_vertical_line_stimulus",
+               stimulus="new_probe_vertical_line"):
     return experiment(
         id=identity,
         name="Probe Above or Below Fixation",
