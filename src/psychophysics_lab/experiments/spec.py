@@ -89,8 +89,19 @@ class ExperimentSpec:
     response_paradigm: Any = None
     procedure: Callable | None = None
     calibration_requirements: tuple[str, ...] = ()
+    calibration_not_applicable: str = ""
+    monitor_capabilities: tuple[str, ...] | None = None
 
     def __post_init__(self):
+        if self.procedure is not None:
+            if not self.calibration_requirements and not self.calibration_not_applicable.strip():
+                raise ValueError("Declare calibration_requirements (geometry, luminance, timing), or explain calibration_not_applicable for this task.")
+            if self.monitor_capabilities is None:
+                raise ValueError("Declare monitor_capabilities explicitly: display_binding and/or resolution, or () when not applicable.")
+        if any(key not in {"display_binding", "resolution"} for key in (self.monitor_capabilities or ())):
+            raise ValueError("Unknown monitor capability; use display_binding or resolution.")
+        if self.calibration_requirements and self.calibration_not_applicable:
+            raise ValueError("Choose required calibration or a justified not-applicable declaration, not both.")
         if any(key not in {"geometry", "luminance", "timing"} for key in self.calibration_requirements):
             raise ValueError("Unknown experiment calibration requirement.")
         from pathlib import PurePosixPath

@@ -16,8 +16,12 @@ def qualification_checks(spec, profile, values=None):
     remain separate and use the same validator as final acquisition preflight.
     """
     from .models import photometry_is_test_data
-    checks = [{"key":"binding", "name": "Saved physical display binding", "passed": profile.origin == "local" and bool(profile.display_binding) and bool(profile.expected_resolution_px),
-               "detail": "Save a local bound display and expected pixel resolution on Display."}]
+    capabilities = spec.monitor_capabilities if spec.procedure is not None else ("display_binding", "resolution")
+    checks = []
+    if capabilities:
+        passed = ("display_binding" not in capabilities or (profile.origin == "local" and bool(profile.display_binding))) and ("resolution" not in capabilities or bool(profile.expected_resolution_px))
+        checks.append({"key":"binding", "name": "Required physical display capabilities", "passed": passed,
+                       "detail": "Save the required display binding and pixel resolution on Display: " + ", ".join(capabilities)})
     for key in spec.calibration_requirements:
         if key == "geometry":
             passed = profile.geometry_status == "verified" and all(profile.measurement_sources.get(field) == "manual" for field in ("physical_width_m","physical_height_m","viewing_distance_m"))
@@ -62,7 +66,7 @@ def human_requirements(spec, profile, values=None):
     add("qualification","Experiment qualification",compatible(spec,profile),
         "This experiment/profile combination has not been qualified. Explicitly review the registered experiment requirements; calibration completion does not qualify human acquisition.","qualification")
     from .models import photometry_is_test_data
-    if profile.origin=="local":
+    if profile.origin=="local" or spec.procedure is not None:
         for check in qualification_checks(spec,profile):
             key=check['key']
             if key=="binding" and not profile.display_binding:

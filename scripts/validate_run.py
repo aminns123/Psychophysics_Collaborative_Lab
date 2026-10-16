@@ -203,6 +203,12 @@ def validate_run(run_directory: Path) -> list[Check]:
                 f"not a final run status: {status!r}")
         require(bool(manifest.get("finished_utc")), "missing finalization timestamp")
         require(status == "error" or not manifest.get("error"), "error attached to a non-error status")
+        if "procedure_lifecycle" in manifest.get("files", {}):
+            lifecycle = read_json(root, manifest["files"]["procedure_lifecycle"])
+            require(lifecycle["status"] == status, "procedure lifecycle differs from manifest")
+            require(lifecycle["accepted_trials"] == len(rows), "procedure response count differs")
+            if status == "completed":
+                require(len(rows) > 0 and len(rows) == lifecycle["expected_trials"], "completed procedure has missing planned responses")
         if not adaptive_needed:
             return
         state_status = adaptive["status"]

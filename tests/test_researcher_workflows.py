@@ -70,6 +70,7 @@ def test_registered_custom_algorithm_is_selected_by_experiment(monkeypatch):
     monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
     register_algorithm(AdaptiveAlgorithm("custom", "Test alternative", lambda *, level: {"level":level}, ("level",)))
     spec = experiment(id="custom_task", name="Custom", description="Test", procedure=lambda run:None,
+        calibration_not_applicable="Registry unit test without presentation", monitor_capabilities=(),
         fields=(ConfigField("level","Level","float",default=.2),), adaptive=AdaptiveSelection("custom", ("level",)), responses=TWO_INTERVAL)
     context = RunContext(spec.field_defaults(), None, spec, ROOT)
     assert context.adaptive(level=.3) == {"level":.3}

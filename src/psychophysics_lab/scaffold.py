@@ -35,6 +35,8 @@ def procedure(run):
 
 SPEC = experiment(id="{name}", name="{name.replace('_',' ').title()}",
     description="Describe your experiment.", procedure=procedure, responses=LEFT_RIGHT,
+    calibration_requirements=("geometry", "luminance", "timing"),
+    monitor_capabilities=("display_binding", "resolution"),
     fields=(ConfigField("contrast", "Contrast", "float", default=0.1, minimum=0, maximum=1),),
     source_paths=("src/psychophysics_lab/experiments/{name}.py",
                   "src/psychophysics_lab/stimuli/{name}.py"))

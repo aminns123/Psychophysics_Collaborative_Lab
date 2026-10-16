@@ -346,6 +346,7 @@ def run_request(
                "status": "configuring", "data_kind": data_kind, "participant_id": request.participant_id,
                "experiment_id": spec.id, "monitor_profile_id": profile.id}
     primary_error = None
+    procedure_context = None
 
     def convenience(name, operation):
         try:
@@ -447,19 +448,33 @@ def run_request(
             atomic_write_json(manifest_file, payload)
             if simulation is None and presentation is None:
                 convenience("workspace", workspace)
-            if simulation is not None:
-                simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
-            elif spec.procedure is not None:
+            if spec.procedure is not None:
                 from ..researcher import RunContext
-                spec.procedure(RunContext(values, profile, spec, run_dir, data_kind=data_kind))
+                procedure_context = RunContext(values, profile, spec, run_dir,
+                    synthetic=simulation is not None, data_kind=data_kind,
+                    seed=simulation.metadata["seed"] if simulation is not None else 0)
+                spec.procedure(procedure_context)
+                if procedure_context.status != "completed":
+                    raise ValueError("Procedure returned without complete(); initialise, record all planned responses, then complete, or abort explicitly.")
+                payload["status"] = "completed"
+            elif simulation is not None:
+                simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
             else:
                 experiment = importlib.import_module(spec.legacy_module)
                 experiment.run_experiment(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
     except BaseException as exc:
         # Preserve interrupts through finalisation without recording success.
-        primary_error = exc
-        payload["status"] = "error"
-        payload["error"] = repr(exc)
+        from ..researcher import ParticipantAbort
+        if isinstance(exc, ParticipantAbort):
+            payload["status"] = "aborted_by_user"
+            payload["abort_reason"] = str(exc)
+        else:
+            primary_error = exc
+            payload["status"] = "error"
+            payload["error"] = repr(exc)
+            if procedure_context is not None:
+                procedure_context.status = "error"
+                procedure_context._save_lifecycle(str(exc))
     finally:
         for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):
             try:
@@ -472,10 +487,14 @@ def run_request(
             try:
                 adaptive = json.loads(adaptive_path.read_text(encoding="utf-8"))
                 payload["adaptive_session"] = adaptive
-                if payload["status"] != "error": payload["status"] = adaptive.get("status", "returned")
+                if payload["status"] != "error" and spec.procedure is None: payload["status"] = adaptive.get("status", "returned")
             except Exception as exc:
                 payload["adaptive_metadata_error"] = repr(exc)
                 payload["status"] = "error"
+        elif spec.procedure is not None:
+            payload.get("files", {}).pop("adaptive_session", None)
+            if (run_dir / "procedure_lifecycle.json").exists():
+                payload["files"]["procedure_lifecycle"] = "procedure_lifecycle.json"
         elif payload["status"] != "error":
             payload["status"] = "returned"
             if spec.id != "contrast_sensitivity":
