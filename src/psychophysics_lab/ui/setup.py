@@ -646,18 +646,26 @@ class DisplayCheckScreen(HubPage):
             return
         profile = self._profile()
         states = stage_states(profile, self.app.local_config_root)
+        from ..config.calibration_progress import calibration_progress
+        from ..config.preflight import qualification_checks
+        progress = calibration_progress(profile, self.app.local_config_root)
+        # These physical indicators use the same declarations as acquisition.
+        from ..experiments.contrast_sensitivity import CSF_SPEC
+        physical = {row['key']: row['passed'] for row in qualification_checks(CSF_SPEC, profile)}
+        colours = {key: ('green' if physical.get(key, item['completed']) else
+                         'yellow' if item['completed'] else 'red') for key, item in progress.items()}
         for stage, title in STAGES:
             ready, _ = states[stage]
             button = self.query_one(f"#cal-stage-{stage}", Button)
-            button.variant = "success" if ready else "error"
-            button.label = f"{title} {'✓' if ready else '✕'}"
+            button.variant = {'green': 'success', 'yellow': 'warning', 'red': 'error'}[colours[stage]]
+            button.label = f"{title} {'✓' if colours[stage] == 'green' else '!' if ready else '✕'}"
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         self.query_one("#calibration-stage-summary", Static).update(
-            "[b]GREEN = stage records saved; NOT necessarily laboratory verified.[/b] "
-            "RED = required observation incomplete; Spatial needs a consistent researcher assessment. Previous/Next may be used at any time.\n"
+            "[b]GREEN = stated check satisfied; AMBER = saved, physical verification pending; RED = missing.[/b] "
+            "Spatial and Review describe setup records only. Human readiness applies the selected experiment's requirements.\n"
             f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
             + "   ".join(
-                f"[{'green' if states[k][0] else 'red'}]"
+                f"[{colours[k]}]"
                 f"{'✓' if states[k][0] else '✕'} {title.split(' · ')[1]}[/]"
                 for k, title in STAGES
             )
