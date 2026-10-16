@@ -64,6 +64,17 @@ class LibraryExperimentBuilder(Vertical):
         if ids:
             selector.value = old if old in ids else ids[-1]
 
+    def refresh_experiment_choices(self, preferred):
+        """Show newly published experiments in the normal Build Experiments list."""
+        from ..experiments.registry import list_experiments
+        experiments = list_experiments()
+        selector = self.screen.query_one("#inspect-experiment", Select)
+        old = selector.value
+        selector.set_options([(spec.display_name, spec.id) for spec in experiments])
+        ids = {spec.id for spec in experiments}
+        selector.value = preferred if preferred in ids else (old if old in ids else experiments[0].id)
+        self.screen._refresh()
+
     def on_button_pressed(self, event):
         control = event.button.id or ""
         if not control.startswith("lib-"):
@@ -128,7 +139,8 @@ class LibraryExperimentBuilder(Vertical):
                 if problems:
                     output += "\nSome library modules need restart: " + str(problems)
                 else:
-                    output += "\nExperiment is available when the catalogue is refreshed."
+                    output += "\nNew Ready experiments appear in the normal catalogue."
+                    self.app.call_from_thread(self.refresh_experiment_choices, name)
             self.app.call_from_thread(update, output)
             self.app.call_from_thread(self.refresh_catalog)
         except Exception as exc:

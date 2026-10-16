@@ -69,6 +69,9 @@ def test_full_demo_virtual_run_saves_actions_conditions_and_positions(tmp_path):
         positions.append(placements[-1]["y_deg"])
         assert trial["final_state"]["correct_count"] >= 0
     assert set(positions) == {-2.0, 2.0}
+    response_records = json.loads((artifacts.run_directory / "trial_presentations.json").read_text())
+    assert all(record["slot"] == "probe" for record in response_records["trials"])
+    assert all(record["stimulus_id"] == "vertical_line_probe" for record in response_records["trials"])
 
 
 def test_design_schema_rejects_unsafe_or_conflicting_configuration():

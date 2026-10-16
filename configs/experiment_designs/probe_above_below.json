@@ -59,8 +59,8 @@
       "name": "probe",
       "duration": "stimulus_ms",
       "slots": [
-        "probe",
-        "fixation"
+        "fixation",
+        "probe"
       ]
     },
     {

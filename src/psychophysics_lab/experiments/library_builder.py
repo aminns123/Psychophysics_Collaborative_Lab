@@ -335,8 +335,9 @@ def test_design(root, name):
         raise ValueError("Unknown library draft.")
     from .registry import _REGISTRY
     spec = make_spec(root, name)
-    if name in _REGISTRY:
-        raise ValueError("Restart PsyCoLab after editing an already-loaded library experiment.")
+    previous = _REGISTRY.get(name)
+    # Virtual validation must exercise the CURRENT design, even if a Ready
+    # version of the same ID was previously loaded in this interpreter.
     _REGISTRY[name] = spec
     try:
         from simulations.run import simulate
@@ -358,7 +359,10 @@ def test_design(root, name):
         if errors:
             raise ValueError("Saved run failed validation: " + "; ".join(str(e) for e in errors))
     finally:
-        _REGISTRY.pop(name, None)
+        if previous is None:
+            _REGISTRY.pop(name, None)
+        else:
+            _REGISTRY[name] = previous
     digest = _digest(root, name)
     records = _catalog(root)
     for row in records:
