@@ -21,30 +21,52 @@ It does **not** implement verified subframe/flicker/SOA timing, arbitrary
 compositing or dynamic animations. Those belong to subsequent development
 stages and require frame/photodiode verification on laboratory hardware.
 
-## 1. Start the development workbench
+## 1. Open the interactive Python terminal
 
-On Windows, double-click **`run_user_env.bat`**. On first use this creates a
-separate project `USER_env/` Python **3.11** virtual environment, installs the
-package in editable mode, checks requirements, and launches the development
-workbench. Network or a local dependency cache may be needed for the first
-installation. Subsequent launches reuse it. Alternatively, from an existing
-working PsyCoLab Python 3.11 environment:
+On Windows, double-click **`run_user_env.bat`**. On first use it creates a
+separate Python **3.11** virtual environment in `USER_env/`, installs the
+project in editable mode and checks dependencies. Afterwards it activates
+that environment and leaves a **normal Command Prompt open**. It does **not**
+automatically launch a PsyCoLab TUI. A first-time install may require network
+access; subsequent launches reuse the environment.
 
-```text
+You can paste any normal Python command into that prompt, for example:
+
+```cmd
+python "C:\path\to\my_experiment.py"
+python --version
+```
+
+The working directory starts at the PsyCoLab repository root. Quotes allow
+Windows paths containing spaces. The terminal remains open after a Python
+script finishes; run another command or type `exit` to close it. A script
+must have its own runnable entry point; simply executing a stimulus module
+containing declarations may not produce a window.
+
+**Optional visual authoring TUI:** if you want the earlier Draft → Preview →
+Simulate → Ready interface, type this explicitly **inside the activated terminal**:
+
+```cmd
 python -m psychophysics_lab --user-env
 ```
 
-From the normal PsyCoLab TUI, **Build Stimuli → Open USER_env test workbench** or
-**Build Experiments → Open USER_env test workbench** opens the same workbench.
-If the separate `USER_env` interpreter exists, the normal TUI launches it;
-otherwise it uses the current Python environment and tells you which interpreter
-was selected. Dependency isolation therefore requires the `.bat` bootstrap.
+Alternatively, the normal PsyCoLab TUI's **Build Stimuli → Open USER_env test
+workbench** and **Build Experiments → Open USER_env test workbench** controls
+still launch that optional visual workbench. They are separate from the
+plain terminal opened by `run_user_env.bat`.
+
+You can also manually activate the same environment in an existing
+Command Prompt with `call USER_env\Scripts\activate.bat`, or in PowerShell
+with `.\USER_env\Scripts\Activate.ps1` (subject to local script policy).
 
 **Security:** a Python virtual environment is **not** an operating-system
 sandbox. Authored Python has the permissions of the logged-in user. Only run
-code you trust. Development outputs go under the user directory
-`~/PsyCoLab_USER_env_data/<checkout-hash>/`, isolated from human runs and saved
-monitor measurements. The virtual observer never certifies physical calibration.
+code you trust. When using PsyCoLab's built-in virtual observer, development
+outputs go under `~/PsyCoLab_USER_env_data/<checkout-hash>/`, separate from
+human runs and saved monitor measurements. **Arbitrary Python scripts run from
+this terminal can write anywhere your user can write**; USER_env does not
+automatically redirect their output. The virtual observer never certifies
+physical calibration.
 
 ## 2. Build or edit scientific source
 

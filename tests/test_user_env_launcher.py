@@ -17,7 +17,9 @@ def test_user_env_bootstrap_checks_main_venv_before_py_launcher():
     assert 'if not errorlevel 1 set "USERENV_BOOTSTRAP=py -3.11"' in batch
     assert "where python >nul" in batch
     assert '"scripts\\launcher_setup.py" --user-env' in batch
-    assert '"USER_env\\Scripts\\python.exe" -m psychophysics_lab --user-env' in batch
+    assert 'call "USER_env\\Scripts\\activate.bat"' in batch
+    assert '"%ComSpec%" /D /K "title PsyCoLab USER_env - Python 3.11"' in batch
+    assert '"USER_env\\Scripts\\python.exe" -m psychophysics_lab --user-env' not in batch
 
 
 def test_setup_selects_isolated_environment_and_rejects_paths(tmp_path, monkeypatch):
@@ -45,3 +47,12 @@ def test_incompatible_user_env_backup_keeps_name_and_contents(tmp_path, monkeypa
     assert len(backups) == 1
     assert (backups[0] / "do-not-delete.txt").read_text(encoding="utf-8") == "preserved"
     assert not setup.VENV.exists()
+
+
+def test_user_env_terminal_is_explicit_not_a_hidden_second_tui():
+    batch = (ROOT / "run_user_env.bat").read_text(encoding="utf-8")
+    assert batch.index('"scripts\\launcher_setup.py" --user-env') < batch.index('call "USER_env\\Scripts\\activate.bat"')
+    assert batch.index('call "USER_env\\Scripts\\activate.bat"') < batch.index('"%ComSpec%" /D /K')
+    assert 'python -m psychophysics_lab --user-env' in batch  # Optional, example only.
+    # An ordinary script can run with the already activated Python interpreter.
+    assert 'python "C:\\path\\to\\my_experiment.py"' in batch
