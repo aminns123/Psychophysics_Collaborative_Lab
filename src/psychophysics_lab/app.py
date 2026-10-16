@@ -224,7 +224,7 @@ def _main(
                 print("PsyCoLab exited normally.")
             return 0
 
-main UI loop        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
+        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
         if isinstance(action,PresentationTestRequest):
             from .config.local import config_root
             from .core.presentation_testing import MARKER
