@@ -6,7 +6,7 @@ from psychophysics_lab.experiments.registry import get_experiment, list_experime
 
 def test_csf_is_explicitly_registered():
     specs = list_experiments()
-    assert [spec.id for spec in specs] == ["contrast_sensitivity"]
+    assert {spec.id for spec in specs} >= {"contrast_sensitivity", "orientation_task", "orientation_adaptive"}
     assert get_experiment("contrast_sensitivity") is specs[0]
 
 

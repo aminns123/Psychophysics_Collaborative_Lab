@@ -45,6 +45,11 @@ def register_simulation(spec: SimulationSpec) -> None:
 
 
 def get_simulation(experiment_id: str) -> SimulationSpec:
+    if experiment_id not in _REGISTRY:
+        from psychophysics_lab.experiments.registry import get_experiment
+        experiment = get_experiment(experiment_id)
+        if experiment.procedure and experiment.supports_simulation:
+            return SimulationSpec(experiment_id, TeachingObserver, lambda *args: (lambda *runtime: None), experiment.field_defaults())
     try:
         return _REGISTRY[experiment_id]
     except KeyError as exc:
@@ -52,7 +57,19 @@ def get_simulation(experiment_id: str) -> SimulationSpec:
 
 
 def list_simulations() -> tuple[SimulationSpec, ...]:
-    return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
+    from psychophysics_lab.experiments.registry import list_experiments
+    keys = set(_REGISTRY) | {spec.id for spec in list_experiments() if spec.supports_simulation}
+    return tuple(get_simulation(key) for key in sorted(keys))
+
+
+@dataclass(frozen=True)
+class TeachingObserver:
+    accuracy: float = .85
+
+    def __post_init__(self):
+        import math
+        if isinstance(self.accuracy, bool) or not math.isfinite(self.accuracy) or not 0 <= self.accuracy <= 1:
+            raise ValueError("Observer accuracy must be finite and between 0 and 1.")
 
 
 register_simulation(SimulationSpec(

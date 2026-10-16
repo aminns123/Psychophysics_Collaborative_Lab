@@ -194,3 +194,4 @@ class SetupRequest:
     experiment_values: dict[str, Any]
     data_root: str | None = None
     monitor_profile_hash: str | None = None
+    stimulus_snapshots: dict[str, Any] = field(default_factory=dict)

@@ -231,6 +231,27 @@ def validate_run(run_directory: Path) -> list[Check]:
 
     check("Final lifecycle status consistency", status_check)
 
+    def stimulus_snapshots_check():
+        # Older datasets remain readable without these optional versioned artifacts.
+        if "stimulus_parameters" not in manifest.get("files", {}):
+            return
+        from psychophysics_lab.config.stimulus_parameters import digest
+        saved = read_json(root, manifest["files"]["stimulus_parameters"])
+        require(saved["schema_version"] == 1, "unsupported stimulus snapshot version")
+        for slot, selected in saved["slots"].items():
+            require(digest(selected["document"]) == selected["resolved_sha256"], f"{slot}: stimulus snapshot hash differs")
+        config = read_json(root, "experiment_config.json")
+        require(config["request"].get("stimulus_snapshots", {}) == saved["slots"], "request and resolved stimulus snapshots differ")
+        if "trial_presentations" in manifest["files"]:
+            trials = read_json(root, manifest["files"]["trial_presentations"])
+            require(trials["schema_version"] == 1, "unsupported presentation observation schema")
+            require([t["trial_index"] for t in trials["trials"]] == list(range(1, len(rows)+1)), "presentation/trial associations differ")
+            for trial in trials["trials"]:
+                slot = trial["slot"]
+                require(trial["stimulus_id"] == saved["slots"][slot]["document"]["stimulus_id"], "trial stimulus identity differs")
+                require(isinstance(trial["reaction_time_s"], (int, float)) and math.isfinite(trial["reaction_time_s"]) and trial["reaction_time_s"] >= 0, "reaction_time_s must be finite and nonnegative")
+    check("Stimulus configuration snapshots and trial observations", stimulus_snapshots_check)
+
     def continuity_check():
         previous = {}
         for row in rows:

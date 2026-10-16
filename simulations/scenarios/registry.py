@@ -42,12 +42,19 @@ def _load() -> None:
 
 def list_scenarios(experiment_id: str | None = None) -> tuple[SimulationScenario, ...]:
     _load()
+    from psychophysics_lab.experiments.registry import list_experiments
+    extra = tuple(SimulationScenario("teaching_demo", spec.id, "Seeded teaching observer; no physical qualification", expect_analysis=False)
+                  for spec in list_experiments() if spec.supports_simulation and (experiment_id is None or spec.id == experiment_id))
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY)
-                 if experiment_id is None or key[0] == experiment_id)
+                 if experiment_id is None or key[0] == experiment_id) + extra
 
 
 def get_scenario(experiment_id: str, scenario_id: str) -> SimulationScenario:
     _load()
+    if scenario_id == "teaching_demo":
+        found = next((item for item in list_scenarios(experiment_id) if item.id == scenario_id), None)
+        if found is not None:
+            return found
     try:
         return _REGISTRY[(experiment_id, scenario_id)]
     except KeyError as exc:

@@ -28,6 +28,8 @@ def human_readiness_checklist(report):
 
 
 def experiment_readiness(request, spec, profile, *, repo_root):
+    from .preflight import effective_requirements
+    spec = effective_requirements(spec, request.stimulus_snapshots)
     stages = calibration_progress(profile, config_root(repo_root))
     requirements = human_requirements(spec, profile, request.experiment_values)
     requirements.insert(0, {'key':'setup','passed':stages['review']['completed'],

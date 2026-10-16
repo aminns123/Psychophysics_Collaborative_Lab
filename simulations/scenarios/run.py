@@ -64,7 +64,7 @@ def _validator_checks(scenario, run_directory: Path) -> tuple[dict[str, Any], ..
 
 def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                  repo_root=None, seeds=None, observer_parameters=None,
-                 experiment_values=None, monitor_profile_id=None, monitor_profile_hash=None) -> ScenarioResult:
+                 experiment_values=None, monitor_profile_id=None, monitor_profile_hash=None, stimulus_snapshots=None) -> ScenarioResult:
     """Execute scenario seeds; save report alongside human and synthetic runs.
 
     Physical display, participant IDs and acquisition defaults are untouched.
@@ -133,6 +133,7 @@ def run_scenario(*, experiment_id: str, scenario_id: str, data_root=None,
                 data_root=root, repo_root=source_root, experiment_id=experiment_id,
                 seed=seed, observer=observer, values=experiment_settings,
                 monitor_profile_id=monitor_profile_id, monitor_profile_hash=monitor_profile_hash, analyse=True,
+                stimulus_snapshots=stimulus_snapshots,
             )
             records.append(ScenarioRun(seed, artifacts, analysis))
             manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))

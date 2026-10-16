@@ -91,6 +91,10 @@ class ExperimentSpec:
     calibration_requirements: tuple[str, ...] = ()
     calibration_not_applicable: str = ""
     monitor_capabilities: tuple[str, ...] | None = None
+    stimulus_slots: Mapping[str, str] = field(default_factory=dict)
+    stimulus_defaults: Mapping[str, str] = field(default_factory=dict)
+    stimulus_field_bindings: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+    supports_simulation: bool = False
 
     def __post_init__(self):
         if self.procedure is not None:
@@ -133,6 +137,11 @@ class ExperimentSpec:
         normalised: dict[str, Any] = {}
         for item in self.fields:
             normalised[item.key] = item.coerce(values.get(item.key, item.default))
+        if self.response_paradigm is not None and "response_keys" in normalised:
+            from .responses import ResponseParadigm
+            keys = tuple(part.strip().upper() for part in normalised["response_keys"].split(","))
+            ResponseParadigm(self.response_paradigm.id, self.response_paradigm.alternatives, keys)
+            normalised["response_keys"] = ",".join(keys)
 
         errors = list(self.validator(normalised)) if self.validator else []
         if errors:

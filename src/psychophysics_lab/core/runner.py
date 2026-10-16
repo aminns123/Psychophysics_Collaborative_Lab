@@ -404,6 +404,8 @@ def run_request(
             "request": _portable_request_payload(request), "data_kind": data_kind, "normalised_experiment_values": values, "legacy_setup": setup,
             **({"background_mapping": mapping_evidence} if mapping_evidence is not None else {})})
         atomic_write_json(run_dir / "monitor_profile.json", profile.to_dict())
+        atomic_write_json(run_dir / "stimulus_parameters.json", {"schema_version": 1, "slots": request.stimulus_snapshots})
+        payload["files"]["stimulus_parameters"] = "stimulus_parameters.json"
         TrialLog(trial_log_file)  # Header remains valid even when no response is accepted.
         atomic_write_json(run_dir / "trial_context.json", {
             "schema_version": 1, "data_kind": data_kind, "run_uuid": run_uuid, "trial_schema_version": TRIAL_SCHEMA_VERSION,
@@ -452,6 +454,8 @@ def run_request(
                 from ..researcher import RunContext
                 procedure_context = RunContext(values, profile, spec, run_dir,
                     synthetic=simulation is not None, data_kind=data_kind,
+                    stimulus_snapshots=request.stimulus_snapshots,
+                    observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
                     seed=simulation.metadata["seed"] if simulation is not None else 0)
                 spec.procedure(procedure_context)
                 if procedure_context.status != "completed":
@@ -468,6 +472,9 @@ def run_request(
         if isinstance(exc, ParticipantAbort):
             payload["status"] = "aborted_by_user"
             payload["abort_reason"] = str(exc)
+            if procedure_context is not None:
+                procedure_context.status = "aborted_by_user"
+                procedure_context._save_lifecycle(str(exc))
         else:
             primary_error = exc
             payload["status"] = "error"
@@ -476,6 +483,15 @@ def run_request(
                 procedure_context.status = "error"
                 procedure_context._save_lifecycle(str(exc))
     finally:
+        if procedure_context is not None:
+            try:
+                procedure_context.close()
+            except Exception as exc:
+                payload["status"] = "error"
+                payload["error"] = "Display cleanup failed: " + repr(exc)
+            for name in ("trial_presentations", "adaptive_history"):
+                if (run_dir / (name + ".json")).exists():
+                    payload["files"][name] = name + ".json"
         for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):
             try:
                 copy_snapshot(source, state_dir / f"{name}.final.json")
@@ -528,7 +544,7 @@ def run_request(
     # Post-acquisition figures belong to the SAME run directory for humans
     # and simulations. They are derived AFTER the immutable trial log and
     # final manifest are written, and never affect acquisition success.
-    if presentation is None and payload.get("accepted_trials", 0) and payload.get("status") != "error":
+    if spec.id == "contrast_sensitivity" and presentation is None and payload.get("accepted_trials", 0) and payload.get("status") != "error":
         from ..analysis.previews import create_staircase_preview
         try:
             create_staircase_preview(data_root=data, run_directory=run_dir)

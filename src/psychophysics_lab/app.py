@@ -103,6 +103,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="List explicitly registered experiments and exit.",
     )
     parser.add_argument("--scaffold", metavar="NAME", help="Create stimulus and experiment contributor templates; never overwrites files.")
+    parser.add_argument("--blueprint", choices=("pair", "stimulus", "experiment", "adaptive"), default="pair")
+    parser.add_argument("--preview-stimulus", metavar="ID", help="Render a registered stimulus preview without hardware.")
+    parser.add_argument("--stimulus-json", type=Path)
+    parser.add_argument("--preview-output", type=Path, default=Path("stimulus_preview.png"))
     return parser
 
 
@@ -118,9 +122,21 @@ def _main(
 
     if args.scaffold:
         from .scaffold import scaffold
-        for path in scaffold(repo_root, args.scaffold):
+        for path in scaffold(repo_root, args.scaffold, kind=args.blueprint):
             print(path)
-        print("Next: implement the procedure and add its module and stimulus module to src/psychophysics_lab/contributions.py. See docs/RESEARCHER_QUICKSTART.md.")
+        print("Next: edit the scientific module/JSON, add its module to contributions.py, then validate and simulate. See docs/TEACHING_GUIDE.md.")
+        return 0
+
+    if args.preview_stimulus:
+        from .stimuli.registry import get_stimulus
+        from .config.stimulus_parameters import load_parameters
+        from .core.presentation import preview_stimulus
+        stimulus = get_stimulus(args.preview_stimulus)
+        selected = load_parameters(args.stimulus_json or repo_root / stimulus.default_config, stimulus)
+        if args.preview_output.exists():
+            raise ValueError("Preview output already exists; choose a new --preview-output.")
+        preview_stimulus(stimulus.id, selected["document"]["parameters"], args.preview_output)
+        print(args.preview_output)
         return 0
 
     if args.diagnose:
@@ -215,6 +231,7 @@ def _main(
                         experiment_values=action.experiment_values,
                         monitor_profile_id=action.monitor_profile_id,
                         monitor_profile_hash=action.monitor_profile_hash,
+                        stimulus_snapshots=action.stimulus_snapshots,
                     )
             except Exception as exc:
                 recoverable_failures += 1

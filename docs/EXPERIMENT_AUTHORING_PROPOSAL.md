@@ -1,5 +1,8 @@
 # Proposed contributor workflow after pipeline acceptance
 
+Historical proposal: the implemented beginner API and exercises are documented in
+[TEACHING_GUIDE.md](TEACHING_GUIDE.md). This page is retained as design history.
+
 This is a proposal, not a new builder implementation. Resolve the audit's physical contrast, feedback/timing and laboratory-qualification decisions first.
 
 1. Start from the existing scaffold; keep one stimulus module and one procedure module. Use `StimulusSpec` for identity/source and extend it in a future reviewed change with unit declarations, parameter validation and optional pure preview hooks.

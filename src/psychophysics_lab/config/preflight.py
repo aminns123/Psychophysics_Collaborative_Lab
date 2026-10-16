@@ -15,6 +15,7 @@ def qualification_checks(spec, profile, values=None):
     Stored Verified flags are researcher declarations. Configuration checks
     remain separate and use the same validator as final acquisition preflight.
     """
+    spec = effective_requirements(spec)
     from .models import photometry_is_test_data
     capabilities = spec.monitor_capabilities if spec.procedure is not None else ("display_binding", "resolution")
     checks = []
@@ -50,6 +51,7 @@ def qualification_checks(spec, profile, values=None):
 
 def human_requirements(spec, profile, values=None):
     """One source for human blockers and their targeted resolution actions."""
+    spec = effective_requirements(spec)
     rows=[]
     def add(key,name,passed,detail,destination,*,field=None,stage=None,required=True):
         if passed:
@@ -97,6 +99,24 @@ def human_blockers(spec, profile, values=None):
     return tuple(row['detail'] for row in human_requirements(spec,profile,values) if row['required'] and not row['passed'])
 
 
+def effective_requirements(spec, snapshots=None):
+    """Union experiment and selected stimulus requirements at every UI/run boundary."""
+    if not spec.stimulus_slots or spec.procedure is None:
+        return spec
+    from ..stimuli.registry import get_stimulus
+    requirements = set(spec.calibration_requirements)
+    defaults = dict(spec.stimulus_defaults)
+    for slot in spec.stimulus_slots:
+        selected = (snapshots or {}).get(slot)
+        identity = selected['document']['stimulus_id'] if selected else spec.stimulus_defaults[slot]
+        defaults[slot] = identity
+        requirements.update(get_stimulus(identity).calibration_requirements)
+    return replace(spec, calibration_requirements=tuple(sorted(requirements)),
+        stimulus_defaults=defaults,
+        calibration_not_applicable=spec.calibration_not_applicable if not requirements else '',
+        monitor_capabilities=tuple(sorted(set(spec.monitor_capabilities or ()) | {'display_binding', 'resolution'})))
+
+
 def validate_setup(request, spec, profile, *, mode="human"):
     """Default preserves strict public preflight; UI must name configuration/simulation mode."""
     if mode not in {"human", "configuration", "simulation"}:
@@ -112,6 +132,15 @@ def validate_setup(request, spec, profile, *, mode="human"):
     if request.monitor_profile_hash and request.monitor_profile_hash!=content_hash(profile.to_dict()):
         raise ValueError('Display profile changed since review. Return to configuration, refresh the display and Review again.')
     values=spec.normalise_values(request.experiment_values)
+    from .stimulus_parameters import resolve_stimuli
+    snapshots = resolve_stimuli(spec, values, request.stimulus_snapshots)
+    spec = effective_requirements(spec, snapshots)
+    if spec.procedure is not None and profile.expected_resolution_px:
+        from ..core.presentation import validate_geometry
+        from ..stimuli.registry import get_stimulus
+        for selected in snapshots.values():
+            document = selected['document']
+            validate_geometry(profile, profile.expected_resolution_px, get_stimulus(document['stimulus_id']), document['parameters'])
     if spec.monitor_validator:
         spec.monitor_validator(values,profile)
     if spec.id == "contrast_sensitivity" and values.get("condition_unit") != "legacy_shader_radians":
@@ -124,4 +153,4 @@ def validate_setup(request, spec, profile, *, mode="human"):
         blockers = human_blockers(spec, profile, values)
         if blockers:
             raise ValueError("Human acquisition blocked:\n" + "\n".join(blockers))
-    return replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()))
+    return replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()), stimulus_snapshots=snapshots)

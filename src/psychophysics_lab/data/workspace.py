@@ -62,6 +62,7 @@ def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest |
         experiment_id=str(raw["experiment_id"]),
         monitor_profile_id=str(raw["monitor_profile_id"]),
         experiment_values=dict(raw["experiment_values"]),
+        stimulus_snapshots=dict(raw.get("stimulus_snapshots", {})),
         # The selected data folder is machine-local context, not part of a
         # portable reusable experiment setup.
         data_root=None,

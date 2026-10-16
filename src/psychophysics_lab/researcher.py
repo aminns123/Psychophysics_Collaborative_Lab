@@ -7,7 +7,7 @@ accepted responses and scientific completion. No framework file paths required.
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Any
-from .adaptive import AdaptiveSelection, StaircaseConfig, Step, get_algorithm
+from .adaptive import AdaptiveSelection, AdaptiveAlgorithm, StaircaseConfig, Step, get_algorithm
 from .experiments.spec import ConfigField, ExperimentSpec
 from .experiments.responses import ResponseParadigm, LEFT_RIGHT, TWO_INTERVAL
 from .stimuli.registry import StimulusSpec
@@ -17,8 +17,11 @@ from .data.session import atomic_write_json
 
 def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                responses=None, source_paths=(), validator=None, monitor_validator=None,
-               calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None):
+               calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
+               stimulus_slots=None, stimulus_defaults=None, supports_simulation=False):
     """Build a registered experiment without the historical four-file adapter."""
+    if responses is not None and "response_keys" not in {item.key for item in fields}:
+        fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
     return ExperimentSpec(id=id, display_name=name, description=description,
         legacy_module=procedure.__module__, legacy_experiment_type=id,
         fields=tuple(fields), procedure=procedure, adaptive=adaptive,
@@ -27,7 +30,8 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         validator=validator, monitor_validator=monitor_validator,
         calibration_requirements=tuple(calibration_requirements),
         calibration_not_applicable=calibration_not_applicable,
-        monitor_capabilities=monitor_capabilities)
+        monitor_capabilities=monitor_capabilities,
+        stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation)
 
 
 class ParticipantAbort(Exception):
@@ -43,6 +47,8 @@ class RunContext:
     synthetic: bool = False
     data_kind: str = "human"
     seed: int = 0
+    stimulus_snapshots: dict = field(default_factory=dict)
+    observer_parameters: dict = field(default_factory=dict)
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
     expected_trials: int = field(default=0, init=False)
@@ -54,7 +60,11 @@ class RunContext:
         if not resolution:
             raise ValueError("Provide resolved stimulus and task information.")
         if not self.synthetic and not runtime_display:
-            raise ValueError("Human presentation must record the actual runtime_display.")
+            if not self.spec.stimulus_slots:
+                raise ValueError("Human presentation must record the actual runtime_display.")
+            from .core.presentation import Presentation
+            self._presentation = Presentation(self.display, self.responses)
+            runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
         self.save_resolution(**dict(resolution))
         atomic_write_json(self.run_directory / "runtime_display.json", dict(runtime_display or {
@@ -91,7 +101,63 @@ class RunContext:
 
     @property
     def responses(self):
+        if self.spec.response_paradigm is not None and self.values.get("response_keys"):
+            from dataclasses import replace
+            keys = tuple(self.values["response_keys"].split(","))
+            if keys != self.spec.response_paradigm.keys:
+                return replace(self.spec.response_paradigm, keys=keys)
         return self.spec.response_paradigm
+
+    def stimulus_parameters(self, slot="target", **overrides):
+        from .stimuli.registry import get_stimulus
+        selected = self.stimulus_snapshots[slot]["document"]
+        return get_stimulus(selected["stimulus_id"]).validate_parameters(selected["parameters"] | overrides)
+
+    def present(self, *, slot="target", target, condition, parameters=None, instructions=""):
+        """Present a registered stimulus, collect a mapped response, and durably record it."""
+        if self.status != "running" or self.accepted_trials >= self.expected_trials:
+            raise ValueError("Present only during the running procedure's planned trials.")
+        import random
+        from .stimuli.registry import get_stimulus
+        from .core.presentation import Response, render_pixels
+        selected = self.stimulus_snapshots[slot]["document"]
+        stimulus = get_stimulus(selected["stimulus_id"])
+        parameters = stimulus.validate_parameters(parameters or selected["parameters"])
+        self.responses.correct(target, target)  # Validate the task's declared target.
+        if self.synthetic:
+            render_pixels(stimulus, parameters)  # Exercise the actual scientific renderer headlessly.
+            if not hasattr(self, "_rng"):
+                self._rng = random.Random(self.seed)
+            probability = float(self.observer_parameters.get("accuracy", .85))
+            answer = target if self._rng.random() < probability else self._rng.choice([i for i in range(len(self.responses.keys)) if i != target])
+            response = Response(answer, self.responses.keys[answer], .25 + .25*self._rng.random())
+        else:
+            response = self._presentation.present(stimulus, parameters, instructions)
+        correct = self.responses.correct(target, response.alternative)
+        self.record(stimulus_condition=condition, target_alternative=target,
+                    participant_response=response.alternative, response_key=response.key, correct=int(correct))
+        if not hasattr(self, "_presentations"):
+            self._presentations = []
+        self._presentations.append({"trial_index": self.accepted_trials, "slot": slot,
+            "stimulus_id": stimulus.id, "parameters": parameters,
+            "reaction_time_s": response.reaction_time_s,
+            "time_basis": "virtual observer" if self.synthetic else "software flip to key event; latency unverified"})
+        atomic_write_json(self.run_directory / "trial_presentations.json", {"schema_version": 1, "trials": self._presentations})
+        return correct
+
+    def update_adaptive(self, algorithm, identity, correct, update_value):
+        """Use a registered staircase's update contract and save each accepted update."""
+        result = algorithm.respond(identity, correct, update_value)
+        if not hasattr(self, "_adaptive_history"):
+            self._adaptive_history = []
+        self._adaptive_history.append({"trial_index": self.accepted_trials, "state": algorithm.snapshot()})
+        atomic_write_json(self.run_directory / "adaptive_history.json", {"schema_version": 1,
+            "algorithm_id": self.spec.adaptive.algorithm_id, "updates": self._adaptive_history})
+        return result
+
+    def close(self):
+        if hasattr(self, "_presentation"):
+            self._presentation.close()
 
     def adaptive(self, *args, **kwargs):
         if self.spec.adaptive is None:

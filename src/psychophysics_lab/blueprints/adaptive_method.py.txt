@@ -1,0 +1,25 @@
+"""EDIT SCIENCE: fixed up/down rule implementing the shared update contract.
+
+Register this module in contributions.ADAPTIVE_MODULES. Select its SPEC.id with
+AdaptiveSelection in an experiment; use run.update_adaptive to save its history.
+No CSF capability is claimed. The existing CSF algorithm remains unchanged.
+"""
+from psychophysics_lab.researcher import AdaptiveAlgorithm, Step
+
+
+class FixedStep:
+    def __init__(self, *args, **kwargs):
+        self.history = []
+
+    def respond(self, identity, correct, update_value):
+        # EDIT UPDATE RULE: experiment supplies the meaning/size of each step.
+        step = Step.DOWN if correct else Step.UP
+        value = update_value(step)
+        self.history.append({"identity": identity, "correct": bool(correct), "value": value})
+        return step, value
+
+    def snapshot(self):
+        return {"schema_version": 1, "history": list(self.history)}
+
+
+SPEC = AdaptiveAlgorithm("BLUEPRINT_ID", "One-down/one-up fixed step", FixedStep)

@@ -123,6 +123,7 @@ class VirtualObserverOptionsScreen(Screen):
             data_root=root, seeds=seeds, observer_parameters=observer,
             experiment_values=values, monitor_profile_id=self.request.monitor_profile_id,
             monitor_profile_hash=self.request.monitor_profile_hash,
+            stimulus_snapshots=self.request.stimulus_snapshots,
         )
 
     def on_input_changed(self,event):
