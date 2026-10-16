@@ -142,10 +142,15 @@ def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_p
 
     saved = test_design(tmp_path, "my_spatial_task")
     assert (saved / "trials.tsv").is_file()
-    assert not [check for check in validate_run(saved) if not check.passed]
+    # test_design already calls validate_run while the DRAFT is registered in
+    # the software-only validation process. The standalone validator requires
+    # a Ready experiment present in the normal runtime catalogue.
     assert _catalog(tmp_path)[0]["tested_sha256"]
     mark_ready(tmp_path, "my_spatial_task")
     assert _catalog(tmp_path)[0]["status"] == "ready"
+    from psychophysics_lab.experiments.library_builder import load_library
+    assert not load_library(tmp_path, tolerate_errors=False)
+    assert not [check for check in validate_run(saved) if not check.passed]
 
     # Changing the timeline AFTER software validation invalidates Ready.
     document = json.loads(design_path.read_text())
