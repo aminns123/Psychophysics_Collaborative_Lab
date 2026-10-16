@@ -146,9 +146,19 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
             )
             for name in filenames:
                 path = base / name
+                # Researcher-authored experiment/stimulus modules are legitimate
+                # runtime sources even if a researcher calls one "test_*".
+                # Exclude Python test helpers elsewhere, but never omit scientific
+                # source from provenance merely because of its chosen name.
+                within_package = (
+                    relative_root == "src/psychophysics_lab"
+                    and path.relative_to(source_root).parts[0] in
+                    {"experiments", "stimuli", "adaptive"}
+                )
                 if (path.suffix == ".py" and not path.is_symlink()
-                        and not name.startswith((".", "test_", "conftest."))
-                        and not name.endswith("_test.py")):
+                        and not name.startswith((".", "conftest."))
+                        and (within_package or not name.startswith("test_"))
+                        and (within_package or not name.endswith("_test.py"))):
                     paths.append(path)
     paths.extend(repo_root / name for name in ("libC.py", "packages.zip")
                  if (repo_root / name).is_file() and not (repo_root / name).is_symlink())

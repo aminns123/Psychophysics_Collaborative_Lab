@@ -95,7 +95,7 @@ def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     assert len(ex.phases) == 4
     assert len(cs.phases) == 5
     assert ex.phases[-1].kind == cs.phases[-1].kind == "response"
-    assert "legacy" in csf.description.lower()
+    assert csf.legacy_module == "Experiments.contrast_sensitivity_function"
 
 
 def test_normal_tui_has_explicit_example_source_controls():
