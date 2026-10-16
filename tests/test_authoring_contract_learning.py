@@ -81,11 +81,10 @@ def test_tui_links_to_the_independent_guide():
     assert (ROOT / "docs/AUTHORING_CONTRACT.md").is_file()
 
 
-def test_authoring_inventory_points_to_existing_source_and_config_pairs():
+def test_archived_or_incomplete_drafts_do_not_need_to_be_deleted():
     from psychophysics_lab.authoring import inventory
-    for item in inventory(ROOT):
-        category = {"stimulus": "stimuli", "experiment": "experiments",
-                    "adaptive": "adaptive"}[item.kind]
-        assert (ROOT / "src/psychophysics_lab" / category / (item.name + ".py")).is_file()
-        if item.kind != "adaptive":
-            assert (ROOT / "configs" / category / (item.name + ".json")).is_file()
+    records = inventory(ROOT)
+    # A historical draft can refer to a file not currently in the checkout.
+    # Only attempting to load/publish it should require actual source files.
+    assert len({(item.kind, item.name) for item in records}) == len(records)
+    assert all(item.kind in {"stimulus", "experiment", "adaptive"} for item in records)
