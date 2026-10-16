@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "stimulus_id": "new_probe_vertical_line",
+  "parameters": {
+    "size_deg": 5.0,
+    "offset_deg": 1.0,
+    "line_width_deg": 0.15,
+    "line_length_deg": 1.2,
+    "intensity": 1.0
+  }
+}

@@ -12,6 +12,18 @@
       "name": "test_single_probe_and_fixation",
       "status": "draft",
       "tested_fingerprint": ""
+    },
+    {
+      "kind": "stimulus",
+      "name": "new_probe_vertical_line",
+      "status": "draft",
+      "tested_fingerprint": ""
+    },
+    {
+      "kind": "experiment",
+      "name": "new_probe_fixation_test",
+      "status": "draft",
+      "tested_fingerprint": ""
     }
   ]
 }
