@@ -18,11 +18,11 @@ PARAMETERS = (
 
 def render(parameters, x_deg, y_deg):
     """EDIT APPEARANCE: return grayscale commands in [0,1], one per grid pixel."""
-    angle = np.deg2rad(parameters["orientation_deg"])
-    coordinate = x_deg * np.cos(angle) + y_deg * np.sin(angle)
-    carrier = np.cos(2 * np.pi * parameters["spatial_frequency_cpd"] * coordinate + np.deg2rad(parameters["phase_deg"]))
-    sigma = parameters["size_deg"] / 6
-    envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg) / (2*sigma*sigma))
+    angle       = np.deg2rad(parameters["orientation_deg"])
+    coordinate  = x_deg * np.cos(angle) + y_deg * np.sin(angle)
+    carrier     = np.cos(2 * np.pi * parameters["spatial_frequency_cpd"] * coordinate + np.deg2rad(parameters["phase_deg"]))
+    sigma       = parameters["size_deg"] / 6
+    envelope    = np.exp(-(x_deg*x_deg + y_deg*y_deg) / (2*sigma*sigma))
     return .5 + .5 * parameters["contrast"] * envelope * carrier
 
 
