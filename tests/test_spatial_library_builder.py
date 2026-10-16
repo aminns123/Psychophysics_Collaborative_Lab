@@ -115,3 +115,41 @@ def test_library_create_never_writes_new_python_experiment_module(tmp_path):
     assert doc["conditions"][0]["probe_position_deg"] == [0.0, 1.75]
     # The generated JSON is independently valid, with no Python source scaffold.
     validate_design(doc)
+
+
+def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_path):
+    """Real virtual observer + validator, no authored experiment Python file."""
+    import shutil
+    from psychophysics_lab.experiments.library_builder import test_design, mark_ready, _catalog
+
+    # Isolated miniature checkout with exactly the files needed for a library
+    # design; never generate new researcher files in the actual repository.
+    required = [
+        "src/psychophysics_lab/stimuli/fixation_cross.py",
+        "src/psychophysics_lab/stimuli/vertical_line_probe.py",
+        "src/psychophysics_lab/experiments/library_builder.py",
+        "configs/stimuli/fixation_cross.json",
+        "configs/stimuli/vertical_line_probe.json",
+        "configs/experiment_designs/probe_above_below.json",
+        "configs/monitors/legacy_reference_display.json",
+    ]
+    for name in required:
+        source, dest = ROOT / name, tmp_path / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, dest)
+    design_path = create_design(tmp_path, "my_spatial_task", separation_deg=1.25)
+    assert not (tmp_path / "src/psychophysics_lab/experiments/my_spatial_task.py").exists()
+
+    saved = test_design(tmp_path, "my_spatial_task")
+    assert (saved / "trials.tsv").is_file()
+    assert not [check for check in validate_run(saved) if not check.passed]
+    assert _catalog(tmp_path)[0]["tested_sha256"]
+    mark_ready(tmp_path, "my_spatial_task")
+    assert _catalog(tmp_path)[0]["status"] == "ready"
+
+    # Changing the timeline AFTER software validation invalidates Ready.
+    document = json.loads(design_path.read_text())
+    document["values"]["stimulus_ms"] += 1
+    design_path.write_text(json.dumps(document, indent=2), encoding="utf-8")
+    with pytest.raises(ValueError, match="Test the current JSON"):
+        mark_ready(tmp_path, "my_spatial_task")
