@@ -150,6 +150,13 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         timeAB = experiment_params["timeAB"]
         timeT = experiment_params["timeT"]
 
+        # One explicit chronological contract for CSF and researcher-authored
+        # experiments. This legacy adapter still uses the validated CSF shader.
+        from psychophysics_lab.core.timeline import load_timeline
+        timeline = load_timeline(
+            Path(__file__).resolve().parents[1] / "configs/experiments/contrast_sensitivity.json",
+            timings=experiment_params, slots={"target"})
+
         # ------------------------------ Stimulus parameters ------------------------------
         kwargs_fixate = {
             "c": experiment_params["background_intensity"] + 0.09,
@@ -253,6 +260,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
         resolved_experiment = {
             "schema_version": 2,
             "experiment_id": "contrast_sensitivity",
+            "trial_timeline": timeline.to_dict(),
+            "timing_contract": "legacy Pyglet CSF adapter; software phase times, physical timing independent",
             "timings_ms": {
                 "fixation": int(timeFixate),
                 "interval": int(timeInterval),
@@ -399,6 +408,10 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             response_keys,
         )
 
+        # The reference CSF now declares the SAME chronological trial phases as
+        # researcher-authored experiments. Translate phase roles to the original
+        # measured/validated CSF renderer and adaptive state machine; do not
+        # silently change the science or the Pyglet event loop here.
         trial_exps = [fixateDOT]
         for _ in range(experiment_params["number_trials"]):
             posX = random.choice(alternative_forced_choice["2AFC_choice"])
@@ -416,14 +429,14 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
                 [posX, cy],
             )
 
-            sequence = [
-                fixateDOT,
-                fixate_state_new_condition,
-                stimulusPROBE,
-                fixateInterval,
-                fixateRESPONSE,
-            ]
-            trial_exps += sequence
+            existing_trials = {
+                "fixation": fixateDOT,
+                "new_condition": fixate_state_new_condition,
+                "stimuli": stimulusPROBE,
+                "interval": fixateInterval,
+                "response": fixateRESPONSE,
+            }
+            trial_exps += [existing_trials[phase.name] for phase in timeline.phases]
 
         trials += trial_exps
         trials += [Trial_small("End", farewell_line, 0, keys_none, mouse=False)]

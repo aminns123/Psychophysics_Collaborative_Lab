@@ -118,3 +118,88 @@ class Presentation:
             return answer
         finally:
             self.window.remove_handlers(on_key_press=keypress)
+
+    def play_timeline(self, timeline, parameters_by_slot, *, instructions=None):
+        """Present ordered static stages and respond only in the final response stage.
+
+        Times are software flip/keypress observations, NOT verified photon or HID
+        latency.  Use validated monitor timing before claiming temporal precision.
+        """
+        import pyglet
+        from pyglet import gl
+        from ..researcher import ParticipantAbort
+        from .timeline import TrialTimeline
+        if not isinstance(timeline, TrialTimeline):
+            raise TypeError("play_timeline requires a validated TrialTimeline.")
+        timeline.validate_slots(parameters_by_slot)
+        rendered = {}
+        for phase in timeline.phases:
+            if phase.slot is None or phase.slot in rendered:
+                continue
+            stimulus = get_stimulus(parameters_by_slot[phase.slot][0])
+            params = stimulus.validate_parameters(parameters_by_slot[phase.slot][1])
+            pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
+            array = render_pixels(stimulus, params, pixels=pixels)
+            rendered[phase.slot] = (pixels, pyglet.image.ImageData(*pixels, "L", array.tobytes(), pitch=pixels[0]))
+        events = []
+        held = self.held
+        answered = None
+        aborted = False
+        active_onset = None
+        accepting = False
+        def on_key_press(symbol, modifiers):
+            nonlocal answered, aborted
+            if symbol == pyglet.window.key.ESCAPE:
+                aborted = True
+                return True
+            if symbol in held:
+                return True
+            held.add(symbol)
+            if not accepting or active_onset is None or answered is not None:
+                return None
+            key_name = pyglet.window.key.symbol_string(symbol).removeprefix("_")
+            if key_name in self.responses.keys:
+                answered = Response(self.responses.decode(key_name), key_name,
+                                    time.perf_counter() - active_onset)
+                return True
+        self.window.push_handlers(on_key_press=on_key_press)
+        try:
+            self.window.dispatch_events()
+            for phase in timeline.phases:
+                if aborted or self.window.has_exit:
+                    raise ParticipantAbort("Escape or window close during trial timeline")
+                accepting = False
+                active_onset = None
+                self.window.dispatch_events()
+                gl.glClearColor(.5, .5, .5, 1)
+                self.window.clear()
+                if phase.slot:
+                    (width, height), image = rendered[phase.slot]
+                    image.blit((self.resolution[0] - width) // 2, (self.resolution[1] - height) // 2)
+                label_text = phase.instructions
+                if instructions and phase.kind == "response":
+                    label_text = instructions
+                if label_text:
+                    pyglet.text.Label(label_text, x=self.resolution[0]//2,
+                                      y=self.resolution[1]//2 if phase.slot is None else 25,
+                                      anchor_x="center", font_size=16).draw()
+                self.window.flip()
+                active_onset = time.perf_counter()
+                accepting = phase.kind == "response"
+                while True:
+                    if aborted or self.window.has_exit:
+                        raise ParticipantAbort("Escape or window close during trial timeline")
+                    if accepting and answered is not None:
+                        break
+                    if phase.duration_ms and (time.perf_counter() - active_onset) * 1000 >= phase.duration_ms:
+                        if accepting:
+                            raise TimeoutError("No valid response before the configured response timeout")
+                        break
+                    self.window.dispatch_events()
+                    time.sleep(.001)
+                events.append({**phase.to_dict(), "software_onset_s": active_onset,
+                               "software_offset_s": time.perf_counter(),
+                               "timing_basis": "software flip/clock; photons and input latency unverified"})
+            return answered, events
+        finally:
+            self.window.remove_handlers(on_key_press=on_key_press)

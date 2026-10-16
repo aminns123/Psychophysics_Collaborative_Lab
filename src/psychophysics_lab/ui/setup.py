@@ -38,8 +38,8 @@ from ..config.readiness import diagnostic_matches_profile
 
 NAV_PAGES = (
     ("setup", "Experiment"),
-    ("stimuli", "Stimuli"),
-    ("experiments", "Experiments"),
+    ("stimuli", "Build Stimuli"),
+    ("experiments", "Build Experiments"),
     ("display", "Calibrate"),
     ("simulations", "Scenarios"),
     ("data", "Data"),
@@ -183,6 +183,9 @@ def _source_inventory(repo_root, experiment):
             path = repo_root / stimulus.source_path
             if path.is_file():
                 entries.append((f"Stimulus / renderer: {stimulus.id}", path))
+    timeline = repo_root / "configs" / "experiments" / f"{experiment.id}.json"
+    if timeline.is_file():
+        entries.append(("Trial timeline JSON", timeline))
     return entries
 
 
@@ -270,6 +273,9 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
+            yield Static("[b]Build a new experiment[/b]: enter a Python module name. A working procedure + editable trial timeline JSON will be created; open its source and register it in contributions.py.")
+            yield Input(placeholder="e.g. new_orientation_task", id="new-experiment-name")
+            yield Button("Build new experiment", id="build-new-experiment", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -300,6 +306,16 @@ class ExperimentsScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "build-new-experiment":
+            event.stop()
+            try:
+                from ..scaffold import scaffold
+                paths = scaffold(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
+                self.app.notify(f"Created {len(paths)} files; add its module to contributions.py to register.")
+                self.app.inspect_source(paths[0])
+            except (ValueError, OSError) as exc:
+                self.app.notify(str(exc), severity="error")
             return
         spec = self._selected()
         sources = _source_candidates(self.app.repo_root, spec)
@@ -338,6 +354,9 @@ class StimuliScreen(HubPage):
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
                 yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
+                yield Static("[b]Build a new stimulus[/b]: generate editable renderer Python and its JSON parameters; register in contributions.py before selecting it in experiments.")
+                yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
+                yield Button("Build new stimulus", id="build-new-stimulus")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
         yield Footer()
@@ -369,6 +388,16 @@ class StimuliScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "build-new-stimulus":
+            event.stop()
+            try:
+                from ..scaffold import scaffold
+                paths = scaffold(self.app.repo_root, self.query_one("#new-stimulus-name", Input).value.strip(), kind="stimulus")
+                self.app.notify(f"Created {len(paths)} files; register your module in contributions.py.")
+                self.app.inspect_source(paths[0])
+            except (ValueError, OSError) as exc:
+                self.app.notify(str(exc), severity="error")
             return
         if event.button.id == "view-stimulus-source":
             event.stop()
@@ -1454,8 +1483,8 @@ class HelpScreen(HubPage):
                 "[b]Stimuli[/b] — what is presented. Reusable stimulus code belongs under "
                 "src/psychophysics_lab/stimuli/.\n\n"
                 "[b]Experiment procedures[/b] — how stimuli, timing, conditions and responses "
-                "are combined. Add an ExperimentSpec and register it explicitly in "
-                "src/psychophysics_lab/experiments/registry.py.\n\n"
+                "are combined. Build a procedure and ordered timeline; register the new module in "
+                "src/psychophysics_lab/contributions.py.\n\n"
                 "[b]Adaptive methods[/b] — how parameters change from accepted responses. "
                 "Reusable algorithms live in adaptive/. Experiments declare the method and its controls.\n\n"
                 "[b]Framework infrastructure[/b] — configuration, display profiles, lifecycle, "
@@ -1465,7 +1494,7 @@ class HelpScreen(HubPage):
                 "[b]Scientific rule[/b] — do not silently change stimulus mathematics, timings, "
                 "response mappings, staircase rules, calibration semantics, contrast definitions "
                 "or the retained 31.5 scaling. Such changes require explicit scientific review.\n\n"
-                "The Experiments and Stimuli pages can inspect source code directly. This build "
+                "The Build Experiments and Build Stimuli pages create a template and inspect source. This build "
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )

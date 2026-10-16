@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "phases": [
+    {"name": "fixation", "kind": "show", "slot": null, "duration_ms": {"field": "timeFixate"}},
+    {"name": "new_condition", "kind": "show", "slot": null, "duration_ms": {"field": "timeInterval"}},
+    {"name": "stimuli", "kind": "show", "slot": "target", "duration_ms": {"field": "timeAB"}},
+    {"name": "interval", "kind": "show", "slot": null, "duration_ms": {"field": "timeInterval"}},
+    {"name": "response", "kind": "response", "slot": null, "duration_ms": {"field": "timeT"}}
+  ]
+}

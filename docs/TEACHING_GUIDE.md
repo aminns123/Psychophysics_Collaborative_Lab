@@ -42,12 +42,19 @@ Scientific modules live under `src/psychophysics_lab/stimuli`, `experiments` and
 documented registration list, not a framework registry implementation.
 Normally do not edit `core`, `config`, `data` or `ui` to add an experiment.
 
-The supported teaching renderer is a static grayscale raster. The framework
+The supported teaching renderer is a static grayscale raster with an ordered
+phase-timeline wrapper. New experiments can sequence timed stimuli/blanks and a
+response stage through `TrialTimeline` and `run.play_trial`. See
+[EXPERIMENT_TIMELINES.md](EXPERIMENT_TIMELINES.md) for a fully worked authoring
+recipe, CSF compatibility boundaries and the planned expansion to dynamic
+flicker/SOA.
+
+The underlying stimulus renderer is a static grayscale raster. The framework
 provides angular coordinates and validates fit and spatial sampling. Pixel values
 are normalized digital commands. Digital contrast is not calibrated optical
 contrast; an experiment estimating optical contrast must declare luminance
-requirements and use an appropriate scientific mapping. Animated/timed sequences,
-special response devices and advanced observer models remain separate extensions.
+requirements and use an appropriate scientific mapping. Per-frame animation, independently verified photon timing, special response
+devices and advanced observer models remain separate extensions.
 
 ## 3. Run and inspect the reference exercise
 
@@ -102,7 +109,8 @@ calibration. Existing CSF uses its established preview/presentation facility.
 python -m psychophysics_lab --scaffold my_grating --blueprint stimulus
 ```
 
-This copies the working Gabor science into `stimuli/my_grating.py` and generates
+The **Build Stimuli** TUI page also scaffolds the same pair of files. This
+copies the working Gabor science into `stimuli/my_grating.py` and generates
 `configs/stimuli/my_grating.json`. Edit the clearly marked PARAMETERS or render
 sections. The declaration is the only source of parameter types, units and ranges.
 Update JSON values to match any declaration changes. The framework supplies x/y
@@ -120,7 +128,10 @@ Do not change the family merely to bypass scientific incompatibility.
 python -m psychophysics_lab --scaffold my_task --blueprint experiment
 ```
 
-Edit `experiments/my_task.py`. It already reuses `teaching_gabor`, collects mapped
+The **Build Experiments** TUI page provides this action as well. The scaffold
+creates `experiments/my_task.py` and `configs/experiments/my_task.json`.
+Edit `experiments/my_task.py` and its chronological phase JSON. The procedure
+already reuses `teaching_gabor`, collects mapped
 responses, saves data and supports simulation. Change trial count, ordering,
 conditions or interpretation in the labelled sections. Add its module name to
 EXPERIMENT_MODULES, restart, select it in the TUI and simulate.
@@ -136,9 +147,10 @@ and `monitor_capabilities=()`. Stimulus requirements are combined automatically;
 a weaker experiment declaration cannot remove them. Simulation bypasses physical
 measurements, not parameter validation. CSF retains its existing requirements.
 
-The reference procedure calls `initialise`, `present`, and `complete`. `present`
-validates/render parameters, collects a valid configured key, records its response
-and saves per-trial observations. Use `abort` or `fail` when appropriate. Do not
+The reference procedure calls `initialise`, `play_trial` and `complete`.
+`play_trial` resolves the ordered phase JSON, validates/renders stimulus parameters,
+collects a configured response, records its correctness and saves per-phase
+observations. The earlier self-paced `present` API remains available. Use `abort` or `fail` when appropriate. Do not
 catch these merely to label incomplete work successful. See
 [PUBLIC_PROCEDURE_LIFECYCLE.md](PUBLIC_PROCEDURE_LIFECYCLE.md).
 
