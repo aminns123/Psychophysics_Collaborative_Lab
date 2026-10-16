@@ -113,114 +113,178 @@ class RunContext:
         selected = self.stimulus_snapshots[slot]["document"]
         return get_stimulus(selected["stimulus_id"]).validate_parameters(selected["parameters"] | overrides)
 
+
+    @property
+    def trial_state(self):
+        """Detached read-only scientific state returned by the latest trial."""
+        from .core.timeline import immutable_state
+        return immutable_state(getattr(self, "_trial_state", {}))
+
     def present(self, *, slot="target", target, condition, parameters=None, instructions=""):
-        """Present a registered stimulus, collect a mapped response, and durably record it."""
-        if self.status != "running" or self.accepted_trials >= self.expected_trials:
-            raise ValueError("Present only during the running procedure's planned trials.")
-        import random
-        from .stimuli.registry import get_stimulus
-        from .core.presentation import Response, render_pixels
-        selected = self.stimulus_snapshots[slot]["document"]
-        stimulus = get_stimulus(selected["stimulus_id"])
-        parameters = stimulus.validate_parameters(parameters or selected["parameters"])
-        self.responses.correct(target, target)  # Validate the task's declared target.
-        if self.synthetic:
-            render_pixels(stimulus, parameters)  # Exercise the actual scientific renderer headlessly.
-            if not hasattr(self, "_rng"):
-                self._rng = random.Random(self.seed)
-            probability = float(self.observer_parameters.get("accuracy", .85))
-            answer = target if self._rng.random() < probability else self._rng.choice([i for i in range(len(self.responses.keys)) if i != target])
-            response = Response(answer, self.responses.keys[answer], .25 + .25*self._rng.random())
-        else:
-            response = self._presentation.present(stimulus, parameters, instructions)
-        correct = self.responses.correct(target, response.alternative)
-        self.record(stimulus_condition=condition, target_alternative=target,
-                    participant_response=response.alternative, response_key=response.key, correct=int(correct))
-        if not hasattr(self, "_presentations"):
-            self._presentations = []
-        self._presentations.append({"trial_index": self.accepted_trials, "slot": slot,
-            "stimulus_id": stimulus.id, "parameters": parameters,
-            "reaction_time_s": response.reaction_time_s,
-            "time_basis": "virtual observer" if self.synthetic else "software flip to key event; latency unverified"})
-        atomic_write_json(self.run_directory / "trial_presentations.json", {"schema_version": 1, "trials": self._presentations})
-        return correct
+        """Compatibility self-paced trial through the authoritative action path."""
+        from .core.timeline import Phase, TrialTimeline
+        return self.play_trial(TrialTimeline((Phase("answer", "response", slot),)),
+                               target=target, condition=condition,
+                               parameters_by_slot={slot: parameters} if parameters is not None else None,
+                               instructions=instructions)
 
-    def play_trial(self, timeline, *, target, condition, parameters_by_slot=None, instructions="", measurements=None):
-        """Run ordered stages; save one response and phase observations per trial.
+    def play_trial(self, timeline, *, target, condition, parameters_by_slot=None,
+                   instructions="", measurements=None, state=None):
+        """Execute chronological scientific actions and persist at the trial boundary.
 
-        Experiments own the timeline, condition and adaptive update. PsyCoLab
-        owns rendering, response collection, accepted-trial state and files.
+        Callbacks get immutable detached state and response, and return finite JSON
+        state. They are trusted scientific functions: do not render or perform IO.
+        A valid response is saved even if a later action fails. Partial events and
+        state are saved on abort/error; no response is invented before collection.
         """
         import random
-        from .core.timeline import TrialTimeline, simulated_phases
-        from .core.presentation import Response, render_pixels
+        from .core.timeline import (TrialTimeline, Phase, RecordState, UpdateState,
+                                    UpdateAdaptive, scientific_snapshot, immutable_state)
+        from .core.trial_execution import VirtualPresentation, execute_timeline
+        from .core.presentation import Response
         from .stimuli.registry import get_stimulus
         if not isinstance(timeline, TrialTimeline):
-            raise TypeError("play_trial requires a TrialTimeline; use load_timeline or Phase.")
-        # Extra scientific observations use the versioned presentation JSON,
-        # never undocumented columns in the fixed legacy trials.tsv schema.
-        import json
-        import math
-        observations = dict(measurements or {})
-        for key, value in observations.items():
-            if not isinstance(key, str) or not key.isidentifier():
-                raise ValueError("Custom measurement keys must be Python identifiers.")
-            if type(value) not in (int, float, str, bool) or (type(value) is float and not math.isfinite(value)):
-                raise ValueError(f"Measurement {key} must be a finite number, string or boolean.")
+            raise TypeError("play_trial requires a TrialTimeline.")
         if self.status != "running" or self.accepted_trials >= self.expected_trials:
             raise ValueError("Start a timeline only while a response is expected.")
-        timeline.validate_slots(self.stimulus_snapshots)
+        timeline = timeline.resolve(self.values).validate_slots(self.stimulus_snapshots)
         self.responses.correct(target, target)
+        observations = scientific_snapshot(dict(measurements or {}))
+        for key, value in observations.items():
+            if not key.isidentifier() or type(value) not in (int, float, str, bool):
+                raise ValueError("Custom measurements require identifier keys and finite scalar values.")
+        current = scientific_snapshot(dict(state if state is not None else self.trial_state))
+        condition = scientific_snapshot(condition)
         resolved = {}
-        for stage in timeline.phases:
-            if stage.slot is None or stage.slot in resolved:
-                continue
-            selected = self.stimulus_snapshots[stage.slot]["document"]
-            stimulus = get_stimulus(selected["stimulus_id"])
-            overrides = (parameters_by_slot or {}).get(stage.slot, selected["parameters"])
-            params = stimulus.validate_parameters(overrides)
-            resolved[stage.slot] = (stimulus.id, params)
-        if self.synthetic:
-            # Validate ALL shown stimuli, not just the one paired with the response.
-            for name, params in resolved.values():
-                render_pixels(get_stimulus(name), params)
-            if not hasattr(self, "_rng"):
-                self._rng = random.Random(self.seed)
-            probability = float(self.observer_parameters.get("accuracy", .85))
-            alternative = target if self._rng.random() < probability else self._rng.choice(
-                [i for i in range(len(self.responses.keys)) if i != target])
-            response = Response(alternative, self.responses.keys[alternative], .25 + .25 * self._rng.random())
-            phase_events = simulated_phases(timeline)
-        else:
-            response, phase_events = self._presentation.play_timeline(
-                timeline, resolved, instructions=instructions)
-        correct = self.responses.correct(target, response.alternative)
-        self.record(stimulus_condition=condition, target_alternative=target,
-                    participant_response=response.alternative, response_key=response.key, correct=int(correct))
-        if not hasattr(self, "_presentations"):
-            self._presentations = []
-        # A response may use a blank screen: associate saved response with the
-        # last scientific stimulus slot presented in the timeline.
-        response_slot = next((p.slot for p in reversed(timeline.phases) if p.slot is not None), None)
-        if response_slot is None:
+        for phase in timeline.phases:
+            if isinstance(phase, Phase):
+                if phase.actions and phase.actions != self.responses.alternatives:
+                    raise ValueError("CollectResponse actions must match the declared response meanings in order.")
+                for item in phase.placements:
+                    if item.slot in resolved:
+                        continue
+                    selected = self.stimulus_snapshots[item.slot]["document"]
+                    stimulus = get_stimulus(selected["stimulus_id"])
+                    params = (parameters_by_slot or {}).get(item.slot, selected["parameters"])
+                    resolved[item.slot] = (stimulus.id, stimulus.validate_parameters(params))
+            if isinstance(phase, UpdateAdaptive):
+                if not any(phase.algorithm is item for item in getattr(self, "_algorithms", ())):
+                    raise ValueError("UpdateAdaptive requires an algorithm created with run.adaptive().")
+        if not resolved:
             raise ValueError("An experimental timeline requires a stimulus slot.")
-        self._presentations.append({"trial_index": self.accepted_trials, "slot": response_slot,
-            "stimulus_id": resolved[response_slot][0], "parameters": resolved[response_slot][1],
-            "reaction_time_s": response.reaction_time_s,
-            "phase_events": phase_events, "measurements": observations,
-            "timing_basis": "virtual observer" if self.synthetic else "software flip to key event; latency unverified"})
-        atomic_write_json(self.run_directory / "trial_presentations.json",
-                          {"schema_version": 1, "trials": self._presentations})
+        response_slot = next(item.slot for phase in reversed(timeline.phases)
+                             if isinstance(phase, Phase) for item in reversed(phase.placements))
+        events = []
+        response_data = None
+        accepted_response = None
+        correct = None
+        trial_index = self.accepted_trials + 1
+        trace = {"trial_index": trial_index, "condition": condition, "target": target,
+                 "plan": timeline.to_dict(), "resolved_stimuli": scientific_snapshot({
+                     slot: {"stimulus_id": identity, "parameters": params}
+                     for slot, (identity, params) in resolved.items()}),
+                 "initial_state": scientific_snapshot(current), "events": events, "status": "started"}
+
+        def apply(action, response, event):
+            nonlocal current, response_data, accepted_response, correct
+            if isinstance(action, Phase) and action.kind == "response":
+                if response is None:
+                    raise ValueError("Response stage ended without a valid response.")
+                correct = self.responses.correct(target, response.alternative)
+                accepted_response = response
+                response_data = {"alternative": response.alternative, "key": response.key,
+                                 "meaning": self.responses.alternatives[response.alternative],
+                                 "correct": correct, "valid": True,
+                                 "reaction_time_s": response.reaction_time_s,
+                                 "timing_basis": "virtual observer" if self.synthetic else
+                                     "software flip to key; photon onset and HID latency unverified"}
+                event["response"] = scientific_snapshot(response_data)
+            elif isinstance(action, RecordState):
+                captured = {key: current[key] for key in action.fields} if action.fields else current
+                event["snapshot"] = scientific_snapshot({
+                    "state": captured, "response": response_data,
+                    "stimuli": trace["resolved_stimuli"], "condition": condition,
+                    "trial_index": trial_index, "action_index": event["action_index"]})
+            elif isinstance(action, UpdateState):
+                updated = action.function(immutable_state(current), immutable_state(response_data))
+                if not isinstance(updated, Mapping):
+                    raise ValueError("UpdateState must return a mapping of scientific state.")
+                current = scientific_snapshot(updated)
+                event["state"] = scientific_snapshot(current)
+            elif isinstance(action, UpdateAdaptive):
+                if response_data is None:
+                    raise ValueError("Adaptive update requires an accepted response.")
+                before = scientific_snapshot(action.algorithm.snapshot())
+                step, value = self.update_adaptive(action.algorithm, action.identity, correct,
+                    lambda step: action.update_value(immutable_state(current),
+                                                     immutable_state(response_data), step))
+                current[action.state_key] = scientific_snapshot(value)
+                event.update(adaptive_before=before, adaptive_after=scientific_snapshot(action.algorithm.snapshot()),
+                             step=int(step), state=scientific_snapshot(current))
+
+        self._in_trial = True
+        try:
+            if self.synthetic:
+                if not hasattr(self, "_rng"):
+                    self._rng = random.Random(self.seed)
+                probability = float(self.observer_parameters.get("accuracy", .85))
+                alternative = target if self._rng.random() < probability else self._rng.choice(
+                    [i for i in range(len(self.responses.keys)) if i != target])
+                backend = VirtualPresentation(Response(alternative, self.responses.keys[alternative],
+                                                       .25 + .25 * self._rng.random()))
+            else:
+                backend = self._presentation
+            backend.prepare(timeline, resolved)
+            execute_timeline(timeline, backend, events, apply, instructions=instructions)
+            trace["status"] = "completed"
+        except BaseException as exc:
+            trace["status"] = "aborted" if isinstance(exc, ParticipantAbort) else "error"
+            trace["error"] = str(exc)
+            raise
+        finally:
+            self._in_trial = False
+            self._trial_state = scientific_snapshot(current)
+            trace["final_state"] = scientific_snapshot(current)
+            # No file access above, from first phase through last action. Flush
+            # even on abort/error, before the runner finalizes status and hashes.
+            if not hasattr(self, "_action_trials"):
+                self._action_trials = []
+            self._action_trials.append(trace)
+            atomic_write_json(self.run_directory / "trial_actions.json",
+                              {"schema_version": 1, "trials": self._action_trials})
+            if accepted_response is not None:
+                self.record(stimulus_condition=condition, target_alternative=target,
+                            participant_response=accepted_response.alternative,
+                            response_key=accepted_response.key, correct=int(correct))
+                if not hasattr(self, "_presentations"):
+                    self._presentations = []
+                self._presentations.append({"trial_index": trial_index, "slot": response_slot,
+                    "stimulus_id": resolved[response_slot][0], "parameters": resolved[response_slot][1],
+                    "reaction_time_s": accepted_response.reaction_time_s,
+                    "phase_events": [e for e in events if e["kind"] in {"show", "response"}],
+                    "measurements": observations,
+                    "timing_basis": response_data["timing_basis"]})
+                atomic_write_json(self.run_directory / "trial_presentations.json",
+                                  {"schema_version": 1, "trials": self._presentations})
+            self._flush_adaptive_history()
         return correct
+
+    def _flush_adaptive_history(self):
+        if hasattr(self, "_adaptive_history"):
+            atomic_write_json(self.run_directory / "adaptive_history.json", {
+                "schema_version": 1, "algorithm_id": self.spec.adaptive.algorithm_id,
+                "updates": self._adaptive_history})
 
     def update_adaptive(self, algorithm, identity, correct, update_value):
         """Use a registered staircase's update contract and save each accepted update."""
         result = algorithm.respond(identity, correct, update_value)
         if not hasattr(self, "_adaptive_history"):
             self._adaptive_history = []
-        self._adaptive_history.append({"trial_index": self.accepted_trials, "state": algorithm.snapshot()})
-        atomic_write_json(self.run_directory / "adaptive_history.json", {"schema_version": 1,
-            "algorithm_id": self.spec.adaptive.algorithm_id, "updates": self._adaptive_history})
+        from .core.timeline import scientific_snapshot
+        self._adaptive_history.append({"trial_index": self.accepted_trials + int(getattr(self, "_in_trial", False)),
+                                       "state": scientific_snapshot(algorithm.snapshot())})
+        if not getattr(self, "_in_trial", False):
+            self._flush_adaptive_history()
         return result
 
     def close(self):
@@ -230,7 +294,11 @@ class RunContext:
     def adaptive(self, *args, **kwargs):
         if self.spec.adaptive is None:
             raise ValueError("This experiment has not declared an adaptive algorithm.")
-        return get_algorithm(self.spec.adaptive.algorithm_id).factory(*args, **kwargs)
+        algorithm = get_algorithm(self.spec.adaptive.algorithm_id).factory(*args, **kwargs)
+        if not hasattr(self, "_algorithms"):
+            self._algorithms = []
+        self._algorithms.append(algorithm)
+        return algorithm
 
     def record(self, **trial):
         """Append one accepted response using the documented canonical columns."""
@@ -268,3 +336,7 @@ def configure(participant_id, data_root, setup, *, run_directory):
     response = Path(run_directory) / "legacy_response.txt"
     response.write_text("", encoding="utf-8")
     return str(conditions), str(parameters), str(response)
+
+# Small public chronological vocabulary; existing Phase/JSON stays compatible.
+from .core.timeline import (TrialTimeline, Phase, Show, Stimulus, CollectResponse,
+                            RecordState, UpdateState, UpdateAdaptive)

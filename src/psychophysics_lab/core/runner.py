@@ -499,7 +499,7 @@ def run_request(
             except Exception as exc:
                 payload["status"] = "error"
                 payload["error"] = "Display cleanup failed: " + repr(exc)
-            for name in ("trial_presentations", "adaptive_history"):
+            for name in ("trial_presentations", "adaptive_history", "trial_actions"):
                 if (run_dir / (name + ".json")).exists():
                     payload["files"][name] = name + ".json"
         for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):

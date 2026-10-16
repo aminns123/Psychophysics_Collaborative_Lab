@@ -252,6 +252,44 @@ def validate_run(run_directory: Path) -> list[Check]:
                 require(isinstance(trial["reaction_time_s"], (int, float)) and math.isfinite(trial["reaction_time_s"]) and trial["reaction_time_s"] >= 0, "reaction_time_s must be finite and nonnegative")
     check("Stimulus configuration snapshots and trial observations", stimulus_snapshots_check)
 
+
+    def trial_actions_check():
+        if "trial_actions" not in manifest.get("files", {}):
+            return  # Historical runs have no action sidecar.
+        from psychophysics_lab.core.timeline import scientific_snapshot
+        document = read_json(root, manifest["files"]["trial_actions"])
+        require(document["schema_version"] == 1, "unsupported action record schema")
+        scientific_snapshot(document)  # reject nonfinite/invalid scientific state
+        accepted = []
+        for index, trial in enumerate(document["trials"], 1):
+            require(trial["trial_index"] == index, "action trial indexes are not sequential")
+            require(trial["status"] in {"completed", "aborted", "error"}, "unfinished action trial")
+            plan = trial["plan"]["phases"]
+            events = trial["events"]
+            require(len(events) <= len(plan), "more events than planned actions")
+            for action_index, event in enumerate(events):
+                require(event["action_index"] == action_index, "action index differs from written order")
+                require(event["name"] == plan[action_index]["name"] and
+                        event["kind"] == plan[action_index]["kind"], "event differs from planned action")
+                require(event["status"] in {"completed", "aborted", "error"}, "unfinished action event")
+                if event["kind"] == "response" and "response" in event:
+                    response = event["response"]
+                    require(response["valid"] is True, "invalid accepted response")
+                    accepted.append((index, response))
+            if trial["status"] == "completed":
+                require(len(events) == len(plan) and all(e["status"] == "completed" for e in events),
+                        "completed trial has incomplete action sequence")
+            else:
+                require(index == len(document["trials"]) and manifest["status"] in {"error", "aborted_by_user"},
+                        "interrupted action trial must end the run")
+        require(len(accepted) == len(rows), "action response count differs from canonical trials")
+        for (index, response), row in zip(accepted, rows):
+            require(int(row["trial_index"]) == index and
+                    int(row["participant_response"]) == response["alternative"] and
+                    int(row["correct"]) == int(response["correct"]),
+                    "action/canonical response associations differ")
+    check("Trial action plans, partial events and accepted responses", trial_actions_check)
+
     def continuity_check():
         previous = {}
         for row in rows:
