@@ -56,4 +56,5 @@ PsyCoLab_Data/
 
 # Separate dependency environment for user-authored development modules
 /USER_env/
+/user_requirements.txt
 /USER_env.incompatible-*/

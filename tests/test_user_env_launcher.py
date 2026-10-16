@@ -53,6 +53,21 @@ def test_user_env_terminal_is_explicit_not_a_hidden_second_tui():
     batch = (ROOT / "run_user_env.bat").read_text(encoding="utf-8")
     assert batch.index('"scripts\\launcher_setup.py" --user-env') < batch.index('call "USER_env\\Scripts\\activate.bat"')
     assert batch.index('call "USER_env\\Scripts\\activate.bat"') < batch.index('"%ComSpec%" /D /K')
-    assert 'python -m psychophysics_lab --user-env' in batch  # Optional, example only.
+    assert 'python -m psychophysics_lab --dev-test my_experiment' in batch
+    assert 'python -m psychophysics_lab --user-env' not in batch
     # An ordinary script can run with the already activated Python interpreter.
     assert 'python "C:\\path\\to\\my_experiment.py"' in batch
+
+
+def test_extra_requirements_file_only_belongs_to_user_env(tmp_path, monkeypatch):
+    from scripts import launcher_setup as setup
+    monkeypatch.setattr(setup, "ROOT", tmp_path)
+    monkeypatch.setattr(setup, "VENV", tmp_path / ".venv")
+    assert setup._extra_requirements() is None
+    setup.select_environment("USER_env")
+    extra = setup._extra_requirements()
+    assert extra == tmp_path / "user_requirements.txt"
+    assert extra.is_file()
+    first = setup._hash_file(extra)
+    extra.write_text("scipy>=1.11\n", encoding="utf-8")
+    assert setup._hash_file(extra) != first

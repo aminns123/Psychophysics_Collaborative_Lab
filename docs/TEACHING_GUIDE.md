@@ -1,6 +1,6 @@
 # PsyCoLab: the beginner teaching workflow
 
-**Researcher development:** Start with [USER_env](USER_ENV.md) for a Draft → Preview/Simulate → Ready workflow. The workbench scaffolds and registers scientific modules without manually editing `contributions.py`, and keeps test data separate from human data.
+**Researcher development:** Open the plain Python [USER_env terminal](USER_ENV.md). The normal TUI retains Build and source inspection; the optional `--dev-preview`, `--dev-test` and `--dev-ready` commands preserve Draft → Tested → Ready without a second graphical TUI.
 
 This is the authoritative guide for new scientific components. The older
 RESEARCHER_QUICKSTART and EXPERIMENT_AUTHORING_PROPOSAL describe earlier stages;
@@ -118,7 +118,7 @@ sections. The declaration is the only source of parameter types, units and range
 Update JSON values to match any declaration changes. The framework supplies x/y
 coordinates in degrees; return an array with the same shape and values in [0,1].
 
-Use USER_env to preview the new draft and mark it Ready. Registration is automatic; manual editing of `contributions.py` is no longer required for new generated modules. Its
+In the activated USER_env terminal, run `python -m psychophysics_lab --dev-preview my_grating` and `python -m psychophysics_lab --dev-ready stimulus my_grating` to test and publish the draft. Registration is automatic; manual editing of `contributions.py` is no longer required for new generated modules. Its
 `family="orientation_patch"` makes it selectable in Orientation Task. Preview it,
 select it in Stimulus Parameters, then simulate. Duplicate IDs fail explicitly.
 Do not change the family merely to bypass scientific incompatibility.
@@ -134,7 +134,7 @@ creates `experiments/my_task.py` and `configs/experiments/my_task.json`.
 Edit `experiments/my_task.py` and its chronological phase JSON. The procedure
 already reuses `teaching_gabor`, collects mapped
 responses, saves data and supports simulation. Change trial count, ordering,
-conditions or interpretation in the labelled sections. Run and validate it in USER_env, mark the current source/JSON Ready, then select it in the normal TUI.
+conditions or interpretation in the labelled sections. In the activated USER_env terminal, run `python -m psychophysics_lab --dev-test my_task` and `python -m psychophysics_lab --dev-ready experiment my_task`; then select the experiment in the normal TUI.
 
 Use `--blueprint pair` (the default) to generate both a stimulus and an experiment
 plus their JSON. This is a convenience, not a requirement to duplicate stimuli.

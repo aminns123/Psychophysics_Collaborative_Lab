@@ -92,10 +92,12 @@ def build_parser() -> argparse.ArgumentParser:
         prog="psycolab",
         description="PsyCoLab — Psychophysics Collaborative Lab",
     )
-    parser.add_argument("--user-env", action="store_true", help="Open researcher authoring workbench (synthetic tests only).")
-    parser.add_argument("--user-env-action", choices=("preview", "test"), help=argparse.SUPPRESS)
-    parser.add_argument("--user-env-identity", help=argparse.SUPPRESS)
-    parser.add_argument("--user-env-values", default="{}", help=argparse.SUPPRESS)
+    # The separate USER_env environment is a plain terminal, not another TUI.
+    parser.add_argument("--dev-list", action="store_true", help="List authored Draft/Tested/Ready components.")
+    parser.add_argument("--dev-preview", metavar="STIMULUS", help="Preview/test a stimulus without a physical display.")
+    parser.add_argument("--dev-test", metavar="EXPERIMENT", help="Simulate and validate an experiment with a virtual observer.")
+    parser.add_argument("--dev-values", type=Path, metavar="JSON", help="Experiment parameters JSON for --dev-test.")
+    parser.add_argument("--dev-ready", nargs=2, metavar=("KIND", "NAME"), help="Publish a successfully tested scientific component.")
     parser.add_argument(
         "--diagnose",
         action="store_true",
@@ -124,23 +126,47 @@ def _main(
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
 
-    if args.user_env_action:
-        import json
-        from .user_env import execute_user_action
-        if not args.user_env_identity:
-            raise ValueError("Supply --user-env-identity for a developer test.")
-        return execute_user_action(repo_root, args.user_env_action, args.user_env_identity, json.loads(args.user_env_values))
-
-    if args.user_env:
-        from .user_env import run_user_env
-        run_user_env(repo_root)
+    if args.dev_list:
+        from .authoring import inventory, fingerprint
+        for item in inventory(repo_root):
+            try:
+                tested = bool(item.tested_fingerprint and item.tested_fingerprint == fingerprint(repo_root, item))
+            except (OSError, ValueError):
+                tested = False
+            print(f"{item.kind:10} {item.name:28} {item.status:8} {'tested' if tested else 'test needed'}")
         return 0
+
+    if args.dev_ready:
+        from .authoring import publish
+        kind, identity = args.dev_ready
+        if kind not in {"stimulus", "experiment", "adaptive"}:
+            raise ValueError("Valid kinds are stimulus, experiment, adaptive.")
+        item = publish(repo_root, kind, identity)
+        print(f"READY: {item.kind} {item.name} (software-tested; NOT calibrated for human runs).")
+        print("Restart the main PsyCoLab TUI to refresh the experiment catalogue.")
+        return 0
+
+    if args.dev_preview:
+        from .development import execute_user_action
+        return execute_user_action(repo_root, "preview", args.dev_preview, {})
+
+    if args.dev_test:
+        import json
+        from .development import execute_user_action
+        values = json.loads(args.dev_values.read_text(encoding="utf-8")) if args.dev_values else {}
+        if not isinstance(values, dict):
+            raise ValueError("Experiment settings JSON must be an object.")
+        return execute_user_action(repo_root, "test", args.dev_test, values)
+
+    if args.dev_values:
+        raise ValueError("--dev-values requires --dev-test.")
 
     if args.scaffold:
         from .authoring import scaffold_draft
         for path in scaffold_draft(repo_root, args.scaffold, kind=args.blueprint):
             print(path)
-        print("Created DRAFT. Run USER_env, edit Python/JSON, preview or simulate, then mark Ready. No registry edits needed.")
+        print("Created DRAFT. Open run_user_env.bat, edit Python/JSON, and use --dev-preview/--dev-test.")
+        print("Publish the tested revision with --dev-ready KIND NAME; no registry edits needed.")
         return 0
 
     if args.preview_stimulus:
@@ -198,24 +224,7 @@ def _main(
                 print("PsyCoLab exited normally.")
             return 0
 
-        from .user_env import UserEnvRequest
-        if isinstance(action, UserEnvRequest):
-            import subprocess, sys
-            preferred = repo_root / "USER_env" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-            executable = preferred if preferred.exists() else Path(sys.executable)
-            print(f"Launching USER_env via {executable} (virtual tests only).")
-            result = subprocess.run([str(executable), "-m", "psychophysics_lab", "--user-env"],
-                                    cwd=repo_root, check=False)
-            simulation_summary = ("USER_env closed. Any published modules will be available in Configure Experiment."
-                                  if result.returncode == 0 else f"USER_env failed with exit code {result.returncode}; inspect terminal.")
-            from .authoring import load_authored
-            try:
-                load_authored(repo_root, include_drafts=False, tolerate_errors=True)
-            except (ValueError, ImportError, AttributeError) as exc:
-                simulation_summary = f"Published component cannot load: {exc}"
-            continue
-
-        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
+main UI loop        from .core.presentation_testing import PresentationTestRequest,run_presentation_test
         if isinstance(action,PresentationTestRequest):
             from .config.local import config_root
             from .core.presentation_testing import MARKER
