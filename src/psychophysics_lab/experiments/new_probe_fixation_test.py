@@ -26,7 +26,7 @@ TRIAL = TrialTimeline((
     RecordState("before_line"),
     Show("line", slot="target", duration="stimulus_ms"),
     Show("blank", duration="interval_ms"),
-    CollectResponse(actions=("left", "right"), timeout="response_timeout_ms"),
+    CollectResponse(actions=("up", "down"), timeout="response_timeout_ms"),
     RecordState("response_received"),
     UpdateState(update_from_response),
 ))
@@ -61,7 +61,7 @@ def procedure(run):
 def definition(identity="new_probe_fixation_test", stimulus="example_stimulus"):
     return experiment(
         id=identity, name=identity.replace("_", " ").title(),
-        description="Beginner left/right line-position discrimination.",
+        description="Beginner up/down line-position discrimination.",
         procedure=procedure,
         default_config=f"configs/experiments/{identity}.json",
         fields=(
@@ -71,7 +71,7 @@ def definition(identity="new_probe_fixation_test", stimulus="example_stimulus"):
             ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1, section="Timing"),
             ConfigField("response_timeout_ms", "Response timeout (0 waits)", "int", 0, units="ms", minimum=0, section="Timing"),
         ),
-        responses=ResponseParadigm("line_position", ("left", "right"), ("F", "J")),
+        responses=ResponseParadigm("line_position", ("up", "down"), ("F", "J")),
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),
         stimulus_slots={"target": "simple_line"},

@@ -16,7 +16,7 @@ from psychophysics_lab.researcher import ConfigField, StimulusSpec
 PARAMETERS = (
     ConfigField("size_deg", "Patch size", "float", 5.0,
                 units="degrees", minimum=4.0, maximum=8.0),
-    ConfigField("offset_deg", "Horizontal position", "float", 1.0,
+    ConfigField("offset_deg", "Horizontal position", "float", 0.0,
                 units="degrees", minimum=-2.0, maximum=2.0),
     ConfigField("line_width_deg", "Line width", "float", 0.15,
                 units="degrees", minimum=0.03, maximum=0.5),
