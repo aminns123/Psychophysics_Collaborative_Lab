@@ -42,8 +42,8 @@ def procedure(run):
     })
     state = {"correct_count": 0}
     for target in conditions:
-        distance = abs(run.stimulus_parameters()["offset_deg"])
-        offset = -distance if target == 0 else distance
+        distance    = abs(run.stimulus_parameters()["offset_deg"])
+        offset      = -distance if target == 0 else distance
         run.play_trial(
             TRIAL, target=target, condition=offset,
             parameters_by_slot={"target": run.stimulus_parameters(offset_deg=offset)},
