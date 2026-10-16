@@ -1,135 +1,136 @@
-# START HERE: Build a stimulus and experiment in PsyCoLab
+# Build a stimulus and an experiment
 
-If a newly generated file looks like a complicated Gabor/tilt experiment, it
-was created using an *older* scaffold. Existing authored files are never
-rewritten. Create a **new** draft name with the updated Build buttons, or
-edit the old files yourself. Do not delete previously acquired data.
+Use the normal PsyCoLab TUI. Your Python defines the science; JSON supplies
+validated settings. PsyCoLab handles geometry, input, recording and provenance.
 
-## The four files you actually edit
+## 1. Read the four beginner files
 
-| File | Job | Function / field to change first |
-|---|---|---|
-| `stimuli/example_stimulus.py` | What appears on screen | `render()` |
-| `configs/stimuli/example_stimulus.json` | Default line width, position, brightness | `parameters` |
-| `experiments/example_experiment.py` | Which trials, target conditions and response-dependent state changes | `make_trial_order()`, then `procedure()` |
-| `configs/experiments/example_experiment.json` | Chronological sequence and timings | `phases` |
+| File (Python files are under src/psychophysics_lab) | Edit here |
+|---|---|
+| stimuli/example_stimulus.py | PARAMETERS, then render(): a simple white line |
+| configs/stimuli/example_stimulus.json | Line width, position and digital intensity |
+| experiments/example_experiment.py | Conditions, TRIAL action list, response update |
+| configs/experiments/example_experiment.json | Trial count, durations and response keys |
 
-Open these directly using the normal PsyCoLab TUI **Stimuli → Read example
-stimulus.py** and **Experiments → Read example experiment.py**. The matching
-JSON buttons are adjacent. The source inspector opens your editor if available,
-or presents a read-only view.
+Open **Build Stimuli → Read example stimulus.py** and **Build Experiments →
+Read example experiment.py**. Adjacent JSON controls open the corresponding
+settings. Source inspection opens VS Code if available; otherwise it displays
+the exact file read-only. Use your preferred editor when VS Code is unavailable.
 
-Do not begin by editing the internal runner, registry, calibration implementation
-or logger. A researcher may add helper functions in their own stimulus/experiment
-file, but does not need to implement event handling, calibration or saving.
+## 2. Create a stimulus
 
-## A small complete scientific experiment
+In **Build Stimuli**, enter a new lowercase name, then **Build new stimulus**.
+Existing files are never overwritten. Your component appears in the selector
+below the Build button. **Edit Python** changes appearance and parameter
+declarations; **Edit JSON** changes starting values. **Preview / validate**
+exercises its renderer and reports the image location. **Mark Ready** publishes
+that tested revision into the existing stimulus registry.
 
-The reference example presents a single white vertical line, either left or
-right of the screen centre, and asks a two-choice question:
+The example's grayscale values are digital commands. They are not measured
+luminance. Select the required calibration in the stimulus/experiment declaration.
+
+## 3. Create an experiment
+
+In **Build Experiments**, enter a new name, then **Build new experiment**.
+It initially selects the registered example_stimulus. Change the stimulus
+argument in definition() to select your own compatible simple_line stimulus.
+Build a matching pair from the terminal with
+`python -m psychophysics_lab --scaffold my_task --blueprint pair`.
+
+The beginner procedure is deliberately non-adaptive. Its chronological sequence
+is written directly in Python:
+
+```python
+TRIAL = TrialTimeline((
+    Show("fixation", duration="fixation_ms", instructions="+"),
+    RecordState("before_line"),
+    Show("line", slot="target", duration="stimulus_ms"),
+    Show("blank", duration="interval_ms"),
+    CollectResponse(actions=("left", "right"), timeout="response_timeout_ms"),
+    RecordState("response_received"),
+    UpdateState(update_from_response),
+))
+```
+
+Change make_trial_order() for conditions, the action list for chronology,
+update_from_response() for the next scientific state, and definition() for
+stimulus selection, response meanings, settings and calibration requirements.
+
+The JSON values are checked against the same ConfigField declarations as the
+TUI. TUI/CLI selections override JSON defaults for that run. Unknown settings,
+invalid values and missing files fail explicitly. No JSON expression is executed.
+The run saves the effective configuration plus the experiment JSON and its hash.
+
+## 4. Test and publish from the same page
+
+Select your draft and choose **Simulate / validate**. Inspect the reported run
+folder: trials.tsv contains accepted responses; trial_actions.json contains the
+plan, actual/virtual events, resolved stimuli and state snapshots. The framework
+also saves configuration, source fingerprints and completion/abort/error status.
+
+Then **Mark Ready**. New Ready modules enter the normal catalogue without edits
+to framework registration files. Return to **Experiment** to select the new
+task. If an already imported module was edited, restart PsyCoLab to refresh Python
+module references. Editing Python/JSON invalidates the tested fingerprint; test
+and publish the changed revision again. Ready means software-tested.
+
+## 5. Configure and run
+
+Choose participant, experiment and display; configure settings and independent
+stimulus slots; then Review. First run a simulation. For human collection,
+resolve the experiment's calibration and qualification requirements. Geometry,
+luminance and timing controls remain on their corresponding Calibrate pages.
+
+For the existing luminance mapping: **Calibrate → Luminance → Step 1 — Review or add saved luminance readings →
+Accept luminance values → Timing**. When opened from Review the button
+returns to Review. If readings are still in entry boxes, choose **Add readings
+to draft** first. To reject unwanted draft changes use **Discard draft; keep
+saved values**, then Accept. Saving alone leaves the mapping pending approval.
+Acceptance preserves raw provenance/history and does not certify fake values as
+physical measurements. This behavior was already present on baseline main.
+
+## 6. Add more science when needed
+
+- Additional scalar measurements: pass named values in measurements to play_trial;
+  declare their units in initialise's resolution.
+- State snapshots: RecordState("label", fields=("contrast", "position")).
+  Omit fields to capture the full current state.
+- Updates: return a new finite JSON mapping from update(state, response). Inputs
+  are immutable. Use run.trial_state for the next trial's parameters.
+- Adaptation: see orientation_task.py and orientation_adaptive.py. A registered
+  algorithm created by run.adaptive() is used by UpdateAdaptive; history is automatic.
+- Multiple patches: Show("pair", duration=200,
+  stimuli=(Stimulus("left", -2, 0), Stimulus("right", 2, 0))).
+  Declare both slots and pass independently validated parameters_by_slot.
+
+Patches are opaque, drawn in written order. Later patches cover earlier ones.
+The static backend pre-renders before the trial; updates affect scientific state
+and subsequent trials, not an already prepared image. No dynamic animation,
+sub-frame timing, transparent compositing or measured photon timing is claimed.
+
+## Plain Python terminal
+
+run_user_env.bat remains a dependency-managed Python 3.11 command prompt. It does
+not open another TUI. Equivalent commands:
 
 ```text
-experiment configuration
-       |
-       v
-fixation (500 ms)     from experiment timeline JSON
-       |
-       v
-line (200 ms)         use one stimulus + condition (left or right)
-       |
-       v
-blank (150 ms)
-       |
-       v
-response (F/J)       PsyCoLab collects and timestamps
-       |
-       v
-record condition, response, correctness, custom measurements
-       |
-       v
-update state / choose next trial
-       |
-       +---- repeat until trial_count responses, then complete
+python -m psychophysics_lab --dev-preview my_stimulus
+python -m psychophysics_lab --dev-ready stimulus my_stimulus
+python -m psychophysics_lab --dev-test my_experiment
+python -m psychophysics_lab --dev-ready experiment my_experiment
 ```
 
-**Where to edit:** `render()` changes the *appearance* of the line.
-`PARAMETERS` declares validated editable parameter names and ranges.
-`make_trial_order()` changes the condition sequence.
-`procedure()` builds per-trial parameter values, calls `run.play_trial()`
-and optionally processes the returned `correct` value. The framework saves
-responses and stimulus state automatically; the `measurements` dictionary
-is for additional simple scientific observations.
+Generated files are modules. Running python path/to/module.py loads definitions;
+use the framework commands above to preview/test them.
 
-The timeline JSON can use literal millisecond durations, or reference
-`ConfigField` values such as `{"field": "stimulus_ms"}`. Such fields
-are available in Configure Experiment in the normal TUI.
+## CSF boundary
 
-**This first example has no staircase.** Once the basic loop is clear,
-see `experiments/orientation_adaptive.py` for an already-registered adaptive
-method; it uses the same presentation cycle. A student should not reproduce
-a staircase merely to learn how to draw a stimulus.
+The human CSF remains the existing OpenGL/event implementation. It has NOT been
+fully migrated. The explicit development-only comparison is:
 
-## Create your own files (the normal TUI or a terminal)
-
-Use Build Stimuli / Build Experiments inside the normal PsyCoLab TUI, or:
-
-```cmd
-python -m psychophysics_lab --scaffold probe_white_line --blueprint stimulus
-python -m psychophysics_lab --scaffold my_line_task --blueprint experiment
+```text
+python -m simulations.csf_actions --output NEW_DIAGNOSTIC_DIRECTORY
 ```
 
-For a separate stimulus and experiment, the newly generated experiment
-initially uses the registered `example_stimulus`. Change its
-`definition(..., stimulus="probe_white_line")` to select your stimulus,
-provided the stimulus uses the same `simple_line` family.
-For a matching pair with both IDs prewired to each other:
-
-```cmd
-python -m psychophysics_lab --scaffold my_task --blueprint pair
-```
-
-Edit the generated files. To preview and simulate in the activated USER_env
-plain terminal:
-
-```cmd
-python -m psychophysics_lab --dev-preview probe_white_line
-python -m psychophysics_lab --dev-ready stimulus probe_white_line
-python -m psychophysics_lab --dev-test my_line_task
-python -m psychophysics_lab --dev-ready experiment my_line_task
-python -m psychophysics_lab --dev-list
-```
-
-A test marks the exact current source/JSON revision. Editing afterward
-invalidates Ready until retested. Restart the normal PsyCoLab TUI to see
-newly Ready experiments.
-
-**Important:** The scripts you create are Python *modules*. Running
-`python path_to_my_stimulus.py` merely loads their definitions, unless
-you add an explicit `if __name__ == "__main__":` entry point. Use the
-normal PsyCoLab preview/test commands to run these modules through its
-framework services.
-
-## How does the CSF fit this same design?
-
-CSF is **the more advanced instance of the same scientific model**, not a
-recommended starting template:
-
-| Same responsibility | Beginner experiment | CSF reference |
-|---|---|---|
-| Stimulus | `example_stimulus.render()` | Legacy OpenGL grating source (`Events/stimuliC.py`) |
-| Conditions | `make_trial_order()` | `contrast_sensitivity.py` condition fields |
-| Ordered states | `example_experiment.json` | `contrast_sensitivity.json` |
-| Responses | `run.play_trial()` | Existing CSF response handler |
-| Adaptive changes | Optional (none in example) | Retained independent staircases |
-| Saving | Standard PsyCoLab recordings | Standard PsyCoLab recordings with CSF semantics |
-
-**Current boundary:** CSF's *declared* fixation → new condition → grating →
-interval → response timeline uses the same `TrialTimeline` model. Its actual
-presentation and adaptive-response loop still use the retained
-`Trial_ADMs`/OpenGL implementation. A full migration requires regression
-tests against the existing scientific output, then physical timing and
-photometric equivalence. This change does not silently replace that runtime.
-
-The simple line example uses software timings and digital grayscale values,
-**not** physically measured photon onset or calibrated luminance. Simulation
-readiness does not qualify a real participant session.
+This replays scientific state through the public actions without rendering any
+substitute pixels. See [CSF parity and remaining gaps](CSF_ACTION_MIGRATION.md).

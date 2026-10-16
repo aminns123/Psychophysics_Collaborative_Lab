@@ -34,6 +34,10 @@ def preview_trial_storyboard(repo_root: Path, spec, values: dict, destination: P
     path = repo_root / "configs" / "experiments" / (spec.id + ".json")
     if not path.is_file():
         return None
+    if spec.default_config:
+        # The Python action plan is authoritative for new experiments. Render
+        # executed actions from trial_actions.json rather than invent a JSON plan.
+        return None
     timeline = load_timeline(path, timings=values, slots=spec.stimulus_slots)
     count = len(timeline.phases)
     fig, axes = plt.subplots(1, count, figsize=(max(6, 2.4 * count), 3))

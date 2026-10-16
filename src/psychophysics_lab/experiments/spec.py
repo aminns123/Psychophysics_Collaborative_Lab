@@ -95,6 +95,7 @@ class ExperimentSpec:
     stimulus_defaults: Mapping[str, str] = field(default_factory=dict)
     stimulus_field_bindings: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     supports_simulation: bool = False
+    default_config: str = ""
 
     def __post_init__(self):
         if self.procedure is not None:
@@ -124,19 +125,27 @@ class ExperimentSpec:
         object.__setattr__(self, "fixed_setup", MappingProxyType(dict(self.fixed_setup)))
         object.__setattr__(self, "trial_column_overrides", MappingProxyType({key: MappingProxyType(dict(value)) for key, value in self.trial_column_overrides.items()}))
 
-    def field_defaults(self) -> dict[str, Any]:
-        return {item.key: item.default for item in self.fields}
+    def settings_snapshot(self):
+        if not self.default_config:
+            return None
+        from ..config.experiment_parameters import settings_snapshot
+        return settings_snapshot(self)
 
-    def normalise_values(self, values: Mapping[str, Any]) -> dict[str, Any]:
+    def field_defaults(self) -> dict[str, Any]:
+        saved = self.settings_snapshot()
+        return saved["values"] if saved else {item.key: item.default for item in self.fields}
+
+    def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
         if self.id == "contrast_sensitivity":
             from .contrast_sensitivity import _legacy_condition_defaults
             values = _legacy_condition_defaults(values)
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:
             raise ValueError(f"Unknown experiment values: {sorted(unknown)}")
+        defaults = self.field_defaults() if use_config and self.default_config else {item.key: item.default for item in self.fields}
         normalised: dict[str, Any] = {}
         for item in self.fields:
-            normalised[item.key] = item.coerce(values.get(item.key, item.default))
+            normalised[item.key] = item.coerce(values.get(item.key, defaults[item.key]))
         if self.response_paradigm is not None and "response_keys" in normalised:
             from .responses import ResponseParadigm
             keys = tuple(part.strip().upper() for part in normalised["response_keys"].split(","))

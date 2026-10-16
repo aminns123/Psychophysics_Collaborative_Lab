@@ -120,3 +120,9 @@ versions may need their corresponding checkout. No repair is attempted.
 Shader and staircase mathematics, phase timing, response mappings, contrast
 definitions, calibration semantics, geometry and the retained `31.5` scaling are
 unchanged. See [deferred stimulus review](DEFERRED_STIMULUS_REVIEW.md).
+
+## Current public trial actions
+
+See [the action architecture and duplication audit](TRIAL_ACTION_ARCHITECTURE.md),
+[authoring guide](START_HERE_EXPERIMENTS.md), and
+[explicit CSF migration boundary](CSF_ACTION_MIGRATION.md).

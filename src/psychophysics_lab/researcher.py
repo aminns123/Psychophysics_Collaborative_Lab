@@ -18,7 +18,7 @@ from .data.session import atomic_write_json
 def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                responses=None, source_paths=(), validator=None, monitor_validator=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
-               stimulus_slots=None, stimulus_defaults=None, supports_simulation=False):
+               stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config=""):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
@@ -31,7 +31,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         calibration_requirements=tuple(calibration_requirements),
         calibration_not_applicable=calibration_not_applicable,
         monitor_capabilities=monitor_capabilities,
-        stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation)
+        stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config)
 
 
 class ParticipantAbort(Exception):
@@ -49,6 +49,7 @@ class RunContext:
     seed: int = 0
     stimulus_snapshots: dict = field(default_factory=dict)
     observer_parameters: dict = field(default_factory=dict)
+    virtual_presentation: Any = None  # explicit development replay backend; never used for humans
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
     expected_trials: int = field(default=0, init=False)
@@ -66,7 +67,8 @@ class RunContext:
             self._presentation = Presentation(self.display, self.responses)
             runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
-        self.save_resolution(**dict(resolution))
+        settings = self.spec.settings_snapshot()
+        self.save_resolution(**(dict(resolution) | ({"experiment_settings": settings} if settings else {})))
         atomic_write_json(self.run_directory / "runtime_display.json", dict(runtime_display or {
             "physical_display_used": False, "mode": "simulation",
             "monitor_profile_id": self.display.id,
@@ -230,10 +232,11 @@ class RunContext:
                 probability = float(self.observer_parameters.get("accuracy", .85))
                 alternative = target if self._rng.random() < probability else self._rng.choice(
                     [i for i in range(len(self.responses.keys)) if i != target])
-                backend = VirtualPresentation(Response(alternative, self.responses.keys[alternative],
+                backend = self.virtual_presentation or VirtualPresentation(Response(alternative, self.responses.keys[alternative],
                                                        .25 + .25 * self._rng.random()))
             else:
                 backend = self._presentation
+            trace["presentation_basis"] = getattr(backend, "basis", "software presentation; physical timing unverified")
             backend.prepare(timeline, resolved)
             execute_timeline(timeline, backend, events, apply, instructions=instructions)
             trace["status"] = "completed"

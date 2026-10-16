@@ -26,7 +26,7 @@ def run_actions(tmp_path, monkeypatch, build, *, count=1, adaptive=False):
             run.play_trial(timeline, target=0, condition="left", state=state)
         run.complete()
     spec = replace(registry.get_experiment("example_experiment"), id="action_regression",
-                   procedure=procedure, source_paths=(),
+                   procedure=procedure, source_paths=(), default_config="",
                    adaptive=AdaptiveSelection("consecutive_up_down") if adaptive else None)
     monkeypatch.setitem(registry._REGISTRY, spec.id, spec)
     return simulate(repo_root=ROOT, data_root=tmp_path, experiment_id=spec.id,

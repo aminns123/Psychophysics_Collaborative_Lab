@@ -250,6 +250,12 @@ def validate_run(run_directory: Path) -> list[Check]:
                 slot = trial["slot"]
                 require(trial["stimulus_id"] == saved["slots"][slot]["document"]["stimulus_id"], "trial stimulus identity differs")
                 require(isinstance(trial["reaction_time_s"], (int, float)) and math.isfinite(trial["reaction_time_s"]) and trial["reaction_time_s"] >= 0, "reaction_time_s must be finite and nonnegative")
+                observations = trial.get("measurements", {})
+                require(isinstance(observations, dict), "measurements must be named values")
+                for name, value in observations.items():
+                    require(isinstance(name, str) and name.isidentifier(), "invalid measurement name")
+                    require(type(value) in (str, bool, int, float) and
+                            (type(value) is not float or math.isfinite(value)), "invalid scientific measurement")
     check("Stimulus configuration snapshots and trial observations", stimulus_snapshots_check)
 
 

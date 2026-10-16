@@ -230,7 +230,7 @@ class RecordState:
 
     def __post_init__(self):
         _name(self.name)
-        if any(not isinstance(key, str) or not key.isidentifier() for key in self.fields):
+        if isinstance(self.fields, str) or len(set(self.fields)) != len(self.fields) or any(not isinstance(key, str) or not key.isidentifier() for key in self.fields):
             raise ValueError("Recorded field names must be identifiers.")
         object.__setattr__(self, "fields", tuple(self.fields))
 

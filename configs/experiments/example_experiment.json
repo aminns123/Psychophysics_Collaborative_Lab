@@ -1,38 +1,12 @@
 {
   "schema_version": 1,
-  "phases": [
-    {
-      "name": "fixation",
-      "kind": "show",
-      "slot": null,
-      "duration_ms": {
-        "field": "fixation_ms"
-      },
-      "instructions": "+"
-    },
-    {
-      "name": "line",
-      "kind": "show",
-      "slot": "target",
-      "duration_ms": {
-        "field": "stimulus_ms"
-      }
-    },
-    {
-      "name": "blank",
-      "kind": "show",
-      "slot": null,
-      "duration_ms": {
-        "field": "interval_ms"
-      }
-    },
-    {
-      "name": "answer",
-      "kind": "response",
-      "slot": null,
-      "duration_ms": {
-        "field": "response_timeout_ms"
-      }
-    }
-  ]
+  "experiment_id": "example_experiment",
+  "values": {
+    "trial_count": 6,
+    "fixation_ms": 500,
+    "stimulus_ms": 200,
+    "interval_ms": 150,
+    "response_timeout_ms": 0,
+    "response_keys": "F,J"
+  }
 }

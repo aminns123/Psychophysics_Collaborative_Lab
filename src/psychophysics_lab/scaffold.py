@@ -28,9 +28,9 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
         if kind == "pair":
             template = template.replace("example_stimulus", name)
         files[f"src/psychophysics_lab/experiments/{name}.py"] = template
-        files[f"configs/experiments/{name}.json"] = (
-            (source.parent.parent / "configs/experiments/example_experiment.json").read_text(encoding="utf-8")
-        )
+        document = json.loads((source.parent.parent / "configs/experiments/example_experiment.json").read_text(encoding="utf-8"))
+        document["experiment_id"] = name
+        files[f"configs/experiments/{name}.json"] = json.dumps(document, indent=2) + "\n"
     if kind == "adaptive":
         files[f"src/psychophysics_lab/adaptive/{name}.py"] = (source / "blueprints/adaptive_method.py.txt").read_text(encoding="utf-8").replace("BLUEPRINT_ID", name)
     paths = tuple(root / relative for relative in files)

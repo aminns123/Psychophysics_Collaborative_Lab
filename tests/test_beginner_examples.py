@@ -79,22 +79,22 @@ def test_new_experiment_only_reuses_builtin_example_stimulus(tmp_path):
     path, timeline = scaffold(tmp_path, "my_new_experiment", kind="experiment")
     spec = _load(path, "my_new_experiment").SPEC
     assert spec.stimulus_defaults == {"target": "example_stimulus"}
-    assert [r["name"] for r in json.loads(timeline.read_text())["phases"]] == [
-        "fixation", "line", "blank", "answer"
-    ]
+    assert json.loads(timeline.read_text())["experiment_id"] == "my_new_experiment"
+    assert spec.field_defaults()["stimulus_ms"] == 200
 
 
 def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     from psychophysics_lab.core.timeline import load_timeline
     beginner = get_experiment("example_experiment")
     csf = get_experiment("contrast_sensitivity")
-    ex = load_timeline(ROOT / "configs/experiments/example_experiment.json",
-                       timings=beginner.field_defaults(), slots=beginner.stimulus_slots)
+    from psychophysics_lab.experiments.example_experiment import TRIAL
+    ex = TRIAL.resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
     cs = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                        timings=csf.field_defaults(), slots=csf.stimulus_slots)
-    assert len(ex.phases) == 4
+    assert len(ex.phases) == 7
     assert len(cs.phases) == 5
-    assert ex.phases[-1].kind == cs.phases[-1].kind == "response"
+    assert ex.phases[4].kind == cs.phases[-1].kind == "response"
+    assert ex.phases[-1].kind == "update_state"
     assert csf.legacy_module == "Experiments.contrast_sensitivity_function"
 
 
