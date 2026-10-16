@@ -48,3 +48,30 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
             path.unlink()
         raise
     return paths
+
+def scaffold_vertical_line(repo_root: Path, name: str) -> tuple[Path, ...]:
+    """Generate an independent, editable line stimulus — no experiment copied."""
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or keyword.iskeyword(name):
+        raise ValueError("Use a new lowercase Python module name.")
+    root = Path(repo_root).resolve()
+    sources = Path(__file__).parent
+    code = (sources / "stimuli/vertical_line_probe.py").read_text(encoding="utf-8")
+    code = code.replace("vertical_line_probe", name)
+    document = json.loads((sources.parent.parent / "configs/stimuli/vertical_line_probe.json").read_text(encoding="utf-8"))
+    document["stimulus_id"] = name
+    paths = (root / f"src/psychophysics_lab/stimuli/{name}.py",
+             root / f"configs/stimuli/{name}.json")
+    if any(path.exists() or path.is_symlink() or not path.resolve().is_relative_to(root) for path in paths):
+        raise ValueError("The stimulus files already exist. Nothing was overwritten.")
+    created = []
+    try:
+        for path, content in zip(paths, (code, json.dumps(document, indent=2) + "\n")):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("x", encoding="utf-8") as handle:
+                created.append(path)
+                handle.write(content)
+    except Exception:
+        for path in created:
+            path.unlink()
+        raise
+    return paths

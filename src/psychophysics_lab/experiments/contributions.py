@@ -34,6 +34,15 @@ def load_contributions():
             warnings.warn("Invalid or untested published components were NOT loaded: "
                           + "; ".join(f"{name}: {reason}" for name, reason in problems.items()),
                           RuntimeWarning)
+        # JSON-only experiments reuse the very same experiment registry and
+        # RunContext/TrialTimeline executor, never a separate acquisition path.
+        from .library_builder import load_library
+        library_problems = load_library(tolerate_errors=True)
+        if library_problems:
+            import warnings
+            warnings.warn("Invalid/stale JSON library experiments were NOT loaded: "
+                          + "; ".join(f"{name}: {reason}" for name, reason in library_problems.items()),
+                          RuntimeWarning)
         _loaded = True
     except Exception:
         experiments._REGISTRY.clear()

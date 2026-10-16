@@ -377,6 +377,7 @@ class StimuliScreen(HubPage):
                 yield Static("[b]Build a new stimulus[/b]: creates a simple white-line example for you to edit, NOT a renamed Gabor grating. Preview / validate below, then Mark Ready. The plain run_user_env.bat terminal is also available.")
                 yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
                 yield Button("Build new stimulus", id="build-new-stimulus")
+                yield Button("Start minimal vertical line", id="build-vertical-line")
                 yield AuthoringPanel("stimulus")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
@@ -417,11 +418,17 @@ class StimuliScreen(HubPage):
                     else "configs/stimuli/example_stimulus.json")
             self.app.inspect_source(self.app.repo_root / path)
             return
-        if event.button.id == "build-new-stimulus":
+        if event.button.id in {"build-new-stimulus", "build-vertical-line"}:
             event.stop()
             try:
-                from ..authoring import scaffold_draft
-                paths = scaffold_draft(self.app.repo_root, self.query_one("#new-stimulus-name", Input).value.strip(), kind="stimulus")
+                from ..authoring import scaffold_draft, stage
+                name = self.query_one("#new-stimulus-name", Input).value.strip()
+                if event.button.id == "build-vertical-line":
+                    from ..scaffold import scaffold_vertical_line
+                    paths = scaffold_vertical_line(self.app.repo_root, name)
+                    stage(self.app.repo_root, "stimulus", name)
+                else:
+                    paths = scaffold_draft(self.app.repo_root, name, kind="stimulus")
                 self.query_one(AuthoringPanel).refresh_inventory()
                 self.app.notify(f"Created {len(paths)} draft files. Edit, Preview / validate, then Mark Ready here.")
                 self.app.inspect_source(paths[0])
