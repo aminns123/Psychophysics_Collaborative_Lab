@@ -50,16 +50,26 @@ def test_stimulus_scaffold_uses_centered_line(tmp_path):
     }
 
 
-def test_json_and_user_python_experiments_are_distinguishable():
+def test_json_and_user_python_experiments_are_distinguishable(tmp_path):
+    from dataclasses import replace
     from psychophysics_lab.ui.setup import experiment_choice_label
     json_label = experiment_choice_label(get_experiment("probe_above_below"), ROOT)
-    # Inspect the preserved author definition, not the live acquisition
-    # registry: the latter properly excludes Ready IDs whose source hash is stale.
-    from psychophysics_lab.experiments.new_probe_vertical_line_stimulus import SPEC as authored_spec
-    user_label = experiment_choice_label(authored_spec, ROOT)
+    # The classification must not depend on a particular researcher's files
+    # or bypass Ready source-hash enforcement in the live registry.
+    authoring = tmp_path / "authoring"
+    authoring.mkdir()
+    (authoring / "components.json").write_text(json.dumps({
+        "schema_version": 1, "components": [
+            {"kind": "experiment", "name": "researcher_task",
+             "status": "ready", "tested_fingerprint": ""}
+        ]
+    }))
+    authored_spec = replace(get_experiment("example_experiment"),
+                            id="researcher_task", display_name="Probe task")
+    user_label = experiment_choice_label(authored_spec, tmp_path)
     assert "Built-in JSON" in json_label and "probe_above_below" in json_label
     assert "Researcher Python" in user_label
-    assert "new_probe_vertical_line_stimulus" in user_label
+    assert "researcher_task" in user_label
 
 
 def test_tui_links_to_the_independent_guide():
@@ -71,13 +81,11 @@ def test_tui_links_to_the_independent_guide():
     assert (ROOT / "docs/AUTHORING_CONTRACT.md").is_file()
 
 
-def test_historical_researcher_modules_are_preserved():
-    manifest = json.loads((ROOT / "authoring/components.json").read_text())
-    states = {(d["kind"], d["name"]): d["status"] for d in manifest["components"]}
-    assert states[("experiment", "new_probe_vertical_line_stimulus")] == "ready"
-    assert states[("experiment", "new_probe_fixation_test")] == "draft"
-    assert states[("stimulus", "new_probe_vertical_line")] == "ready"
-    for path in ("src/psychophysics_lab/experiments/new_probe_fixation_test.py",
-                 "src/psychophysics_lab/experiments/new_probe_vertical_line_stimulus.py",
-                 "src/psychophysics_lab/stimuli/new_probe_vertical_line.py"):
-        assert (ROOT / path).is_file()
+def test_authoring_inventory_points_to_existing_source_and_config_pairs():
+    from psychophysics_lab.authoring import inventory
+    for item in inventory(ROOT):
+        category = {"stimulus": "stimuli", "experiment": "experiments",
+                    "adaptive": "adaptive"}[item.kind]
+        assert (ROOT / "src/psychophysics_lab" / category / (item.name + ".py")).is_file()
+        if item.kind != "adaptive":
+            assert (ROOT / "configs" / category / (item.name + ".json")).is_file()
