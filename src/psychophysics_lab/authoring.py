@@ -78,7 +78,11 @@ def stage(repo_root: Path, kind: str, name: str) -> Component:
     root = Path(repo_root).resolve()
     _path(root, kind, name).relative_to(root)
     if not _path(root, kind, name).is_file():
-        raise ValueError("Create the Python blueprint before registering this draft.")
+        raise ValueError(f"Write src/psychophysics_lab/{KINDS[kind]}/{name}.py first; no file is generated.")
+    if kind == "experiment":
+        settings = root / "configs/experiments" / (name + ".json")
+        if not settings.is_file():
+            raise ValueError(f"Write {settings.relative_to(root)} before registering this experiment.")
     records = inventory(root)
     if any(i.kind == kind and i.name == name for i in records):
         raise ValueError("Component is already registered in the authoring inventory.")

@@ -80,7 +80,8 @@ python -m psychophysics_lab --dev-test my_task
 python -m psychophysics_lab --dev-ready experiment my_task
 ```
 
-The first command **only registers the existing file as a Draft**. It does
+You can also use **Build Experiments → Register existing experiment as Draft**
+after writing the files. The first terminal command **only registers the existing file as a Draft**. It does
 not generate anything. Run the test again after source/JSON edits, then mark
 the tested revision Ready. Restart the TUI to reload the experiment catalogue.
 Physical human acquisition still requires the appropriate monitor calibration.

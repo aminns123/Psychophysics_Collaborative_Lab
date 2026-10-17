@@ -103,6 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--library-separation", type=float, default=2.0, help="Above/below distance in degrees for --library-create.")
     parser.add_argument("--library-test", metavar="NAME", help="Simulate and validate an authored JSON library experiment.")
     parser.add_argument("--library-ready", metavar="NAME", help="Publish a successfully simulated JSON experiment.")
+    parser.add_argument("--list-stimuli", action="store_true", help="List visual stimuli from the one shared stimulus library.")
     parser.add_argument("--dev-list", action="store_true", help="List manually authored experiment/adaptive drafts.")
     parser.add_argument("--dev-stage", nargs=2, metavar=("KIND", "NAME"),
                         help="Register an existing experiment/adaptive Python file as Draft; never creates files.")
@@ -141,6 +142,13 @@ def _main(
     if args.learn:
         # The Markdown guide is readable in terminals, editors and GitHub alike.
         print((repo_root / "docs" / "LEARN_PSYCOLAB.md").read_text(encoding="utf-8"))
+        return 0
+
+    if args.list_stimuli:
+        from .stimuli.registry import list_stimuli
+        for spec in list_stimuli():
+            if spec.render is not None:
+                print(f"{spec.id:28} {spec.display_name}")
         return 0
 
     if args.library_list:

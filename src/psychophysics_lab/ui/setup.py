@@ -304,8 +304,10 @@ class ExperimentsScreen(HubPage):
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
                 "and SPEC. Settings belong in configs/experiments/<task>.json. "
                 "No auto-generation or separate JSON experiment editor.")
-            yield Static("Register manually authored experiment modules as Draft, "
-                         "simulate/test, and mark the tested revision Ready.")
+            yield Static("Already wrote the Python experiment and its JSON settings? "
+                         "Register that existing pair as Draft, then simulate and mark Ready.")
+            yield Input(placeholder="Existing experiment ID, e.g. my_task", id="register-experiment-name")
+            yield Button("Register existing experiment as Draft", id="register-existing-experiment")
             yield AuthoringPanel("experiment")
         yield Footer()
 
@@ -352,6 +354,18 @@ class ExperimentsScreen(HubPage):
                 "read-csf-timeline": "configs/experiments/contrast_sensitivity.json",
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
+            return
+        if event.button.id == "register-existing-experiment":
+            event.stop()
+            try:
+                from ..authoring import stage
+                name = self.query_one("#register-experiment-name", Input).value.strip()
+                stage(self.app.repo_root, "experiment", name)
+                self.query_one(AuthoringPanel).refresh_inventory()
+                self.app.notify(f"Existing experiment '{name}' registered as Draft. "
+                                "Simulate/validate and then Mark Ready.")
+            except (ValueError, OSError) as exc:
+                self.app.notify(str(exc), severity="error")
             return
         spec = self._selected()
         sources = _source_candidates(self.app.repo_root, spec)
