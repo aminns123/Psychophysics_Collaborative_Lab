@@ -18,6 +18,7 @@ class StimulusSpec:
     frequency_parameter: str = "spatial_frequency_cpd"
     validator: Callable | None = None
     source_dependencies: tuple[str, ...] = ()
+    floating_raster: bool = False
     spatial_frequencies: Callable | None = None
 
     def validate_parameters(self, values):

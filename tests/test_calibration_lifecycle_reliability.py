@@ -214,7 +214,7 @@ def test_tui_shows_completed_and_measured_progress_after_refresh(tmp_path,monkey
     fake_pyglet(monkeypatch)
     artifacts=geometry.run_geometry_check(geometry.GeometryCheckRequest(p.id,'physical_mm',100),repo_root=ROOT)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()

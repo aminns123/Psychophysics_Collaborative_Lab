@@ -21,7 +21,7 @@ def _plain(static: Static) -> str:
 
 def test_hub_navigation_and_reactive_experiment_summary(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "external_data")
         async with app.run_test(size=(140, 48)) as pilot:
             summary = app.query_one("#experiment-summary", Static)
             assert "historical csf" in _plain(summary).lower()
@@ -39,7 +39,7 @@ def test_hub_navigation_and_reactive_experiment_summary(tmp_path):
 
 def test_monitor_selector_contains_only_experiment_compatible_profiles(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "external_data")
         async with app.run_test(size=(140, 48)):
             experiment = app.query_one("#experiment", Select).value
             assert experiment == "contrast_sensitivity"
@@ -51,7 +51,7 @@ def test_monitor_selector_contains_only_experiment_compatible_profiles(tmp_path)
 def test_setup_configuration_reaches_review_with_external_path(tmp_path):
     async def scenario():
         data_root = tmp_path / "external_data"
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=data_root)
         async with app.run_test(size=(150, 55)) as pilot:
             app.query_one("#participant", Input).value = "S001"
             app.query_one("#configure", Button).press()

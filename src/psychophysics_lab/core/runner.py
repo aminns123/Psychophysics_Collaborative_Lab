@@ -466,7 +466,8 @@ def run_request(
                     synthetic=simulation is not None, data_kind=data_kind,
                     stimulus_snapshots=request.stimulus_snapshots,
                     observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
-                    seed=simulation.metadata["seed"] if simulation is not None else 0)
+                    seed=simulation.metadata["seed"] if simulation is not None else (0 if spec.historical else __import__("secrets").randbits(64)),
+                    observer_probability=simulation.response_probability if simulation is not None else None)
                 spec.procedure(procedure_context)
                 if procedure_context.status not in {"completed", "max_trials_reached"}:
                     raise ValueError("Procedure returned without complete(); initialise, record all planned responses, then complete, or abort explicitly.")
@@ -499,7 +500,7 @@ def run_request(
             except Exception as exc:
                 payload["status"] = "error"
                 payload["error"] = "Display cleanup failed: " + repr(exc)
-            for name in ("trial_presentations", "adaptive_history", "trial_actions"):
+            for name in ("trial_presentations", "adaptive_history", "trial_actions", "primary_thresholds"):
                 if (run_dir / (name + ".json")).exists():
                     payload["files"][name] = name + ".json"
         for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):
@@ -538,6 +539,16 @@ def run_request(
             payload["trial_count_error"] = repr(exc)
             payload["accepted_trials"] = 0
             payload["status"] = "error"
+        # A successful procedure is not a valid primary result if acquisition
+        # finalisation subsequently fails (for example display cleanup).
+        primary_path = run_dir / "primary_thresholds.json"
+        if payload["status"] == "error" and primary_path.exists():
+            from ..analysis.primary import from_run
+            resolved_path = run_dir / "resolved_experiment.json"
+            resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
+            result = from_run(run_dir, resolved["primary_estimator"], resolved["expected_staircases"], "error")
+            atomic_write_json(primary_path, result)
+            atomic_write_json(resolved_path, resolved | result)
         if trial_log_file.exists():
             convenience("readable_trials", lambda: write_readable_trial_table(trial_log_file, run_dir / READABLE_TRIALS_FILENAME))
         convenience("output_sha256", lambda: payload.update(output_sha256=_run_artifact_fingerprints(run_dir)))

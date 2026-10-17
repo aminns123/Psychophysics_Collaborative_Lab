@@ -17,7 +17,7 @@ def test_json_preset_edit_reload_review_simulate_and_save(tmp_path, size):
     launch = None
     async def scenario():
         nonlocal launch
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         spec = get_experiment("orientation_task")
         async with app.run_test(size=size) as pilot:
             app.push_screen(ExperimentConfigScreen(data_root=app.data_root, participant_id="student", session_mode="new",
@@ -64,7 +64,7 @@ def test_json_preset_edit_reload_review_simulate_and_save(tmp_path, size):
 
 
 def test_exact_source_roles_and_editor_fallback(tmp_path, monkeypatch):
-    for experiment in list_experiments():
+    for experiment in list_experiments(include_historical=True):
         roles = _source_inventory(ROOT, experiment)
         assert {role for role, _ in roles} >= {"Definition", "Procedure"}
         assert any(role.startswith("Stimulus / renderer") for role, _ in roles)
@@ -75,7 +75,7 @@ def test_exact_source_roles_and_editor_fallback(tmp_path, monkeypatch):
         raise FileNotFoundError("No editor installed")
     monkeypatch.setattr("psychophysics_lab.ui.setup.open_source", unavailable)
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test() as pilot:
             app.inspect_source(roles["Procedure"])
             await pilot.pause()

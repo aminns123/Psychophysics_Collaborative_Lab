@@ -131,7 +131,7 @@ def test_invalid_counts_rejected(monkeypatch,display,count):
 @pytest.mark.parametrize('failed',[False,True])
 def test_fullscreen_navigation_roundtrip_is_same_stage(tmp_path,display,stage,kind,failed):
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(130,45)) as pilot:
             app.open_hub_page('display'); await pilot.pause()
             screen=app.screen
@@ -140,7 +140,7 @@ def test_fullscreen_navigation_roundtrip_is_same_stage(tmp_path,display,stage,ki
             screen.query_one('#geometry-value',Input).value='4.2'
             screen._save_fullscreen_navigation(kind)
         message='Diagnostic failed: see local log' if failed else 'Software presentation finished'
-        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data',geometry_summary=message)
+        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data',geometry_summary=message)
         async with restart.run_test(size=(130,45)) as pilot:
             await pilot.pause()
             assert isinstance(restart.screen,DisplayCheckScreen)
@@ -159,7 +159,7 @@ def test_fullscreen_navigation_roundtrip_is_same_stage(tmp_path,display,stage,ki
 def test_spatial_tui_observation_records_then_deliberately_advances(tmp_path,monkeypatch,display):
     report=present(monkeypatch,display)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(130,45)) as pilot:
             app.open_hub_page('display'); await pilot.pause()
             screen=app.screen; screen._go_to_stage('spatial')
@@ -182,7 +182,7 @@ def test_spatial_tui_observation_records_then_deliberately_advances(tmp_path,mon
 def test_real_launch_handler_records_context_before_exiting(tmp_path,monkeypatch,display,stage,button,kind):
     monkeypatch.setattr('psychophysics_lab.core.display.preflight_fullscreen_display',lambda profile: None)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.open_hub_page('display'); await pilot.pause()
             page=app.screen; page._go_to_stage(stage)
@@ -210,7 +210,7 @@ def test_review_destination_survives_fullscreen_until_explicit_return(tmp_path,d
         calibration_navigation={'section':'calibrate','profile':display.id,'stage':'spatial',
                                 'settings':{},'diagnostic_kind':'spatial','return_to_review':True})
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data',geometry_summary='Software test finished')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data',geometry_summary='Software test finished')
         async with app.run_test() as pilot:
             await pilot.pause()
             assert isinstance(app.screen,DisplayCheckScreen)
@@ -262,7 +262,7 @@ def test_calibration_draft_with_old_report_path_does_not_crash_or_restore_dynami
     """Reproduces Windows InvalidSelectValueError from check_005 saved report."""
     stale_path = 'diagnostics/display_geometry/' + display.id + '/2026-10-14/check_005/geometry_check.json'
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         # A prior UI revision could save *all* Select values in display_draft.
         app.display_draft = {
             'spatial-report': stale_path,
@@ -289,7 +289,7 @@ def test_calibration_draft_with_old_report_path_does_not_crash_or_restore_dynami
 
 def test_dynamic_report_selection_is_never_saved_as_fullscreen_navigation(tmp_path, display):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             app.open_hub_page('display')
             await pilot.pause()
@@ -304,7 +304,7 @@ def test_dynamic_report_selection_is_never_saved_as_fullscreen_navigation(tmp_pa
 def test_removed_monitor_in_calibration_draft_uses_available_default(tmp_path):
     """Previously saved Select choices must never crash a new monitor setup."""
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         app.display_draft = {'geometry-monitor': 'no-longer-connected-monitor'}
         async with app.run_test(size=(110, 40)) as pilot:
             app.open_hub_page('display')

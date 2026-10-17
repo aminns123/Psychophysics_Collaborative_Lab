@@ -55,7 +55,7 @@ def test_typed_virtual_launch_rejects_invalid_or_ambiguous_values(tmp_path):
 def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatch, size):
     async def scenario():
         data_root = tmp_path / "local_psychophysics_data"
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=data_root)
         captured = []
         monkeypatch.setattr(app, "exit", lambda result=None: captured.append(result))
         async with app.run_test(size=size) as pilot:
@@ -93,7 +93,7 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
 
 def test_tui_invalid_observer_and_invalid_seed_block_review(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "human")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "human")
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
@@ -114,7 +114,7 @@ def test_tui_invalid_observer_and_invalid_seed_block_review(tmp_path):
 
 def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "external")
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
@@ -134,7 +134,7 @@ def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
 
 def test_tui_receives_and_displays_last_simulation_report(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external",
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "external",
                                simulation_summary="Latest simulation: PASSED")
         async with app.run_test(size=(100, 30)) as pilot:
             await _settle(pilot, app)
@@ -189,7 +189,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
 
     async def scenario():
         data_root = tmp_path / "local_psychophysics_data"
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=data_root)
         async with app.run_test(size=size) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
@@ -243,7 +243,7 @@ def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
     from psychophysics_lab.experiments._internal.registry import get_experiment
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)

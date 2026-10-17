@@ -31,17 +31,20 @@ The old public CSF adapter was relocated internally. The public
 historical definition now lives internally in `_reference_csf/experiment_definition.py`.
 The old `contrast_sensitivity` experiment ID keeps its original scientific
 meaning for saved runs and compatibility; the new protocol has ID `csf_thesis`.
-The historical catalogue entry is explicitly labelled. No historical parameters
+The historical catalogue entry is hidden from normal setup and available through explicit replay mode. No historical parameters
 or data are silently reinterpreted as the thesis protocol.
 
 See [the thesis-informed authoring review](docs/EXPERIMENT_AUTHORING_REVIEW.md)
-for the comparison with the original PhD scripts and the remaining readability work.
+for the comparison with the original PhD scripts. The current
+[scientific redesign](docs/SCIENTIFIC_REDESIGN.md) records historical separation,
+scientific specifications, precision limits, recovery evidence and primary analysis.
 
 ## The only normal authoring workflow
 
-All nine experiment Python files use identical helper signatures, named condition
-records, stimulus parameters by slot, and the same executable main loop:
-choose → prepare → present → interpret → update → check completion.
+Public experiment files share a reading order: settings and stimuli; conditions
+and trial order; stimulus preparation; one trial; responses and adaptation; run
+and finish; framework connection. Fixed-trial and adaptive procedures may use
+different loops. Scientific clarity takes precedence over identical code.
 Presentation timelines contain no hidden scientific updates. Read the
 [experiment folder guide](src/psychophysics_lab/experiments/README.md).
 Framework helpers and historical design loaders live in `experiments/_internal/`.
@@ -70,13 +73,13 @@ stimulus, blank and response phases, maps F/J to negative/positive tilt, chooses
 response count. Human and virtual observers run that same procedure. PsyCoLab
 handles display calibration, input, staircase state, seeds and saving.
 
-The reference CSF is an explicit exception: its experiment file documents the
+The historical reference CSF is an explicit replay exception: its internal definition documents the
 retained driver's geometry, feedback, response semantics and simulation limits.
 Hardware/event-loop equivalence is required before moving that internal driver.
 
 See the [short build walkthrough](docs/LEARN_PSYCOLAB.md) and
 [retention audit](docs/REPO_SURFACE_AUDIT.md).
-The reference CSF shader is defined by `CSFGrating` in that SAME library.
+The historical reference CSF shader is defined by `CSFGrating` in that same library.
 Its existing hardware presenter is an internal implementation at
 `src/psychophysics_lab/_reference_csf/`. It still needs hardware-equivalence
 testing before replacement by the generic Scene presenter; do not remove that

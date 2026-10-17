@@ -20,7 +20,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                responses=None, source_paths=(), validator=None, monitor_validator=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
-               acquisition_block_reason=""):
+               acquisition_block_reason="", historical=False, scientific_spec=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
@@ -34,7 +34,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         calibration_not_applicable=calibration_not_applicable,
         monitor_capabilities=monitor_capabilities,
         stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config,
-        acquisition_block_reason=acquisition_block_reason)
+        acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {})
 
 
 class ParticipantAbort(Exception):
@@ -52,6 +52,7 @@ class RunContext:
     seed: int = 0
     stimulus_snapshots: dict = field(default_factory=dict)
     observer_parameters: dict = field(default_factory=dict)
+    observer_probability: Any = None
     virtual_presentation: Any = None  # explicit development replay backend; never used for humans
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
@@ -75,7 +76,7 @@ class RunContext:
             runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
         settings = self.spec.settings_snapshot()
-        self.save_resolution(**(dict(resolution) | ({"experiment_settings": settings} if settings else {})))
+        self.save_resolution(**({"scientific_specification":dict(self.spec.scientific_spec), "random_seed":self.seed} | dict(resolution) | ({"experiment_settings": settings} if settings else {})))
         atomic_write_json(self.run_directory / "runtime_display.json", dict(runtime_display or {
             "physical_display_used": False, "mode": "simulation",
             "monitor_profile_id": self.display.id, "background_digital_intensity": background_intensity,
@@ -315,8 +316,11 @@ class RunContext:
         try:
             if self.synthetic:
                 if not hasattr(self, "_rng"):
-                    self._rng = random.Random(self.seed)
-                probability = float(self.observer_parameters.get("accuracy", .85))
+                    self._rng = random.Random(f"{self.seed}:observer") if self.observer_probability is not None else random.Random(self.seed)
+                probability = (float(self.observer_probability(condition,immutable_state(current),trace["resolved_stimuli"]))
+                    if self.observer_probability is not None else float(self.observer_parameters.get("accuracy", .85)))
+                if not 0<=probability<=1:
+                    raise ValueError("Observer probability must lie in [0,1].")
                 alternative = target if self._rng.random() < probability else self._rng.choice(
                     [i for i in range(len(self.responses.keys)) if i != target])
                 backend = self.virtual_presentation or VirtualPresentation(Response(alternative, self.responses.keys[alternative],
@@ -437,6 +441,21 @@ class RunContext:
         if value_column != "next_screen_intensity":
             snapshot["canonical_value_column"] = value_column
         atomic_write_json(self.run_directory / "adaptive_session.json", snapshot)
+
+    def save_primary(self, rule, conditions):
+        """Recompute the declared primary result from the canonical trial log."""
+        import json
+        from .analysis.primary import from_run
+        expected = {}
+        for condition in conditions:
+            key = str(condition.get("value",condition.get("frequency_cpd")))
+            expected.setdefault(key,[]).append(condition["id"])
+        result = from_run(self.run_directory,rule,expected,self.status)
+        atomic_write_json(self.run_directory/"primary_thresholds.json",result)
+        existing_path = self.run_directory / "resolved_experiment.json"
+        existing = json.loads(existing_path.read_text(encoding="utf-8")) if existing_path.exists() else {}
+        self.save_resolution(**(existing | {"scientific_specification":dict(self.spec.scientific_spec), "random_seed":self.seed} | result))
+        return result
 
     def save_resolution(self, **details):
         """Record experiment-owned stimulus/timing definitions for later review."""

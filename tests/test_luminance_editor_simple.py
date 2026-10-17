@@ -32,7 +32,7 @@ def test_blank_reading_is_neutral_and_test_add_keeps_existing_values(tmp_path, m
     assert len(summary(initial)) == 3
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(120, 44)) as pilot:
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()
@@ -87,7 +87,7 @@ def test_replacement_requires_yes_and_leaves_saved_file_intact(tmp_path, monkeyp
     saved = load_active(config_root(ROOT), profile)
 
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"data")
         async with app.run_test(size=(120, 44)) as pilot:
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()

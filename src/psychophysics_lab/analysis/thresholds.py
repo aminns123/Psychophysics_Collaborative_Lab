@@ -128,6 +128,7 @@ def analyse_thresholds(
     last_n_reversals: int | None = None,
     reversal_value_column: str = "next_display_contrast",
     create_plot: bool = True,
+    exploratory: bool = False,
 ) -> ThresholdAnalysisResult:
     """Create a derived threshold summary for one finalized run.
 
@@ -139,6 +140,13 @@ def analyse_thresholds(
     final reversals for each staircase. This is a configurable derived analysis
     convention, not a modification to acquisition or the staircase rule.
     """
+    resolved_path = Path(run_directory)/"resolved_experiment.json"
+    resolved = json.loads(resolved_path.read_text()) if resolved_path.exists() else {}
+    if "primary_estimator" in resolved and not exploratory:
+        if last_n_reversals is not None or retain_fraction != .80 or reversal_value_column != "next_display_contrast":
+            raise ValueError("Protocol primary estimator is fixed; select exploratory=True for alternative conventions.")
+        from .primary import analyse_primary
+        return analyse_primary(data_root=data_root,run_directory=run_directory,create_plot=create_plot)
     fraction = float(retain_fraction)
     if not math.isfinite(fraction) or not 0 < fraction <= 1:
         raise ValueError("retain_fraction must be in (0, 1].")
@@ -288,6 +296,7 @@ def analyse_thresholds(
             else "final ceil(N * retain_fraction) reversals per staircase"
         ),
         "reversal_value_column": reversal_value_column,
+        "analysis_role":"exploratory" if exploratory or "primary_estimator" in resolved else "historical_derived",
         "scientific_note": (
             "Derived analysis only. This convention does not alter acquisition, staircase "
             "updates, termination, contrast definitions or canonical run files."

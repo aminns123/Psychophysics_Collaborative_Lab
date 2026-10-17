@@ -55,7 +55,7 @@ def test_completed_setup_is_not_human_verification_and_fake_pairs_remain_test_da
 def test_verification_then_qualification_refresh_same_review_and_restart(tmp_path):
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(100,30)) as pilot:
             review=ReviewScreen(request=request(p)); app.push_screen(review); await pilot.pause()
             original_hash=review.request.monitor_profile_hash
@@ -83,7 +83,7 @@ def test_verification_then_qualification_refresh_same_review_and_restart(tmp_pat
             app.screen.query_one('#qualification-save',Button).press(); await pilot.pause()
             assert app.screen is review and review.readiness_report['human_ready']
             assert 'Ready' in str(review.query_one('#human-readiness-summary',Static).render())
-        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         assert restart.config_drafts[('fixture_subject',CSF_SPEC.id,p.id)]==values()
         saved=restart.monitor_profiles[p.id]
         assert CSF_SPEC.id in saved.qualified_experiments and saved.has_verified_luminance_mapping
@@ -95,7 +95,7 @@ def test_contrast_live_edit_return_and_calibration_cancel_preserve_review(tmp_pa
     p=fixture_profile()
     v=values()|{'Background_Screen_intensity':.25,'starting_probe_intensity':1.}
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(80,24)) as pilot:
             review=ReviewScreen(request=request(p,v)); app.push_screen(review); await pilot.pause()
             assert not next(r for r in review.readiness_report['requirements'] if r['key']=='contrast')['passed']
@@ -123,7 +123,7 @@ def test_contrast_live_edit_return_and_calibration_cancel_preserve_review(tmp_pa
 def test_physical_change_does_not_refresh_stale_hash_or_bypass_final_guard(tmp_path,monkeypatch):
     p=qualify_experiment(fixture_profile(verified=True),config_root(ROOT),CSF_SPEC,reviewed=True,values=values())
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             review=ReviewScreen(request=request(p)); app.push_screen(review); await pilot.pause()
             old_hash=review.request.monitor_profile_hash
@@ -145,7 +145,7 @@ def test_ready_panel_still_checks_connected_hardware_at_launch(tmp_path,monkeypa
         calls.append(profile.id); raise ValueError('Connected display mode changed')
     monkeypatch.setattr('psychophysics_lab.core.display.preflight_fullscreen_display',fail)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             review=ReviewScreen(request=request(p)); app.push_screen(review); await pilot.pause()
             assert review.readiness_report['human_ready']
@@ -176,7 +176,7 @@ def test_actual_draw_rejects_later_legacy_up_step_before_opengl():
 def test_focused_settings_apply_back_to_original_form_without_revision(tmp_path):
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             original=ExperimentConfigScreen(data_root=tmp_path/'data',participant_id='fixture_subject',session_mode='new',experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=values())
             app.push_screen(original); await pilot.pause()
@@ -198,13 +198,13 @@ def test_fullscreen_diagnostic_restart_restores_calibration_then_review(tmp_path
     p=fixture_profile()
     reviewed=request(load_monitor_profiles(ROOT)[p.id])
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             review=ReviewScreen(request=reviewed); app.push_screen(review); await pilot.pause()
             review.resolve_requirement('setup'); await pilot.pause()
             assert isinstance(app.screen,DisplayCheckScreen)
         # Simulate the existing app loop returning after a mocked diagnostic.
-        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data',geometry_summary='Fixture software diagnostic completed')
+        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data',geometry_summary='Fixture software diagnostic completed')
         async with restart.run_test() as pilot:
             await pilot.pause()
             assert isinstance(restart.screen,DisplayCheckScreen)

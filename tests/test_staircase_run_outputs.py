@@ -169,7 +169,7 @@ def test_data_browser_run_folder_and_scenario_report_are_directly_accessible(tmp
                         lambda data_root, run_dir: opened.append((data_root, run_dir)))
 
     async def navigate():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=root)
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-data", Button).press()
             await pilot.pause()

@@ -71,6 +71,18 @@ STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
 PARADIGM = "two_alternative_forced_choice"
 
 
+SCIENTIFIC_SPEC = {
+    "version": "orientation-task-1",
+    "response": "Negative or positive tilt; index equality.",
+    "quantity": "Teaching digital Gabor contrast, not optical contrast.",
+    "conditions": "Balanced shuffled target signs using declared seed.",
+    "adaptive": "None.",
+    "stopping": "Accepted trial count.",
+    "exclusions": "No post-hoc deletion; interrupted input preserved.",
+    "estimator": "No threshold estimator; responses and correctness only.",
+}
+
+
 # 2. CONDITIONS AND TRIAL ORDER
 def make_conditions(settings):
     targets = [i % 2 for i in range(settings["trial_count"])]
@@ -122,11 +134,6 @@ def interpret_response(condition, response):
     return dict(response) | {"correct": correct}
 
 
-def update_experiment(run, condition, state, response, trial):
-    # Fixed stimulus contrast: this task has no adaptive update.
-    return state
-
-
 def trial_record(run, condition, state):
     return {
         "state": {"contrast": state["contrast"]},
@@ -157,10 +164,6 @@ def initialise_experiment(run, conditions):
     return {"contrast": contrast}
 
 
-def is_finished(run, conditions, state):
-    return run.accepted_trials >= len(conditions)
-
-
 def finish_experiment(run, conditions, state):
     run.complete()
 
@@ -170,7 +173,7 @@ def procedure(run):
         raise ValueError(SPEC.acquisition_block_reason)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
+    for _ in conditions:
         condition = choose_condition(run, conditions, state)
         stimuli = prepare_stimuli(run, condition, state)
         with run.trial(
@@ -181,7 +184,7 @@ def procedure(run):
             **trial_record(run, condition, state),
         ) as trial:
             response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
+            # Fixed stimulus; no artificial adaptive update stage.
     finish_experiment(run, conditions, state)
 
 
@@ -200,6 +203,7 @@ def definition(
         description="Self-paced tilt discrimination with a registered visual stimulus.",
         procedure=procedure,
         fields=FIELDS,
+        scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),

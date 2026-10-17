@@ -56,6 +56,11 @@ def load_contributions():
             if EXPERIMENT_MODULES is None and spec.id != SOURCE_IDS.get(name.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1]):
                 raise ValueError(f"{name}: SPEC.id must match its Python filename")
             experiments.register_experiment(spec)
+        # Historical IDs remain resolvable explicitly, outside the normal catalogue.
+        for name in ("base_flanker", "indirect_flanker", "ellipse_2d"):
+            spec = importlib.import_module("psychophysics_lab.experiments._internal.historical."+name).SPEC
+            if spec.id not in experiments._REGISTRY:
+                experiments.register_experiment(spec)
         # The only authoritative non-CSF visual stimulus definitions are
         # classes in stimulus_library.py; no per-stimulus registry entries.
         from psychophysics_lab.stimulus_library import library_stimulus_specs

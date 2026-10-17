@@ -97,6 +97,8 @@ class ExperimentSpec:
     supports_simulation: bool = False
     default_config: str = ""
     acquisition_block_reason: str = ""
+    historical: bool = False
+    scientific_spec: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.procedure is not None:

@@ -49,7 +49,7 @@ def test_threshold_analyser_agrees_for_legacy_and_action_state_rows(tmp_path):
 
 def test_development_replay_is_not_human_catalogue_or_replacement_csf():
     from psychophysics_lab.experiments._internal.registry import list_experiments, get_experiment
-    assert "csf_state_validation" not in {s.id for s in list_experiments()}
+    assert "csf_state_validation" not in {s.id for s in list_experiments(include_historical=True)}
     original = get_experiment("contrast_sensitivity")
     assert original.procedure is None
     assert original.legacy_module == "psychophysics_lab._reference_csf.contrast_sensitivity_function"

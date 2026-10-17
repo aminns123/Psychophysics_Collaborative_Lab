@@ -27,6 +27,8 @@ from .setup import HubPage, _nav_bar, _handle_nav, _is_blank_select_value
 
 
 def _value_text(value) -> str:
+    if value is None:
+        return ""
     if isinstance(value, (dict, list, tuple, bool)):
         return json.dumps(value)
     return str(value)
@@ -35,10 +37,10 @@ def _value_text(value) -> str:
 class SimulationsScreen(HubPage):
     page_title = "Simulations"
 
-    def __init__(self) -> None:
+    def __init__(self, *, include_historical=False) -> None:
         super().__init__()
         from simulations.scenarios import list_scenarios
-        self.scenarios = list_scenarios()
+        self.scenarios = list_scenarios(include_historical=include_historical)
         self.experiment_ids = tuple(sorted({s.experiment_id for s in self.scenarios},
             key=lambda identity: (identity != "contrast_sensitivity",
                                   bool(get_experiment(identity).acquisition_block_reason), identity)))

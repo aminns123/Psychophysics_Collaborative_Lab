@@ -73,7 +73,7 @@ def test_stale_physical_mapping_is_not_trusted_for_photometry():
 def test_tui_pair_updates_both_values_and_only_real_endpoint(tmp_path,endpoint):
     p=measured(endpoint=endpoint)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             editor=editor_for(p,tmp_path/'data',selected_values()|{'Max_monitor_Luminance':700})
             await app.push_screen(editor); await pilot.pause()
@@ -95,21 +95,21 @@ def test_display_confirmation_and_explicit_manual_survive_restart(tmp_path):
     p=measured()
     second=save_profile(config_root(ROOT),replace(p,id='second_display',profile_uuid='',revision=0,luminance_source_hash=''))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             editor=editor_for(p,tmp_path/'data'); await app.push_screen(editor); await pilot.pause()
             editor._apply_display(second.id); await pilot.pause()
             assert editor.query_one('#background-mapping',Select).value=='confirm'
             assert float(editor.query_one('#field-Background-Luminance',Input).value)==19
             with pytest.raises(ValueError,match='changed'): editor._collect()
-        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with restart.run_test() as pilot:
             editor=editor_for(second,tmp_path/'data'); await restart.push_screen(editor); await pilot.pause()
             assert editor.query_one('#background-mapping',Select).value=='confirm'
             editor.query_one('#background-mapping',Select).value='manual'; await pilot.pause()
             assert editor._collect()['Background_Luminance']==19
             editor._save_calibration_draft()
-        last=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        last=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with last.run_test() as pilot:
             editor=editor_for(second,tmp_path/'data'); await last.push_screen(editor); await pilot.pause()
             assert editor.query_one('#background-mapping',Select).value=='manual'
@@ -121,7 +121,7 @@ def test_preset_restores_exact_saved_pair_without_mutating_calibration(tmp_path)
     p=measured(); path=active_directory(config_root(ROOT),p)/'luminance.json'; before=path.read_bytes()
     save_preset(config_root(ROOT),'mean_background',CSF_SPEC.id,selected_values())
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             editor=editor_for(p,tmp_path/'data',values()); await app.push_screen(editor); await pilot.pause()
             editor.query_one('#config-preset',Select).value='mean_background'
@@ -181,7 +181,7 @@ def test_verified_profile_must_not_offer_stale_untrusted_raw_mapping():
 def test_background_dropdown_is_adjacent_to_fields_and_locks_linked_pair(tmp_path):
     p = measured()
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test() as pilot:
             editor = editor_for(p, tmp_path / 'data')
             await app.push_screen(editor)

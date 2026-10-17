@@ -46,7 +46,7 @@ def test_researcher_accepts_existing_mapping_once_without_rewriting_readings(tmp
     root, profile = saved_test_profile()
     before = evidence(root)
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test(size=size) as pilot:
             app.query_one('#run-intent', Select).value = 'human'
             app.display_guide_target_profile_id = profile.id
@@ -90,7 +90,7 @@ def test_stale_physical_configuration_blocks_acceptance(tmp_path):
                            expected_revision=profile.revision)
     before = evidence(root)
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test() as pilot:
             await app.push_screen(LuminanceDataScreen(changed))
             await pilot.pause()
@@ -108,7 +108,7 @@ def test_accept_requires_explicit_resolution_of_real_unsaved_edits(tmp_path, edi
     before = evidence(root)
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test() as pilot:
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()
@@ -146,7 +146,7 @@ def test_unchanged_save_does_not_migrate_or_revise_dataset(tmp_path, active):
     before = evidence(root)
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test() as pilot:
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()
@@ -163,7 +163,7 @@ def test_no_saved_values_cannot_be_accepted(tmp_path):
     before = evidence(root)
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test() as pilot:
             await app.push_screen(LuminanceDataScreen(profile))
             await pilot.pause()
@@ -185,7 +185,7 @@ def test_accept_returns_to_existing_experiment_review_preserving_human_mode(tmp_
                            values, str(tmp_path/'participants'))
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'participants')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'participants')
         async with app.run_test(size=(120, 44)) as pilot:
             app.run_intent = 'human'
             await app.push_screen(ReviewScreen(request=request))

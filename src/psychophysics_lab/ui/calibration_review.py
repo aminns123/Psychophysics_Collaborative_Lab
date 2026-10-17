@@ -220,7 +220,7 @@ class ExperimentQualificationScreen(Screen):
             yield Static('',id='qualification-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
             yield Static(f'Selected display: {self.profile.display_name}. Qualification applies only to this saved display and selected experiment. Verified flags are manually declared, not independently measured by PsyCoLab. Final human preflight still checks the actual experiment settings and connected display.')
-            specs=list_experiments()
+            specs=list_experiments(include_historical=self.app.include_historical)
             yield Select([(spec.display_name,spec.id) for spec in specs],value=self.experiment_id or specs[0].id,allow_blank=False,id='qualification-experiment')
             yield Static('',id='qualification-overview',markup=False)
             for key,label in [('binding','Bind display / resolution'),('geometry','Review geometry evidence'),('luminance','Open luminance measurements and verification'),('timing','Review photon timing evidence'),('contrast','Edit starting probe intensity / current range')]:

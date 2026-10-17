@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 import pytest
 from psychophysics_lab.adaptive.legacy_flanker import LegacyFlankerAdaptive
-from psychophysics_lab.experiments.indirect_flanker import make_trial as timeline
-from psychophysics_lab.experiments.ellipse_2d import prepare_stimuli as scenes, make_trial as ellipse_timeline
+from psychophysics_lab.experiments._internal.historical.indirect_flanker import make_trial as timeline
+from psychophysics_lab.experiments._internal.historical.ellipse_2d import prepare_stimuli as scenes, make_trial as ellipse_timeline
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
@@ -128,7 +128,7 @@ def test_human_preflight_and_direct_calls_are_blocked_before_display():
 
 def test_ellipse_literal_geometry_and_both_interval_orders():
     from types import SimpleNamespace
-    from psychophysics_lab.experiments.ellipse_2d import pixel_geometry
+    from psychophysics_lab.experiments._internal.historical.ellipse_2d import pixel_geometry
     from psychophysics_lab.config.monitor import load_monitor_profiles
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     g = pixel_geometry(SimpleNamespace(display=profile, values={"reference_width_px":1920,"reference_height_px":1080}))
@@ -146,7 +146,7 @@ def test_ellipse_literal_geometry_and_both_interval_orders():
 
 def test_missing_monitor_resolution_is_not_invented():
     from types import SimpleNamespace
-    from psychophysics_lab.experiments.ellipse_2d import pixel_geometry
+    from psychophysics_lab.experiments._internal.historical.ellipse_2d import pixel_geometry
     from psychophysics_lab.config.monitor import load_monitor_profiles
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     with pytest.raises(ValueError,match="historical resolution is unknown"):
@@ -188,6 +188,6 @@ def test_adaptive_completion_requires_owned_stopped_algorithm(tmp_path):
 
 def test_registered_development_protocol_does_not_change_csf_default():
     from psychophysics_lab.experiments._internal.registry import list_experiments
-    specs = list_experiments()
+    specs = list_experiments(include_historical=True)
     assert specs[0].id == "contrast_sensitivity"
     assert {s.id for s in specs if s.acquisition_block_reason} >= {"base_flanker","indirect_flanker","ellipse_2d"}

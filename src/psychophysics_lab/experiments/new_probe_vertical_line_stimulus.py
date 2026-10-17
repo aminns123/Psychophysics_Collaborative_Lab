@@ -48,6 +48,9 @@ STIMULUS_DEFAULTS = {
 PARADIGM = "two_alternative_forced_choice"
 
 
+SCIENTIFIC_SPEC = {'version': 'new_probe_vertical_line_stimulus-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
+
+
 # 2. CONDITIONS AND TRIAL ORDER
 def make_conditions(settings):
     return [
@@ -186,7 +189,7 @@ def definition(identity="new_probe_vertical_line_stimulus", stimulus=STIMULUS_DE
         description="Decide whether a white line is above or below a fixation cross.",
         procedure=procedure,
         default_config=f"configs/experiments/{identity}.json",
-        fields=FIELDS,
+        fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         calibration_requirements=("geometry", "timing"),
         monitor_capabilities=("display_binding", "resolution"),

@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_unbound_saved_profile_preflight_gives_actionable_instructions(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "config"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         called = []
         monkeypatch.setattr(app, "exit", lambda result=None: called.append(result))
         async with app.run_test(size=(85, 26)) as pilot:
@@ -55,7 +55,7 @@ def test_detect_choose_bind_save_then_calibration_launches_selected_display(tmp_
     monkeypatch.setattr("psychophysics_lab.ui.profiles.enumerate_displays", lambda: [connected])
     monkeypatch.setattr("psychophysics_lab.core.display.enumerate_displays", lambda: [connected])
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         called=[]
         monkeypatch.setattr(app,"exit",lambda value=None: called.append(value))
         async with app.run_test(size=(100,30)) as pilot:

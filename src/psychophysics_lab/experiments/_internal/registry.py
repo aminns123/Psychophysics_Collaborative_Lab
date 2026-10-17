@@ -8,12 +8,12 @@ _REGISTRY: dict[str, ExperimentSpec] = {
 }
 
 
-def list_experiments() -> tuple[ExperimentSpec, ...]:
+def list_experiments(*, include_historical=False) -> tuple[ExperimentSpec, ...]:
     from psychophysics_lab.experiments._internal.contributions import load_contributions
     load_contributions()
     # Adding a development protocol must not change the established launch
     # default. Keep the reference first, then normal and blocked experiments.
-    return tuple(_REGISTRY[key] for key in sorted(_REGISTRY, key=lambda key:
+    return tuple(_REGISTRY[key] for key in sorted((key for key, spec in _REGISTRY.items() if include_historical or not spec.historical), key=lambda key:
         (key != CSF_SPEC.id, bool(_REGISTRY[key].acquisition_block_reason), key)))
 
 

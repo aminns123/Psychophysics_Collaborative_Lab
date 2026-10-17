@@ -1,5 +1,9 @@
 # Shared stimulus library and legacy experiment reconstruction
 
+> Historical review: later scientific changes and current paths are recorded in
+> [SCIENTIFIC_REDESIGN.md](SCIENTIFIC_REDESIGN.md). Exact-loop requirements below
+> are superseded; archived reconstructions are under `experiments/_internal/historical/`.
+
 ## Status and source authority
 
 The researcher-facing drawing library is now

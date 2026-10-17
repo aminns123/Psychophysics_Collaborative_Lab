@@ -72,7 +72,7 @@ def test_human_review_marks_next_check_and_opens_photometry_verification(tmp_pat
     pending=save_profile(config_root(ROOT),replace(profile,calibration_status="manual_unverified"),
                          expected_revision=profile.revision)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         app.run_intent="human"
         async with app.run_test(size=(120,46)) as pilot:
             review=ReviewScreen(request=_request(pending))

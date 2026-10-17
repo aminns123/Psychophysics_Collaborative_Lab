@@ -121,7 +121,7 @@ def test_tui_create_open_load_save_roundtrip_preserves_unverified_status(tmp_pat
     monkeypatch.setattr(os,"startfile",lambda path: seen.append(path),raising=False)
 
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(106,32)) as pilot:
             app.query_one("#nav-display",Button).press()
             await pilot.pause()
@@ -162,7 +162,7 @@ def test_invalid_tui_load_cannot_mutate_existing_draft(tmp_path,monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR",str(tmp_path/"machine"))
     monkeypatch.setattr(os,"startfile",lambda path: None,raising=False)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(106,32)) as pilot:
             app.query_one("#nav-display",Button).press()
             await pilot.pause()

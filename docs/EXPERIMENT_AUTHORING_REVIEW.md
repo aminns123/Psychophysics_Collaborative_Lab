@@ -1,5 +1,9 @@
 # Researcher-readable experiments: thesis-informed review
 
+> Historical review: later scientific changes and current paths are recorded in
+> [SCIENTIFIC_REDESIGN.md](SCIENTIFIC_REDESIGN.md). Exact-loop requirements below
+> are superseded; archived reconstructions are under `experiments/_internal/historical/`.
+
 The previous audit improved source ownership, but it did not establish that a
 researcher could readily translate an experimental idea into code. Those are
 different acceptance tests. The current flanker files still contain too much
