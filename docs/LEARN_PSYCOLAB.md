@@ -12,6 +12,12 @@ For the exact file/ID rules, see [AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md).
 
 ## The idea in 30 seconds
 
+**For new stimulus mathematics, use the one-file class route described in
+[ONE_FILE_STIMULI_AND_AUDIO.md](ONE_FILE_STIMULI_AND_AUDIO.md).** Older
+independent Python + JSON stimuli are compatibility examples, not the
+recommended starting point.
+
+
 **Preferred Python authoring route:** open
 `src/psychophysics_lab/stimulus_library.py`. It contains one function for each
 simple stimulus. Use `Scene` to combine them and keep your experiment procedure

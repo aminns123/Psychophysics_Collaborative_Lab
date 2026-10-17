@@ -389,7 +389,12 @@ class StimuliScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
         sources = _stimulus_sources(self.app.repo_root)
-        options = [(path.stem.replace("_", " ").title(), str(path)) for path in sources]
+        # Beginner navigation shows only the shared authoring entrypoint.
+        # Compatibility/legacy sources are inspectable below, not another
+        # apparent set of places to add new stimuli.
+        options = [(path.stem.replace("_", " ").title(), str(path))
+                   for path in sources
+                   if path.name != "stimulus_library.py"]
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Reusable stimuli[/b]\n"
@@ -397,25 +402,28 @@ class StimuliScreen(HubPage):
                 "framework lifecycle remain separate responsibilities."
             )
             if options:
-                yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
-                yield Static("", id="stimulus-inspection")
-                yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
                 yield Static(
                     "[b]START HERE — one shared stimulus library[/b]\n"
-                    "For new drawing mathematics, add a named function in "
-                    "src/psychophysics_lab/stimulus_library.py. Combine the functions "
-                    "using Scene in a separate experiment. You do not need one new "
-                    "stimulus module for every shape or combination."
+                    "Add a complete stimulus CLASS to stimulus_library.py. Each "
+                    "class has PARAMETERS, render() and SPEC in one place; the file "
+                    "also contains primitives and Scene composition. Existing "
+                    "stimuli/*.py files are compatibility adapters, not separate "
+                    "places to author science."
                 )
                 with Horizontal(classes="buttons"):
                     yield Button("Open shared stimulus functions", id="view-shared-stimulus-library", variant="primary")
                     yield Button("Open Scene composition example", id="view-shared-scene-example")
                 yield Button("Learn PsyCoLab — stimulus tutorial", id="learn-stimuli")
+                yield Static("[b]Existing components (read-only compatibility and calibration code)[/b]")
+                yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
+                yield Static("", id="stimulus-inspection")
+                yield Button("Inspect selected legacy/compatibility code", id="view-stimulus-source")
                 yield Static(
                     "[b]Compatibility / advanced authoring[/b]\n"
                     "The older per-stimulus Python + JSON adapter workflow remains "
                     "available for independent renderers and existing experiments. "
-                    "It is NOT the default way to add a new simple shape to the shared library."
+                    "It is NOT the normal way to add or edit a stimulus; use the shared "
+                    "file above. Retained for existing IDs and specialist renderers."
                 )
                 yield Button("Read existing adapter Python", id="read-example-stimulus")
                 yield Button("Read existing adapter defaults JSON", id="read-example-stimulus-json")

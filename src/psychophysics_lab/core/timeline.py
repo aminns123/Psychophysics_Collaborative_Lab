@@ -14,6 +14,26 @@ from typing import Mapping
 
 
 @dataclass(frozen=True)
+class Beep:
+    """Windows-style optional tone; an audio command, not calibrated onset.
+
+    The same two parameters formerly passed to winsound.Beep(frequency, duration).
+    Never call winsound in a scientific renderer or a synthetic run.
+    """
+    frequency_hz: int = 550
+    duration_ms: int = 35
+
+    def __post_init__(self):
+        if type(self.frequency_hz) is not int or not 37 <= self.frequency_hz <= 32767:
+            raise ValueError("Beep frequency must be an integer between 37 and 32767 Hz.")
+        if type(self.duration_ms) is not int or not 1 <= self.duration_ms <= 1000:
+            raise ValueError("Beep duration must be an integer from 1 to 1000 ms.")
+
+    def to_dict(self):
+        return {"frequency_hz": self.frequency_hz, "duration_ms": self.duration_ms}
+
+
+@dataclass(frozen=True)
 class Phase:
     name: str
     kind: str  # "show" or "response"
@@ -22,6 +42,7 @@ class Phase:
     instructions: str = ""
     stimuli: tuple = ()
     actions: tuple[str, ...] = ()
+    beep: Beep | None = None
 
     def __post_init__(self):
         if not self.name or not self.name.replace("_", "").isalnum():
@@ -36,6 +57,8 @@ class Phase:
             raise ValueError("Phase duration_ms must be an integer from 0 to 3600000.")
         if not isinstance(self.instructions, str):
             raise ValueError("Instructions must be text.")
+        if self.beep is not None and not isinstance(self.beep, Beep):
+            raise TypeError("Optional beep must be a Beep(frequency_hz, duration_ms) instance.")
         object.__setattr__(self, "stimuli", tuple(self.stimuli))
         object.__setattr__(self, "actions", tuple(self.actions))
         if any(not isinstance(item, Stimulus) for item in self.stimuli):
@@ -58,6 +81,9 @@ class Phase:
             result["stimuli"] = [item.to_dict() for item in self.stimuli]
         if self.actions:
             result["actions"] = list(self.actions)
+        if self.beep is not None:
+            result["beep"] = self.beep.to_dict()
+            result["beep_trigger"] = "display_onset" if self.kind == "show" else "accepted_response"
         return result
 
 
@@ -210,14 +236,14 @@ class Stimulus:
         return {"slot": self.slot, "x_deg": self.x_deg, "y_deg": self.y_deg}
 
 
-def Show(name, *, slot=None, duration, instructions="", stimuli=()):
-    """A timed visual stage. No slots means blank (or instruction text)."""
-    return Phase(name, "show", slot, duration, instructions, tuple(stimuli))
+def Show(name, *, slot=None, duration, instructions="", stimuli=(), beep=None):
+    """Timed stage. Optional beep sounds at display onset, including blank stages."""
+    return Phase(name, "show", slot, duration, instructions, tuple(stimuli), beep=beep)
 
 
-def CollectResponse(*, actions, timeout=0, name="answer", slot=None, instructions=""):
-    """One response using the experiment's declared meanings and TUI key mapping."""
-    return Phase(name, "response", slot, timeout, instructions, (), tuple(actions))
+def CollectResponse(*, actions, timeout=0, name="answer", slot=None, instructions="", beep=None):
+    """Collect a response; optional beep is triggered only for an accepted key."""
+    return Phase(name, "response", slot, timeout, instructions, (), tuple(actions), beep)
 
 
 @dataclass(frozen=True)
