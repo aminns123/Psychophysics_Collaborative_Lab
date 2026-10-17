@@ -28,7 +28,7 @@ def validate_grating_command(contrast, background):
 
 def starting_contrast_limits(background, starting, up_step=None):
     """Existing box=False convention; no change to defaults or adaptive updates."""
-    from Events.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
+    from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
     if any(isinstance(value,bool) or not math.isfinite(value) for value in (background,starting)) or not 0 <= background < 1:
         raise ValueError("Background must be finite in [0,1); starting intensity must be finite.")
     maximum_contrast = 2 * min(background, 1-background)

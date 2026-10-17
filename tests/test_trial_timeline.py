@@ -65,7 +65,7 @@ def test_csf_reference_matches_existing_five_phase_queue():
         ("response", "response", 0)]
     # Compatibility contract: these phase role names also drive the original
     # dynamic CSF trial objects, rather than rewriting their OpenGL renderer.
-    source = (ROOT / "Experiments/contrast_sensitivity_function.py").read_text()
+    source = (ROOT / "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py").read_text()
     assert "existing_trials[phase.name] for phase in timeline.phases" in source
     assert '"new_condition": fixate_state_new_condition' in source
     assert '"response": fixateRESPONSE' in source

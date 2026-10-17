@@ -161,12 +161,12 @@ def test_actual_draw_rejects_later_legacy_up_step_before_opengl():
         parent=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==class_name) if class_name else tree
         node=next(n for n in parent.body if isinstance(n,ast.FunctionDef) and n.name==name)
         return compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),str(path),'exec')
-    namespace={}; exec(extract(ROOT/'Events/adaptiveMethods.py','_update_probe_weber_contrast'),namespace)
+    namespace={}; exec(extract(ROOT/'src/psychophysics_lab/_reference_csf/adaptiveMethods.py','_update_probe_weber_contrast'),namespace)
     contrast=namespace['_update_probe_weber_contrast'](1,.5,.35,.1)
     assert contrast==pytest.approx(.5*10**.35)
     calls=[]
     draw_globals={'read_JSON':lambda path:{'staircase_Identity_active':[0],'condition_list':[63],'stimulus_choice_active':[0],'weber_contrast_active':[contrast]},'glUseProgram':lambda program:calls.append(program)}
-    exec(extract(ROOT/'Events/stimuliC.py','draw','Grating_ADM'),draw_globals)
+    exec(extract(ROOT/'src/psychophysics_lab/_reference_csf/stimuliC.py','draw','Grating_ADM'),draw_globals)
     stim=SimpleNamespace(pos=(0,0),file_experiment_Conditions='fixture',params=SimpleNamespace(box=False,bg=.25))
     with pytest.raises(ValueError,match='No contrast was clamped'):
         draw_globals['draw'](stim)

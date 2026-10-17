@@ -16,4 +16,4 @@ def test_registered_experiment_has_inspectable_source_files():
 def test_reusable_and_legacy_stimulus_sources_are_visible_to_inspector():
     names = {path.name for path in _stimulus_sources(ROOT)}
     assert "geometry.py" in names
-    assert "stimuliC.py" in names
+    assert "stimulus_library.py" in names and "stimuliC.py" not in names
