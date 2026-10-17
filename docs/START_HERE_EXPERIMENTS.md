@@ -1,24 +1,16 @@
-# Start here: learn stimulus and experiment building
+# Start here
 
-**New canonical standalone tutorial:**
-[LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md).
+**Use [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md) — the only current
+researcher authoring walkthrough.**
 
-It covers, in order: architecture → create a white line → preview image →
-publish stimulus → assemble a new above/below task from the library →
-simulate → publish experiment → configure and run → inspect output.
+- Add `LibraryStimulus` classes in
+  `src/psychophysics_lab/stimulus_library.py`.
+- Put each experiment procedure in
+  `src/psychophysics_lab/experiments/<task>.py` and settings in
+  `configs/experiments/<task>.json`.
+- No automatic code generation or separate per-stimulus modules.
+- The physical reference CSF uses an **internal** retained driver whose
+  GLSL stimulus shader is defined by `CSFGrating` in the same library.
 
-Read it in any editor or run this in `run_user_env.bat`:
-
-```cmd
-python -m psychophysics_lab --learn
-```
-
-**Authoring rules:** [AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md).
-**Advanced trial details:** [TRIAL_ACTION_ARCHITECTURE.md](TRIAL_ACTION_ARCHITECTURE.md).
-**CSF hardware boundary:** [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md).
-
-The built-in `example_experiment.py` remains a worked **left/right**
-demonstration for reading; it is **not** the default advanced authoring
-template. New Python experiment scaffolds are task-neutral and deliberately
-require the researcher to fill in the science. Simple spatial two-choice
-experiments should use the JSON-only library builder first.
+For verification and internal boundaries see
+[ARCHITECTURE.md](ARCHITECTURE.md).
