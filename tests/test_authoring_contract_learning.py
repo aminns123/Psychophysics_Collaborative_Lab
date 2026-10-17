@@ -77,6 +77,11 @@ def test_tui_links_to_the_independent_guide():
     for control in ("learn-guide", "learn-experiments", "learn-stimuli", "authoring-contract"):
         assert f'id="{control}"' in source
     assert "yield LibraryExperimentBuilder()" in source
+    assert 'id="view-shared-stimulus-library"' in source
+    assert 'id="view-shared-scene-example"' in source
+    assert "src/psychophysics_lab/stimulus_library.py" in source
+    assert "examples/shared_stimuli.py" in source
+    assert "Advanced: create independent stimulus adapter" in source
     assert (ROOT / "docs/LEARN_PSYCOLAB.md").is_file()
     assert (ROOT / "docs/AUTHORING_CONTRACT.md").is_file()
 
