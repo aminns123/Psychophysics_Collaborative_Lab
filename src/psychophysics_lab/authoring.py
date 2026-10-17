@@ -80,10 +80,6 @@ def stage(repo_root: Path, kind: str, name: str) -> Component:
     _path(root, kind, name).relative_to(root)
     if not _path(root, kind, name).is_file():
         raise ValueError(f"Write src/psychophysics_lab/{KINDS[kind]}/{name}.py first; no file is generated.")
-    if kind == "experiment":
-        settings = root / "configs/experiments" / (name + ".json")
-        if not settings.is_file():
-            raise ValueError(f"Write {settings.relative_to(root)} before registering this experiment.")
     records = inventory(root)
     if any(i.kind == kind and i.name == name for i in records):
         raise ValueError("Component is already registered in the authoring inventory.")
@@ -112,9 +108,10 @@ def fingerprint(repo_root: Path, item: Component) -> str:
         paths.append(root / "src/psychophysics_lab/stimulus_library.py")
     if item.kind in {"stimulus", "experiment"}:
         config = root / "configs" / KINDS[item.kind] / (item.name + ".json")
-        if not config.is_file():
+        if config.is_file():
+            paths.append(config)
+        elif item.kind == "stimulus":
             raise ValueError(f"Missing configuration: {config}")
-        paths.append(config)
     digest = hashlib.sha256()
     for path in paths:
         if not path.is_file() or not path.resolve().is_relative_to(root):
@@ -152,7 +149,7 @@ def publish(repo_root: Path, kind: str, name: str) -> Component:
         importlib.invalidate_caches()
         spec = importlib.reload(importlib.import_module(target.module)).SPEC
         for dependency_kind, dependencies in (
-            ("adaptive", (spec.adaptive.algorithm_id,) if spec.adaptive else ())):
+            ("adaptive", (spec.adaptive.algorithm_id,) if spec.adaptive else ()),):
             for dependency in dependencies:
                 authored = next((i for i in records if i.kind == dependency_kind and i.name == dependency), None)
                 if authored is not None and (authored.status != "ready" or
@@ -209,5 +206,3 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
                 raise
             problems[f"{item.kind}:{item.name}"] = f"{type(exc).__name__}: {exc}"
     return problems
-
-

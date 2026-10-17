@@ -124,7 +124,7 @@ def test_authoring_screen_shows_create_buttons_and_timeline_file():
     from psychophysics_lab.ui.setup import _source_inventory
     spec = get_experiment("orientation_task")
     roles = dict(_source_inventory(ROOT, spec))
-    assert roles["Trial timeline JSON"].name == "orientation_task.json"
+    assert roles["Legacy timeline example (not executed)"].name == "orientation_task.json"
     assert dict(_source_inventory(ROOT, get_experiment("contrast_sensitivity")))["Trial timeline JSON"].name == "contrast_sensitivity.json"
 
 

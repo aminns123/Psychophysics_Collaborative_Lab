@@ -8,7 +8,7 @@ The existing `core/scene_primitives.py` is internal composition code,
 not another place a researcher needs to add a shape.
 
 **Edit experiments here:** `src/psychophysics_lab/experiments/<task>.py`,
-with settings in `configs/experiments/<task>.json`.
+with defaults and scientific decisions in that same Python file; saved JSON presets are optional.
 
 `run_psycolab.bat`, TUI, simulation, monitor profiles, adaptive registry and
 trial storage remain framework-owned. There is no stimulus generator.
@@ -45,7 +45,7 @@ new stimuli or experiments.
   graphics probes.
 - `tests/`: regression fixtures, historical numerical CSF equivalence
   tests and safety checks.
-- `docs/history/`, `docs/audit_evidence/`: provenance; not part of the
+- `docs/audit_evidence/`: provenance; not part of the
   everyday authoring surface.
 
 ## The remaining scientific migration

@@ -216,7 +216,7 @@ def test_diagnostic_report_and_measurements_stay_in_local_configuration(tmp_path
 
 def test_extension_adapter_runs_without_csf_configuration_or_hardware(tmp_path,monkeypatch):
     import psychophysics_lab.experiments.registry as registry
-    from examples.minimal_experiment import SPEC
+    from _legacy_adapter_fixture import SPEC
     monkeypatch.setitem(registry._REGISTRY,SPEC.id,SPEC)
     request=SetupRequest('S001','new',SPEC.id,'legacy_reference_display',{'example_level':.7})
     result=run_request(request,repo_root=ROOT,data_root=tmp_path/'data')

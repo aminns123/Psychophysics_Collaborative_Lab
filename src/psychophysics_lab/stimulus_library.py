@@ -354,7 +354,8 @@ class ComposedScene(LibraryStimulus):
     """A registered adapter from a Scene recipe to the existing raster backend.
 
     Compose fixtures, lines, gratings and elliptical surrounds in experiment
-    procedures. All drawing mathematics remain in THIS stimulus library.
+    procedures. Task choices stay in the experiment; reusable primitive equations live in
+    core/scene_primitives.py so composition and individual shapes share maths.
     """
 
     @staticmethod

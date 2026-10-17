@@ -32,7 +32,7 @@ based on the P0 lifecycle/calibration work (PR #35, merged in `main`).
 | P0 | Historical CSF and saved datasets remain compatible | CSF regression tests; run the complete supported-platform suite |
 | P1 | Select and edit per-stimulus JSON; no default overwrite; preserve snapshots | `tests/test_teaching_components.py`, `tests/test_teaching_tui.py` |
 | P1 | New stimulus scaffold and reuse in existing orientation task | `tests/test_teaching_components.py::test_scaffold_register_configure_simulate_save_validate` |
-| P1 | New experiment scaffold and reuse of existing Gabor | Same test; `docs/TEACHING_GUIDE.md` |
+| P1 | New experiment scaffold and reuse of existing Gabor | Same test; `docs/LEARN_PSYCOLAB.md` |
 | P1 | Reuse an adaptive method and author a new one | `tests/test_teaching_components.py::test_adaptive_blueprint_registers_through_contribution_list_and_runs` |
 | P1 | Response mappings and source inspection through TUI | `tests/test_teaching_tui.py`, `tests/test_source_inspection.py` |
 | P1 | Completed simulation validates and has immutable parameter records | `tests/test_teaching_components.py`, `scripts/validate_run.py` |
@@ -93,6 +93,6 @@ change on a separate branch/checkout. If rollback is needed, switch back to
 that checkout. Do not delete participant data or monitor-profile history. Keep
 saved runs attached to the version which produced them.
 
-See [TEACHING_GUIDE.md](TEACHING_GUIDE.md) and
+See [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md) and
 [PUBLIC_PROCEDURE_LIFECYCLE.md](PUBLIC_PROCEDURE_LIFECYCLE.md) for exercises and
 supported lifecycle contracts.

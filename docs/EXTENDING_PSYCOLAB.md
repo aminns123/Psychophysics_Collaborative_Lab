@@ -7,7 +7,8 @@
    together. Add primitives/functions and build complex Scene compositions
    *in the same file*. Do not create individual stimulus modules.
 2. **Experiment:** add `src/psychophysics_lab/experiments/<task>.py`
-   and a settings JSON in `configs/experiments/`. A scientific trial owns
+   with `ConfigField` defaults and a matching `SPEC.id`; JSON presets are
+   optional and discovery needs no module-list edit. A scientific trial owns
    conditions, placement, timing, optional beeps, responses and adaptation.
 3. **Test:** `python -m psychophysics_lab --dev-preview ID` for raster
    stimuli, `--dev-stage experiment ID` then `--dev-test ID`, then

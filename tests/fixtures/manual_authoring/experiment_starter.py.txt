@@ -4,7 +4,7 @@ A stimulus says WHAT something looks like. An experiment says WHERE, WHEN,
 WHICH CONDITIONS, WHAT RESPONSE MEANS, and WHAT TO RECORD.
 
 FIRST: read docs/LEARN_PSYCOLAB.md or run: python -m psychophysics_lab --learn
-For basic above/below experiments, use Build Experiments -> JSON-only builder
+For a basic above/below procedure, read experiments/probe_above_below.py
 instead: you do not need to write an experiment Python module.
 
 This is a scaffold, not a tested scientific experiment. Complete the two

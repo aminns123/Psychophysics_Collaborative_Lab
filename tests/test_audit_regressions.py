@@ -222,7 +222,7 @@ def test_adaptive_logger_preserves_primary_error_and_stops_queue(monkeypatch, ph
 
 
 def test_keyboard_interrupt_run_is_not_reported_as_returned(tmp_path, monkeypatch):
-    import examples.minimal_experiment as example
+    import _legacy_adapter_fixture as example
     import psychophysics_lab.experiments.registry as registry
     from psychophysics_lab.core.runner import run_request
     monkeypatch.setitem(registry._REGISTRY, example.SPEC.id, example.SPEC)

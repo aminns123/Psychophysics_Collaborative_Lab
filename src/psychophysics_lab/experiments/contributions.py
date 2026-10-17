@@ -1,8 +1,35 @@
 """Load the public contribution list atomically into both registries."""
 import importlib
+import ast
+from pathlib import Path
 
 _loaded = False
 _loading = False
+
+
+
+def discover_experiment_modules():
+    """Find local SPEC declarations without executing helpers or managed drafts.
+
+    Manifest-managed files continue through fingerprint-gated load_authored.
+    Plain new Python definitions need only SPEC.id equal to their filename.
+    """
+    from ..authoring import inventory
+    from ..paths import find_repo_root
+    managed = {i.name for i in inventory(find_repo_root()) if i.kind == "experiment"}
+    names = []
+    for path in sorted(Path(__file__).parent.glob("*.py")):
+        if path.stem.startswith("_") or path.stem in managed:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        declares_spec = any(
+            isinstance(node, (ast.Assign, ast.AnnAssign)) and any(
+                isinstance(target, ast.Name) and target.id == "SPEC"
+                for target in (node.targets if isinstance(node, ast.Assign) else [node.target]))
+            for node in tree.body)
+        if declares_spec:
+            names.append("psychophysics_lab.experiments." + path.stem)
+    return tuple(names)
 
 
 def load_contributions():
@@ -18,9 +45,15 @@ def load_contributions():
     _loading = True
     try:
         for name in ADAPTIVE_MODULES:
-            adaptive.register_algorithm(importlib.import_module(name).SPEC)
-        for name in EXPERIMENT_MODULES:
-            experiments.register_experiment(importlib.import_module(name).SPEC)
+            spec = importlib.import_module(name).SPEC
+            if adaptive._REGISTRY.get(spec.id) != spec:
+                adaptive.register_algorithm(spec)
+        modules = discover_experiment_modules() if EXPERIMENT_MODULES is None else EXPERIMENT_MODULES
+        for name in modules:
+            spec = importlib.import_module(name).SPEC
+            if EXPERIMENT_MODULES is None and spec.id != name.rsplit(".", 1)[-1]:
+                raise ValueError(f"{name}: SPEC.id must match its Python filename")
+            experiments.register_experiment(spec)
         # The only authoritative non-CSF visual stimulus definitions are
         # classes in stimulus_library.py; no per-stimulus registry entries.
         from ..stimulus_library import library_stimulus_specs

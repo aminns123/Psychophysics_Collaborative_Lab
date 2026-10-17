@@ -22,8 +22,8 @@ other validated values.
 Existing historical IDs with Ready fingerprints keep their adapters/JSON
 and are **not** automatically registered around the publication gate. To make a combination of shapes, compose
 existing drawing functions in a `Scene` instead; do not copy their maths.
-The old `src/psychophysics_lab/stimuli/*.py` modules are mostly import adapters
-for existing IDs, not separate researcher edit locations.
+The `src/psychophysics_lab/stimuli/` modules provide registry, physical geometry
+and validation services, not separate researcher drawing definitions.
 
 For example, an experiment creates a stimulus Scene from the library, then
 describes its sequence using the public trial vocabulary:
@@ -64,4 +64,3 @@ modules. Open `stimulus_library.py`, add a `LibraryStimulus` subclass with
 `PARAMETERS`, `render()` and `SPEC`, and reuse it in experiment files.
 The framework automatically discovers the class. For physical CSF, consult
 the `CSFGrating` class and the separate hardware-equivalence checklist.
-

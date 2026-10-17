@@ -1,0 +1,240 @@
+"""Researcher-facing ownership plus frozen pre-audit scientific equivalence."""
+import ast
+import hashlib
+import importlib
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from psychophysics_lab.authoring import stage, mark_tested, publish
+from psychophysics_lab.config.models import SetupRequest
+from psychophysics_lab.core.runner import run_request
+from psychophysics_lab.core.synthetic import SimulationRun
+from psychophysics_lab.core.timeline import load_timeline
+from psychophysics_lab.experiments.registry import get_experiment, list_experiments
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = json.loads((ROOT / "tests/fixtures/researcher_procedures.json").read_text())
+
+
+def normalise(value):
+    if isinstance(value, list):
+        return [normalise(v) for v in value]
+    if isinstance(value, dict):
+        return {k: v.rsplit(".", 1)[-1] if k in {"function", "update_value"} and isinstance(v, str)
+                else normalise(v) for k, v in value.items()}
+    return value
+
+
+@pytest.mark.parametrize("identity", FIXTURE["cases"])
+def test_consolidated_procedure_matches_original_complete_scientific_trace(tmp_path, identity):
+    case = FIXTURE["cases"][identity]
+    sim = SimulationRun(tmp_path / "data", {
+        "seed": case["seed"], "physical_display_used": False,
+        "observer_parameters": {"accuracy": case["accuracy"]}}, lambda *a: None)
+    result = run_request(SetupRequest("synthetic_123", "new", identity, "legacy_reference_display", case["values"]),
+                         repo_root=ROOT, data_root=tmp_path / "data", simulation=sim)
+    expected = case["expected"]
+    assert result.trial_log_file.read_text() == expected["trials_tsv"]
+    actions = json.loads((result.run_directory / "trial_actions.json").read_text())["trials"]
+    # Only callback module qualification changes when policy moves to its owner.
+    digest = hashlib.sha256(json.dumps(normalise(actions), sort_keys=True).encode()).hexdigest()
+    assert digest == expected["actions_sha256"]
+    assert json.loads((result.run_directory / "adaptive_session.json").read_text()) == expected["adaptive"]
+
+
+def test_every_python_procedure_is_owned_by_its_named_file():
+    for spec in list_experiments():
+        if spec.procedure is None:
+            assert spec.id == "contrast_sensitivity"  # documented retained renderer exception
+            continue
+        if spec.procedure.__module__.endswith("library_builder"):
+            continue  # saved-design compatibility; absent from normal authoring UI
+        assert spec.procedure.__module__ == "psychophysics_lab.experiments." + spec.id
+        assert f"src/psychophysics_lab/experiments/{spec.id}.py" in spec.source_paths
+
+
+def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timings():
+    from psychophysics_lab.experiments.contrast_sensitivity import trial_timeline
+    csf = get_experiment("contrast_sensitivity")
+    expected = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
+                             timings=csf.field_defaults(), slots=csf.stimulus_slots)
+    assert trial_timeline(csf.field_defaults()).to_dict() == expected.to_dict()
+    for identity in ("orientation_task", "orientation_adaptive"):
+        module = importlib.import_module("psychophysics_lab.experiments." + identity)
+        values = module.SPEC.field_defaults() | {"fixation_ms": 173, "stimulus_ms": 91}
+        expected = load_timeline(ROOT / "configs/experiments/orientation_task.json", timings=values, slots={"target"})
+        actual = module.TRIAL.resolve(values)
+        assert [(p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in actual.phases] == [
+            (p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in expected.phases]
+
+
+def test_csf_runtime_consumes_experiment_timeline_without_package_config_lookup():
+    source = (ROOT / "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py").read_text()
+    tree = ast.parse(source)
+    assert any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "trial_timeline"
+               for n in ast.walk(tree))
+    assert "configs/experiments/contrast_sensitivity.json" not in source
+
+
+def test_new_file_is_discovered_without_registry_edits_and_managed_drafts_stay_gated(tmp_path, monkeypatch):
+    from psychophysics_lab.experiments import contributions as loader
+    import psychophysics_lab.authoring as authoring
+    folder = tmp_path / "experiments"
+    folder.mkdir()
+    (folder / "contributions.py").write_text("")
+    (folder / "new_task.py").write_text("SPEC = object()")
+    (folder / "draft_task.py").write_text("SPEC = object()")
+    (folder / "flanker_response.py").write_text("from .contrast_sensitivity import CSF_SPEC as SPEC")
+    (folder / "helper.py").write_text("def policy(): pass")
+    monkeypatch.setattr(loader, "__file__", str(folder / "contributions.py"))
+    monkeypatch.setattr(authoring, "inventory", lambda root: (SimpleNamespace(name="draft_task", kind="experiment"),))
+    assert loader.discover_experiment_modules() == ("psychophysics_lab.experiments.new_task",)
+
+
+def test_single_python_file_can_be_staged_and_fingerprinted_without_companion(tmp_path):
+    path = tmp_path / "src/psychophysics_lab/experiments/single_file.py"
+    path.parent.mkdir(parents=True)
+    path.write_text("SPEC = None\n")
+    item = stage(tmp_path, "experiment", "single_file")
+    assert item.status == "draft"
+    mark_tested(tmp_path, "experiment", "single_file")
+    # Publishing validates imported SPEC dependencies; no companion is required.
+    # Fingerprinting a Python-only experiment tracks source changes correctly.
+    from psychophysics_lab.authoring import fingerprint
+    before = fingerprint(tmp_path, item)
+    path.write_text("SPEC = None\n# source edited\n")
+    assert fingerprint(tmp_path, item) != before
+    with pytest.raises(ValueError, match="changed since last successful test"):
+        publish(tmp_path, "experiment", "single_file")
+
+
+@pytest.mark.parametrize("identity", ["base_flanker", "indirect_flanker", "ellipse_2d"])
+def test_adaptive_policy_is_explicit_in_the_experiment(identity):
+    source = (ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text()
+    for policy in ("n_down=3", "trial_point=9", "reverse_point=1", "reversal_limit=10", "condition_trial_limit=101"):
+        assert policy in source
+
+
+def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_position():
+    from psychophysics_lab.experiments.probe_above_below import make_trial, SPEC
+    from psychophysics_lab.experiments.library_builder import _make_timeline
+    doc = json.loads((ROOT / "configs/experiment_designs/probe_above_below.json").read_text())
+    for y in (2., -2.):
+        old = _make_timeline(doc["actions"], SPEC.field_defaults(), (0., y), ("above", "below"))
+        new = make_trial(y).resolve(SPEC.field_defaults())
+        # The callable has moved and been renamed; compare its behaviour too.
+        before, after = normalise(old.to_dict()), normalise(new.to_dict())
+        before["phases"][-1].pop("function")
+        after["phases"][-1].pop("function")
+        assert after == before
+        for correct in (False, True):
+            state, response = {"correct_count": 7}, {"correct": correct}
+            assert new.phases[-1].function(state, response) == old.phases[-1].function(state, response)
+
+
+def test_researcher_probe_instructions_follow_remapped_response_keys():
+    from psychophysics_lab.experiments.new_probe_vertical_line_stimulus import procedure, SPEC
+    captured = []
+    run = SimpleNamespace(values=SPEC.field_defaults() | {"trial_count": 1},
+        responses=SimpleNamespace(keys=("UP", "DOWN")), trial_state={"correct_count": 1},
+        initialise=lambda **kwargs: None, complete=lambda: None,
+        play_trial=lambda *args, **kwargs: captured.append(kwargs))
+    procedure(run)
+    assert captured[0]["instructions"] == "Above: UP   Below: DOWN"
+    assert captured[0]["target"] == 0 and captured[0]["condition"] == "above"
+
+
+def test_discovery_registers_a_new_python_file_without_companion_or_manual_list(tmp_path, monkeypatch):
+    import sys
+    import psychophysics_lab.experiments as package
+    from psychophysics_lab import contributions
+    from psychophysics_lab.experiments import contributions as loader, registry
+    from psychophysics_lab.stimuli import registry as stimuli
+    # Make a real importable single-file experiment outside the checkout.
+    source = (ROOT / "src/psychophysics_lab/experiments/example_experiment.py").read_text()
+    source = source.replace('identity="example_experiment"', 'identity="new_task"')
+    source = source.replace('default_config=f"configs/experiments/{identity}.json",', '')
+    (tmp_path / "new_task.py").write_text(source)
+    monkeypatch.setattr(package, "__path__", [str(tmp_path), *package.__path__])
+    monkeypatch.setattr(loader, "__file__", str(tmp_path / "contributions.py"))
+    monkeypatch.setattr(loader, "_loaded", False)
+    monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
+    monkeypatch.setattr(stimuli, "_REGISTRY", dict(stimuli._REGISTRY))
+    monkeypatch.setattr(contributions, "EXPERIMENT_MODULES", None)
+    # Restore the module cache along with registries when this test exits.
+    monkeypatch.setitem(sys.modules, "psychophysics_lab.experiments.new_task", None)
+    del sys.modules["psychophysics_lab.experiments.new_task"]
+    spec = get_experiment("new_task")
+    assert spec.procedure.__module__ == "psychophysics_lab.experiments.new_task"
+    assert spec.field_defaults()["trial_count"] == 6 and not spec.default_config
+
+
+@pytest.mark.parametrize("adaptive", [None, SimpleNamespace(algorithm_id="consecutive_up_down")])
+def test_ready_publication_succeeds_for_an_exact_tested_python_file(tmp_path, monkeypatch, adaptive):
+    from psychophysics_lab import authoring
+    path = tmp_path / "src/psychophysics_lab/experiments/ready_task.py"
+    path.parent.mkdir(parents=True)
+    path.write_text("SPEC = None\n")
+    authoring.stage(tmp_path, "experiment", "ready_task")
+    authoring.mark_tested(tmp_path, "experiment", "ready_task")
+    module = SimpleNamespace(SPEC=SimpleNamespace(adaptive=adaptive))
+    monkeypatch.setattr(authoring.importlib, "import_module", lambda name: module)
+    monkeypatch.setattr(authoring.importlib, "reload", lambda value: value)
+    assert authoring.publish(tmp_path, "experiment", "ready_task").status == "ready"
+
+
+def test_ready_publication_still_requires_tested_ready_adaptive_dependency(tmp_path, monkeypatch):
+    from psychophysics_lab import authoring
+    folder = tmp_path / "src/psychophysics_lab"
+    for kind, name in (("experiments", "dependent_task"), ("adaptive", "custom_rule")):
+        path = folder / kind / (name + ".py")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("SPEC = None\n")
+    authoring.stage(tmp_path, "adaptive", "custom_rule")
+    authoring.stage(tmp_path, "experiment", "dependent_task")
+    authoring.mark_tested(tmp_path, "experiment", "dependent_task")
+    module = SimpleNamespace(SPEC=SimpleNamespace(adaptive=SimpleNamespace(algorithm_id="custom_rule")))
+    monkeypatch.setattr(authoring.importlib, "import_module", lambda name: module)
+    monkeypatch.setattr(authoring.importlib, "reload", lambda value: value)
+    with pytest.raises(ValueError, match="Publish and retest dependent adaptive"):
+        authoring.publish(tmp_path, "experiment", "dependent_task")
+
+
+def test_python_procedure_storyboard_does_not_replay_a_retired_json_plan(tmp_path):
+    from psychophysics_lab.development import preview_trial_storyboard
+    spec = get_experiment("orientation_task")
+    assert preview_trial_storyboard(ROOT, spec, spec.field_defaults(), tmp_path / "story.png") is None
+    assert not (tmp_path / "story.png").exists()
+
+
+@pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows batch launcher")
+def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
+    import os
+    import shutil
+    import subprocess
+    import venv
+    # Run the actual batch entry point, using a hardware-free fake app and a
+    # no-install setup hook. The real local environment is never changed.
+    shutil.copyfile(ROOT / "run_psycolab.bat", tmp_path / "run_psycolab.bat")
+    (tmp_path / "pyproject.toml").write_text("# launcher presence check\n")
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "launcher_setup.py").write_text("# no installation in this regression fixture\n")
+    venv.EnvBuilder(with_pip=False).create(tmp_path / ".venv")
+    package = tmp_path / "psychophysics_lab"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "__main__.py").write_text(
+        "import json, sys\nfrom pathlib import Path\n"
+        "Path('received.json').write_text(json.dumps(sys.argv[1:]))\n")
+    command = (
+        '"' + os.environ.get("COMSPEC", "cmd.exe") + '" /d /c '
+        'call run_psycolab.bat --probe-token "a value with spaces" <NUL'
+    )
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
+        creationflags=subprocess.CREATE_NO_WINDOW)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]

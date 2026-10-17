@@ -1,6 +1,6 @@
 # Trial timelines and scientific actions
 
-Start with [the chronological beginner guide](START_HERE_EXPERIMENTS.md).
+Start with [the chronological beginner guide](LEARN_PSYCOLAB.md).
 TrialTimeline and RunContext.play_trial are the authoritative public sequence;
 Phase and load_timeline keep earlier visual-only JSON experiments compatible.
 

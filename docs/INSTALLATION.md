@@ -126,5 +126,5 @@ physical stimulus appearance, photometric accuracy or photon timing. Use
 
 Before updating source, review `git status` and preserve local edits. After a
 reviewed update, rerun the launcher; do not copy environments between computers.
-Historical ZIP-overlay notes are retained under `docs/history/2026-09-15-overlay/`
-for evidence only and should not be applied to current source.
+Superseded ZIP-overlay instructions are recoverable from Git history; use the
+current launcher instead of applying old overlays.

@@ -34,7 +34,7 @@ def preview_trial_storyboard(repo_root: Path, spec, values: dict, destination: P
     path = repo_root / "configs" / "experiments" / (spec.id + ".json")
     if not path.is_file():
         return None
-    if spec.default_config:
+    if spec.procedure is not None:
         # The Python action plan is authoritative for new experiments. Render
         # executed actions from trial_actions.json rather than invent a JSON plan.
         return None

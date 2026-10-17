@@ -1,0 +1,257 @@
+{
+  "virtual_runs": [
+    {
+      "experiment": "contrast_sensitivity",
+      "status": "max_trials_reached",
+      "accepted_trials": 8,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "example_experiment",
+      "status": "completed",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "new_probe_vertical_line_stimulus",
+      "status": "completed",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "orientation_adaptive",
+      "status": "completed",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "orientation_task",
+      "status": "completed",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "probe_above_below",
+      "status": "completed",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": false
+    },
+    {
+      "experiment": "base_flanker",
+      "status": "max_trials_reached",
+      "accepted_trials": 8,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": true
+    },
+    {
+      "experiment": "ellipse_2d",
+      "status": "max_trials_reached",
+      "accepted_trials": 4,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": true
+    },
+    {
+      "experiment": "indirect_flanker",
+      "status": "max_trials_reached",
+      "accepted_trials": 8,
+      "checks": 18,
+      "all_saved_output_checks_passed": true,
+      "human_block_retained": true
+    }
+  ],
+  "previews": [
+    {
+      "stimulus": "annulus_patch",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "composed_scene",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "ellipse_patch",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "example_stimulus",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "fixation_cross",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "gabor_patch",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 103,
+      "maximum": 153
+    },
+    {
+      "stimulus": "gaussian_dot",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "geometry_bar",
+      "status": "hardware-specific; raster substitution intentionally unavailable"
+    },
+    {
+      "stimulus": "legacy_csf",
+      "status": "hardware-specific; raster substitution intentionally unavailable"
+    },
+    {
+      "stimulus": "new_probe_vertical_line",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "oriented_line",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "rectangle_patch",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "sine_grating",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 102,
+      "maximum": 153
+    },
+    {
+      "stimulus": "square_patch",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    },
+    {
+      "stimulus": "teaching_gabor",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 103,
+      "maximum": 153
+    },
+    {
+      "stimulus": "vertical_line_probe",
+      "status": "rendered",
+      "shape": [
+        256,
+        256
+      ],
+      "minimum": 128,
+      "maximum": 255
+    }
+  ],
+  "physical_display_used": false,
+  "automated_tests": {
+    "platform": "Windows",
+    "python": "3.11",
+    "passed": 943,
+    "warnings": 1,
+    "duration_seconds": 200.59,
+    "warning_explanation": "Expected mismatched SPEC from atomic-loader mock test"
+  },
+  "additional_checks": {
+    "portability": "passed",
+    "compileall": "passed",
+    "pip_check": "passed",
+    "diff_whitespace": "passed",
+    "local_markdown_links": "passed; zero broken links",
+    "managed_ready_fingerprint": "current after successful virtual test",
+    "windows_batch_catalogue": "passed",
+    "windows_batch_quoted_argument_regression": "passed",
+    "csf_action_replay": "all three historical fixtures passed",
+    "remote_windows_ubuntu_ci": "not run; branch not pushed",
+    "physical_hardware_validation": "not performed"
+  },
+  "git": {
+    "branch": "audit/researcher-facing-procedures",
+    "head": "651b928371dc577717dbef96acdaa9c292d02c1a",
+    "committed": false,
+    "pushed": false,
+    "staged": false,
+    "changed_paths": 64,
+    "new_files": 9
+  }
+}
