@@ -107,7 +107,6 @@ def test_contribution_loading_is_explicit_and_atomic(monkeypatch):
     monkeypatch.setattr(registry,"_REGISTRY",dict(registry._REGISTRY))
     monkeypatch.setattr(stimuli,"_REGISTRY",dict(stimuli._REGISTRY))
     monkeypatch.setattr(contributions,"EXPERIMENT_MODULES",("extension_a", "missing_extension"))
-    monkeypatch.setattr(contributions,"STIMULUS_MODULES",())
     monkeypatch.setattr(contributions,"ADAPTIVE_MODULES",())
     def load(name):
         if name == "missing_extension":
