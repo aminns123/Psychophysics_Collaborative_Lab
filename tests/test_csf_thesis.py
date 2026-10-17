@@ -9,10 +9,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from psychophysics_lab.experiments.csf_thesis import SPEC, make_trial, change_contrast, procedure
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC, make_trial, change_contrast, procedure
 from psychophysics_lab.adaptive import AdaptiveRun, StaircaseConfig, Step
 from psychophysics_lab.researcher import RunContext
-from psychophysics_lab.stimulus_library import ThesisCSFGrating, ThesisGaussianFixation
+from psychophysics_lab.stimulus_library import ContrastSensitivityGrating, GaussianFixation
 from simulations.run import simulate
 from scripts.validate_run import validate_run
 
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize("side,x", [("left", -.5), ("right", .5)])
 def test_figure_4_3a_has_exactly_the_three_participant_visible_stages(side, x):
-    phases = make_trial(side).resolve(SPEC.field_defaults()).phases
+    phases = make_trial(SPEC.field_defaults(), {"target":0 if side == "left" else 1}).resolve(SPEC.field_defaults()).phases
     assert [(p.name, p.duration_ms) for p in phases] == [("fixation", 500), ("grating", 300), ("answer", 0)]
     assert [s.slot for s in phases[0].placements] == ["fixation"]
     assert [(s.slot, s.x_deg) for s in phases[1].placements] == [("grating", x)]
@@ -31,16 +31,16 @@ def test_figure_4_3a_has_exactly_the_three_participant_visible_stages(side, x):
 
 
 def test_gaussian_sigma_and_grating_frequency_are_in_degrees_and_cpd():
-    values = {f.key: f.default for f in ThesisCSFGrating.PARAMETERS}
+    values = {f.key: f.default for f in ContrastSensitivityGrating.PARAMETERS}
     values.update(contrast=.1, spatial_frequency_cpd=1.25, background=.3)
     x, y = np.array([[.2]]), np.array([[0.]])
-    assert ThesisCSFGrating.render(values, x, y)[0, 0] == pytest.approx(.3+.05*math.exp(-.2**2/2))
-    fixation = {f.key: f.default for f in ThesisGaussianFixation.PARAMETERS}
+    assert ContrastSensitivityGrating.render(values, x, y)[0, 0] == pytest.approx(.3+.05*math.exp(-.2**2/2))
+    fixation = {f.key: f.default for f in GaussianFixation.PARAMETERS}
     fixation["background"] = .95
-    assert ThesisGaussianFixation.render(fixation, np.zeros((1,1)), np.zeros((1,1)))[0,0] == 1.
+    assert GaussianFixation.render(fixation, np.zeros((1,1)), np.zeros((1,1)))[0,0] == 1.
     values.update(contrast=.9, background=.1)
     with pytest.raises(ValueError, match="no silent clipping"):
-        ThesisCSFGrating.validate(values)
+        ContrastSensitivityGrating.validate(values)
 
 
 def test_table_4_4_has_no_hidden_introductory_one_down_phase():
@@ -58,7 +58,7 @@ def test_table_4_4_has_no_hidden_introductory_one_down_phase():
 
 
 def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_estimator(tmp_path, monkeypatch):
-    original = RunContext.play_trial
+    original = RunContext.trial
     seen = {}
     def scripted(run, *args, **kwargs):
         if run.spec.id == "csf_thesis":
@@ -67,7 +67,7 @@ def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_esti
             seen[identity] = count+1
             run.observer_parameters = {"accuracy": 0. if count % 5 == 4 else 1.}
         return original(run, *args, **kwargs)
-    monkeypatch.setattr(RunContext, "play_trial", scripted)
+    monkeypatch.setattr(RunContext, "trial", scripted)
     artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id="csf_thesis",
         values={"frequencies_cpd":"2", "staircases_per_condition":2, "max_trials":500, "starting_contrast":.02}, analyse=False)
     assert artifacts.status == "completed"
@@ -143,13 +143,13 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     values, snapshots = asyncio.run(collect())
     assert all(s["file_identity"] == "library_defaults" for s in snapshots.values())
     assert all(values[k] == v for k, v in selected.items())
-    original = RunContext.play_trial
+    original = RunContext.trial
     presented = []
     def scripted(run, *args, **kwargs):
         presented.append(kwargs["state"]["contrast"])
         run.observer_parameters = {"accuracy":1. if (len(presented)-1) % 4 < 2 else 0.}
         return original(run, *args, **kwargs)
-    monkeypatch.setattr(RunContext, "play_trial", scripted)
+    monkeypatch.setattr(RunContext, "trial", scripted)
     artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id=SPEC.id,
                             values=values, stimulus_snapshots=snapshots, analyse=False)
     assert artifacts.status == "completed"

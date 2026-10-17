@@ -1,30 +1,78 @@
 # Researcher experiment files
 
-Edit an experiment Python file here and the relevant class in
-`../stimulus_library.py`. Every experiment follows the same seven sections:
+Edit one experiment here and its stimulus class in `../stimulus_library.py`.
+Every experiment uses the same function signatures, return types and executable
+main loop. Its purpose and `PARADIGM` identify the participant's two alternatives:
+spatial/property 2AFC, or first/second interval (two-interval forced choice,
+also called 2AFTC here).
 
-1. **Settings and stimuli** — defaults, units, stimulus choices and response meanings.
-   The TUI supplies the selected values for a run.
-2. **Conditions and trial order** — `make_conditions()` declares conditions and scheduling.
-3. **Prepare stimuli** — `prepare_stimuli()` applies condition geometry and appearance.
-4. **One trial** — `make_trial()` shows the chronological displays, sounds and response period.
-5. **Responses and adaptation** — correctness, numeric changes, optional initial phase and bounds.
-6. **Run and finish** — `procedure()` chooses a condition, prepares stimuli, presents the
-   trial, interprets the response, updates the experiment, then checks whether to finish.
-7. **Framework connection** — validation and `SPEC = definition()` connect the science
-   above to the TUI, calibration and shared data saving.
+## Read every file in this order
 
-Response interpretation and updates execute as actions inside `run.play_trial()`;
-the comments in each loop identify that sequence. Do not apply them a second time
-after the call. Fixed-trial experiments state that they have no adaptation.
+1. **Settings and stimuli:** `FIELDS`, `RESPONSES`, stimulus slots/defaults and
+   `PARADIGM`. The TUI supplies the selected values; this section gives defaults.
+2. **Conditions and order:** `make_conditions(settings)` returns named condition
+   dictionaries; `choose_condition(run, conditions, state)` selects one and sets
+   its `target` (correct alternative index) and `value` (condition saved in data).
+3. **Prepare stimuli:** `prepare_stimuli(run, condition, state)` always returns
+   a dictionary of validated stimulus parameters by slot, never a bare coordinate
+   or Scene object. Conditions carry scientifically named coordinates/quantities.
+4. **One trial:** `make_trial(settings, condition)` returns the chronological
+   displays, interval gaps, optional sounds and response collection. Observation
+   markers may appear here; scientific updates may not. Both intervals remain
+   explicit in a temporal task.
+5. **Responses and adaptation:** `interpret_response(condition, response)` states
+   correctness; `update_experiment(run, condition, state, response, trial)` performs
+   the scientific update once and returns state. `trial_record()` declares named
+   measurements and canonical data fields. No file-writing code belongs here.
+6. **Run and finish:** setup, a Boolean stopping rule, the point estimator where
+   applicable, and the identical `procedure()` below.
+7. **Framework connection:** validation and `SPEC = definition()` connect these
+   scientific functions to the TUI and shared machinery.
 
-Start with `probe_above_below.py` for a fixed-trial experiment, or `csf_thesis.py`
-for independent adaptive staircases. `orientation_adaptive.py` illustrates a
-fixed response count with adaptive contrast. The three historical reconstructions
-retain their original scientific quirks and acquisition blocks.
+`condition` describes this trial. `state` holds quantities that persist across
+trials, including adaptive counters/engines. The open `trial` exposes an immutable
+accepted response and trial state, and applies declared nonvisual updates.
 
-`_internal/` contains discovery, declarations, validation infrastructure and
-historical design compatibility. Researchers do not edit it to create experiments.
-`__init__.py` is the required package entry point; it contains no experiment science.
-The edited custom file `new_probe_vertical_line_stimulus.py` remains subject to its
-existing Draft/Test/Ready checks; changing source does not silently publish it.
+```python
+def procedure(run):
+    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
+        raise ValueError(SPEC.acquisition_block_reason)
+    conditions = make_conditions(run.values)
+    state = initialise_experiment(run, conditions)
+    while not is_finished(run, conditions, state):
+        condition = choose_condition(run, conditions, state)
+        stimuli = prepare_stimuli(run, condition, state)
+        with run.trial(
+            make_trial(run.values, condition),
+            target=condition["target"], condition=condition["value"],
+            parameters_by_slot=stimuli, **trial_record(run, condition, state),
+        ) as trial:
+            response = interpret_response(condition, trial.response)
+            state = update_experiment(run, condition, state, response, trial)
+    finish_experiment(run, conditions, state)
+```
+
+Entering `run.trial()` presents the trial using the existing renderer and collects
+one response. Interpretation and update are explicit calls inside the boundary;
+leaving it saves once. An exception preserves accepted input, partial events and
+state, and marks the run interrupted/failed. A failed adaptive update remains
+incomplete rather than being invented to make counts agree. Do not perform file
+access in an update callback. The compatibility `play_trial()` API still exists
+for internal/older action plans, but researcher files all use the flow above.
+
+Start with `probe_above_below.py` for a fixed-trial example, `contrast_sensitivity.py`
+for interleaved staircases, and `ellipse_2d.py` for two explicit temporal intervals.
+Historical reconstructions retain their scientific quirks and acquisition blocks.
+The edited custom probe retains its existing Draft/Test/Ready gate.
+
+`_internal/` holds discovery, declaration validation, source-name compatibility and
+historical design loading. Researchers do not edit it to add experiments.
+`__init__.py` is the required package entry point and contains no experiment science.
+
+## Contrast sensitivity naming
+
+The public file and menu name are Contrast Sensitivity. Its established saved-run
+ID `csf_thesis` is retained internally: the older ID `contrast_sensitivity` already
+means a scientifically different historical shader protocol. The internal
+`source_names.py` migration map prevents either kind of saved run from being
+silently reinterpreted. New experiment files still match their own IDs normally.

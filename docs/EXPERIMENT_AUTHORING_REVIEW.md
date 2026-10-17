@@ -44,7 +44,7 @@ response meanings, adaptation settings and stopping rules stay visible in the
 experiment. A small amount of registration metadata can follow at the bottom.
 The reader should see the experiment before encountering that metadata.
 
-## Concrete implementation: `experiments/csf_thesis.py`
+## Concrete implementation: `experiments/contrast_sensitivity.py`
 
 The user selected the thesis-described CSF as the new target. It now uses the
 ordinary shared TrialTimeline/RunContext path, not the legacy CSF event adapter.
@@ -71,8 +71,8 @@ also sets the number retained), then the arithmetic
 mean across the completed staircases for a frequency; sensitivity is its inverse.
 Incomplete conditions do not receive a fabricated threshold.
 
-`ThesisCSFGrating` exposes the Gaussian sigma (1 degree), sinusoidal carrier and
-digital modulation equation in the stimulus library. `ThesisGaussianFixation`
+`ContrastSensitivityGrating` exposes the Gaussian sigma (1 degree), sinusoidal carrier and
+digital modulation equation in the stimulus library. `GaussianFixation`
 exposes sigma .035 degrees and the background+.09 digital peak, limited to 1.
 The experiment has an explicit background, used by the shared presenter as well
 as both raster classes. Shared adaptive metadata now states whether its numeric
@@ -156,3 +156,17 @@ adaptive update/stopping rule, and change one timing and one condition without
 opening a framework module. Also ask them to distinguish digital from measured
 contrast. A passing test suite and fewer files do not prove this human usability
 criterion. No participant/researcher usability test has been performed here.
+
+
+## Second consistency pass: responsibilities and execution
+
+The first pass standardised headings and names but left incompatible outputs and
+updates split between timelines and loops. That was insufficient. The explicit
+contract now applies to all nine files: named condition dictionaries; parameters
+by stimulus slot; presentation-only trial plans; explicit interpretation/update
+calls; one identical procedure; per-experiment scientific termination/estimation.
+The shared trial context reuses the original renderer and recorder, preserving
+accepted responses and failed-update provenance. The public CSF file/display name
+is now Contrast Sensitivity. Its saved-run ID remains internal compatibility data.
+See EXPERIMENT_CONSISTENCY_PLAN.md and the experiment folder README for the full
+contract and acceptance checks. Human comprehension remains a separate validation.

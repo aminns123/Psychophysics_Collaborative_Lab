@@ -52,8 +52,10 @@ def test_every_python_procedure_is_owned_by_its_named_file():
             continue
         if spec.procedure.__module__.endswith("library_builder"):
             continue  # saved-design compatibility; absent from normal authoring UI
-        assert spec.procedure.__module__ == "psychophysics_lab.experiments." + spec.id
-        assert f"src/psychophysics_lab/experiments/{spec.id}.py" in spec.source_paths
+        from psychophysics_lab.experiments._internal.source_names import source_name
+        name = source_name(spec.id)
+        assert spec.procedure.__module__ == "psychophysics_lab.experiments." + name
+        assert f"src/psychophysics_lab/experiments/{name}.py" in spec.source_paths
 
 
 def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timings():
@@ -66,7 +68,7 @@ def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timing
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
         values = module.SPEC.field_defaults() | {"fixation_ms": 173, "stimulus_ms": 91}
         expected = load_timeline(ROOT / "configs/experiments/orientation_task.json", timings=values, slots={"target"})
-        actual = module.make_trial().resolve(values)
+        actual = module.make_trial(values, {"target":0}).resolve(values)
         assert [(p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in actual.phases] == [
             (p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in expected.phases]
 
@@ -125,12 +127,15 @@ def test_adaptive_policy_is_explicit_in_the_experiment(identity):
 
 
 def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_position():
-    from psychophysics_lab.experiments.probe_above_below import make_trial, SPEC
+    from psychophysics_lab.experiments.probe_above_below import make_trial, update_experiment, SPEC
     from psychophysics_lab.experiments._internal.library_builder import _make_timeline
     doc = json.loads((ROOT / "configs/experiment_designs/probe_above_below.json").read_text())
     for y in (2., -2.):
         old = _make_timeline(doc["actions"], SPEC.field_defaults(), (0., y), ("above", "below"))
-        new = make_trial(y).resolve(SPEC.field_defaults())
+        from psychophysics_lab.researcher import TrialTimeline
+        actions = []
+        update_experiment(None, None, {}, None, SimpleNamespace(apply=lambda *a: actions.extend(a), state={}))
+        new = TrialTimeline(make_trial(SPEC.field_defaults(), {"probe_y_deg":y}).phases + tuple(actions)).resolve(SPEC.field_defaults())
         # The callable has moved and been renamed; compare its behaviour too.
         before, after = normalise(old.to_dict()), normalise(new.to_dict())
         before["phases"][-1].pop("function")
@@ -143,14 +148,22 @@ def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_posi
 
 def test_researcher_probe_instructions_follow_remapped_response_keys():
     from psychophysics_lab.experiments.new_probe_vertical_line_stimulus import procedure, SPEC
+    from contextlib import contextmanager
     captured = []
-    run = SimpleNamespace(values=SPEC.field_defaults() | {"trial_count": 1},
-        responses=SimpleNamespace(keys=("UP", "DOWN")), trial_state={"correct_count": 1},
-        initialise=lambda **kwargs: None, complete=lambda: None,
-        play_trial=lambda *args, **kwargs: captured.append(kwargs))
+    run = SimpleNamespace(values=SPEC.field_defaults() | {"trial_count":1}, accepted_trials=0,
+        synthetic=True, responses=SimpleNamespace(keys=("UP", "DOWN"), alternatives=("above", "below")),
+        initialise=lambda **kwargs: None, complete=lambda: None, stimulus_parameters=lambda *a, **k: {})
+    @contextmanager
+    def trial(plan, **kwargs):
+        captured.append(kwargs)
+        yield SimpleNamespace(response={"alternative":0, "correct":True},
+            apply=lambda *a: None, state={"correct_count":1})
+        run.accepted_trials += 1
+    run.trial = trial
     procedure(run)
     assert captured[0]["instructions"] == "Above: UP   Below: DOWN"
     assert captured[0]["target"] == 0 and captured[0]["condition"] == "above"
+
 
 
 def test_discovery_registers_a_new_python_file_without_companion_or_manual_list(tmp_path, monkeypatch):

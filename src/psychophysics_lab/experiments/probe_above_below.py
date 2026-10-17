@@ -11,7 +11,6 @@ Stimulus defaults/maths are FixationCross and VerticalLineProbe in the library.
 RunContext executes the same procedure for live and virtual response sources.
 """
 
-
 import random
 from psychophysics_lab.researcher import (
     ConfigField,
@@ -25,13 +24,10 @@ from psychophysics_lab.researcher import (
     UpdateState,
 )
 
-
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField(
-        "trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000
-    ),
+    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000),
     ConfigField("random_seed", "Condition seed", "int", 123, minimum=0),
     ConfigField(
         "fixation_ms",
@@ -80,82 +76,124 @@ RESPONSES = ResponseParadigm("probe_above_below", ("above", "below"), ("F", "J")
 STIMULUS_SLOTS = {"fixation": "fixation", "probe": "line"}
 STIMULUS_DEFAULTS = {"fixation": "fixation_cross", "probe": "vertical_line_probe"}
 
+PARADIGM = "two_alternative_forced_choice"
+
 
 # 2. CONDITIONS AND TRIAL ORDER
-def make_conditions(values):
-    order = [i % 2 for i in range(values["trial_count"])]
-    random.Random(values["random_seed"]).shuffle(order)
-    return order
+def make_conditions(settings):
+    order = [i % 2 for i in range(settings["trial_count"])]
+    random.Random(settings["random_seed"]).shuffle(order)
+    return [{"target": target, "probe_y_deg": 2.0 if target == 0 else -2.0} for target in order]
+
+
+def choose_condition(run, conditions, state):
+    condition = dict(conditions[run.accepted_trials])
+    condition["value"] = run.responses.alternatives[condition["target"]]
+    return condition
 
 
 # 3. PREPARE STIMULI
-def prepare_stimuli(target):
-    """The vertical placement is the only stimulus change between conditions."""
-    return 2.0 if target == 0 else -2.0
+def prepare_stimuli(run, condition, state):
+    return {
+        "fixation": run.stimulus_parameters("fixation"),
+        "probe": run.stimulus_parameters("probe"),
+    }
 
 
 # 4. ONE TRIAL
-def make_trial(probe_y_deg):
+def make_trial(settings, condition):
     return TrialTimeline(
         (
             Show("fixation", stimuli=(Stimulus("fixation"),), duration="fixation_ms"),
             RecordState("before_probe"),
             Show(
                 "probe",
-                stimuli=(Stimulus("fixation"), Stimulus("probe", y_deg=probe_y_deg)),
+                stimuli=(Stimulus("fixation"), Stimulus("probe", y_deg=condition["probe_y_deg"])),
                 duration="stimulus_ms",
             ),
             Show("blank", duration="interval_ms"),
             CollectResponse(actions=("above", "below"), timeout="response_timeout_ms"),
             RecordState("response_received"),
-            UpdateState(update_from_response, name="update_correct_count"),
         )
     )
 
 
 # 5. RESPONSES AND ADAPTATION
-# Correctness is target/response alternative equality. Count correct answers only;
-# no adaptive stimulus change. The loop finishes at the selected trial count.
+def interpret_response(condition, response):
+    """Both categories score the chosen spatial/property alternative or interval."""
+    correct = response["alternative"] == condition["target"]
+    if correct != response["correct"]:
+        raise ValueError("Response interpretation disagrees with the recorded target.")
+    return dict(response) | {"correct": correct}
+
+
 def update_from_response(state, response):
-    return dict(state) | {
-        "correct_count": state["correct_count"] + int(response["correct"])
+    return dict(state) | {"correct_count": state["correct_count"] + int(response["correct"])}
+
+
+def update_experiment(run, condition, state, response, trial):
+    trial.apply(UpdateState(update_from_response, name="update_correct_count"))
+    return dict(trial.state)
+
+
+def trial_record(run, condition, state):
+    probe_y = condition["probe_y_deg"]
+    return {
+        "state": dict(state),
+        "measurements": {"probe_x_deg": 0.0, "probe_y_deg": probe_y},
+        "instructions": "  ".join(
+            f"{alt}: {key}" for alt, key in zip(run.responses.alternatives, run.responses.keys)
+        ),
     }
 
 
 # 6. RUN AND FINISH
-def procedure(run):
-    order = make_conditions(run.values)
+def initialise_experiment(run, conditions):
     run.initialise(
-        expected_trials=len(order),
+        expected_trials=len(conditions),
         resolution={
             "task": "A white vertical line is shown above or below a central fixation cross.",
-            "condition_order": [run.responses.alternatives[i] for i in order],
+            "condition_order": [run.responses.alternatives[c["target"]] for c in conditions],
             "trial_order_seed": run.values["random_seed"],
-            "above_timeline": make_trial(2.0).resolve(run.values).to_dict(),
-            "below_timeline": make_trial(-2.0).resolve(run.values).to_dict(),
+            "above_timeline": make_trial(run.values, {"probe_y_deg": 2.0})
+            .resolve(run.values)
+            .to_dict(),
+            "below_timeline": make_trial(run.values, {"probe_y_deg": -2.0})
+            .resolve(run.values)
+            .to_dict(),
             "stimulus_slots": run.stimulus_snapshots,
         },
     )
-    state = {"correct_count": 0}
-    for target in order:
-        # 1. CHOOSE A CONDITION; 2. PREPARE ITS STIMULI.
-        probe_y = prepare_stimuli(target)
-        # 3. PRESENT ONE TRIAL; 4. INTERPRET the named response by index equality.
-        # 5. UPDATE correct_count using update_from_response in the trial plan.
-        run.play_trial(
-            make_trial(probe_y),
-            target=target,
-            condition=run.responses.alternatives[target],
-            state=state,
-            measurements={"probe_x_deg": 0.0, "probe_y_deg": probe_y},
-            instructions="  ".join(
-                f"{alt}: {key}"
-                for alt, key in zip(run.responses.alternatives, run.responses.keys)
-            ),
-        )
-        state = dict(run.trial_state)
-        # 6. CHECK WHETHER TO FINISH: the loop ends after the configured trial count.
+
+    return {"correct_count": 0}
+
+
+def is_finished(run, conditions, state):
+    return run.accepted_trials >= len(conditions)
+
+
+def finish_experiment(run, conditions, state):
     run.complete()
+
+
+def procedure(run):
+    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
+        raise ValueError(SPEC.acquisition_block_reason)
+    conditions = make_conditions(run.values)
+    state = initialise_experiment(run, conditions)
+    while not is_finished(run, conditions, state):
+        condition = choose_condition(run, conditions, state)
+        stimuli = prepare_stimuli(run, condition, state)
+        with run.trial(
+            make_trial(run.values, condition),
+            target=condition["target"],
+            condition=condition["value"],
+            parameters_by_slot=stimuli,
+            **trial_record(run, condition, state),
+        ) as trial:
+            response = interpret_response(condition, trial.response)
+            state = update_experiment(run, condition, state, response, trial)
+    finish_experiment(run, conditions, state)
 
 
 # 7. FRAMEWORK CONNECTION

@@ -551,7 +551,7 @@ class CSFGrating(LibraryStimulus):
     )
 
 
-class ThesisCSFGrating(LibraryStimulus):
+class ContrastSensitivityGrating(LibraryStimulus):
     """Thesis CSF: Gaussian sigma in degrees; sinusoidal carrier in cycles/degree.
 
     RGB command = background + (contrast/2) * Gaussian * sin(carrier phase).
@@ -577,12 +577,12 @@ class ThesisCSFGrating(LibraryStimulus):
         carrier = np.sin(2*np.pi*parameters["spatial_frequency_cpd"]*x_deg)
         return parameters["background"] + parameters["contrast"]*envelope*carrier/2
 
-    SPEC = StimulusSpec("thesis_csf_grating", "Thesis CSF grating", "Gaussian-windowed grating in explicit degree coordinates.",
+    SPEC = StimulusSpec("thesis_csf_grating", "Contrast sensitivity grating", "Gaussian-windowed grating in explicit degree coordinates.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_csf",
         render=render, validator=validate.__func__, calibration_requirements=("geometry", "luminance"))
 
 
-class ThesisGaussianFixation(LibraryStimulus):
+class GaussianFixation(LibraryStimulus):
     """Thesis fixation: sigma .035 degrees; peak background + .09, limited to 1."""
     PARAMETERS = (
         ConfigField("size_deg", "Fixation patch", "float", .5, minimum=.1, maximum=3, units="degrees"),
@@ -596,7 +596,7 @@ class ThesisGaussianFixation(LibraryStimulus):
         envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg)/(2*parameters["sigma_deg"]**2))
         return parameters["background"] + (peak-parameters["background"])*envelope
 
-    SPEC = StimulusSpec("thesis_gaussian_fixation", "Thesis Gaussian fixation", "Small Gaussian fixation marker in degrees.",
+    SPEC = StimulusSpec("thesis_gaussian_fixation", "Gaussian fixation", "Small Gaussian fixation marker in degrees.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_fixation",
         render=render, calibration_requirements=("geometry", "luminance"))
 

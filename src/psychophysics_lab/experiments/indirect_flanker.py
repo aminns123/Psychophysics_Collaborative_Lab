@@ -17,7 +17,6 @@ Matched experiments intentionally repeat scientific policy, not display/input/IO
 mechanisms, so each can be read and changed independently. Tests protect pairing.
 """
 
-
 import json
 import math
 import random
@@ -34,7 +33,6 @@ from ..researcher import (
     UpdateState,
 )
 from ..stimulus_library import Scene, gaussian_dot, line, grating, annulus
-
 
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
@@ -55,9 +53,7 @@ FIELDS = (
         minimum=1,
         maximum=1000,
     ),
-    ConfigField(
-        "background", "Digital background", "float", 0.24, minimum=0.01, maximum=0.4
-    ),
+    ConfigField("background", "Digital background", "float", 0.24, minimum=0.01, maximum=0.4),
     ConfigField(
         "start_contrast",
         "Starting digital contrast",
@@ -66,9 +62,7 @@ FIELDS = (
         minimum=1e-06,
         maximum=1,
     ),
-    ConfigField(
-        "scene_size_deg", "Scene aperture", "float", 18.0, minimum=1, maximum=60
-    ),
+    ConfigField("scene_size_deg", "Scene aperture", "float", 18.0, minimum=1, maximum=60),
     ConfigField(
         "reference_width_px",
         "Synthetic reference width if profile has none",
@@ -109,14 +103,70 @@ FIELDS += (
 
 
 FIELDS += (
-    ConfigField("n_down", "Correct-answer count for a down step (legacy counter)", "int", 3, minimum=1, section="Adaptive settings"),
-    ConfigField("trial_point", "Initial-phase response boundary", "int", 9, minimum=1, section="Adaptive settings"),
-    ConfigField("reverse_point", "Initial-phase reversal boundary", "int", 1, minimum=1, section="Adaptive settings"),
-    ConfigField("log_up", "Incorrect-answer increase (log10 units)", "float", 0.19, minimum=0, section="Adaptive settings"),
-    ConfigField("log_down", "Correct-answer decrease (log10 units)", "float", 0.7393 * 0.19, minimum=0, section="Adaptive settings"),
-    ConfigField("initial_log_down", "Initial-phase decrease (log10 units)", "float", 0.2, minimum=0, section="Adaptive settings"),
-    ConfigField("reversal_limit", "Reversals required per condition", "int", 10, minimum=1, section="Adaptive settings"),
-    ConfigField("condition_trial_limit", "Response limit per condition", "int", 101, minimum=1, section="Adaptive settings"),
+    ConfigField(
+        "n_down",
+        "Correct-answer count for a down step (legacy counter)",
+        "int",
+        3,
+        minimum=1,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "trial_point",
+        "Initial-phase response boundary",
+        "int",
+        9,
+        minimum=1,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "reverse_point",
+        "Initial-phase reversal boundary",
+        "int",
+        1,
+        minimum=1,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "log_up",
+        "Incorrect-answer increase (log10 units)",
+        "float",
+        0.19,
+        minimum=0,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "log_down",
+        "Correct-answer decrease (log10 units)",
+        "float",
+        0.7393 * 0.19,
+        minimum=0,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "initial_log_down",
+        "Initial-phase decrease (log10 units)",
+        "float",
+        0.2,
+        minimum=0,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "reversal_limit",
+        "Reversals required per condition",
+        "int",
+        10,
+        minimum=1,
+        section="Adaptive settings",
+    ),
+    ConfigField(
+        "condition_trial_limit",
+        "Response limit per condition",
+        "int",
+        101,
+        minimum=1,
+        section="Adaptive settings",
+    ),
 )
 
 
@@ -125,15 +175,15 @@ RESPONSES = ResponseParadigm("indirect_flanker", ("up", "down"), ("UP", "DOWN"))
 STIMULUS_SLOTS = {s: "scene" for s in SLOTS}
 STIMULUS_DEFAULTS = {s: "composed_scene" for s in SLOTS}
 
+PARADIGM = "two_alternative_forced_choice"
+
 
 # 2. CONDITIONS AND TRIAL ORDER
-def make_conditions(values):
+def make_conditions(settings):
     try:
-        result = json.loads(values["condition_positions_deg"])
+        result = json.loads(settings["condition_positions_deg"])
     except (ValueError, TypeError) as exc:
-        raise ValueError(
-            "Supply an explicit JSON list of probe x positions in degrees"
-        ) from exc
+        raise ValueError("Supply an explicit JSON list of probe x positions in degrees") from exc
     if (
         not isinstance(result, list)
         or not result
@@ -146,10 +196,11 @@ def make_conditions(values):
         )
         or (len(set(result)) != len(result))
     ):
-        raise ValueError(
-            "Condition positions must be distinct positive degrees (up to 10)"
-        )
-    return result
+        raise ValueError("Condition positions must be distinct positive degrees (up to 10)")
+    return [
+        {"id": i, "position_deg": position, "value": position}
+        for i, position in enumerate(result, 1)
+    ]
 
 
 def source_targets(count, rng):
@@ -167,6 +218,23 @@ def source_targets(count, rng):
             sign, negative = (1, 0)
         targets.append(0 if rng.choice([-1, 1, sign]) > 0 else 1)
     return targets
+
+
+def choose_condition(run, conditions, state):
+    adaptive = state["adaptive"]
+    identity = adaptive.select(state["rng"].choice)
+    condition = dict(conditions[identity - 1])
+    condition.update(
+        target=state["targets"][run.accepted_trials],
+        intensity=adaptive.states[identity].next_intensity,
+        previous_reversals=adaptive.states[identity].reversal_count,
+        first_trial=run.accepted_trials == 0,
+    )
+    if not 0 <= condition["intensity"] <= 1:
+        raise ValueError(
+            "Legacy adaptive step exceeds digital range; preserved accepted data, no silent clamp"
+        )
+    return condition
 
 
 # 3. PREPARE STIMULI
@@ -207,7 +275,13 @@ def pixel_geometry(run):
     }
 
 
-def prepare_stimuli(values, geometry, *, position, target, intensity):
+def prepare_stimuli(run, condition, state):
+    values, geometry = run.values, state["geometry"]
+    position, target, intensity = (
+        condition["position_deg"],
+        condition["target"],
+        condition["intensity"],
+    )
     bg, fy = (values["background"], geometry["fixation_y_deg"])
     dot = gaussian_dot(
         sigma_deg=geometry["fixation_sigma_deg"],
@@ -225,26 +299,27 @@ def prepare_stimuli(values, geometry, *, position, target, intensity):
     surround = (
         grating(
             size_deg=5.0,
-            spatial_frequency_cpd=31.5
-            * values["legacy_frequency_label"]
-            / (2 * math.pi * 5),
+            spatial_frequency_cpd=31.5 * values["legacy_frequency_label"] / (2 * math.pi * 5),
             amplitude=0.018 / 2,
             mean=bg,
             x_deg=values["flanker_x_deg"],
             y_deg=fy,
         ),
     )
-    return {
+    drawings = {
         "fixation": fixation,
         "stimulus": Scene(*surround, probe, dot, background=bg),
     }
+    return {slot: scene.parameters(values["scene_size_deg"]) for slot, scene in drawings.items()}
 
 
 # 4. ONE TRIAL
-def make_trial(*, first_trial=False, adaptive=None, identity=None):
+def make_trial(settings, condition):
     """Durations are milliseconds; the first trial adds 250 ms fixation. No audio."""
     phases = (
-        [Show("leading_fixation", slot="fixation", duration=250)] if first_trial else []
+        [Show("leading_fixation", slot="fixation", duration=250)]
+        if condition["first_trial"]
+        else []
     )
     phases += [
         Show("fixation", slot="fixation", duration=250),
@@ -256,40 +331,115 @@ def make_trial(*, first_trial=False, adaptive=None, identity=None):
         CollectResponse(actions=("up", "down"), slot="fixation"),
         RecordState("accepted_response"),
     ]
-    if adaptive is not None:
-        phases += [
-            UpdateAdaptive(
-                adaptive, identity, next_intensity, state_key="next_intensity"
-            ),
-            RecordState("after_adaptation"),
-        ]
     return TrialTimeline(tuple(phases))
 
 
 # 5. RESPONSES AND ADAPTATION
-# The shared legacy counter preserves source behaviour, including accumulated
-# correct ticks across errors (not a conventional consecutive-response rule).
-# During the initial phase, each correct answer uses initial_log_down; this phase
-# requires BOTH current presentation count < trial_point AND reversals < reverse_point.
-# Afterwards n_down correct ticks trigger log_down; errors always use log_up.
-# The shared history detector retains its documented short-history quirk.
-# Retire immediately at reversal_limit OR condition_trial_limit; a global response
-# ceiling also stops the run. These historical mechanisms remain fixture-tested
-# in adaptive/legacy_flanker.py; this file supplies every parameter from the TUI.
+def interpret_response(condition, response):
+    """Both categories score the chosen spatial/property alternative or interval."""
+    correct = response["alternative"] == condition["target"]
+    if correct != response["correct"]:
+        raise ValueError("Response interpretation disagrees with the recorded target.")
+    return dict(response) | {"correct": correct}
+
+
+# The fixture-tested legacy engine owns counters/history, not experiment policy.
+# Errors reset correct ticks and increase by log_up. During the initial phase,
+# each correct answer decreases by initial_log_down; that phase requires BOTH
+# current presentation count < trial_point AND history reversals < reverse_point.
+# Thereafter n_down correct answers trigger log_down, holding between steps.
+# Its history-based reversal count is evaluated before this response's update,
+# retaining the historical short-history convention (different from the CSF).
+# Numeric rule: I_next = background + (I - background) * 10**delta, rounded to
+# eight decimals. preview() supplies the two pure candidates below. No clipping.
+# All parameters come from run.values. Sharing the tested engine avoids copying
+# its historical counter quirks; geometry, choices, limits and measurements stay here.
 def next_intensity(state, response, step):
-    return (
-        state["candidate_correct"]
-        if response["correct"]
-        else state["candidate_incorrect"]
+    return state["candidate_correct"] if response["correct"] else state["candidate_incorrect"]
+
+
+def update_experiment(run, condition, state, response, trial):
+    adaptive, v = state["adaptive"], run.values
+    intensity = condition["intensity"]
+    identity = condition["id"]
+    old_reversals = condition["previous_reversals"]
+
+    def record_adaptation(state, response):
+        after = adaptive.states[identity]
+        return dict(state) | {
+            "next_contrast": (after.next_intensity - v["background"]) / (1 - v["background"]),
+            "step": (
+                "down"
+                if after.next_intensity < intensity
+                else "up" if after.next_intensity > intensity else "hold"
+            ),
+            "reversal_count": after.reversal_count,
+            "reversal": int(after.reversal_count > old_reversals),
+            "staircase_complete": int(after.complete),
+        }
+
+    trial.apply(
+        UpdateAdaptive(adaptive, identity, next_intensity, state_key="next_intensity"),
+        RecordState("after_adaptation"),
+        UpdateState(record_adaptation, name="canonical_adaptive_state"),
     )
+    return state
+
+
+def trial_record(run, condition, state):
+    v, adaptive = run.values, state["adaptive"]
+    identity, intensity, position = (
+        condition["id"],
+        condition["intensity"],
+        condition["position_deg"],
+    )
+    trial_state = {
+        "staircase_id": identity,
+        "presented_intensity": intensity,
+        "presented_contrast": (intensity - v["background"]) / (1 - v["background"]),
+        "staircase_trial_index": len(adaptive.states[identity].presented) + 1,
+        "candidate_correct": adaptive.preview(identity, True)[1],
+        "candidate_incorrect": adaptive.preview(identity, False)[1],
+        **dict.fromkeys(
+            (
+                "next_intensity",
+                "next_contrast",
+                "step",
+                "reversal",
+                "reversal_count",
+                "staircase_complete",
+            )
+        ),
+    }
+    return {
+        "state": trial_state,
+        "adaptive_record": adaptive,
+        "record_from_state": {
+            "staircase_id": "staircase_id",
+            "staircase_trial_index": "staircase_trial_index",
+            "presented_screen_intensity": "presented_intensity",
+            "presented_display_contrast": "presented_contrast",
+            "next_screen_intensity": "next_intensity",
+            "next_display_contrast": "next_contrast",
+            "step": "step",
+            "reversal": "reversal",
+            "reversal_count": "reversal_count",
+            "staircase_complete": "staircase_complete",
+        },
+        "measurements": {
+            "probe_x_deg": position,
+            "presented_screen_intensity": intensity,
+            "presented_display_contrast": (intensity - v["background"]) / (1 - v["background"]),
+            "staircase_id": identity,
+        },
+    }
 
 
 # 6. RUN AND FINISH
-def procedure(run):
+def initialise_experiment(run, conditions):
     if not run.synthetic:
         raise ValueError(BLOCK_REASON)
     v = run.values
-    conditions = make_conditions(v)
     geometry = pixel_geometry(run)
     ceiling = v["trials_per_condition"] * len(conditions)
     rng = random.Random(run.seed)
@@ -315,7 +465,7 @@ def procedure(run):
             "family": "indirect",
             "migration_status": BLOCK_REASON,
             "geometry": geometry,
-            "condition_positions_deg": conditions,
+            "condition_positions_deg": [c["position_deg"] for c in conditions],
             "targets": targets,
             "response_ceiling": ceiling,
             "adaptive_policy": {
@@ -337,99 +487,35 @@ def procedure(run):
             "pixel_parity": False,
         },
     )
-    while adaptive.status == "running":
-        # 1. CHOOSE A CONDITION: uniformly from the active staircases.
-        identity = adaptive.select(rng.choice)
-        position = conditions[identity - 1]
-        target = targets[run.accepted_trials]
-        intensity = adaptive.states[identity].next_intensity
-        if not 0 <= intensity <= 1:
-            raise ValueError(
-                "Legacy adaptive step exceeds digital range; preserved accepted data, no silent clamp"
-            )
-        # 2. PREPARE ITS STIMULI: geometry and intensity for this condition.
-        drawings = prepare_stimuli(
-            v, geometry, position=position, target=target, intensity=intensity
-        )
-        parameters = {
-            slot: scene.parameters(v["scene_size_deg"])
-            for slot, scene in drawings.items()
-        }
-        plan = make_trial(
-            first_trial=run.accepted_trials == 0, adaptive=adaptive, identity=identity
-        )
-        old_reversals = adaptive.states[identity].reversal_count
+    return {"adaptive": adaptive, "rng": rng, "targets": targets, "geometry": geometry}
 
-        def record_adaptation(state, response):
-            after = adaptive.states[identity]
-            return dict(state) | {
-                "next_contrast": (after.next_intensity - v["background"])
-                / (1 - v["background"]),
-                "step": (
-                    "down"
-                    if after.next_intensity < intensity
-                    else "up" if after.next_intensity > intensity else "hold"
-                ),
-                "reversal_count": after.reversal_count,
-                "reversal": int(after.reversal_count > old_reversals),
-                "staircase_complete": int(after.complete),
-            }
 
-        plan = TrialTimeline(
-            plan.phases
-            + (UpdateState(record_adaptation, name="canonical_adaptive_state"),)
-        )
-        state = {
-            "staircase_id": identity,
-            "presented_intensity": intensity,
-            "presented_contrast": (intensity - v["background"]) / (1 - v["background"]),
-            "staircase_trial_index": len(adaptive.states[identity].presented) + 1,
-            "candidate_correct": adaptive.preview(identity, True)[1],
-            "candidate_incorrect": adaptive.preview(identity, False)[1],
-            **dict.fromkeys(
-                (
-                    "next_intensity",
-                    "next_contrast",
-                    "step",
-                    "reversal",
-                    "reversal_count",
-                    "staircase_complete",
-                )
-            ),
-        }
-        # 3. PRESENT ONE TRIAL using the chronological plan above.
-        # 4. INTERPRET THE RESPONSE: target index equals response index.
-        # 5. UPDATE THE EXPERIMENT: the plan runs next_intensity and records its result.
-        run.play_trial(
-            plan,
-            target=target,
-            condition=position,
-            parameters_by_slot=parameters,
-            adaptive_record=adaptive,
-            state=state,
-            record_from_state={
-                "staircase_id": "staircase_id",
-                "staircase_trial_index": "staircase_trial_index",
-                "presented_screen_intensity": "presented_intensity",
-                "presented_display_contrast": "presented_contrast",
-                "next_screen_intensity": "next_intensity",
-                "next_display_contrast": "next_contrast",
-                "step": "step",
-                "reversal": "reversal",
-                "reversal_count": "reversal_count",
-                "staircase_complete": "staircase_complete",
-            },
-            measurements={
-                "probe_x_deg": position,
-                "presented_screen_intensity": intensity,
-                "presented_display_contrast": (intensity - v["background"])
-                / (1 - v["background"]),
-                "staircase_id": identity,
-            },
-        )
-        run.save_adaptive(adaptive)
-        # 6. CHECK WHETHER TO FINISH: the while condition checks retirement and ceiling.
-    run.complete_adaptive(adaptive)
+def is_finished(run, conditions, state):
+    return state["adaptive"].status != "running"
+
+
+def finish_experiment(run, conditions, state):
+    run.complete_adaptive(state["adaptive"])
+
+
+def procedure(run):
+    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
+        raise ValueError(SPEC.acquisition_block_reason)
+    conditions = make_conditions(run.values)
+    state = initialise_experiment(run, conditions)
+    while not is_finished(run, conditions, state):
+        condition = choose_condition(run, conditions, state)
+        stimuli = prepare_stimuli(run, condition, state)
+        with run.trial(
+            make_trial(run.values, condition),
+            target=condition["target"],
+            condition=condition["value"],
+            parameters_by_slot=stimuli,
+            **trial_record(run, condition, state),
+        ) as trial:
+            response = interpret_response(condition, trial.response)
+            state = update_experiment(run, condition, state, response, trial)
+    finish_experiment(run, conditions, state)
 
 
 # 7. FRAMEWORK CONNECTION
@@ -451,7 +537,19 @@ def definition():
         fields=FIELDS,
         validator=validate,
         responses=RESPONSES,
-        adaptive=AdaptiveSelection("legacy_flanker_log", controls=('n_down', 'trial_point', 'reverse_point', 'log_up', 'log_down', 'initial_log_down', 'reversal_limit', 'condition_trial_limit')),
+        adaptive=AdaptiveSelection(
+            "legacy_flanker_log",
+            controls=(
+                "n_down",
+                "trial_point",
+                "reverse_point",
+                "log_up",
+                "log_down",
+                "initial_log_down",
+                "reversal_limit",
+                "condition_trial_limit",
+            ),
+        ),
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,

@@ -13,20 +13,21 @@ The current reference experiment is a contrast sensitivity function (CSF)
 experiment. It is an example built with the framework; it is not the definition
 of the framework.
 
-## Thesis CSF and readable experiment design
+## Contrast sensitivity and readable experiment design
 
-Start with `src/psychophysics_lab/experiments/csf_thesis.py`: settings, a visible
+Start with `src/psychophysics_lab/experiments/contrast_sensitivity.py`: settings, a visible
 fixation -> grating -> response sequence, contrast updates and the experiment
 loop. It implements the thesis-described 500 ms fixation, 300 ms grating at
 +/-0.5 degrees, left/right responses and a 4-down/1-up default staircase. Adaptive counts,
 steps and stopping limits are configured in the TUI and saved for each run. Its two stimulus
-classes are `ThesisCSFGrating` and `ThesisGaussianFixation` in `stimulus_library.py`.
-Choose **CSF — thesis procedure (software validation)** in the experiment menu.
+classes are `ContrastSensitivityGrating` and `GaussianFixation` in `stimulus_library.py`.
+Choose **Contrast Sensitivity (software validation)** in the experiment menu.
 The 2,8 cpd defaults are a short software example; select the actual frequencies
 for a complete study. Human acquisition remains blocked pending qualification
 of raster precision, calibrated luminance/contrast and physical timing.
 
-The old public `experiments/contrast_sensitivity.py` adapter is removed. Its
+The old public CSF adapter was relocated internally. The public
+`experiments/contrast_sensitivity.py` now contains the normal shared procedure. Its
 historical definition now lives internally in `_reference_csf/experiment_definition.py`.
 The old `contrast_sensitivity` experiment ID keeps its original scientific
 meaning for saved runs and compatibility; the new protocol has ID `csf_thesis`.
@@ -38,10 +39,10 @@ for the comparison with the original PhD scripts and the remaining readability w
 
 ## The only normal authoring workflow
 
-All nine experiment Python files now use the same seven sections and the same
-`make_conditions()` → `prepare_stimuli()` → `make_trial()` → `procedure()` reading
-order. The procedure identifies condition selection, stimulus preparation,
-presentation, response interpretation, update and termination. Read the
+All nine experiment Python files use identical helper signatures, named condition
+records, stimulus parameters by slot, and the same executable main loop:
+choose → prepare → present → interpret → update → check completion.
+Presentation timelines contain no hidden scientific updates. Read the
 [experiment folder guide](src/psychophysics_lab/experiments/README.md).
 Framework helpers and historical design loaders live in `experiments/_internal/`.
 Adaptive values come from TUI-selected run settings; the existing scientific
