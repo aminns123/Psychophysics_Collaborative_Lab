@@ -213,7 +213,15 @@ from dataclasses import replace as _replace
 from .experiments.spec import ConfigField
 from .stimuli.registry import StimulusSpec
 
-class FixationCross:
+class LibraryStimulus:
+    """Marker for complete registered definitions inside this ONE file.
+
+    Subclass with PARAMETERS, render and SPEC; the registry discovers new
+    classes without another Python adapter or contributions.py edit.
+    """
+
+
+class FixationCross(LibraryStimulus):
     """Registered legacy-compatible fixation_cross; edit PARAMETERS, render and SPEC here."""
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 0.8, units="degrees", minimum=0.2, maximum=3),
@@ -239,7 +247,7 @@ class FixationCross:
     SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
 
 
-class VerticalLineProbe:
+class VerticalLineProbe(LibraryStimulus):
     """Registered legacy-compatible vertical_line_probe; edit PARAMETERS, render and SPEC here."""
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 1.0, units="degrees", minimum=0.3, maximum=5),
@@ -263,7 +271,7 @@ class VerticalLineProbe:
     SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
 
 
-class ExampleWhiteLine:
+class ExampleWhiteLine(LibraryStimulus):
     """Registered legacy-compatible example_stimulus; edit PARAMETERS, render and SPEC here."""
     PARAMETERS = (
         ConfigField("size_deg", "Patch size", "float", 5.0,
@@ -305,7 +313,7 @@ class ExampleWhiteLine:
     SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
 
 
-class TeachingGabor:
+class TeachingGabor(LibraryStimulus):
     """Registered legacy-compatible teaching_gabor; edit PARAMETERS, render and SPEC here."""
     PARAMETERS = (
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.05, maximum=30),
@@ -333,7 +341,7 @@ class TeachingGabor:
     SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
 
 
-class ComposedScene:
+class ComposedScene(LibraryStimulus):
     """A registered adapter from a Scene recipe to the existing raster backend.
 
     Compose fixtures, lines, gratings and elliptical surrounds in experiment
@@ -379,7 +387,7 @@ class ComposedScene:
 # tied to saved experiment versions are also preserved, not overwritten.
 
 
-class ResearcherVerticalLine:
+class ResearcherVerticalLine(LibraryStimulus):
     """Researcher's original vertical-line stimulus, migrated without altering its maths.
 
     Keep these PARAMETERS/render defaults stable for experiment provenance.
@@ -423,3 +431,11 @@ class ResearcherVerticalLine:
         calibration_requirements=("geometry",),
     )
     SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+def library_stimulus_specs():
+    """Discover explicitly subclassed shared definitions only."""
+    specifications = tuple(cls.SPEC for cls in LibraryStimulus.__subclasses__())
+    if len({spec.id for spec in specifications}) != len(specifications):
+        raise ValueError("Shared stimulus classes require unique SPEC.id values.")
+    return specifications

@@ -11,8 +11,16 @@ There are two things inside it:
   of the familiar sections together: `PARAMETERS`, `render()` and `SPEC`.
 
 To make a new stimulus, copy the smallest similar class **inside that one
-library file**, give it a new unique ID and parameters, and have it validated
-and registered through the framework. To make a combination of shapes, compose
+library file**, subclass `LibraryStimulus`, and give it unique `PARAMETERS`,
+`render()` and `SPEC`. The loader discovers these subclasses automatically:
+**no new Python file, no new registry entry, and no separate defaults JSON
+are required**. For a new class set `SPEC.source_path` to
+`"src/psychophysics_lab/stimulus_library.py"` and `default_config=""`.
+The ConfigField defaults will be used until a researcher explicitly supplies
+other validated values.
+
+Existing historical IDs with Ready fingerprints keep their adapters/JSON
+and are **not** automatically registered around the publication gate. To make a combination of shapes, compose
 existing drawing functions in a `Scene` instead; do not copy their maths.
 The old `src/psychophysics_lab/stimuli/*.py` modules are mostly import adapters
 for existing IDs, not separate researcher edit locations.

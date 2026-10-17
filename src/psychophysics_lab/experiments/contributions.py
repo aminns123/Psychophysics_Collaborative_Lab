@@ -23,6 +23,16 @@ def load_contributions():
             experiments.register_experiment(importlib.import_module(name).SPEC)
         for name in STIMULUS_MODULES:
             stimuli.register_stimulus(importlib.import_module(name).SPEC)
+        # New LibraryStimulus subclasses are discovered in this ONE source file.
+        # Researcher-owned IDs never bypass their Ready fingerprint checks.
+        from ..stimulus_library import library_stimulus_specs
+        from ..authoring import inventory as authored_inventory
+        from ..paths import find_repo_root
+        authored_ids = {item.name for item in authored_inventory(find_repo_root())
+                        if item.kind == "stimulus"}
+        for shared in library_stimulus_specs():
+            if shared.id not in stimuli._REGISTRY and shared.id not in authored_ids:
+                stimuli.register_stimulus(shared)
         # Published researcher components join the ordinary experiment catalogue.
         from ..paths import find_repo_root
         from ..authoring import load_authored
