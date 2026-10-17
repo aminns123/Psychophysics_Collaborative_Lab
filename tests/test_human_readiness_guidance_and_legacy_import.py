@@ -13,7 +13,7 @@ from psychophysics_lab.config.human_readiness import (
 )
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.config.preflight import validate_setup
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
 

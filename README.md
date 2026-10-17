@@ -13,6 +13,29 @@ The current reference experiment is a contrast sensitivity function (CSF)
 experiment. It is an example built with the framework; it is not the definition
 of the framework.
 
+## Thesis CSF and readable experiment design
+
+Start with `src/psychophysics_lab/experiments/csf_thesis.py`: settings, a visible
+fixation -> grating -> response sequence, contrast updates and the experiment
+loop. It implements the thesis-described 500 ms fixation, 300 ms grating at
++/-0.5 degrees, left/right responses and a 4-down/1-up default staircase. Adaptive counts,
+steps and stopping limits are configured in the TUI and saved for each run. Its two stimulus
+classes are `ThesisCSFGrating` and `ThesisGaussianFixation` in `stimulus_library.py`.
+Choose **CSF — thesis procedure (software validation)** in the experiment menu.
+The 2,8 cpd defaults are a short software example; select the actual frequencies
+for a complete study. Human acquisition remains blocked pending qualification
+of raster precision, calibrated luminance/contrast and physical timing.
+
+The old public `experiments/contrast_sensitivity.py` adapter is removed. Its
+historical definition now lives internally in `_reference_csf/experiment_definition.py`.
+The old `contrast_sensitivity` experiment ID keeps its original scientific
+meaning for saved runs and compatibility; the new protocol has ID `csf_thesis`.
+The historical catalogue entry is explicitly labelled. No historical parameters
+or data are silently reinterpreted as the thesis protocol.
+
+See [the thesis-informed authoring review](docs/EXPERIMENT_AUTHORING_REVIEW.md)
+for the comparison with the original PhD scripts and the remaining readability work.
+
 ## The only normal authoring workflow
 
 Open **`src/psychophysics_lab/stimulus_library.py`** to edit or add

@@ -11,7 +11,7 @@ from textual.widgets import Button, Input, Select, Static
 from psychophysics_lab.config.local import config_root, save_profile
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.models import SetupRequest, LuminanceCalibrationPoint
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -56,24 +56,28 @@ class RunContext:
     accepted_trials: int = field(default=0, init=False)
     expected_trials: int = field(default=0, init=False)
 
-    def initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None):
+    def initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
         """Declare the planned response count and resolved scientific settings."""
         if self.status != "created" or type(expected_trials) is not int or expected_trials < 1:
             raise ValueError("Initialise once with a positive expected_trials count.")
         if not resolution:
             raise ValueError("Provide resolved stimulus and task information.")
+        import math
+        if type(background_intensity) not in (int, float) or not math.isfinite(background_intensity) or not 0 <= background_intensity <= 1:
+            raise ValueError("Background must be a finite digital command in [0, 1].")
         if not self.synthetic and not runtime_display:
             if not self.spec.stimulus_slots:
                 raise ValueError("Human presentation must record the actual runtime_display.")
             from .core.presentation import Presentation
-            self._presentation = Presentation(self.display, self.responses)
+            self._presentation = (Presentation(self.display, self.responses) if background_intensity == .5 else
+                                  Presentation(self.display, self.responses, background_intensity=background_intensity))
             runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
         settings = self.spec.settings_snapshot()
         self.save_resolution(**(dict(resolution) | ({"experiment_settings": settings} if settings else {})))
         atomic_write_json(self.run_directory / "runtime_display.json", dict(runtime_display or {
             "physical_display_used": False, "mode": "simulation",
-            "monitor_profile_id": self.display.id,
+            "monitor_profile_id": self.display.id, "background_digital_intensity": background_intensity,
         }))
         self.status = "running"
         self._save_lifecycle()
@@ -375,8 +379,14 @@ class RunContext:
         self.accepted_trials += 1
         self._save_lifecycle()
 
-    def save_adaptive(self, algorithm):
-        atomic_write_json(self.run_directory / "adaptive_session.json", algorithm.snapshot())
+    def save_adaptive(self, algorithm, *, value_column="next_screen_intensity"):
+        if value_column not in {"next_screen_intensity", "next_display_contrast"}:
+            raise ValueError("Declare the canonical column holding the adaptive numeric value.")
+        snapshot = algorithm.snapshot()
+        snapshot.setdefault("canonical_trial_log", "trials.tsv")
+        if value_column != "next_screen_intensity":
+            snapshot["canonical_value_column"] = value_column
+        atomic_write_json(self.run_directory / "adaptive_session.json", snapshot)
 
     def save_resolution(self, **details):
         """Record experiment-owned stimulus/timing definitions for later review."""

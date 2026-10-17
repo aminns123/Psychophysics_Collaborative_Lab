@@ -152,7 +152,7 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
         # One explicit chronological contract for CSF and researcher-authored
         # experiments. This legacy adapter still uses the validated CSF shader.
-        from psychophysics_lab.experiments.contrast_sensitivity import trial_timeline
+        from psychophysics_lab._reference_csf.experiment_definition import trial_timeline
         timeline = trial_timeline(experiment_params)
 
         # ------------------------------ Stimulus parameters ------------------------------

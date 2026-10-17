@@ -39,9 +39,9 @@ measure luminance, temporal precision or speaker onset.
 
 ## The CSF exception is internal, not a second authoring option
 
-`CSFGrating` in `stimulus_library.py` now owns the reference GLSL shader
-source, and `experiments/contrast_sensitivity.py` owns the public CSF
-experiment settings and scientific contract. The physical reference presenter,
+`ThesisCSFGrating` in `stimulus_library.py` exposes the new Gaussian grating
+equation; `experiments/csf_thesis.py` owns the new CSF settings and procedure.
+The historical `CSFGrating` class still owns the reference GLSL shader source. The physical reference presenter,
 file/event bridge and old staircase compatibility implementation live
 **only** in `src/psychophysics_lab/_reference_csf/` until the shared
 TrialTimeline/RunContext presenter is scientifically and physically
@@ -62,16 +62,24 @@ validation gates.
 |---|---|---|
 | `core/scene_primitives.py` | Reuse shape/render equations across Scene compositions | Primitive types, sizes, amplitudes, positions, order and background |
 | `adaptive/legacy_flanker.py` | One fixture-backed historical logarithmic update and reversal counter | Explicit n-down, log increments, initial phase, reversal/trial limits and global ceiling in each flanker experiment |
-| `adaptive/staircase.py` | Shared consecutive-response counters and adaptive state | n-down/n-up and contrast factors/clamps declared by the orientation experiment |
+| `adaptive/staircase.py` | Shared consecutive-response counters and adaptive state | Selected n-down/n-up, initial phase and limits; numeric updates declared by each experiment, including thesis CSF |
 | `core/timeline.py`, `core/trial_execution.py`, `researcher.py` | Resolve and execute the same phases for live and virtual responses; collect/save raw input and meaning | Ordered phases, durations, alternatives, correctness by index equality and update callbacks |
 | `core/presentation.py`, `core/tone.py`, `config/` | Display creation/calibration, frame requests, devices and Windows beep output | When to display or beep and the requested tone parameters; no claim of measured photon/acoustic onset |
 | `data/`, `core/runner.py` | Shared serialization, errors, immutable acquisition/provenance | Named scientific measurements and experiment source identity |
 | `experiments/library_builder.py` | Interpret pre-existing saved JSON designs and test historical equivalence | New experiments use Python; the built-in spatial task is now `probe_above_below.py` |
-| `_reference_csf/`, `simulations/csf.py` | Preserve the reference shader/event/adaptive bridge until physical/state parity is established | `contrast_sensitivity.py` declares the phase queue and documents all retained geometric/audio choices and virtual substitutions |
+| `_reference_csf/`, `simulations/csf.py` | Preserve the reference shader/event/adaptive bridge until physical/state parity is established | `_reference_csf/experiment_definition.py` retains the old phase queue and documents geometric/audio choices and virtual substitutions |
 
-Base, Indirect Flanker and Ellipse 2D are independent readable procedure files.
+Base, Indirect Flanker and Ellipse 2D own independent procedure files; the
+thesis-informed review documents further work needed for researcher readability.
 Their matched scientific policies intentionally repeat; display, input, staircase
 algorithms, audio and storage do not. Frozen pre-audit traces test the entire
 trial plan, stimulus parameters, target/response meanings, adaptive states and
 canonical trial rows, ignoring only relocated callback module qualifications.
 The development acquisition blocks remain in force.
+
+
+The thesis CSF is now a normal RunContext procedure, with its scientific sequence
+in `csf_thesis.py`. Historical CSF definition/validators live in
+`_reference_csf/experiment_definition.py`; the old experiment ID remains available
+for interpreting saved runs. Source consolidation did not make the older protocol
+equivalent to the thesis, so their identities and acquisition qualifications remain distinct.

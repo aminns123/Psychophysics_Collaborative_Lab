@@ -138,7 +138,7 @@ class ExperimentSpec:
 
     def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
         if self.id == "contrast_sensitivity":
-            from .contrast_sensitivity import _legacy_condition_defaults
+            from .._reference_csf.experiment_definition import _legacy_condition_defaults
             values = _legacy_condition_defaults(values)
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:

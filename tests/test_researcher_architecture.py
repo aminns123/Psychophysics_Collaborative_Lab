@@ -57,7 +57,7 @@ def test_every_python_procedure_is_owned_by_its_named_file():
 
 
 def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timings():
-    from psychophysics_lab.experiments.contrast_sensitivity import trial_timeline
+    from psychophysics_lab._reference_csf.experiment_definition import trial_timeline
     csf = get_experiment("contrast_sensitivity")
     expected = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                              timings=csf.field_defaults(), slots=csf.stimulus_slots)

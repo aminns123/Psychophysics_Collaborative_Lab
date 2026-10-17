@@ -452,7 +452,7 @@ class CSFGrating(LibraryStimulus):
     Researchers can inspect the scientific shader HERE in the single library.
     The existing qualified presentation implementation is internal only.
     """
-    from .experiments.contrast_sensitivity import CSF_SPEC as _CSF_SPEC
+    from ._reference_csf.experiment_definition import CSF_SPEC as _CSF_SPEC
     PARAMETERS = tuple(
         field for field in _CSF_SPEC.fields if field.section == "Stimulus conditions"
     )
@@ -549,6 +549,57 @@ class CSFGrating(LibraryStimulus):
             "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py",
         ),
     )
+
+
+class ThesisCSFGrating(LibraryStimulus):
+    """Thesis CSF: Gaussian sigma in degrees; sinusoidal carrier in cycles/degree.
+
+    RGB command = background + (contrast/2) * Gaussian * sin(carrier phase).
+    Contrast is digital peak-to-peak modulation, not measured optical Michelson
+    contrast. The 8-degree raster aperture is an explicit implementation extent,
+    not a historical aperture established by the thesis. Hardware parity is unverified.
+    """
+    PARAMETERS = (
+        ConfigField("size_deg", "Raster aperture", "float", 8., minimum=.1, maximum=30, units="degrees"),
+        ConfigField("sigma_deg", "Gaussian standard deviation", "float", 1., minimum=.001, maximum=5, units="degrees"),
+        ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., minimum=.01, maximum=64, units="cycles/degree"),
+        ConfigField("contrast", "Digital peak-to-peak modulation", "float", .1, minimum=0, maximum=1),
+        ConfigField("background", "Digital background", "float", .5, minimum=0, maximum=1),
+    )
+
+    @staticmethod
+    def validate(parameters):
+        if parameters["contrast"] > 2 * min(parameters["background"], 1-parameters["background"]):
+            raise ValueError("Requested grating modulation exceeds the available digital range; no silent clipping.")
+
+    def render(parameters, x_deg, y_deg):
+        envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg)/(2*parameters["sigma_deg"]**2))
+        carrier = np.sin(2*np.pi*parameters["spatial_frequency_cpd"]*x_deg)
+        return parameters["background"] + parameters["contrast"]*envelope*carrier/2
+
+    SPEC = StimulusSpec("thesis_csf_grating", "Thesis CSF grating", "Gaussian-windowed grating in explicit degree coordinates.",
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_csf",
+        render=render, validator=validate.__func__, calibration_requirements=("geometry", "luminance"))
+
+
+class ThesisGaussianFixation(LibraryStimulus):
+    """Thesis fixation: sigma .035 degrees; peak background + .09, limited to 1."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Fixation patch", "float", .5, minimum=.1, maximum=3, units="degrees"),
+        ConfigField("sigma_deg", "Gaussian standard deviation", "float", .035, minimum=.001, maximum=.2, units="degrees"),
+        ConfigField("increment", "Digital increment above background", "float", .09, minimum=0, maximum=1),
+        ConfigField("background", "Digital background", "float", .5, minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        peak = min(1., parameters["background"] + parameters["increment"])
+        envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg)/(2*parameters["sigma_deg"]**2))
+        return parameters["background"] + (peak-parameters["background"])*envelope
+
+    SPEC = StimulusSpec("thesis_gaussian_fixation", "Thesis Gaussian fixation", "Small Gaussian fixation marker in degrees.",
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_fixation",
+        render=render, calibration_requirements=("geometry", "luminance"))
+
 
 def library_stimulus_specs():
     """Discover explicitly subclassed shared definitions only."""

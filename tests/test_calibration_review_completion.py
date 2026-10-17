@@ -14,7 +14,7 @@ from psychophysics_lab.config.calibration_review import qualify_experiment, save
 from psychophysics_lab.config.preflight import validate_setup, qualification_checks
 from psychophysics_lab.config.calibration_workflow import import_and_save_luminance
 from psychophysics_lab.config.calibration_templates import example_luminance_document
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, DisplayCheckScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
 

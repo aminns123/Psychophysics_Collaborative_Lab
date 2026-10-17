@@ -24,7 +24,7 @@ def test_hub_navigation_and_reactive_experiment_summary(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "external_data")
         async with app.run_test(size=(140, 48)) as pilot:
             summary = app.query_one("#experiment-summary", Static)
-            assert "reference experiment" in _plain(summary).lower()
+            assert "historical csf" in _plain(summary).lower()
 
             await pilot.click(app.screen.query_one("#nav-experiments", Button))
             await pilot.pause()
