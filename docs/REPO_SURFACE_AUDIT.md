@@ -3,7 +3,9 @@
 ## Everyday researcher workflow
 
 **Edit visual stimuli only here:** `src/psychophysics_lab/stimulus_library.py`
-(**classes** with `PARAMETERS`, `render`, `SPEC`; reusable `Scene`).
+(**self-contained classes** with `PARAMETERS`, `render`, `SPEC`).
+The existing `core/scene_primitives.py` is internal composition code,
+not another place a researcher needs to add a shape.
 
 **Edit experiments here:** `src/psychophysics_lab/experiments/<task>.py`,
 with settings in `configs/experiments/<task>.json`.

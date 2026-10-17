@@ -121,8 +121,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List explicitly registered experiments and exit.",
     )
-    parser.add_argument("--scaffold", metavar="NAME", help="Create stimulus and experiment contributor templates; never overwrites files.")
-    parser.add_argument("--blueprint", choices=("pair", "stimulus", "experiment", "adaptive"), default="pair")
     parser.add_argument("--preview-stimulus", metavar="ID", help="Render a registered stimulus preview without hardware.")
     parser.add_argument("--stimulus-json", type=Path)
     parser.add_argument("--preview-output", type=Path, default=Path("stimulus_preview.png"))
@@ -224,20 +222,17 @@ def _main(
     if args.dev_values:
         raise ValueError("--dev-values requires --dev-test.")
 
-    if args.scaffold:
-        from .authoring import scaffold_draft
-        for path in scaffold_draft(repo_root, args.scaffold, kind=args.blueprint):
-            print(path)
-        print("Created DRAFT. Open run_user_env.bat, edit Python/JSON, and use --dev-preview/--dev-test.")
-        print("Publish the tested revision with --dev-ready KIND NAME; no registry edits needed.")
-        return 0
-
     if args.preview_stimulus:
         from .stimuli.registry import get_stimulus
-        from .config.stimulus_parameters import load_parameters
+        from .config.stimulus_parameters import load_parameters, document_for
         from .core.presentation import preview_stimulus
         stimulus = get_stimulus(args.preview_stimulus)
-        selected = load_parameters(args.stimulus_json or repo_root / stimulus.default_config, stimulus)
+        if args.stimulus_json:
+            selected = load_parameters(args.stimulus_json, stimulus)
+        elif stimulus.default_config:
+            selected = load_parameters(repo_root / stimulus.default_config, stimulus)
+        else:
+            selected = {"document": document_for(stimulus)}
         if args.preview_output.exists():
             raise ValueError("Preview output already exists; choose a new --preview-output.")
         preview_stimulus(stimulus.id, selected["document"]["parameters"], args.preview_output)

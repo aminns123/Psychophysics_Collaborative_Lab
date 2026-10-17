@@ -10,8 +10,10 @@ The framework handles monitor geometry, human responses, simulation, data, and c
 ## 1. Create or edit a stimulus
 
 Open **Build Stimuli → Open stimulus_library.py**, or open the file directly in
-VS Code. Find `FixationCross`, `VerticalLineProbe`, `TeachingGabor`,
-`ResearcherVerticalLine` and `ComposedScene`. Each keeps three familiar
+VS Code. Find `FixationCross`, `VerticalLineProbe`, `LinePatch`, `SquarePatch`,
+`RectanglePatch`, `EllipsePatch`, `AnnulusPatch`, `GaussianDot`,
+`SinusoidalGrating`, `GaborPatch`, `TeachingGabor`, `CSFGrating`
+and `ComposedScene`. Each keeps three familiar
 sections together:
 
 - **PARAMETERS:** units, allowable ranges, defaults
@@ -26,9 +28,11 @@ Inherit from `LibraryStimulus`; PsyCoLab discovers these classes automatically.
 `ConfigField` defaults work without a separate JSON file when
 `default_config=""`.
 
-If the drawing already exists, use `Scene` and its functions (`fixation`,
-`line`, `ellipse`, `annulus`, `gabor`, `grating`, `square`, etc.)
-instead of copying the drawing mathematics.
+When combining shapes, you may use existing `Scene` utilities (e.g.
+`fixation`, `line`, `ellipse`, `annulus`, `gabor`) **within the new
+class's render()**. You never edit a shared dispatch table or another class
+to register new stimulus mathematics; put entirely new mathematics directly
+in your new class's render() method.
 
 ### Reference CSF
 

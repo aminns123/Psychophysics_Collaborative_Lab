@@ -1502,7 +1502,7 @@ class HelpScreen(HubPage):
             yield Static(
                 "[b]PsyCoLab development map[/b]\n\n"
                 "[b]Stimuli[/b] — what is presented. Reusable stimulus code belongs under "
-                "src/psychophysics_lab/stimuli/.\n\n"
+                "src/psychophysics_lab/stimulus_library.py (one class per stimulus).\n\n"
                 "[b]Experiment procedures[/b] — how stimuli, timing, conditions and responses "
                 "are combined. Build a procedure and ordered timeline; published modules appear automatically in "
                 "the normal experiment catalogue after a successful software test.\n\n"

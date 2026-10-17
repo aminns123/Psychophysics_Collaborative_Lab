@@ -257,7 +257,6 @@ class FixationCross(LibraryStimulus):
         parameters=PARAMETERS, default_config="configs/stimuli/fixation_cross.json",
         family="fixation", render=render, calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class VerticalLineProbe(LibraryStimulus):
@@ -281,7 +280,6 @@ class VerticalLineProbe(LibraryStimulus):
         parameters=PARAMETERS, default_config="configs/stimuli/vertical_line_probe.json",
         family="line", render=render, calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class ExampleWhiteLine(LibraryStimulus):
@@ -323,7 +321,6 @@ class ExampleWhiteLine(LibraryStimulus):
         render=render,
         calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class TeachingGabor(LibraryStimulus):
@@ -351,7 +348,6 @@ class TeachingGabor(LibraryStimulus):
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
         default_config="configs/stimuli/teaching_gabor.json", family="orientation_patch", render=render,
         calibration_requirements=("geometry",))
-    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class ComposedScene(LibraryStimulus):
@@ -443,7 +439,6 @@ class ResearcherVerticalLine(LibraryStimulus):
         render=render,
         calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=())
 
 
 
