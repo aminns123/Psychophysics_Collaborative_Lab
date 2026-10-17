@@ -10,7 +10,7 @@ from psychophysics_lab.authoring import (
 from _manual_authoring_fixture import scaffold_draft
 from psychophysics_lab.development import user_data_root
 from psychophysics_lab.app import build_parser
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def test_generated_files_are_drafts_then_can_be_published_only_when_unchanged(tm
 def test_non_default_experiments_are_not_available_until_manifest_ready(tmp_path):
     scaffold_draft(tmp_path, "student_task", "experiment")
     assert "student_task" not in {spec.id for spec in __import__(
-        "psychophysics_lab.experiments.registry", fromlist=["list_experiments"]).list_experiments()}
+        "psychophysics_lab.experiments._internal.registry", fromlist=["list_experiments"]).list_experiments()}
     record = inventory(tmp_path)[0]
     assert record.status == "draft"
     assert (tmp_path / "configs/experiments/student_task.json").is_file()

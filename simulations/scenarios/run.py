@@ -19,7 +19,7 @@ from psychophysics_lab.data.workspace import preferred_data_root
 
 from ..registry import get_simulation
 from ..controls import effective_experiment_values, effective_observer_values
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from ..run import simulate
 from .registry import get_scenario
 

@@ -6,7 +6,7 @@ from typing import Any, Callable, Iterable, Mapping
 import math
 from types import MappingProxyType
 
-from ..config.models import MonitorProfile
+from psychophysics_lab.config.models import MonitorProfile
 
 DataPathBuilder = Callable[[Mapping[str, Any], MonitorProfile], Iterable[str]]
 
@@ -111,7 +111,7 @@ class ExperimentSpec:
         if any(key not in {"geometry", "luminance", "timing"} for key in self.calibration_requirements):
             raise ValueError("Unknown experiment calibration requirement.")
         from pathlib import PurePosixPath
-        from ..data.identifiers import validate_path_component
+        from psychophysics_lab.data.identifiers import validate_path_component
         validate_path_component(self.id, label="experiment")
         if len({item.key for item in self.fields}) != len(self.fields):
             raise ValueError("Experiment fields must have unique keys.")
@@ -129,7 +129,7 @@ class ExperimentSpec:
     def settings_snapshot(self):
         if not self.default_config:
             return None
-        from ..config.experiment_parameters import settings_snapshot
+        from psychophysics_lab.config.experiment_parameters import settings_snapshot
         return settings_snapshot(self)
 
     def field_defaults(self) -> dict[str, Any]:
@@ -138,7 +138,7 @@ class ExperimentSpec:
 
     def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
         if self.id == "contrast_sensitivity":
-            from .._reference_csf.experiment_definition import _legacy_condition_defaults
+            from psychophysics_lab._reference_csf.experiment_definition import _legacy_condition_defaults
             values = _legacy_condition_defaults(values)
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:
@@ -148,7 +148,7 @@ class ExperimentSpec:
         for item in self.fields:
             normalised[item.key] = item.coerce(values.get(item.key, defaults[item.key]))
         if self.response_paradigm is not None and "response_keys" in normalised:
-            from .responses import ResponseParadigm
+            from psychophysics_lab.experiments._internal.responses import ResponseParadigm
             keys = tuple(part.strip().upper() for part in normalised["response_keys"].split(","))
             ResponseParadigm(self.response_paradigm.id, self.response_paradigm.alternatives, keys)
             normalised["response_keys"] = ",".join(keys)

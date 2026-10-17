@@ -29,8 +29,8 @@ from ..core.geometry_check import (
 )
 from ..data.participants import list_participants, validate_participant_id
 from ..data.workspace import load_workspace_state, request_from_workspace_state
-from ..experiments.registry import get_experiment, list_experiments
-from ..experiments.spec import ConfigField, ExperimentSpec
+from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments._internal.spec import ConfigField, ExperimentSpec
 from ..paths import resolve_data_root
 from ..stimuli.geometry import physical_length_for_visual_angle
 from .calibration_stages import STAGES, stage_states, stage_next_action
@@ -261,7 +261,7 @@ def experiment_choice_label(spec: ExperimentSpec, repo_root: Path) -> str:
                 for item in authored_inventory(repo_root)}
     if ("experiment", spec.id) in authored:
         origin = f"Researcher Python, {authored['experiment', spec.id].title()}"
-    elif getattr(spec.procedure, "__module__", "") == "psychophysics_lab.experiments.library_builder":
+    elif getattr(spec.procedure, "__module__", "") == "psychophysics_lab.experiments._internal.library_builder":
         origin = "JSON library"
     elif spec.id == "example_experiment":
         origin = "Built-in left/right worked example"

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import pytest
 from textual.widgets import Button, Input, Select, Static, TextArea
-from psychophysics_lab.experiments.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen, _source_inventory
 from psychophysics_lab.ui.stimulus_parameters import JsonPresetEditor, StimulusParametersPanel
 from simulations.scenarios.run import run_scenario

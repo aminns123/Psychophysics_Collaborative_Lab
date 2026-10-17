@@ -38,7 +38,7 @@ from ..data.workspace import (
     run_number_from_path,
     save_workspace_state,
 )
-from ..experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from ..paths import default_data_root, find_repo_root, resolve_data_root
 
 

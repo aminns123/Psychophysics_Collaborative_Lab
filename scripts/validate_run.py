@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from psychophysics_lab.data.trials import (  # noqa: E402
     TRIAL_COLUMNS, TRIAL_COLUMN_DEFINITIONS, TRIAL_SCHEMA_VERSION, trial_dictionary_overrides,
 )
-from psychophysics_lab.experiments.registry import get_experiment  # noqa: E402
+from psychophysics_lab.experiments._internal.registry import get_experiment  # noqa: E402
 
 
 @dataclass(frozen=True)

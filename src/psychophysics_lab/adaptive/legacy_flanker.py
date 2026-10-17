@@ -124,4 +124,4 @@ class LegacyFlankerAdaptive:
                     for i, s in self.states.items()}}
 
 
-SPEC = AdaptiveAlgorithm("legacy_flanker_log", "Legacy flanker condRule=2 mathematics (development)", LegacyFlankerAdaptive)
+SPEC = AdaptiveAlgorithm("legacy_flanker_log", "Legacy flanker condRule=2 mathematics (development)", LegacyFlankerAdaptive, controls=('n_down', 'trial_point', 'reverse_point', 'log_up', 'log_down', 'initial_log_down', 'reversal_limit', 'condition_trial_limit'))

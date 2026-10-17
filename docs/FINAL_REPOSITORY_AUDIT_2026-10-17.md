@@ -79,7 +79,7 @@ The complete decision/mechanism table is in
   The archive is an actual legacy runtime dependency, not a redundant source
   backup. Its bundled Pyglet/import-order and physical parity limitations remain
   documented; it was not silently replaced by the installed Pyglet or a raster.
-- `experiments/library_builder.py` and the old design JSON interpret existing
+- `experiments/_internal/library_builder.py` and the old design JSON interpret existing
   saved designs and support compatibility/parity tests. They are not the new
   built-in above/below procedure or the normal authoring UI.
 - Specialized calibration/readiness/data/analysis documents remain distinct

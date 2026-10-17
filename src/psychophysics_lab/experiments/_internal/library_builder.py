@@ -13,12 +13,12 @@ import math
 from pathlib import Path
 import random
 
-from ..data.identifiers import validate_path_component
-from ..experiments.responses import ResponseParadigm
-from ..experiments.spec import ConfigField
-from ..researcher import experiment, TrialTimeline, Show, Stimulus, RecordState, CollectResponse, UpdateState
-from ..stimuli.registry import get_stimulus, list_stimuli
-from ..paths import find_repo_root
+from psychophysics_lab.data.identifiers import validate_path_component
+from psychophysics_lab.experiments._internal.responses import ResponseParadigm
+from psychophysics_lab.experiments._internal.spec import ConfigField
+from psychophysics_lab.researcher import experiment, TrialTimeline, Show, Stimulus, RecordState, CollectResponse, UpdateState
+from psychophysics_lab.stimuli.registry import get_stimulus, list_stimuli
+from psychophysics_lab.paths import find_repo_root
 
 BUILTIN = ("probe_above_below",)
 CATALOG = Path("authoring/library_experiments.json")
@@ -58,7 +58,7 @@ def _catalog(root: Path):
 
 
 def _write_catalog(root: Path, records):
-    from ..data.session import atomic_write_json
+    from psychophysics_lab.data.session import atomic_write_json
     path = Path(root) / CATALOG
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(path, {"schema_version": 1, "experiments": records})
@@ -238,13 +238,13 @@ def make_spec(root: Path, identity: str):
         stimulus_slots={role: get_stimulus(stim_id).family for role, stim_id in doc["stimuli"].items()},
         stimulus_defaults=dict(doc["stimuli"]), calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"), supports_simulation=True,
-        source_paths=("src/psychophysics_lab/experiments/library_builder.py",),
+        source_paths=("src/psychophysics_lab/experiments/_internal/library_builder.py",),
     )
 
 
 def load_library(root=None, *, include_drafts=False, tolerate_errors=True):
     """Explicit built-in + catalog allowlist, never arbitrary disk auto-execution."""
-    from .registry import _REGISTRY, register_experiment
+    from psychophysics_lab.experiments._internal.registry import _REGISTRY, register_experiment
     root = Path(root or find_repo_root()).resolve()
     records = [{"id": name, "status": "ready", "tested_sha256": ""} for name in BUILTIN] + _catalog(root)
     problems = {}
@@ -281,7 +281,7 @@ def create_design(root, name, probe="vertical_line_probe", fixation="fixation_cr
     """Create JSON only; user-generated experiments need NO new Python file."""
     root = Path(root).resolve()
     validate_path_component(name, label="experiment")
-    from .registry import _REGISTRY
+    from psychophysics_lab.experiments._internal.registry import _REGISTRY
     if name in BUILTIN or name in _REGISTRY or any(r["id"] == name for r in _catalog(root)):
         raise ValueError("Experiment name already exists. Choose a new ID.")
     if not isinstance(separation_deg, (int, float)) or isinstance(separation_deg, bool) or not math.isfinite(separation_deg) or not 0.7 <= separation_deg <= 10:
@@ -340,7 +340,7 @@ def test_design(root, name):
         raise ValueError("Built-in demos are already versioned and tested in CI.")
     if name not in [r["id"] for r in _catalog(root)]:
         raise ValueError("Unknown library draft.")
-    from .registry import _REGISTRY
+    from psychophysics_lab.experiments._internal.registry import _REGISTRY
     spec = make_spec(root, name)
     previous = _REGISTRY.get(name)
     # Virtual validation must exercise the CURRENT design, even if a Ready
@@ -349,7 +349,7 @@ def test_design(root, name):
     try:
         from simulations.run import simulate
         from scripts.validate_run import validate_run
-        from ..development import user_data_root
+        from psychophysics_lab.development import user_data_root
         workspace = user_data_root(root)
         workspace.mkdir(parents=True, exist_ok=True)
         marker = workspace / ".psycolab_user_env.json"

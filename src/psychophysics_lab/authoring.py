@@ -170,7 +170,7 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     """
     from .adaptive import registry as adaptive
     from .stimuli import registry as stimuli
-    from .experiments import registry as experiments
+    from psychophysics_lab.experiments._internal import registry as experiments
     # Older single-file stimulus drafts are migrated to stimulus_library.py.
     # This loader is for independent experiments and adaptive code only.
     items = [i for i in inventory(repo_root) if i.kind != "stimulus" and (include_drafts or i.status == "ready")]

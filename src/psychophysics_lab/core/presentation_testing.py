@@ -30,7 +30,7 @@ def validate_presentation(request,spec,profile):
 def run_presentation_test(action,*,repo_root):
     from .runner import run_request
     from ..config.monitor import load_monitor_profiles
-    from ..experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     if not isinstance(action,PresentationTestRequest): raise TypeError('Use the explicit presentation-test action.')
     request=action.request; profile=load_monitor_profiles(repo_root)[request.monitor_profile_id]
     validate_presentation(request,get_experiment(request.experiment_id),profile)

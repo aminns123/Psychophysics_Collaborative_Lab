@@ -63,7 +63,7 @@ monitor geometry path. No optical or timing equivalence is claimed.
 ### CSF / flanker_Response
 
 Continue to select **`contrast_sensitivity`**. The new
-`experiments/flanker_response.py` exposes that exact existing specification; it
+`experiments/_internal/flanker_response.py` exposes that exact existing specification; it
 does not register a duplicate or change the renderer. `flanker_Response` in the
 original file is also a response-handler name for line-probe tasks; treating it
 as a separate, unambiguous grating experiment would be wrong.

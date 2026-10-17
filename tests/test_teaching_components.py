@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from psychophysics_lab.config.stimulus_parameters import load_parameters, save_parameter_preset, resolve_stimuli
 from psychophysics_lab.stimuli.registry import get_stimulus, list_stimuli, register_stimulus
-from psychophysics_lab.experiments.registry import get_experiment, register_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment, register_experiment
 from psychophysics_lab.core.presentation import render_pixels
 from _manual_authoring_fixture import scaffold
 from simulations.run import simulate
@@ -62,7 +62,7 @@ def load_module(path, name):
 
 def test_scaffold_register_configure_simulate_save_validate(tmp_path, monkeypatch):
     from psychophysics_lab.stimuli import registry as stimuli
-    from psychophysics_lab.experiments import registry as experiments
+    from psychophysics_lab.experiments._internal import registry as experiments
     monkeypatch.setattr(stimuli, "_REGISTRY", dict(stimuli._REGISTRY))
     monkeypatch.setattr(experiments, "_REGISTRY", dict(experiments._REGISTRY))
     files = scaffold(tmp_path, "student_grating", kind="stimulus")
@@ -107,7 +107,7 @@ def test_invalid_json_never_silently_defaults(tmp_path, change):
 
 def test_multiple_slots_and_offline_simulation(tmp_path, monkeypatch):
     import socket
-    from psychophysics_lab.experiments import registry
+    from psychophysics_lab.experiments._internal import registry
     from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
     monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
     def procedure(run):
@@ -142,7 +142,7 @@ def test_multiple_slots_and_offline_simulation(tmp_path, monkeypatch):
 def test_adaptive_blueprint_registers_through_contribution_list_and_runs(tmp_path, monkeypatch):
     import sys
     from psychophysics_lab import contributions
-    from psychophysics_lab.experiments import contributions as loader, registry
+    from psychophysics_lab.experiments._internal import contributions as loader, registry
     from psychophysics_lab.adaptive import registry as algorithms, AdaptiveSelection
     from psychophysics_lab.stimuli import registry as stimuli
     for module in (registry, algorithms, stimuli):

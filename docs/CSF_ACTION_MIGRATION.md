@@ -8,7 +8,7 @@ GLSL shader source* that the reference hardware presenter consumes.
 The physical implementation has been relocated, without a change to its
 scientific algorithm, to `src/psychophysics_lab/_reference_csf/`.
 The generic Scene adapter still does NOT replace physical CSF acquisition.
-`experiments/flanker_response.py` exposes the existing `CSF_SPEC` unchanged.
+`experiments/_internal/flanker_response.py` exposes the existing `CSF_SPEC` unchanged.
 The development indirect/base/ellipse procedures use a separately translated
 legacy flanker rule, not the current CSF staircase. See
 [LEGACY_STIMULUS_MIGRATION.md](LEGACY_STIMULUS_MIGRATION.md) for source conflicts

@@ -14,11 +14,11 @@ def discover_experiment_modules():
     Manifest-managed files continue through fingerprint-gated load_authored.
     Plain new Python definitions need only SPEC.id equal to their filename.
     """
-    from ..authoring import inventory
-    from ..paths import find_repo_root
+    from psychophysics_lab.authoring import inventory
+    from psychophysics_lab.paths import find_repo_root
     managed = {i.name for i in inventory(find_repo_root()) if i.kind == "experiment"}
     names = []
-    for path in sorted(Path(__file__).parent.glob("*.py")):
+    for path in sorted(Path(__file__).parent.parent.glob("*.py")):
         if path.stem.startswith("_") or path.stem in managed:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
@@ -36,10 +36,10 @@ def load_contributions():
     global _loaded, _loading
     if _loaded or _loading:
         return
-    from ..contributions import EXPERIMENT_MODULES, ADAPTIVE_MODULES
-    from ..adaptive import registry as adaptive
-    from . import registry as experiments
-    from ..stimuli import registry as stimuli
+    from psychophysics_lab.contributions import EXPERIMENT_MODULES, ADAPTIVE_MODULES
+    from psychophysics_lab.adaptive import registry as adaptive
+    from psychophysics_lab.experiments._internal import registry as experiments
+    from psychophysics_lab.stimuli import registry as stimuli
     before_exp, before_stim = dict(experiments._REGISTRY), dict(stimuli._REGISTRY)
     before_adaptive = dict(adaptive._REGISTRY)
     _loading = True
@@ -56,13 +56,13 @@ def load_contributions():
             experiments.register_experiment(spec)
         # The only authoritative non-CSF visual stimulus definitions are
         # classes in stimulus_library.py; no per-stimulus registry entries.
-        from ..stimulus_library import library_stimulus_specs
+        from psychophysics_lab.stimulus_library import library_stimulus_specs
         for spec in library_stimulus_specs():
             if spec.id not in stimuli._REGISTRY:
                 stimuli.register_stimulus(spec)
         # Published researcher components join the ordinary experiment catalogue.
-        from ..paths import find_repo_root
-        from ..authoring import load_authored
+        from psychophysics_lab.paths import find_repo_root
+        from psychophysics_lab.authoring import load_authored
         # Skip and report broken/stale published modules; never block working
         # built-in experiments or silently launch an untested revision.
         problems = load_authored(find_repo_root(), include_drafts=False, tolerate_errors=True)
@@ -73,7 +73,7 @@ def load_contributions():
                           RuntimeWarning)
         # JSON-only experiments reuse the very same experiment registry and
         # RunContext/TrialTimeline executor, never a separate acquisition path.
-        from .library_builder import load_library
+        from psychophysics_lab.experiments._internal.library_builder import load_library
         library_problems = load_library(tolerate_errors=True)
         if library_problems:
             import warnings

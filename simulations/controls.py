@@ -6,7 +6,7 @@ contributes extra, model-only controls; they never leak into human setup.
 from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from .registry import get_simulation
 
 

@@ -32,8 +32,8 @@ events are separate, with explicit virtual versus software timing basis.
 |---|---|---|
 | src/psychophysics_lab/core/runner.py | Active universal run owner; simulations/run.py also calls run_request | Retain preflight, provenance, finalization and output layout |
 | researcher.py, core/timeline.py, core/presentation.py | Active public authoring and static presentation; orientation and example procedures call play_trial | Consolidate present/play_trial display and recording; add non-rendering actions here |
-| stimuli/registry.py, experiments/registry.py, adaptive/registry.py | Active distinct scientific registries | Different responsibilities, not duplicates; retain |
-| contributions.py, experiments/contributions.py, authoring.py | Built-in allowlist plus explicit draft/Ready inventory loading the SAME registries | Retain; correct outdated instructions requiring edits to framework registry |
+| stimuli/registry.py, experiments/_internal/registry.py, adaptive/registry.py | Active distinct scientific registries | Different responsibilities, not duplicates; retain |
+| contributions.py, experiments/_internal/contributions.py, authoring.py | Built-in allowlist plus explicit draft/Ready inventory loading the SAME registries | Retain; correct outdated instructions requiring edits to framework registry |
 | Experiments/contrast_sensitivity_function.py | Active legacy CSF entry selected by experiments/contrast_sensitivity.py | Retain until shader, event and scientific parity; JSON phase wrapper is not migration |
 | Events/stimuliC.py, libC.py, packages.zip | Active CSF shader/window/runtime, imported by above | No deletion; raster renderer cannot yet establish equivalent floating-point commands/phase/geometry |
 | Events/adaptiveMethods.py, adaptive_session.py | Active condition selection, file/event adaptation and six-column/canonical CSF output; used by simulations/csf.py too | Preserve adapter; extract only demonstrably identical reusable mathematics |

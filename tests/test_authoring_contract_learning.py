@@ -6,7 +6,7 @@ import pytest
 
 from psychophysics_lab.app import _main, build_parser
 from _manual_authoring_fixture import scaffold
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
 

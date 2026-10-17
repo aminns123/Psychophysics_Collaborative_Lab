@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 import pytest
 from psychophysics_lab.adaptive.legacy_flanker import LegacyFlankerAdaptive
-from psychophysics_lab.experiments.indirect_flanker import timeline
-from psychophysics_lab.experiments.ellipse_2d import scenes, timeline as ellipse_timeline
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments.indirect_flanker import make_trial as timeline
+from psychophysics_lab.experiments.ellipse_2d import prepare_stimuli as scenes, make_trial as ellipse_timeline
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun
@@ -121,7 +121,7 @@ def test_human_preflight_and_direct_calls_are_blocked_before_display():
         assert any("Development reconstruction" in message for message in human_blockers(spec,profile))
         with pytest.raises(ValueError,match="Development reconstruction"):
             spec.procedure(type("Run",(),{"synthetic":False})())
-    from psychophysics_lab.experiments.flanker_response import SPEC
+    from psychophysics_lab.experiments._internal.flanker_response import SPEC
     assert SPEC is get_experiment("contrast_sensitivity")
     assert SPEC.procedure is None
 
@@ -186,7 +186,7 @@ def test_adaptive_completion_requires_owned_stopped_algorithm(tmp_path):
 
 
 def test_registered_development_protocol_does_not_change_csf_default():
-    from psychophysics_lab.experiments.registry import list_experiments
+    from psychophysics_lab.experiments._internal.registry import list_experiments
     specs = list_experiments()
     assert specs[0].id == "contrast_sensitivity"
     assert {s.id for s in specs if s.acquisition_block_reason} >= {"base_flanker","indirect_flanker","ellipse_2d"}

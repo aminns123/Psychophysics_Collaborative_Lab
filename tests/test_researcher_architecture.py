@@ -13,7 +13,7 @@ from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun
 from psychophysics_lab.core.timeline import load_timeline
-from psychophysics_lab.experiments.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT / "tests/fixtures/researcher_procedures.json").read_text())
@@ -66,7 +66,7 @@ def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timing
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
         values = module.SPEC.field_defaults() | {"fixation_ms": 173, "stimulus_ms": 91}
         expected = load_timeline(ROOT / "configs/experiments/orientation_task.json", timings=values, slots={"target"})
-        actual = module.TRIAL.resolve(values)
+        actual = module.make_trial().resolve(values)
         assert [(p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in actual.phases] == [
             (p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in expected.phases]
 
@@ -80,7 +80,7 @@ def test_csf_runtime_consumes_experiment_timeline_without_package_config_lookup(
 
 
 def test_new_file_is_discovered_without_registry_edits_and_managed_drafts_stay_gated(tmp_path, monkeypatch):
-    from psychophysics_lab.experiments import contributions as loader
+    from psychophysics_lab.experiments._internal import contributions as loader
     import psychophysics_lab.authoring as authoring
     folder = tmp_path / "experiments"
     folder.mkdir()
@@ -89,7 +89,7 @@ def test_new_file_is_discovered_without_registry_edits_and_managed_drafts_stay_g
     (folder / "draft_task.py").write_text("SPEC = object()")
     (folder / "flanker_response.py").write_text("from .contrast_sensitivity import CSF_SPEC as SPEC")
     (folder / "helper.py").write_text("def policy(): pass")
-    monkeypatch.setattr(loader, "__file__", str(folder / "contributions.py"))
+    monkeypatch.setattr(loader, "__file__", str(folder / "_internal/contributions.py"))
     monkeypatch.setattr(authoring, "inventory", lambda root: (SimpleNamespace(name="draft_task", kind="experiment"),))
     assert loader.discover_experiment_modules() == ("psychophysics_lab.experiments.new_task",)
 
@@ -114,13 +114,19 @@ def test_single_python_file_can_be_staged_and_fingerprinted_without_companion(tm
 @pytest.mark.parametrize("identity", ["base_flanker", "indirect_flanker", "ellipse_2d"])
 def test_adaptive_policy_is_explicit_in_the_experiment(identity):
     source = (ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text()
-    for policy in ("n_down=3", "trial_point=9", "reverse_point=1", "reversal_limit=10", "condition_trial_limit=101"):
-        assert policy in source
+    module = importlib.import_module("psychophysics_lab.experiments." + identity)
+    defaults = module.SPEC.field_defaults()
+    for key, value in {"n_down":3, "trial_point":9, "reverse_point":1,
+                       "reversal_limit":10, "condition_trial_limit":101}.items():
+        assert defaults[key] == value
+        assert f'{key}=v["{key}"]' in source
+        assert key in module.SPEC.adaptive.controls
+
 
 
 def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_position():
     from psychophysics_lab.experiments.probe_above_below import make_trial, SPEC
-    from psychophysics_lab.experiments.library_builder import _make_timeline
+    from psychophysics_lab.experiments._internal.library_builder import _make_timeline
     doc = json.loads((ROOT / "configs/experiment_designs/probe_above_below.json").read_text())
     for y in (2., -2.):
         old = _make_timeline(doc["actions"], SPEC.field_defaults(), (0., y), ("above", "below"))
@@ -151,7 +157,7 @@ def test_discovery_registers_a_new_python_file_without_companion_or_manual_list(
     import sys
     import psychophysics_lab.experiments as package
     from psychophysics_lab import contributions
-    from psychophysics_lab.experiments import contributions as loader, registry
+    from psychophysics_lab.experiments._internal import contributions as loader, registry
     from psychophysics_lab.stimuli import registry as stimuli
     # Make a real importable single-file experiment outside the checkout.
     source = (ROOT / "src/psychophysics_lab/experiments/example_experiment.py").read_text()
@@ -159,7 +165,7 @@ def test_discovery_registers_a_new_python_file_without_companion_or_manual_list(
     source = source.replace('default_config=f"configs/experiments/{identity}.json",', '')
     (tmp_path / "new_task.py").write_text(source)
     monkeypatch.setattr(package, "__path__", [str(tmp_path), *package.__path__])
-    monkeypatch.setattr(loader, "__file__", str(tmp_path / "contributions.py"))
+    monkeypatch.setattr(loader, "__file__", str(tmp_path / "_internal/contributions.py"))
     monkeypatch.setattr(loader, "_loaded", False)
     monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
     monkeypatch.setattr(stimuli, "_REGISTRY", dict(stimuli._REGISTRY))

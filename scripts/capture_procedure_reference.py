@@ -10,11 +10,11 @@ import types
 root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(root / 'src'), str(root)]
 from dataclasses import replace
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun
 from psychophysics_lab.config.models import SetupRequest
-from psychophysics_lab.experiments import registry
+from psychophysics_lab.experiments._internal import registry
 
 revision = '651b928371dc577717dbef96acdaa9c292d02c1a'
 source = subprocess.check_output(['git', 'show', revision + ':src/psychophysics_lab/experiments/flanker_protocol.py'], cwd=root, text=True)

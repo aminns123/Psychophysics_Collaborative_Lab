@@ -38,6 +38,16 @@ for the comparison with the original PhD scripts and the remaining readability w
 
 ## The only normal authoring workflow
 
+All nine experiment Python files now use the same seven sections and the same
+`make_conditions()` → `prepare_stimuli()` → `make_trial()` → `procedure()` reading
+order. The procedure identifies condition selection, stimulus preparation,
+presentation, response interpretation, update and termination. Read the
+[experiment folder guide](src/psychophysics_lab/experiments/README.md).
+Framework helpers and historical design loaders live in `experiments/_internal/`.
+Adaptive values come from TUI-selected run settings; the existing scientific
+values remain defaults. Fixed-trial experiments explicitly have no adaptation.
+
+
 Open **`src/psychophysics_lab/stimulus_library.py`** to edit or add
 `LibraryStimulus` classes. Each contains `PARAMETERS`, `render()` and
 `SPEC`. There is no stimulus generator, extra stimulus Python file or

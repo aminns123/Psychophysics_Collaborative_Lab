@@ -167,7 +167,7 @@ def test_malformed_workspace_request_is_ignored(values):
 
 def test_preflight_checks_experiment_identity():
     from psychophysics_lab.config.preflight import validate_setup
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     spec = get_experiment('contrast_sensitivity')
     values = spec.field_defaults() | {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374}
     request = SetupRequest('S001','new','different_experiment','legacy_reference_display',values)
@@ -223,7 +223,7 @@ def test_adaptive_logger_preserves_primary_error_and_stops_queue(monkeypatch, ph
 
 def test_keyboard_interrupt_run_is_not_reported_as_returned(tmp_path, monkeypatch):
     import _legacy_adapter_fixture as example
-    import psychophysics_lab.experiments.registry as registry
+    import psychophysics_lab.experiments._internal.registry as registry
     from psychophysics_lab.core.runner import run_request
     monkeypatch.setitem(registry._REGISTRY, example.SPEC.id, example.SPEC)
     def interrupt(*args): raise KeyboardInterrupt()
@@ -350,7 +350,7 @@ def test_concurrent_profile_edits_keep_one_revision_and_reject_stale_writer(tmp_
 
 @pytest.mark.parametrize('field', ['timeFixate','timeInterval','timeAB'])
 def test_zero_length_keyless_phase_is_rejected_before_acquisition(field):
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     spec = get_experiment('contrast_sensitivity')
     values = {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374, field:0}
     with pytest.raises(ValueError, match='positive'):

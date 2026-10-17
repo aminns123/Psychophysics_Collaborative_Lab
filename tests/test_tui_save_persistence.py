@@ -10,7 +10,7 @@ from textual.widgets import Button, Collapsible, Input, Select, Static
 
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.local import load_presets, config_root
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.ui.setup import (
     DisplayCheckScreen, ExperimentConfigScreen, PsyCoLabSetupApp,
 )

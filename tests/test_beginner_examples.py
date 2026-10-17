@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from _manual_authoring_fixture import scaffold
-from psychophysics_lab.experiments.registry import get_experiment, register_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment, register_experiment
 from psychophysics_lab.stimuli.registry import get_stimulus, register_stimulus
 from psychophysics_lab.config.stimulus_parameters import load_parameters
 from psychophysics_lab.core.presentation import render_pixels
@@ -89,8 +89,8 @@ def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     from psychophysics_lab.core.timeline import load_timeline
     beginner = get_experiment("example_experiment")
     csf = get_experiment("contrast_sensitivity")
-    from psychophysics_lab.experiments.example_experiment import TRIAL
-    ex = TRIAL.resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
+    from psychophysics_lab.experiments.example_experiment import make_trial
+    ex = make_trial().resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
     cs = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                        timings=csf.field_defaults(), slots=csf.stimulus_slots)
     assert len(ex.phases) == 7

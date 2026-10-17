@@ -7,7 +7,7 @@ import pyglet
 
 import psychophysics_lab._reference_csf.functionsForUse as funcs
 from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.config.local import content_hash
 from psychophysics_lab._reference_csf.stimuliC import Dot_stairCase_centre, Grating_ADM
 from psychophysics_lab._reference_csf.libC import ExpWindow, Params, key, run

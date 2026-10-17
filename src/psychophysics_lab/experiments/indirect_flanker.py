@@ -1,7 +1,7 @@
 """Report whether the line is above (UP) or below (DOWN) fixation; grating at left.
 
 This file owns settings, geometry, conditions, ordering, timing, responses,
-adaptive choices and recorded measurements. Read scenes(), timeline(), procedure()
+adaptive choices and recorded measurements. Read make_conditions(), prepare_stimuli(), make_trial(), procedure()
 and SPEC below. Correctness is equality of the target/response alternative index.
 The TUI may override declared defaults and response keys; it cannot change meanings.
 
@@ -16,6 +16,7 @@ algorithm once. Its parameters and immediate retirement policy are explicit here
 Matched experiments intentionally repeat scientific policy, not display/input/IO
 mechanisms, so each can be read and changed independently. Tests protect pairing.
 """
+
 
 import json
 import math
@@ -34,11 +35,99 @@ from ..researcher import (
 )
 from ..stimulus_library import Scene, gaussian_dot, line, grating, annulus
 
+
+# 1. SETTINGS AND STIMULI
+# Defaults below populate the TUI; run.values contains the selections for this run.
 SOURCE_COMMIT = "1c3177594e00f0b26fa361238db0f4db5de403fa"
 BLOCK_REASON = "Development reconstruction only: legacy ellipse source is incomplete; shader/alpha, audio, RNG and delayed termination parity remain unproven. See docs/LEGACY_STIMULUS_MIGRATION.md. Retained CSF is unchanged."
+FIELDS = (
+    ConfigField(
+        "condition_positions_deg",
+        "Probe x positions (JSON degrees)",
+        "text",
+        "[0.25, 0.3333333333333333, 0.4166666666666667, 0.5]",
+    ),
+    ConfigField(
+        "trials_per_condition",
+        "Trial ceiling multiplier",
+        "int",
+        10,
+        minimum=1,
+        maximum=1000,
+    ),
+    ConfigField(
+        "background", "Digital background", "float", 0.24, minimum=0.01, maximum=0.4
+    ),
+    ConfigField(
+        "start_contrast",
+        "Starting digital contrast",
+        "float",
+        1.0,
+        minimum=1e-06,
+        maximum=1,
+    ),
+    ConfigField(
+        "scene_size_deg", "Scene aperture", "float", 18.0, minimum=1, maximum=60
+    ),
+    ConfigField(
+        "reference_width_px",
+        "Synthetic reference width if profile has none",
+        "int",
+        0,
+        minimum=0,
+        maximum=16384,
+    ),
+    ConfigField(
+        "reference_height_px",
+        "Synthetic reference height if profile has none",
+        "int",
+        0,
+        minimum=0,
+        maximum=16384,
+    ),
+)
 
 
-def positions(values):
+FIELDS += (
+    ConfigField(
+        "flanker_x_deg",
+        "Flanker x (literal source is left)",
+        "float",
+        -3.0,
+        minimum=-10,
+        maximum=10,
+    ),
+    ConfigField(
+        "legacy_frequency_label",
+        "Legacy nominal SF label (not calibrated cpd)",
+        "float",
+        1.0,
+        minimum=0.01,
+        maximum=20,
+    ),
+)
+
+
+FIELDS += (
+    ConfigField("n_down", "Correct-answer count for a down step (legacy counter)", "int", 3, minimum=1, section="Adaptive settings"),
+    ConfigField("trial_point", "Initial-phase response boundary", "int", 9, minimum=1, section="Adaptive settings"),
+    ConfigField("reverse_point", "Initial-phase reversal boundary", "int", 1, minimum=1, section="Adaptive settings"),
+    ConfigField("log_up", "Incorrect-answer increase (log10 units)", "float", 0.19, minimum=0, section="Adaptive settings"),
+    ConfigField("log_down", "Correct-answer decrease (log10 units)", "float", 0.7393 * 0.19, minimum=0, section="Adaptive settings"),
+    ConfigField("initial_log_down", "Initial-phase decrease (log10 units)", "float", 0.2, minimum=0, section="Adaptive settings"),
+    ConfigField("reversal_limit", "Reversals required per condition", "int", 10, minimum=1, section="Adaptive settings"),
+    ConfigField("condition_trial_limit", "Response limit per condition", "int", 101, minimum=1, section="Adaptive settings"),
+)
+
+
+SLOTS = ("fixation", "stimulus")
+RESPONSES = ResponseParadigm("indirect_flanker", ("up", "down"), ("UP", "DOWN"))
+STIMULUS_SLOTS = {s: "scene" for s in SLOTS}
+STIMULUS_DEFAULTS = {s: "composed_scene" for s in SLOTS}
+
+
+# 2. CONDITIONS AND TRIAL ORDER
+def make_conditions(values):
     try:
         result = json.loads(values["condition_positions_deg"])
     except (ValueError, TypeError) as exc:
@@ -63,16 +152,24 @@ def positions(values):
     return result
 
 
-def validate(values):
-    if values["condition_positions_deg"].strip() == "[]":
-        return
-    try:
-        positions(values)
-    except ValueError as exc:
-        yield str(exc)
+def source_targets(count, rng):
+    """Translate randomIndex_ADMs + random.choice([-1,1,nNew]) sign schedule."""
+    positive = negative = 0
+    targets = []
+    for _ in range(count):
+        r = rng.uniform(0, 1)
+        if positive < 3 and negative < 3:
+            sign = 1 if r > 0.5 else -1
+            positive, negative = (positive + 1, 0) if sign == 1 else (0, negative + 1)
+        elif positive == 3:
+            sign, positive = (-1, 0)
+        else:
+            sign, negative = (1, 0)
+        targets.append(0 if rng.choice([-1, 1, sign]) > 0 else 1)
+    return targets
 
 
-# Source: fixation 200 px above centre; 1 x 3 px probe; 250 px ellipse radii.
+# 3. PREPARE STIMULI
 def pixel_geometry(run):
     """Resolve literal source pixel quantities using this run's monitor profile.
 
@@ -110,7 +207,7 @@ def pixel_geometry(run):
     }
 
 
-def scenes(values, geometry, *, position, target, intensity):
+def prepare_stimuli(values, geometry, *, position, target, intensity):
     bg, fy = (values["background"], geometry["fixation_y_deg"])
     dot = gaussian_dot(
         sigma_deg=geometry["fixation_sigma_deg"],
@@ -143,8 +240,9 @@ def scenes(values, geometry, *, position, target, intensity):
     }
 
 
-# Durations below are ms; first trial has an extra 250 ms fixation.
-def timeline(*, first_trial=False, adaptive=None, identity=None):
+# 4. ONE TRIAL
+def make_trial(*, first_trial=False, adaptive=None, identity=None):
+    """Durations are milliseconds; the first trial adds 250 ms fixation. No audio."""
     phases = (
         [Show("leading_fixation", slot="fixation", duration=250)] if first_trial else []
     )
@@ -168,6 +266,16 @@ def timeline(*, first_trial=False, adaptive=None, identity=None):
     return TrialTimeline(tuple(phases))
 
 
+# 5. RESPONSES AND ADAPTATION
+# The shared legacy counter preserves source behaviour, including accumulated
+# correct ticks across errors (not a conventional consecutive-response rule).
+# During the initial phase, each correct answer uses initial_log_down; this phase
+# requires BOTH current presentation count < trial_point AND reversals < reverse_point.
+# Afterwards n_down correct ticks trigger log_down; errors always use log_up.
+# The shared history detector retains its documented short-history quirk.
+# Retire immediately at reversal_limit OR condition_trial_limit; a global response
+# ceiling also stops the run. These historical mechanisms remain fixture-tested
+# in adaptive/legacy_flanker.py; this file supplies every parameter from the TUI.
 def next_intensity(state, response, step):
     return (
         state["candidate_correct"]
@@ -176,30 +284,12 @@ def next_intensity(state, response, step):
     )
 
 
-def source_targets(count, rng):
-    """Translate randomIndex_ADMs + random.choice([-1,1,nNew]) sign schedule."""
-    positive = negative = 0
-    targets = []
-    for _ in range(count):
-        r = rng.uniform(0, 1)
-        if positive < 3 and negative < 3:
-            sign = 1 if r > 0.5 else -1
-            positive, negative = (positive + 1, 0) if sign == 1 else (0, negative + 1)
-        elif positive == 3:
-            sign, positive = (-1, 0)
-        else:
-            sign, negative = (1, 0)
-        targets.append(0 if rng.choice([-1, 1, sign]) > 0 else 1)
-    return targets
-
-
-# Independent seeded target stream, uniformly selected active conditions,
-# shared response ceiling; retire each condition at 10 reversals or 101 responses.
+# 6. RUN AND FINISH
 def procedure(run):
     if not run.synthetic:
         raise ValueError(BLOCK_REASON)
     v = run.values
-    conditions = positions(v)
+    conditions = make_conditions(v)
     geometry = pixel_geometry(run)
     ceiling = v["trials_per_condition"] * len(conditions)
     rng = random.Random(run.seed)
@@ -209,14 +299,14 @@ def procedure(run):
         background=v["background"],
         start_contrast=v["start_contrast"],
         max_trials=ceiling,
-        n_down=3,
-        trial_point=9,
-        reverse_point=1,
-        log_up=0.19,
-        log_down=0.7393 * 0.19,
-        initial_log_down=0.2,
-        reversal_limit=10,
-        condition_trial_limit=101,
+        n_down=v["n_down"],
+        trial_point=v["trial_point"],
+        reverse_point=v["reverse_point"],
+        log_up=v["log_up"],
+        log_down=v["log_down"],
+        initial_log_down=v["initial_log_down"],
+        reversal_limit=v["reversal_limit"],
+        condition_trial_limit=v["condition_trial_limit"],
     )
     run.initialise(
         expected_trials=ceiling,
@@ -229,14 +319,14 @@ def procedure(run):
             "targets": targets,
             "response_ceiling": ceiling,
             "adaptive_policy": {
-                "n_down": 3,
-                "trial_point": 9,
-                "reverse_point": 1,
-                "log_up": 0.19,
-                "log_down": 0.7393 * 0.19,
-                "initial_log_down": 0.2,
-                "reversal_limit": 10,
-                "condition_trial_limit": 101,
+                "n_down": v["n_down"],
+                "trial_point": v["trial_point"],
+                "reverse_point": v["reverse_point"],
+                "log_up": v["log_up"],
+                "log_down": v["log_down"],
+                "initial_log_down": v["initial_log_down"],
+                "reversal_limit": v["reversal_limit"],
+                "condition_trial_limit": v["condition_trial_limit"],
                 "retirement": "immediate after accepted update; historical delay unproven",
             },
             "source_condition_status": "source position array",
@@ -248,6 +338,7 @@ def procedure(run):
         },
     )
     while adaptive.status == "running":
+        # 1. CHOOSE A CONDITION: uniformly from the active staircases.
         identity = adaptive.select(rng.choice)
         position = conditions[identity - 1]
         target = targets[run.accepted_trials]
@@ -256,14 +347,15 @@ def procedure(run):
             raise ValueError(
                 "Legacy adaptive step exceeds digital range; preserved accepted data, no silent clamp"
             )
-        drawings = scenes(
+        # 2. PREPARE ITS STIMULI: geometry and intensity for this condition.
+        drawings = prepare_stimuli(
             v, geometry, position=position, target=target, intensity=intensity
         )
         parameters = {
             slot: scene.parameters(v["scene_size_deg"])
             for slot, scene in drawings.items()
         }
-        plan = timeline(
+        plan = make_trial(
             first_trial=run.accepted_trials == 0, adaptive=adaptive, identity=identity
         )
         old_reversals = adaptive.states[identity].reversal_count
@@ -305,6 +397,9 @@ def procedure(run):
                 )
             ),
         }
+        # 3. PRESENT ONE TRIAL using the chronological plan above.
+        # 4. INTERPRET THE RESPONSE: target index equals response index.
+        # 5. UPDATE THE EXPERIMENT: the plan runs next_intensity and records its result.
         run.play_trial(
             plan,
             target=target,
@@ -333,87 +428,33 @@ def procedure(run):
             },
         )
         run.save_adaptive(adaptive)
+        # 6. CHECK WHETHER TO FINISH: the while condition checks retirement and ceiling.
     run.complete_adaptive(adaptive)
 
 
+# 7. FRAMEWORK CONNECTION
+def validate(values):
+    if values["condition_positions_deg"].strip() == "[]":
+        return
+    try:
+        make_conditions(values)
+    except ValueError as exc:
+        yield str(exc)
+
+
 def definition():
-    fields = (
-        ConfigField(
-            "condition_positions_deg",
-            "Probe x positions (JSON degrees)",
-            "text",
-            "[0.25, 0.3333333333333333, 0.4166666666666667, 0.5]",
-        ),
-        ConfigField(
-            "trials_per_condition",
-            "Trial ceiling multiplier",
-            "int",
-            10,
-            minimum=1,
-            maximum=1000,
-        ),
-        ConfigField(
-            "background", "Digital background", "float", 0.24, minimum=0.01, maximum=0.4
-        ),
-        ConfigField(
-            "start_contrast",
-            "Starting digital contrast",
-            "float",
-            1.0,
-            minimum=1e-06,
-            maximum=1,
-        ),
-        ConfigField(
-            "scene_size_deg", "Scene aperture", "float", 18.0, minimum=1, maximum=60
-        ),
-        ConfigField(
-            "reference_width_px",
-            "Synthetic reference width if profile has none",
-            "int",
-            0,
-            minimum=0,
-            maximum=16384,
-        ),
-        ConfigField(
-            "reference_height_px",
-            "Synthetic reference height if profile has none",
-            "int",
-            0,
-            minimum=0,
-            maximum=16384,
-        ),
-    )
-    fields += (
-        ConfigField(
-            "flanker_x_deg",
-            "Flanker x (literal source is left)",
-            "float",
-            -3.0,
-            minimum=-10,
-            maximum=10,
-        ),
-        ConfigField(
-            "legacy_frequency_label",
-            "Legacy nominal SF label (not calibrated cpd)",
-            "float",
-            1.0,
-            minimum=0.01,
-            maximum=20,
-        ),
-    )
-    slots = ("fixation", "stimulus")
     return experiment(
         id="indirect_flanker",
         name="DEVELOPMENT: " + "indirect_flanker".replace("_", " ").title(),
         description="Source-based virtual reconstruction; human acquisition blocked pending parity review.",
         procedure=procedure,
-        fields=fields,
+        fields=FIELDS,
         validator=validate,
-        responses=ResponseParadigm("indirect_flanker", ("up", "down"), ("UP", "DOWN")),
-        adaptive=AdaptiveSelection("legacy_flanker_log"),
+        responses=RESPONSES,
+        adaptive=AdaptiveSelection("legacy_flanker_log", controls=('n_down', 'trial_point', 'reverse_point', 'log_up', 'log_down', 'initial_log_down', 'reversal_limit', 'condition_trial_limit')),
         supports_simulation=True,
-        stimulus_slots={s: "scene" for s in slots},
-        stimulus_defaults={s: "composed_scene" for s in slots},
+        stimulus_slots=STIMULUS_SLOTS,
+        stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason=BLOCK_REASON,

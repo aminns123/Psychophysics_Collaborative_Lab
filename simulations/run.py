@@ -4,7 +4,7 @@ from pathlib import Path
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from psychophysics_lab.core.synthetic import SimulationRun, simulation_workspace
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.paths import find_repo_root, default_data_root
 from psychophysics_lab.data.workspace import preferred_data_root
 from .registry import get_simulation
