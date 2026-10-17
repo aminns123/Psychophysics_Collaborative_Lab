@@ -35,8 +35,6 @@ accepted response and trial state, and applies declared nonvisual updates.
 
 ```python
 def procedure(run):
-    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
-        raise ValueError(SPEC.acquisition_block_reason)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
     while not is_finished(run, conditions, state):
@@ -90,3 +88,11 @@ historical constants. Shared staircase state, primary analysis and display
 services have documented reasons in `docs/SCIENTIFIC_REDESIGN.md`. Scientific
 stimuli preserve floating commands through texture upload; output precision and
 optical timing still require physical qualification before acquisition.
+
+
+The shared run context handles physical-test versus participant-acquisition policy
+at initialisation. Do not add a blanket non-synthetic guard: physical testing uses
+the real display and is intentionally distinct from participant acquisition.
+Shared recording helpers shorten repeated projections; the scientific strength,
+steps, gamut and measurements remain explicit at the experiment's call site.
+See `docs/RESEARCHER_TEST_WORKFLOW.md` for these narrowly shared responsibilities.

@@ -53,6 +53,7 @@ class RunContext:
     stimulus_snapshots: dict = field(default_factory=dict)
     observer_parameters: dict = field(default_factory=dict)
     observer_probability: Any = None
+    test_trial_limit: int | None = None
     virtual_presentation: Any = None  # explicit development replay backend; never used for humans
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
@@ -60,6 +61,9 @@ class RunContext:
 
     def initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
         """Declare the planned response count and resolved scientific settings."""
+        if not self.synthetic and self.spec.acquisition_block_reason:
+            if self.data_kind != "uncalibrated_presentation_test" or self.spec.historical:
+                raise ValueError(self.spec.acquisition_block_reason)
         if self.status != "created" or type(expected_trials) is not int or expected_trials < 1:
             raise ValueError("Initialise once with a positive expected_trials count.")
         if not resolution:
@@ -191,6 +195,10 @@ class RunContext:
         from .core.trial_execution import VirtualPresentation, ScientificTrial, execute_timeline, execute_actions
         from .core.presentation import Response
         from .stimuli.registry import get_stimulus
+        if (self.data_kind == "uncalibrated_presentation_test" and self.test_trial_limit is not None
+                and self.accepted_trials >= self.test_trial_limit):
+            from .core.presentation_testing import PresentationTestComplete
+            raise PresentationTestComplete("Test response limit reached; study stopping rules were not changed.")
         if getattr(self, "_in_trial", False):
             raise ValueError("Finish the active trial before starting another.")
         if adaptive_value_column not in {"next_screen_intensity", "next_display_contrast"}:
@@ -441,6 +449,33 @@ class RunContext:
         if value_column != "next_screen_intensity":
             snapshot["canonical_value_column"] = value_column
         atomic_write_json(self.run_directory / "adaptive_session.json", snapshot)
+
+    def adaptive_trial_record(self, algorithm, identity, *, contrast, maximum, log_up, log_down, measurements=None, instructions=""):
+        """Record presented/next strength, repeat ID, reversal count and completion.
+
+        Scientific strength, gamut, steps and extra measurements are supplied by
+        the experiment. This projection does not choose an update or estimator.
+        """
+        return {
+            "state":{"contrast":contrast,"maximum_contrast":maximum,"log_up":log_up,"log_down":log_down,
+                "next_contrast":None,"staircase_id":identity,
+                "staircase_trial_index":algorithm.states[identity].trial_count+1,
+                "reversal":None,"reversal_count":None,"staircase_complete":None},
+            "record_from_state":{"staircase_id":"staircase_id","staircase_trial_index":"staircase_trial_index",
+                "presented_display_contrast":"contrast","next_display_contrast":"next_contrast",
+                "reversal":"reversal","reversal_count":"reversal_count","staircase_complete":"staircase_complete"},
+            "measurements":dict(measurements or {}),"instructions":instructions,
+            "adaptive_record":algorithm,"adaptive_value_column":"next_display_contrast"}
+
+    def staircase_record_action(self, algorithm, identity):
+        """Record counters after the experiment's explicit adaptive update."""
+        from .core.timeline import UpdateState
+        previous = algorithm.states[identity].reversal_count
+        def record_adjustment(values, answer):
+            current = algorithm.states[identity]
+            return dict(values) | {"reversal":int(current.reversal_count > previous),
+                "reversal_count":current.reversal_count,"staircase_complete":int(current.complete)}
+        return UpdateState(record_adjustment,name="record_staircase_change")
 
     def save_primary(self, rule, conditions):
         """Recompute the declared primary result from the canonical trial log."""

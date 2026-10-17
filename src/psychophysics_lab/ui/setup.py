@@ -200,6 +200,7 @@ class HubNavigation(Horizontal):
                 "SimulationsScreen": "simulations",
                 "SimulationReviewScreen": "simulations"}.get(type(self.screen).__name__, "setup")
         self.query_one("#nav-" + page, Button).variant = "primary"
+        self.query_one("#nav-simulations", Button).display = self.app.include_historical
 
 
 def _nav_bar() -> Horizontal:
@@ -397,20 +398,36 @@ class StimuliScreen(HubPage):
             yield Static("[b]ONE place for all stimulus science[/b]\n"
                 "Open stimulus_library.py. Define LibraryStimulus classes "
                 "with PARAMETERS, render(), and SPEC. There is no new-file generator "
-                "or manual per-stimulus registry step.")
+                "or manual per-stimulus registry step. Restart after Python edits; parameter changes preview immediately.")
             yield Button("Open stimulus_library.py", id="view-shared-stimulus-library", variant="primary")
             yield Button("See Scene example", id="view-shared-scene-example")
             yield Button("Read short authoring guide", id="learn-stimuli")
             yield Static("[b]Already available[/b]\n"
                 "Fixation, white lines, Gabor, gratings, ellipse, annulus, square, "
                 "rectangle, Gaussian dot and composable Scenes.")
+            from ..stimuli.registry import list_stimuli
+            choices = [(item.display_name,item.id) for item in list_stimuli() if item.render is not None]
+            yield Select(choices, value=choices[0][1], allow_blank=False, id="library-preview-stimulus")
+            yield Button("Preview stimulus", id="library-show-preview", variant="primary")
             yield Static("[b]Preview directly[/b]\n"
                 "USER_env: python -m psychophysics_lab --dev-preview STIMULUS_ID\n"
-                "Preview saves a PNG, not a physically calibrated presentation.")
+                "Preview opens an image. Edit parameters in Experiment setup; Try the experiment shows actual trials.")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id == "library-show-preview":
+            event.stop()
+            try:
+                from ..stimuli.registry import get_stimulus
+                from ..config.stimulus_parameters import document_for
+                from .preview import show_stimulus_preview
+                spec = get_stimulus(str(self.query_one("#library-preview-stimulus",Select).value))
+                show_stimulus_preview(spec.id, document_for(spec)["parameters"], self.app.local_config_root/"previews")
+                self.app.notify("Preview opened. Appearance only; physical contrast and timing are unverified.")
+            except (ValueError,OSError) as exc:
+                self.app.notify(str(exc),severity="error")
             return
         files = {
             "view-shared-stimulus-library": "src/psychophysics_lab/stimulus_library.py",
@@ -1500,31 +1517,14 @@ class HelpScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
         with VerticalScroll(classes="page-body"):
-            yield Static(
-                "[b]PsyCoLab development map[/b]\n\n"
-                "[b]Stimuli[/b] — what is presented. Reusable stimulus code belongs under "
-                "src/psychophysics_lab/stimulus_library.py (one class per stimulus).\n\n"
-                "[b]Experiment procedures[/b] — how stimuli, timing, conditions and responses "
-                "are combined. Build a procedure and ordered timeline; published modules appear automatically in "
-                "the normal experiment catalogue after a successful software test.\n\n"
-                "[b]Adaptive methods[/b] — how parameters change from accepted responses. "
-                "Reusable algorithms live in adaptive/. Experiments declare the method and its controls.\n\n"
-                "[b]Framework infrastructure[/b] — configuration, display profiles, lifecycle, "
-                "recording and provenance.\n\n"
-                "[b]Data rule[/b] — participant/acquisition data must stay outside this Git "
-                "repository. The active workspace is validated by PsyCoLab before use.\n\n"
-                "[b]Scientific rule[/b] — do not silently change stimulus mathematics, timings, "
-                "response mappings, staircase rules, calibration semantics, contrast definitions "
-                "or the retained 31.5 scaling. Such changes require explicit scientific review.\n\n"
-                "Build Experiments and Build Stimuli open the scientific source and validation controls. This build "
-                "also includes an extension guide/template, while intentionally avoiding an "
-                "unrestricted source-code editor inside the acquisition TUI."
-            )
-            yield Static("[b]Start a contribution[/b]\nCreate one experiment Python file in src/psychophysics_lab/experiments with defaults and SPEC; JSON presets are optional. Add visual definitions as classes in the ONE stimulus_library.py. Then run --dev-stage experiment ID, --dev-test ID and --dev-ready experiment ID. No code is generated.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
-            yield Button("Learn PsyCoLab — standalone tutorial", id="learn-guide", variant="primary")
-            yield Button("Authoring structure and ID rules", id="authoring-contract")
-            yield Button("Open internal extension declarations", id="edit-contributions")
-            yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
+            yield Static("[b]Edit → Preview → Try → Check results[/b]\nUse Experiment to configure once, then choose Try the experiment, Simulate responses, or Collect participant data.")
+            yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
+            yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/.\nRestart after Python edits; parameter edits preview immediately.")
+            yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
+            with Collapsible(title="Advanced authoring references", collapsed=True):
+                yield Button("Authoring structure and ID rules", id="authoring-contract")
+                yield Button("Open internal extension declarations", id="edit-contributions")
+                yield Button("Open Extension Guide", id="view-extension-guide")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -2140,15 +2140,15 @@ class ReviewScreen(Screen):
             yield _nav_bar()
             yield Label("What would you like to run?")
             yield Select([
-                ("Test experiment presentation on the real display", "test"),
-                ("Human experiment — verified laboratory acquisition", "human"),
-                ("Simulation — virtual observer", "simulation"),
+                ("Try the experiment", "test"),
+                ("Collect participant data", "human"),
+                ("Simulate responses", "simulation"),
             ], value=self.app.run_intent, allow_blank=False, id="review-run-intent")
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
-                yield Button("Start uncalibrated test presentation", id="run-presentation-test", variant="warning")
-                yield Button("Run human experiment", id="run", variant="success")
-                yield Button("Run simulation", id="run-simulation", variant="primary")
+                yield Button("Try the experiment", id="run-presentation-test", variant="warning")
+                yield Button("Collect participant data", id="run", variant="success")
+                yield Button("Simulate responses", id="run-simulation", variant="primary")
             yield Button("Resolve human acquisition requirements",
                          id="review-calibration-guide")
             yield Static("", id="review-status")
@@ -2281,10 +2281,10 @@ class ReviewScreen(Screen):
         for action, mode in (("run-presentation-test","test"),
                              ("run-simulation","simulation"),("run","human")):
             button=self.query_one("#" + action, Button)
-            button.display=True
+            button.display=self.app.include_historical or mode==intent
             button.variant=("warning" if mode=="test" else
                             "success" if mode=="human" else "primary") if mode==intent else "default"
-        self.query_one("#review-calibration-guide", Button).display=True
+        self.query_one("#review-calibration-guide", Button).display=self.app.include_historical or intent=="human"
         report=self.readiness_report
         if intent=="human":
             status=("READY for human acquisition — final hardware preflight still applies."
@@ -2616,6 +2616,12 @@ class PsyCoLabSetupApp(App):
             self.screen_stack[0].query_one("#monitor-profile", Select).value = preferred
 
     def open_hub_page(self, page: str) -> None:
+        if page == "simulations" and not self.include_historical:
+            # Compatibility link lands on the same configuration route.
+            self.open_hub_page("setup")
+            self.screen.query_one("#run-intent", Select).value = "simulation"
+            self.run_intent = "simulation"
+            return
         if isinstance(self.screen, DisplayCheckScreen):
             self.display_draft = {
                 w.id: w.value
@@ -2722,9 +2728,9 @@ class PsyCoLabSetupApp(App):
         with VerticalScroll(id="setup-body"):
             yield Static("[b]What would you like to do?[/b]")
             yield Select([
-                ("Test an experiment on this monitor (no photometer required)", "test"),
-                ("Run a human experiment (physical verification required)", "human"),
-                ("Run a simulation with a virtual observer", "simulation"),
+                ("Try the experiment", "test"),
+                ("Collect participant data", "human"),
+                ("Simulate responses", "simulation"),
             ], value=self.run_intent, allow_blank=False, id="run-intent")
             yield Static("", id="run-intent-help", markup=False)
             yield Static("Configure the experiment and its stimuli. The chosen run type "

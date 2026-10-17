@@ -376,30 +376,19 @@ def test_new_protocols_finish_and_reproduce_primary_analysis(tmp_path, identity)
     )
 
 
-def test_normal_simulation_page_keeps_required_study_choices_editable(tmp_path):
+def test_normal_simulation_uses_shared_configuration(tmp_path):
     import asyncio
-    from textual.widgets import Input, Select
+    from textual.widgets import Button, Select
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
-
     async def check():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path)
-        async with app.run_test(size=(100, 40)) as pilot:
-            assert app.include_historical is False
+        app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path)
+        async with app.run_test(size=(100,40)) as pilot:
             app.open_hub_page("simulations")
             await pilot.pause()
-            screen = app.screen
-            assert "contrast_sensitivity" not in screen.experiment_ids
-            for index, scenario in enumerate(screen.scenarios):
-                spec = get_experiment(scenario.experiment_id)
-                for number, field in enumerate(spec.fields):
-                    if field.default is None:
-                        assert (
-                            screen.query_one(
-                                f"#sim-experiment-value-{index}-{number}", Input
-                            ).value
-                            == ""
-                        )
-
+            assert app.run_intent == "simulation"
+            assert app.screen.query_one("#run-intent",Select).value == "simulation"
+            assert not app.screen.query_one("#nav-simulations",Button).display
+            assert not get_experiment(str(app.screen.query_one("#experiment",Select).value)).historical
     asyncio.run(check())
 
 

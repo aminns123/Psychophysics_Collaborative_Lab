@@ -108,8 +108,8 @@ def test_review_can_choose_real_or_virtual_with_one_condition_configuration(tmp_
             app.push_screen(ReviewScreen(request=request))
             await pilot.pause()
             screen=app.screen
-            assert screen.query_one("#run",Button).label.plain=="Run human experiment"
-            assert screen.query_one("#run-simulation",Button).label.plain=="Run simulation"
+            assert screen.query_one("#run",Button).label.plain=="Collect participant data"
+            assert screen.query_one("#run-simulation",Button).label.plain=="Simulate responses"
             screen.query_one("#run-simulation",Button).press()
             await pilot.pause()
             assert isinstance(app.screen,VirtualObserverOptionsScreen)

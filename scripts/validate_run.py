@@ -207,7 +207,10 @@ def validate_run(run_directory: Path) -> list[Check]:
 
     def status_check():
         status = manifest.get("status")
-        require(status in {"completed", "max_trials_reached", "aborted_by_user", "aborted", "error", "returned"},
+        if status == "test_finished":
+            require(manifest.get("data_kind") == "uncalibrated_presentation_test", "test completion is reserved for isolated presentation tests")
+            require(len(rows) == manifest.get("presentation_test",{}).get("test_response_limit"), "test response count differs from the declared test limit")
+        require(status in {"completed", "max_trials_reached", "aborted_by_user", "aborted", "error", "returned", "test_finished"},
                 f"not a final run status: {status!r}")
         require(bool(manifest.get("finished_utc")), "missing finalization timestamp")
         require(status == "error" or not manifest.get("error"), "error attached to a non-error status")
@@ -220,7 +223,8 @@ def validate_run(run_directory: Path) -> list[Check]:
         if not adaptive_needed:
             return
         state_status = adaptive["status"]
-        require(status == state_status or (status == "error" and bool(manifest.get("error"))),
+        require(status == state_status or (status == "error" and bool(manifest.get("error")))
+                or (status in {"test_finished", "aborted_by_user", "aborted"} and state_status == "running"),
                 "manifest/adaptive final statuses disagree")
         require(state_status in {"completed", "max_trials_reached", "aborted", "aborted_by_user", "error", "running"},
                 "unknown adaptive status")
