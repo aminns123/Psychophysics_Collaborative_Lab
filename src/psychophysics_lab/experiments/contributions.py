@@ -9,7 +9,7 @@ def load_contributions():
     global _loaded, _loading
     if _loaded or _loading:
         return
-    from ..contributions import EXPERIMENT_MODULES, STIMULUS_MODULES, ADAPTIVE_MODULES
+    from ..contributions import EXPERIMENT_MODULES, ADAPTIVE_MODULES
     from ..adaptive import registry as adaptive
     from . import registry as experiments
     from ..stimuli import registry as stimuli
@@ -21,18 +21,12 @@ def load_contributions():
             adaptive.register_algorithm(importlib.import_module(name).SPEC)
         for name in EXPERIMENT_MODULES:
             experiments.register_experiment(importlib.import_module(name).SPEC)
-        for name in STIMULUS_MODULES:
-            stimuli.register_stimulus(importlib.import_module(name).SPEC)
-        # New LibraryStimulus subclasses are discovered in this ONE source file.
-        # Researcher-owned IDs never bypass their Ready fingerprint checks.
+        # The only authoritative non-CSF visual stimulus definitions are
+        # classes in stimulus_library.py; no per-stimulus registry entries.
         from ..stimulus_library import library_stimulus_specs
-        from ..authoring import inventory as authored_inventory
-        from ..paths import find_repo_root
-        authored_ids = {item.name for item in authored_inventory(find_repo_root())
-                        if item.kind == "stimulus"}
-        for shared in library_stimulus_specs():
-            if shared.id not in stimuli._REGISTRY and shared.id not in authored_ids:
-                stimuli.register_stimulus(shared)
+        for spec in library_stimulus_specs():
+            if spec.id not in stimuli._REGISTRY:
+                stimuli.register_stimulus(spec)
         # Published researcher components join the ordinary experiment catalogue.
         from ..paths import find_repo_root
         from ..authoring import load_authored

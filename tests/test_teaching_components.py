@@ -8,7 +8,7 @@ from psychophysics_lab.config.stimulus_parameters import load_parameters, save_p
 from psychophysics_lab.stimuli.registry import get_stimulus, list_stimuli, register_stimulus
 from psychophysics_lab.experiments.registry import get_experiment, register_experiment
 from psychophysics_lab.core.presentation import render_pixels
-from psychophysics_lab.scaffold import scaffold
+from _manual_authoring_fixture import scaffold
 from simulations.run import simulate
 from scripts.validate_run import validate_run
 

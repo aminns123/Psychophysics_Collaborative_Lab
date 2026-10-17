@@ -13,7 +13,7 @@ from psychophysics_lab.adaptive.registry import register_algorithm
 from psychophysics_lab.adaptive.steps import paired_step
 from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
 from psychophysics_lab.experiments.responses import LEFT_RIGHT, TWO_INTERVAL, ResponseParadigm
-from psychophysics_lab.scaffold import scaffold
+from _manual_authoring_fixture import scaffold
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
 
 ROOT = Path(__file__).resolve().parents[1]

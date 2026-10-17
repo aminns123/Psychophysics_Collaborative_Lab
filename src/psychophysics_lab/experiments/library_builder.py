@@ -188,7 +188,9 @@ def _digest(root, identity):
     files = [_design_path(root, identity)]
     for stim_id in doc["stimuli"].values():
         stim = get_stimulus(stim_id)
-        files += [Path(root) / stim.source_path, Path(root) / stim.default_config]
+        files.append(Path(root) / stim.source_path)
+        if stim.default_config:
+            files.append(Path(root) / stim.default_config)
         files += [Path(root) / dependency for dependency in stim.source_dependencies]
     digest = sha256()
     for path in files:

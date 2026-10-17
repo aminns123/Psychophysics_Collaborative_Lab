@@ -1,7 +1,8 @@
 """Project-local, explicit draft/ready authoring inventory.
 
-Only files scaffolded/registered by the researcher are listed. Drafts are loaded
-in USER_env, never in the normal human-acquisition catalogue. 'Ready' means
+Manually written experiment/adaptive files registered by researchers are listed.
+Drafts are loaded in USER_env, never in the normal human-acquisition catalogue.
+All new stimuli live directly in stimulus_library.py. 'Ready' means
 software-tested; it is *not* physical calibration or ethical approval.
 """
 from __future__ import annotations
@@ -78,7 +79,11 @@ def stage(repo_root: Path, kind: str, name: str) -> Component:
     root = Path(repo_root).resolve()
     _path(root, kind, name).relative_to(root)
     if not _path(root, kind, name).is_file():
-        raise ValueError("Create the Python blueprint before registering this draft.")
+        raise ValueError(f"Write src/psychophysics_lab/{KINDS[kind]}/{name}.py first; no file is generated.")
+    if kind == "experiment":
+        settings = root / "configs/experiments" / (name + ".json")
+        if not settings.is_file():
+            raise ValueError(f"Write {settings.relative_to(root)} before registering this experiment.")
     records = inventory(root)
     if any(i.kind == kind and i.name == name for i in records):
         raise ValueError("Component is already registered in the authoring inventory.")
@@ -147,7 +152,6 @@ def publish(repo_root: Path, kind: str, name: str) -> Component:
         importlib.invalidate_caches()
         spec = importlib.reload(importlib.import_module(target.module)).SPEC
         for dependency_kind, dependencies in (
-            ("stimulus", spec.stimulus_defaults.values()),
             ("adaptive", (spec.adaptive.algorithm_id,) if spec.adaptive else ())):
             for dependency in dependencies:
                 authored = next((i for i in records if i.kind == dependency_kind and i.name == dependency), None)
@@ -170,7 +174,9 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     from .adaptive import registry as adaptive
     from .stimuli import registry as stimuli
     from .experiments import registry as experiments
-    items = [i for i in inventory(repo_root) if include_drafts or i.status == "ready"]
+    # Older single-file stimulus drafts are migrated to stimulus_library.py.
+    # This loader is for independent experiments and adaptive code only.
+    items = [i for i in inventory(repo_root) if i.kind != "stimulus" and (include_drafts or i.status == "ready")]
     items.sort(key=lambda i: (i.kind == "experiment", i.kind, i.name))
     problems = {}
     importlib.invalidate_caches()
@@ -205,16 +211,3 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     return problems
 
 
-def scaffold_draft(repo_root: Path, name: str, kind: str) -> tuple[Path, ...]:
-    """Generate using the supported existing blueprint, then register as draft."""
-    from .scaffold import scaffold
-    paths = scaffold(Path(repo_root), name, kind=kind)
-    try:
-        kinds = ("stimulus", "experiment") if kind == "pair" else (kind,)
-        for component_kind in kinds:
-            stage(repo_root, component_kind, name)
-    except Exception:
-        # Keep generated files for investigation rather than silently deleting
-        # authored source; never publish them on a failed registration.
-        raise
-    return paths

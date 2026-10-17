@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from psychophysics_lab.scaffold import scaffold
+from _manual_authoring_fixture import scaffold
 from psychophysics_lab.experiments.registry import get_experiment, register_experiment
 from psychophysics_lab.stimuli.registry import get_stimulus, register_stimulus
 from psychophysics_lab.config.stimulus_parameters import load_parameters
@@ -102,7 +102,8 @@ def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
 
 def test_normal_tui_has_explicit_example_source_controls():
     source = (ROOT / "src/psychophysics_lab/ui/setup.py").read_text(encoding="utf-8")
-    assert 'id="read-example-stimulus"' in source
+    assert 'id="read-example-stimulus"' not in source
+    assert 'id="view-shared-stimulus-library"' in source
     assert 'id="read-example-experiment"' in source
     assert 'id="read-example-timeline"' in source
     assert 'id="read-csf-timeline"' in source

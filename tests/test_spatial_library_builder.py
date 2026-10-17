@@ -11,7 +11,7 @@ from psychophysics_lab.experiments.library_builder import (
     validate_design, test_design as run_library_test, mark_ready,
 )
 from psychophysics_lab.experiments.registry import get_experiment, list_experiments
-from psychophysics_lab.scaffold import scaffold_vertical_line
+from _manual_authoring_fixture import scaffold_vertical_line
 from psychophysics_lab.stimuli.registry import get_stimulus
 from simulations.run import simulate
 from scripts.validate_run import validate_run
@@ -128,8 +128,6 @@ def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_p
         # Thin adapters now depend on the single authoritative science file;
         # a standalone copy must include that source to verify exact hashes.
         "src/psychophysics_lab/stimulus_library.py",
-        "src/psychophysics_lab/stimuli/fixation_cross.py",
-        "src/psychophysics_lab/stimuli/vertical_line_probe.py",
         "src/psychophysics_lab/experiments/library_builder.py",
         "configs/stimuli/fixation_cross.json",
         "configs/stimuli/vertical_line_probe.json",

@@ -13,34 +13,23 @@ The current reference experiment is a contrast sensitivity function (CSF)
 experiment. It is an example built with the framework; it is not the definition
 of the framework.
 
-## Learn to build stimuli and experiments
+## The only normal authoring workflow
 
-**Start with the standalone [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) guide.**
-It is readable outside the TUI and includes the actual commands, worked
-white-line example, above/below experiment, virtual tests and human-run steps.
+Open **`src/psychophysics_lab/stimulus_library.py`** to edit or add
+`LibraryStimulus` classes. Each contains `PARAMETERS`, `render()` and
+`SPEC`. There is no stimulus generator, extra stimulus Python file or
+registration wizard.
 
-In the USER_env terminal, you can also type:
+Write each new experiment in **`src/psychophysics_lab/experiments/<id>.py`**
+with its configuration at **`configs/experiments/<id>.json`**. Register an
+existing file using `python -m psychophysics_lab --dev-stage experiment ID`,
+test it using `--dev-test ID`, then mark it Ready with
+`--dev-ready experiment ID`. No files are generated automatically.
 
-```cmd
-python -m psychophysics_lab --learn
-```
-
-PsyCoLab uses one [authoring contract](docs/AUTHORING_CONTRACT.md):
-a stimulus owns its **appearance**; an experiment owns the **conditions,
-placement, timing and responses**; the framework handles calibration,
-recording and data saving. Basic two-choice spatial experiments can be
-made from registered stimuli by editing JSON only. Advanced procedures
-have their own Python file and a neutral (deliberately unfinished) starter.
-
-New researcher Python modules are registered through the Draft → Test →
-Ready inventory automatically. **Do not edit `contributions.py` to register
-new researcher modules.** The older left/right `example_experiment.py` is
-a worked example, not the new experiment generator template.
-
-For more detail see the [simulation guide](docs/SIMULATION_TESTING.md) and
-[CSF action migration status](docs/CSF_ACTION_MIGRATION.md). Synthetic runs
-are recorded separately from human acquisition and do not establish physical
-monitor calibration.
+See the [short build walkthrough](docs/LEARN_PSYCOLAB.md) and
+[retention audit](docs/REPO_SURFACE_AUDIT.md).
+The reference CSF renderer remains available as a scientifically active
+legacy runtime, not a separate authoring path.
 
 ## First launch on Windows
 

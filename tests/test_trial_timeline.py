@@ -128,39 +128,28 @@ def test_authoring_screen_shows_create_buttons_and_timeline_file():
     assert dict(_source_inventory(ROOT, get_experiment("contrast_sensitivity")))["Trial timeline JSON"].name == "contrast_sensitivity.json"
 
 
-def test_build_buttons_scaffold_scientific_files_without_editor_changes(tmp_path, monkeypatch):
+def test_one_file_stimulus_ui_no_generators(tmp_path, monkeypatch):
     import asyncio
-    from textual.widgets import Input, Button
+    from textual.widgets import Button
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentsScreen, StimuliScreen
-    import psychophysics_lab.authoring as authoring
-    calls = []
-    def scaffold_fake(root, name, *, kind):
-        calls.append((name, kind))
-        # The launcher is intentionally mocked: no files are written in this test.
-        return (ROOT / "src/psychophysics_lab/experiments/orientation_task.py",)
-    monkeypatch.setattr(authoring, "scaffold_draft", scaffold_fake)
-    # Inspecting a source file also goes through one public TUI method.
+
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
         seen = []
-        monkeypatch.setattr(app, "inspect_source", lambda source: seen.append(source))
+        monkeypatch.setattr(app, "inspect_source", lambda path: seen.append(path))
         async with app.run_test(size=(120, 40)) as pilot:
             await pilot.click("#nav-experiments")
             await pilot.pause()
             assert isinstance(app.screen, ExperimentsScreen)
-            app.screen.query_one("#new-experiment-name", Input).value = "new_task"
-            app.screen.query_one("#build-new-experiment", Button).scroll_visible(animate=False)
-            await pilot.pause()
-            await pilot.click("#build-new-experiment")
-            await pilot.pause()
+            assert not app.screen.query("#build-new-experiment")
             await pilot.click("#nav-stimuli")
             await pilot.pause()
             assert isinstance(app.screen, StimuliScreen)
-            app.screen.query_one("#new-stimulus-name", Input).value = "new_patch"
-            app.screen.query_one("#build-new-stimulus", Button).scroll_visible(animate=False)
+            assert not app.screen.query("#build-new-stimulus")
+            app.screen.query_one("#view-shared-stimulus-library", Button).scroll_visible(animate=False)
             await pilot.pause()
-            await pilot.click("#build-new-stimulus")
+            await pilot.click("#view-shared-stimulus-library")
             await pilot.pause()
-        assert len(seen) == 2
+        assert seen == [ROOT / "src/psychophysics_lab/stimulus_library.py"]
+
     asyncio.run(scenario())
-    assert calls == [("new_task", "experiment"), ("new_patch", "stimulus")]

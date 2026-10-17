@@ -12,3 +12,6 @@ EXPERIMENT_MODULES += (
     "psychophysics_lab.experiments.ellipse_2d",
 )
 ADAPTIVE_MODULES = ("psychophysics_lab.adaptive.legacy_flanker",)
+
+# Retained as an empty attribute for older external imports only.
+STIMULUS_MODULES = ()
