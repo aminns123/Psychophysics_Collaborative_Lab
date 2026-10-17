@@ -7,6 +7,7 @@ not edit them to add an experiment or change its scientific design.
 - `responses.py`: reusable response decoding and index-equality correctness.
 - `registry.py`, `contributions.py`: registration and discovery of parent-folder files.
 - `library_builder.py`: compatibility with historical saved JSON designs.
+- `source_names.py`: one documented source rename while preserving saved-run IDs.
 - `flanker_response.py`: historical CSF specification alias, not an authoring example.
 
 Scientific settings, stimulus placement, trial order and timing, response meanings,

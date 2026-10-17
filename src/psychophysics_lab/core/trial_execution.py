@@ -9,8 +9,13 @@ def execute_timeline(timeline, backend, events, action, *, instructions=""):
     Events are owned by the caller, so exceptions cannot discard partial history.
     This function performs no persistence. Action callbacks must not do IO.
     """
+    return execute_actions(timeline.phases, backend, events, action, instructions=instructions)
+
+
+def execute_actions(phases, backend, events, action, *, instructions="", start_index=0):
+    """Execute an ordered slice; staged updates continue the same trial event indices."""
     response = None
-    for index, phase in enumerate(timeline.phases):
+    for index, phase in enumerate(phases, start_index):
         event = {"action_index": index, **phase.to_dict(), "status": "started",
                  "timing_basis": "virtual observer" if backend.synthetic else "software perf_counter"}
         if not backend.synthetic:
@@ -73,3 +78,30 @@ class VirtualPresentation:
         event["planned_offset_ms"] = self.elapsed_ms
         event["virtual_offset_ms"] = self.elapsed_ms
         return None
+
+
+class ScientificTrial:
+    """One open trial boundary; persistence remains owned by RunContext.
+
+    The accepted response and current state are immutable detached mappings.
+    Only nonvisual scientific actions can be appended after the response.
+    """
+    def __init__(self, response, state, append):
+        self._response, self._state, self._append = response, state, append
+        self._open = True
+
+    @property
+    def response(self):
+        return self._response()
+
+    @property
+    def state(self):
+        return self._state()
+
+    def apply(self, *actions):
+        if not self._open:
+            raise RuntimeError("Scientific updates require an open trial context.")
+        self._append(actions)
+
+    def close(self):
+        self._open = False

@@ -53,11 +53,11 @@ def test_adaptive_early_retirement_and_ceiling_are_distinct():
 
 
 def test_source_phase_order_and_response_meanings():
-    pair = timeline(first_trial=True)
+    pair = timeline({}, {"first_trial":True})
     assert [(p.name,p.duration_ms) for p in pair.phases[:5]] == [
         ("leading_fixation",250),("fixation",250),("pre_interval",250),("stimulus",250),("delay",500)]
     assert pair.phases[-2].actions == ("up","down")
-    ellipse = ellipse_timeline()
+    ellipse = ellipse_timeline({}, {"first_trial":False})
     assert [p.name for p in ellipse.phases] == ["fixation","pre_interval","decision","interval_one",
         "inter_interval","interval_two","delay","answer","accepted_response"]
     assert ellipse.phases[-2].actions == ("first","second")
@@ -132,14 +132,15 @@ def test_ellipse_literal_geometry_and_both_interval_orders():
     from psychophysics_lab.config.monitor import load_monitor_profiles
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     g = pixel_geometry(SimpleNamespace(display=profile, values={"reference_width_px":1920,"reference_height_px":1080}))
-    v = {"background":.24}
-    a = scenes(v,g,position=.25,target=0,intensity=.4)
-    b = scenes(v,g,position=.25,target=1,intensity=.4)
-    assert a["first"].to_dict() == b["second"].to_dict()
-    assert a["second"].to_dict() == b["first"].to_dict()
-    ring,probe,dot = a["first"].drawings
-    assert ring.parameters["y_deg"] == dot.parameters["y_deg"] == g["fixation_y_deg"]
-    assert probe.parameters["x_deg"] == .25
+    import json
+    run = SimpleNamespace(values={"background":.24, "scene_size_deg":18.})
+    a = scenes(run, {"position_deg":.25, "target":0, "intensity":.4}, {"geometry":g})
+    b = scenes(run, {"position_deg":.25, "target":1, "intensity":.4}, {"geometry":g})
+    assert a["first"] == b["second"]
+    assert a["second"] == b["first"]
+    ring,probe,dot = json.loads(a["first"]["scene_json"])["drawings"]
+    assert ring["parameters"]["y_deg"] == dot["parameters"]["y_deg"] == g["fixation_y_deg"]
+    assert probe["parameters"]["x_deg"] == .25
     assert g["ellipse_rx_deg"] > 4  # 250 px on this explicitly selected reference display, not .5 deg
 
 
@@ -154,11 +155,11 @@ def test_missing_monitor_resolution_is_not_invented():
 
 def test_out_of_range_next_value_is_not_silently_clamped(tmp_path, monkeypatch):
     from psychophysics_lab.researcher import RunContext
-    original = RunContext.play_trial
+    original = RunContext.trial
     def always_wrong(run,*args,**kwargs):
         run.observer_parameters = {"accuracy":0.}
         return original(run,*args,**kwargs)
-    monkeypatch.setattr(RunContext,"play_trial",always_wrong)
+    monkeypatch.setattr(RunContext,"trial",always_wrong)
     with pytest.raises(ValueError,match="exceeds digital range"):
         simulate(tmp_path,"base_flanker",start_contrast=1.,condition_positions_deg="[0.25]")
     directory = next((tmp_path/"synthetic_data").rglob("manifest.json")).parent

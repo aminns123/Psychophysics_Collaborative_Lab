@@ -13,7 +13,6 @@ RunContext supplies the same presentation/response/data path for live and virtua
 observers. Display calibration and staircase algorithms are shared mechanisms.
 """
 
-
 import random
 from psychophysics_lab.researcher import (
     ConfigField,
@@ -29,17 +28,25 @@ from psychophysics_lab.researcher import (
     RecordState,
 )
 
-
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField(
-        "trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500
-    ),
+    ConfigField("trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500),
     ConfigField("random_seed", "Trial order seed", "int", 123, minimum=0),
-    ConfigField("n_down", "Consecutive correct answers before decreasing contrast", "int", 2, minimum=1),
-    ConfigField("n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1),
-    ConfigField("down_factor", "Contrast multiplier for a down step", "float", .8, minimum=.000001, maximum=1),
+    ConfigField(
+        "n_down", "Consecutive correct answers before decreasing contrast", "int", 2, minimum=1
+    ),
+    ConfigField(
+        "n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1
+    ),
+    ConfigField(
+        "down_factor",
+        "Contrast multiplier for a down step",
+        "float",
+        0.8,
+        minimum=0.000001,
+        maximum=1,
+    ),
     ConfigField("up_factor", "Contrast multiplier for an up step", "float", 1.25, minimum=1),
     ConfigField(
         "fixation_ms",
@@ -84,25 +91,37 @@ RESPONSES = ResponseParadigm("tilt", ("negative", "positive"), ("F", "J"))
 STIMULUS_SLOTS = {"target": "orientation_patch"}
 STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
 
+PARADIGM = "two_alternative_forced_choice"
+
 
 # 2. CONDITIONS AND TRIAL ORDER
-def make_conditions(values):
-    targets = [i % 2 for i in range(values["trial_count"])]
-    random.Random(values["random_seed"]).shuffle(targets)
-    return targets
+def make_conditions(settings):
+    targets = [i % 2 for i in range(settings["trial_count"])]
+    random.Random(settings["random_seed"]).shuffle(targets)
+    return [{"target": target} for target in targets]
+
+
+def choose_condition(run, conditions, state):
+    condition = dict(conditions[run.accepted_trials])
+    base = run.stimulus_parameters()
+    condition["orientation_deg"] = (-1 if condition["target"] == 0 else 1) * abs(
+        base["orientation_deg"]
+    )
+    condition["value"] = condition["orientation_deg"]
+    return condition
 
 
 # 3. PREPARE STIMULI
-def prepare_stimuli(run, target, contrast):
-    base = run.stimulus_parameters()
-    return run.stimulus_parameters(
-        orientation_deg=(-1 if target == 0 else 1) * abs(base["orientation_deg"]),
-        contrast=contrast,
-    )
+def prepare_stimuli(run, condition, state):
+    return {
+        "target": run.stimulus_parameters(
+            orientation_deg=condition["orientation_deg"], contrast=state["contrast"]
+        )
+    }
 
 
 # 4. ONE TRIAL
-def make_trial():
+def make_trial(settings, condition):
     return TrialTimeline(
         (
             Show("fixation", duration="fixation_ms", instructions="+"),
@@ -118,21 +137,50 @@ def make_trial():
 
 
 # 5. RESPONSES AND ADAPTATION
-# The shared staircase resets the opposite answer streak and resets a streak
-# after its step. The TUI supplies n_down/n_up and both contrast multipliers.
-# Hold otherwise; clip digital contrast to [.001, 1]. This teaching task stops at
-# trial_count responses; count+1 reversals is deliberately unreachable in that run.
+def interpret_response(condition, response):
+    """Both categories score the chosen spatial/property alternative or interval."""
+    correct = response["alternative"] == condition["target"]
+    if correct != response["correct"]:
+        raise ValueError("Response interpretation disagrees with the recorded target.")
+    return dict(response) | {"correct": correct}
+
+
+# Consecutive correct/incorrect counts and multipliers come from the TUI. A step
+# resets its streak; each response resets the opposite streak. No initial phase.
+# This teaching experiment clips digital contrast to [.001, 1] and stops after
+# trial_count responses; count+1 reversals is intentionally unreachable in that run.
 def next_contrast(state, response, step):
-    factor = state["down_factor"] if step == Step.DOWN else state["up_factor"] if step == Step.UP else 1
+    factor = (
+        state["down_factor"] if step == Step.DOWN else state["up_factor"] if step == Step.UP else 1
+    )
     return max(0.001, min(1.0, state["contrast"] * factor))
 
 
+def update_experiment(run, condition, state, response, trial):
+    trial.apply(
+        UpdateAdaptive(state["adaptive"], 0, next_contrast, state_key="contrast"),
+        RecordState("after_adaptation"),
+    )
+    state["contrast"] = trial.state["contrast"]
+    return state
+
+
+def trial_record(run, condition, state):
+    return {
+        "state": {
+            "contrast": state["contrast"],
+            "down_factor": run.values["down_factor"],
+            "up_factor": run.values["up_factor"],
+        },
+        "instructions": f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort",
+    }
+
+
 # 6. RUN AND FINISH
-def procedure(run):
-    # EDIT SCHEDULE: seeded balanced alternatives, then random order.
+def initialise_experiment(run, conditions):
     count = run.values["trial_count"]
-    targets = make_conditions(run.values)
-    timeline = make_trial().resolve(run.values)
+    targets = [c["target"] for c in conditions]
+    timeline = make_trial(run.values, {"target": 0}).resolve(run.values)
     run.initialise(
         expected_trials=count,
         resolution={
@@ -147,41 +195,43 @@ def procedure(run):
         },
     )
     adaptive = (
-        run.adaptive({0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count)
+        run.adaptive(
+            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count
+        )
         if run.spec.adaptive
         else None
     )
     contrast = run.stimulus_parameters()["contrast"]
-    # EDIT PRESENTATION AND INTERPRETATION; no display or file plumbing needed.
-    for target in targets:
-        # 1. CHOOSE A CONDITION: next target in the seeded balanced order.
-        # 2. PREPARE ITS STIMULI: tilt sign identifies the correct alternative.
-        parameters = prepare_stimuli(run, target, contrast)
-        actions = (
-            TrialTimeline(
-                timeline.phases
-                + (
-                    UpdateAdaptive(adaptive, 0, next_contrast, state_key="contrast"),
-                    RecordState("after_adaptation"),
-                )
-            )
-            if adaptive
-            else timeline
-        )
-        # 3. PRESENT ONE TRIAL; 4. INTERPRET the negative/positive response.
-        # Correctness is target/response index equality; 5. UPDATE via the plan callback.
-        run.play_trial(
-            actions,
-            target=target,
-            state={"contrast": contrast, "down_factor": run.values["down_factor"], "up_factor": run.values["up_factor"]},
-            condition=parameters["orientation_deg"],
-            parameters_by_slot={"target": parameters},
-            instructions=f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort",
-        )
-        if adaptive:
-            contrast = run.trial_state["contrast"]
-        # 6. CHECK WHETHER TO FINISH: stop after the configured number of targets.
+
+    return {"contrast": contrast, "adaptive": adaptive}
+
+
+def is_finished(run, conditions, state):
+    return run.accepted_trials >= len(conditions)
+
+
+def finish_experiment(run, conditions, state):
     run.complete()
+
+
+def procedure(run):
+    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
+        raise ValueError(SPEC.acquisition_block_reason)
+    conditions = make_conditions(run.values)
+    state = initialise_experiment(run, conditions)
+    while not is_finished(run, conditions, state):
+        condition = choose_condition(run, conditions, state)
+        stimuli = prepare_stimuli(run, condition, state)
+        with run.trial(
+            make_trial(run.values, condition),
+            target=condition["target"],
+            condition=condition["value"],
+            parameters_by_slot=stimuli,
+            **trial_record(run, condition, state),
+        ) as trial:
+            response = interpret_response(condition, trial.response)
+            state = update_experiment(run, condition, state, response, trial)
+    finish_experiment(run, conditions, state)
 
 
 # 7. FRAMEWORK CONNECTION
@@ -206,7 +256,13 @@ def definition(
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults={"target": stimulus},
         supports_simulation=True,
-        adaptive=AdaptiveSelection("consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor")) if adaptive else None,
+        adaptive=(
+            AdaptiveSelection(
+                "consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor")
+            )
+            if adaptive
+            else None
+        ),
         source_paths=(f"src/psychophysics_lab/experiments/{identity}.py",),
     )
 

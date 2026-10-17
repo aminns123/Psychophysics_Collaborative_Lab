@@ -42,8 +42,8 @@ It is a special hardware-rendered class, **not** an ordinary NumPy
 equivalent luminance, phase or timing. Its historical experiment definition
 and hardware driver are internal to `_reference_csf/`.
 
-The new `experiments/csf_thesis.py` is a separate protocol using
-`ThesisCSFGrating` and `ThesisGaussianFixation`, ordinary NumPy renderers in the
+The new `experiments/contrast_sensitivity.py` is a separate protocol using
+`ContrastSensitivityGrating` and `GaussianFixation`, ordinary NumPy renderers in the
 same library. Its thesis defaults can be overridden through the TUI. It requires
 separate physical qualification before human acquisition; it does not establish
 rendering equivalence with the historical shader.
@@ -132,7 +132,7 @@ save complete staircase histories. Check a run with
 
 ## Read the experiment as a participant's sequence
 
-Open `experiments/csf_thesis.py` for the current thesis example. Read the constants,
+Open `experiments/contrast_sensitivity.py` for the current thesis example. Read the constants,
 then `make_trial()`: fixation -> grating alone -> fixation and left/right response.
 `change_contrast()` gives the response-to-next-trial rule; `procedure()` chooses
 conditions and repeats trials until the declared staircase stopping rule. `SPEC`
@@ -149,3 +149,16 @@ response/adaptation, the run loop and the framework connection in the same order
 Use `probe_above_below.py` as the small fixed-trial example. Internal discovery,
 validation and historical loaders are in `_internal/`; researchers do not edit
 those files when changing scientific behaviour.
+
+
+## Explicit response and update calls
+
+All experiment files now share the same executable main loop and helper input/
+output contracts. `make_trial(settings, condition)` describes only what is shown,
+when input is accepted and optional observation markers. The procedure enters
+`run.trial()`, then explicitly calls `interpret_response()` and `update_experiment()`.
+The shared recorder saves once when that trial context ends. See the
+[folder guide](../src/psychophysics_lab/experiments/README.md) for the complete flow.
+The public CSF source is `contrast_sensitivity.py`, with menu name Contrast
+Sensitivity; source attribution remains documented, and old saved-run IDs retain
+their original meanings.

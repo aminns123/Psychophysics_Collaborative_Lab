@@ -4,6 +4,7 @@ A procedure receives RunContext: validated values, display profile, adaptive
 factory, response paradigm and canonical recorder. It owns presentation,
 accepted responses and scientific completion. No framework file paths required.
 """
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Any
@@ -158,8 +159,24 @@ class RunContext:
                                parameters_by_slot={slot: parameters} if parameters is not None else None,
                                instructions=instructions)
 
-    def play_trial(self, timeline, *, target, condition, parameters_by_slot=None,
-                   instructions="", measurements=None, state=None, record_from_state=None, adaptive_record=None):
+    def trial(self, timeline, **kwargs):
+        """Present once, yield accepted input for explicit interpretation/update, then save.
+
+        Use as a context manager. Scientific updates belong inside the context;
+        accepted input and partial state survive exceptions. No writes occur
+        between the first displayed phase and the final scientific update.
+        """
+        return self._trial_session(timeline, _staged=True, **kwargs)
+
+    def play_trial(self, timeline, **kwargs):
+        """Compatibility: execute a complete action plan at one trial boundary."""
+        with self._trial_session(timeline, **kwargs) as trial:
+            correct = trial.response["correct"]
+        return correct
+
+    @contextmanager
+    def _trial_session(self, timeline, *, target, condition, parameters_by_slot=None,
+                   instructions="", measurements=None, state=None, record_from_state=None, adaptive_record=None, adaptive_value_column="next_screen_intensity", _staged=False):
         """Execute chronological scientific actions and persist at the trial boundary.
 
         Callbacks get immutable detached state and response, and return finite JSON
@@ -170,14 +187,22 @@ class RunContext:
         import random
         from .core.timeline import (TrialTimeline, Phase, RecordState, UpdateState,
                                     UpdateAdaptive, scientific_snapshot, immutable_state)
-        from .core.trial_execution import VirtualPresentation, execute_timeline
+        from .core.trial_execution import VirtualPresentation, ScientificTrial, execute_timeline, execute_actions
         from .core.presentation import Response
         from .stimuli.registry import get_stimulus
+        if getattr(self, "_in_trial", False):
+            raise ValueError("Finish the active trial before starting another.")
+        if adaptive_value_column not in {"next_screen_intensity", "next_display_contrast"}:
+            raise ValueError("Declare the canonical column holding the adaptive numeric value.")
+        if adaptive_record is not None and not any(adaptive_record is a for a in getattr(self, "_algorithms", ())):
+            raise ValueError("Adaptive recording requires an owned algorithm")
         if not isinstance(timeline, TrialTimeline):
             raise TypeError("play_trial requires a TrialTimeline.")
         if self.status != "running" or self.accepted_trials >= self.expected_trials:
             raise ValueError("Start a timeline only while a response is expected.")
-        if adaptive_record is not None and not any(
+        if _staged and any(isinstance(p, (UpdateState, UpdateAdaptive)) for p in timeline.phases):
+            raise ValueError("Staged trial presentation cannot contain scientific updates; call update_experiment explicitly.")
+        if adaptive_record is not None and not _staged and not any(
                 isinstance(p, UpdateAdaptive) and p.algorithm is adaptive_record for p in timeline.phases):
             raise ValueError("Adaptive recording requires this trial's UpdateAdaptive action")
         timeline = timeline.resolve(self.values).validate_slots(self.stimulus_snapshots)
@@ -270,6 +295,22 @@ class RunContext:
                 event.update(adaptive_before=before, adaptive_after=scientific_snapshot(action.algorithm.snapshot()),
                              step=int(step), state=scientific_snapshot(current))
 
+        session = None
+        def append_actions(actions):
+            if response_data is None:
+                raise ValueError("Scientific updates require an accepted response.")
+            if any(not isinstance(p, (RecordState, UpdateState, UpdateAdaptive)) for p in actions):
+                raise ValueError("Only nonvisual actions may follow response collection.")
+            planned = trace["plan"]["phases"]
+            names = [p["name"] for p in planned] + [p.name for p in actions]
+            if len(names) != len(set(names)):
+                raise ValueError("Each phase name within one trial must be unique.")
+            for p in actions:
+                if isinstance(p, UpdateAdaptive) and not any(p.algorithm is a for a in getattr(self, "_algorithms", ())):
+                    raise ValueError("UpdateAdaptive requires an algorithm created with run.adaptive().")
+            planned.extend(p.to_dict() for p in actions)
+            execute_actions(actions, backend, events, apply, start_index=len(events))
+
         self._in_trial = True
         try:
             if self.synthetic:
@@ -285,12 +326,20 @@ class RunContext:
             trace["presentation_basis"] = getattr(backend, "basis", "software presentation; physical timing unverified")
             backend.prepare(timeline, resolved)
             execute_timeline(timeline, backend, events, apply, instructions=instructions)
+            session = ScientificTrial(lambda: immutable_state(response_data),
+                                      lambda: immutable_state(current), append_actions)
+            yield session
+            if adaptive_record is not None and not any(
+                    e["kind"] == "update_adaptive" and e.get("status") == "completed" for e in events):
+                raise ValueError("Adaptive recording requires this trial's completed adaptive update.")
             trace["status"] = "completed"
         except BaseException as exc:
             trace["status"] = "aborted" if isinstance(exc, ParticipantAbort) else "error"
             trace["error"] = str(exc)
             raise
         finally:
+            if session is not None:
+                session.close()
             self._in_trial = False
             self._trial_state = scientific_snapshot(current)
             trace["final_state"] = scientific_snapshot(current)
@@ -321,7 +370,8 @@ class RunContext:
                 atomic_write_json(self.run_directory / "trial_presentations.json",
                                   {"schema_version": 1, "trials": self._presentations})
             self._flush_adaptive_history()
-        return correct
+            if _staged and adaptive_record is not None:
+                self.save_adaptive(adaptive_record, value_column=adaptive_value_column)
 
     def _flush_adaptive_history(self):
         if hasattr(self, "_adaptive_history"):

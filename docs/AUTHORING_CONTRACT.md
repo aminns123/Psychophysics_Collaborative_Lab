@@ -23,28 +23,29 @@
   writes canonical output outside the Git checkout. The user never adds file
   writing to a `render()` method or a timed response callback.
 
-## Required reading order for every experiment
+## Required reading order and executable contract
 
-Use the same seven sections, in order: settings and stimuli; conditions and trial
-order; prepare stimuli; one trial; responses and adaptation; run and finish;
-framework connection. Place the actual `make_conditions()`, `prepare_stimuli()`,
-`make_trial()`, `procedure()` and `definition()` functions in that reading order.
-Use `FIELDS`, `STIMULUS_SLOTS`, `STIMULUS_DEFAULTS` and `RESPONSES` at the top.
-Keep scientific helpers beside the relevant section; do not hide condition policy
-in a shared experiment base class. Fixed tasks state that adaptation is absent.
+Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md)
+and [implementation plan](EXPERIMENT_CONSISTENCY_PLAN.md). All nine experiment
+files have the same actual main loop and function signatures, not only headings.
+Conditions are named dictionaries; `prepare_stimuli(run, condition, state)` always
+returns parameters by slot. `make_trial(settings, condition)` contains chronological
+presentation, response collection and observation markers, with no update actions.
+`interpret_response()` and `update_experiment()` execute explicitly inside
+`run.trial()`, followed by the shared recording boundary. `is_finished()` owns
+scientific termination. TUI-selected adaptive values remain authoritative.
 
-The main loop identifies: choose a condition → prepare its stimuli → present one
-trial → interpret the response → update the experiment → check whether to finish.
-Interpretation and update callbacks execute within `run.play_trial()` in plan
-order, before it returns. Do not execute them a second time in the outer loop.
-The TUI supplies selected adaptive parameters; the file explains their semantics.
+The seven sections are settings/stimuli; conditions/order; stimulus preparation;
+one trial; responses/updates/measurement fields; run/finish; framework connection.
+Spatial/property 2AFC and two-interval forced choice use the same contracts;
+their stimuli, interval sequences, response meanings and estimators stay explicit.
 
-Only experiment definitions belong at the top level of `experiments/` (plus its
-required `__init__.py` and README). Registration, discovery, field validation and
-historical design compatibility belong in `experiments/_internal/`. This move
-changes internal import paths; normal researcher imports remain the public
-`psychophysics_lab.researcher` API. Do not add forwarding helper files to the
-researcher folder.
+Only researcher experiment definitions belong at the top level of `experiments/`
+(plus its required `__init__.py` and README). Framework machinery and saved-design
+compatibility belong in `_internal/`. Normal researcher imports remain the public
+`psychophysics_lab.researcher` API. The renamed public contrast-sensitivity source
+retains its established saved-run ID through a documented internal source-name
+map; new experiments still match their own filenames and IDs normally.
 
 ## Creation and validation
 
@@ -62,8 +63,8 @@ measure luminance, temporal precision or speaker onset.
 
 ## The CSF exception is internal, not a second authoring option
 
-`ThesisCSFGrating` in `stimulus_library.py` exposes the new Gaussian grating
-equation; `experiments/csf_thesis.py` owns the new CSF settings and procedure.
+`ContrastSensitivityGrating` in `stimulus_library.py` exposes the new Gaussian grating
+equation; `experiments/contrast_sensitivity.py` owns the new CSF settings and procedure.
 The historical `CSFGrating` class still owns the reference GLSL shader source. The physical reference presenter,
 file/event bridge and old staircase compatibility implementation live
 **only** in `src/psychophysics_lab/_reference_csf/` until the shared
@@ -102,7 +103,7 @@ The development acquisition blocks remain in force.
 
 
 The thesis CSF is now a normal RunContext procedure, with its scientific sequence
-in `csf_thesis.py`. Historical CSF definition/validators live in
+in `contrast_sensitivity.py`. Historical CSF definition/validators live in
 `_reference_csf/experiment_definition.py`; the old experiment ID remains available
 for interpreting saved runs. Source consolidation did not make the older protocol
 equivalent to the thesis, so their identities and acquisition qualifications remain distinct.

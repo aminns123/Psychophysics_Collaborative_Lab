@@ -90,13 +90,13 @@ def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     beginner = get_experiment("example_experiment")
     csf = get_experiment("contrast_sensitivity")
     from psychophysics_lab.experiments.example_experiment import make_trial
-    ex = make_trial().resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
+    ex = make_trial(beginner.field_defaults(), {"target":0}).resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
     cs = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                        timings=csf.field_defaults(), slots=csf.stimulus_slots)
-    assert len(ex.phases) == 7
+    assert len(ex.phases) == 6
     assert len(cs.phases) == 5
     assert ex.phases[4].kind == cs.phases[-1].kind == "response"
-    assert ex.phases[-1].kind == "update_state"
+    assert ex.phases[-1].kind == "record_state"  # update_experiment runs explicitly after presentation
     assert csf.legacy_module == "psychophysics_lab._reference_csf.contrast_sensitivity_function"
 
 

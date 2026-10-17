@@ -298,7 +298,7 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Read example experiment.py", id="read-example-experiment")
                 yield Button("Optional example settings preset", id="read-example-timeline")
-                yield Button("Read thesis CSF experiment", id="read-csf-timeline")
+                yield Button("Read contrast sensitivity experiment", id="read-csf-timeline")
             yield Static(
                 "[b]ONE experiment structure[/b]\n"
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
@@ -351,7 +351,7 @@ class ExperimentsScreen(HubPage):
             examples = {
                 "read-example-experiment": "src/psychophysics_lab/experiments/example_experiment.py",
                 "read-example-timeline": "configs/experiments/example_experiment.json",
-                "read-csf-timeline": "src/psychophysics_lab/experiments/csf_thesis.py",
+                "read-csf-timeline": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
             return

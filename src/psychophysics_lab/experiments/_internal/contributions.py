@@ -12,7 +12,8 @@ def discover_experiment_modules():
     """Find local SPEC declarations without executing helpers or managed drafts.
 
     Manifest-managed files continue through fingerprint-gated load_authored.
-    Plain new Python definitions need only SPEC.id equal to their filename.
+    Plain new Python definitions need SPEC.id equal to their filename.
+    The documented CSF source rename retains its existing saved-run ID.
     """
     from psychophysics_lab.authoring import inventory
     from psychophysics_lab.paths import find_repo_root
@@ -36,6 +37,7 @@ def load_contributions():
     global _loaded, _loading
     if _loaded or _loading:
         return
+    from .source_names import SOURCE_IDS
     from psychophysics_lab.contributions import EXPERIMENT_MODULES, ADAPTIVE_MODULES
     from psychophysics_lab.adaptive import registry as adaptive
     from psychophysics_lab.experiments._internal import registry as experiments
@@ -51,7 +53,7 @@ def load_contributions():
         modules = discover_experiment_modules() if EXPERIMENT_MODULES is None else EXPERIMENT_MODULES
         for name in modules:
             spec = importlib.import_module(name).SPEC
-            if EXPERIMENT_MODULES is None and spec.id != name.rsplit(".", 1)[-1]:
+            if EXPERIMENT_MODULES is None and spec.id != SOURCE_IDS.get(name.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1]):
                 raise ValueError(f"{name}: SPEC.id must match its Python filename")
             experiments.register_experiment(spec)
         # The only authoritative non-CSF visual stimulus definitions are
