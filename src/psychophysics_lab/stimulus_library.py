@@ -1,227 +1,27 @@
-"""PsyCoLab — THE ONLY FILE FOR AUTHORING NEW VISUAL STIMULI.
+"""PsyCoLab: ONE file where each stimulus is ONE self-contained class.
 
-START HERE (no generator, no extra Python files):
-  1. Find the closest LibraryStimulus class below (e.g. FixationCross).
-  2. Copy that CLASS within this same file; give it a unique SPEC.id.
-  3. Edit PARAMETERS, render(parameters, x_deg, y_deg) and SPEC together.
-  4. Set SPEC.source_path = "src/psychophysics_lab/stimulus_library.py".
-     For a new class, set default_config="" to use ConfigField defaults.
-  5. Restart PsyCoLab and run --dev-preview SPEC_ID in USER_env.
+Copy a LibraryStimulus subclass in this file; edit only the copied class:
+PARAMETERS (science/settings), render() (pixels), SPEC (ID/description).
+New classes register automatically. They need no generator, separate
+stimulus module, JSON defaults file, or edits in another class/table.
 
-This file also has reusable primitive functions and Scene composition.
-Use them instead of copying existing rendering mathematics. Experiments,
-in their own Python files, control position, timing, responses and sounds.
-Coordinates are degrees; 0–1 intensities are DIGITAL commands, not measured
-luminance. A saved preview is not physical calibration.
+Experiments are separate .py files; they control trial timing, locations,
+responses, adaptation and optional beep sounds. All grayscale values 0–1
+are digital commands, not calibrated luminance.
+
+Scene() and convenience constructors below are optional pre-existing LEGO
+pieces, imported from framework internals. Never edit a shared renderer or
+registration list to add your own class.
 """
-from dataclasses import dataclass
-from types import MappingProxyType
 import json
-import math
 import numpy as np
-
-
-def _number(name, value, low=None, high=None, *, positive=False):
-    if type(value) not in (int, float) or not math.isfinite(value):
-        raise ValueError(f"{name} must be a finite number")
-    if (positive and value <= 0) or (low is not None and value < low) or (high is not None and value > high):
-        raise ValueError(f"{name} is outside its permitted range")
-    return float(value)
-
-
-@dataclass(frozen=True)
-class Drawing:
-    """An immutable, serializable primitive. Prefer the named functions below."""
-    kind: str
-    parameters: object
-
-    def __post_init__(self):
-        if not isinstance(self.kind, str) or self.kind not in _FIELDS or not isinstance(self.parameters, dict):
-            raise ValueError("Use a known drawing and a parameter dictionary")
-        p = dict(self.parameters)
-        if p.keys() != _FIELDS[self.kind]:
-            raise ValueError(f"Unexpected/missing parameters for {self.kind}")
-        for name, value in p.items():
-            if name == "waveform":
-                if value not in ("sine", "cosine"):
-                    raise ValueError("waveform must be sine or cosine")
-            else:
-                p[name] = _number(name, value,
-                    low=0 if name in {"intensity", "mean", "amplitude", "inner_ratio"} else None,
-                    high=1 if name in {"intensity", "mean", "amplitude", "inner_ratio"} else None,
-                    positive=name in {"size_deg", "length_deg", "width_deg", "height_deg", "radius_x_deg", "radius_y_deg", "sigma_deg", "spatial_frequency_cpd"})
-        if "amplitude" in p and p["amplitude"] > min(p["mean"], 1-p["mean"]):
-            raise ValueError("Grating mean +/- amplitude must stay in [0,1]; no silent clipping")
-        if p.get("inner_ratio") == 1:
-            raise ValueError("Annulus inner_ratio must be below 1")
-        if self.kind == "fixation" and p["width_deg"] > p["length_deg"]:
-            raise ValueError("Fixation width exceeds its arm length")
-        object.__setattr__(self, "parameters", MappingProxyType(p))
-
-    def at(self, x_deg, y_deg):
-        """Return a repositioned copy, leaving this drawing unchanged."""
-        return Drawing(self.kind, dict(self.parameters) | {"x_deg": x_deg, "y_deg": y_deg})
-
-    def to_dict(self):
-        return {"kind": self.kind, "parameters": dict(self.parameters)}
-
-    @property
-    def radius_bound(self):
-        p = self.parameters
-        if self.kind in ("grating", "gabor"):
-            return p["size_deg"] / math.sqrt(2)
-        if self.kind == "gaussian_dot":
-            return 4 * p["sigma_deg"]
-        if self.kind in ("ellipse", "annulus"):
-            return max(p["radius_x_deg"], p["radius_y_deg"])
-        if self.kind == "fixation":
-            return math.hypot(p["length_deg"], p["width_deg"]) / 2
-        return math.hypot(p.get("length_deg", p.get("height_deg")), p["width_deg"]) / 2
-
-    def _layer(self, x, y):
-        p = self.parameters
-        x, y = x-p["x_deg"], y-p["y_deg"]
-        angle = math.radians(p["orientation_deg"])
-        u, v = x*math.cos(angle)+y*math.sin(angle), -x*math.sin(angle)+y*math.cos(angle)
-        if self.kind == "fixation":
-            mask = ((abs(u) <= p["width_deg"]/2) & (abs(v) <= p["length_deg"]/2)) | ((abs(v) <= p["width_deg"]/2) & (abs(u) <= p["length_deg"]/2))
-        elif self.kind in ("line", "rectangle"):
-            mask = (abs(u) <= p["width_deg"]/2) & (abs(v) <= p.get("length_deg", p.get("height_deg"))/2)
-        elif self.kind in ("ellipse", "annulus"):
-            r2 = (u/p["radius_x_deg"])**2 + (v/p["radius_y_deg"])**2
-            mask = r2 <= 1
-            if self.kind == "annulus":
-                mask &= r2 >= p["inner_ratio"]**2
-        elif self.kind == "gaussian_dot":
-            r2 = u*u+v*v
-            return p["intensity"], np.where(r2 <= (4*p["sigma_deg"])**2, np.exp(-r2/(2*p["sigma_deg"]**2)), 0)
-        else:
-            # Orientation rotates the carrier, not the square aperture.
-            mask = (abs(x) <= p["size_deg"]/2) & (abs(y) <= p["size_deg"]/2)
-            phase = 2*np.pi*p["spatial_frequency_cpd"]*u + math.radians(p["phase_deg"])
-            carrier = np.sin(phase) if p["waveform"] == "sine" else np.cos(phase)
-            envelope = np.exp(-(u*u+v*v)/(2*p["sigma_deg"]**2)) if self.kind == "gabor" else 1
-            return p["mean"] + p["amplitude"]*envelope*carrier, mask
-        return p["intensity"], mask
-
-
-def fixation(length_deg=.35, width_deg=.06, intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    """Plus sign; length is the full length of each arm."""
-    return Drawing("fixation", locals())
-
-
-def line(length_deg=.6, width_deg=.08, intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    """Filled line; zero orientation is vertical, positive rotates CCW."""
-    return Drawing("line", locals())
-
-
-def rectangle(width_deg=1., height_deg=1., intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    return Drawing("rectangle", locals())
-
-
-def square(size_deg=1., intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    return rectangle(size_deg, size_deg, intensity, x_deg, y_deg, orientation_deg)
-
-
-def ellipse(radius_x_deg=.5, radius_y_deg=.5, intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    """Filled ellipse with semi-axes in degrees."""
-    return Drawing("ellipse", locals())
-
-
-def annulus(radius_x_deg=.5, radius_y_deg=.5, inner_ratio=.9, intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    """Elliptical ring; inner_ratio scales both outer semi-axes.
-
-    The old EllipseCircle2D normalized width w maps to sqrt(1-w), not
-    a constant thickness in degrees. Its normalized axes require conversion.
-    """
-    return Drawing("annulus", locals())
-
-
-def gaussian_dot(sigma_deg=.035, intensity=1., x_deg=0., y_deg=0., orientation_deg=0.):
-    """Gaussian alpha against the scene; truncated at four sigma."""
-    return Drawing("gaussian_dot", locals())
-
-
-def grating(size_deg=5., spatial_frequency_cpd=1., amplitude=.1, mean=.5,
-            phase_deg=0., waveform="sine", x_deg=0., y_deg=0., orientation_deg=0.):
-    """Square aperture, digital mean + amplitude * sinusoid; 0 = vertical bars.
-
-    Legacy Grating_M non-box mode uses amplitude=contr/2. Its fs is radians
-    per patch, so cpd=fs/(2*pi*patch_width_deg), NOT fs/31.5 in general.
-    """
-    return Drawing("grating", locals())
-
-
-def gabor(size_deg=5., spatial_frequency_cpd=2., sigma_deg=.8, amplitude=.1, mean=.5,
-          phase_deg=0., waveform="cosine", x_deg=0., y_deg=0., orientation_deg=0.):
-    """Gaussian-windowed sinusoid; not a replacement for the legacy CSF shader."""
-    return Drawing("gabor", locals())
-
-
-# Strict recipe schema; add a public function and its parameter set for new art.
-import inspect as _inspect
-_FUNCTIONS = {f.__name__: f for f in (fixation, line, rectangle, ellipse, annulus, gaussian_dot, grating, gabor)}
-_FIELDS = {name: set(_inspect.signature(f).parameters) for name, f in _FUNCTIONS.items()}
-
-
-@dataclass(frozen=True, init=False)
-class Scene:
-    """Ordered alpha composition on ONE background (no opaque patch erasure)."""
-    drawings: tuple
-    background: float
-
-    def __init__(self, *drawings, background=.5):
-        if any(not isinstance(d, Drawing) for d in drawings):
-            raise TypeError("Scene accepts drawings returned by stimulus functions")
-        if len(drawings) > 128:
-            raise ValueError("A scene may contain at most 128 drawings")
-        object.__setattr__(self, "drawings", tuple(drawings))
-        object.__setattr__(self, "background", _number("background", background, 0, 1))
-
-    def render(self, x_deg, y_deg):
-        x, y = np.broadcast_arrays(np.asarray(x_deg, dtype=float), np.asarray(y_deg, dtype=float))
-        if not np.isfinite(x).all() or not np.isfinite(y).all():
-            raise ValueError("Scene coordinates must be finite")
-        pixels = np.full(x.shape, self.background)
-        for drawing in self.drawings:
-            value, alpha = drawing._layer(x, y)
-            pixels = pixels*(1-alpha) + value*alpha
-        return pixels
-
-    def to_dict(self):
-        return {"schema_version": 1, "background": self.background, "drawings": [d.to_dict() for d in self.drawings]}
-
-    @classmethod
-    def from_dict(cls, doc):
-        if not isinstance(doc, dict) or set(doc) != {"schema_version", "background", "drawings"} or type(doc["schema_version"]) is not int or doc["schema_version"] != 1 or not isinstance(doc["drawings"], list):
-            raise ValueError("Invalid scene recipe")
-        drawings = []
-        for raw in doc["drawings"]:
-            if not isinstance(raw, dict) or set(raw) != {"kind", "parameters"}:
-                raise ValueError("Invalid drawing recipe")
-            drawings.append(Drawing(raw["kind"], raw["parameters"]))
-        return cls(*drawings, background=doc["background"])
-
-    def parameters(self, size_deg):
-        """Validated parameters for the registered scene adapter / RunContext."""
-        size = _number("size_deg", size_deg, positive=True)
-        for drawing in self.drawings:
-            p = drawing.parameters
-            if max(abs(p["x_deg"]), abs(p["y_deg"])) + drawing.radius_bound > size/2:
-                raise ValueError("Scene aperture could clip a drawing; enlarge size_deg")
-        return {"size_deg": size, "scene_json": json.dumps(self.to_dict(), sort_keys=True, allow_nan=False)}
-
-
-# ============================================================================
-# REGISTERED RESEARCH STIMULI — EDIT HERE (one class per complete stimulus)
-# ============================================================================
-# A class keeps PARAMETERS, render() and SPEC next to one another.
-# Experiment timing, stimulus placement and beeps belong in experiment files.
-# The original individual modules are retired: edit this file only.
-# Primitive functions and Scene above can be mixed to make more complex art.
-from dataclasses import replace as _replace
 from .experiments.spec import ConfigField
 from .stimuli.registry import StimulusSpec
+from .core.scene_primitives import (
+    Drawing, Scene, fixation, line, rectangle, square, ellipse, annulus,
+    gaussian_dot, grating, gabor,
+)
+
 
 class LibraryStimulus:
     """Marker for complete registered definitions inside this ONE file.
@@ -229,6 +29,209 @@ class LibraryStimulus:
     Subclass with PARAMETERS, render and SPEC; the registry discovers new
     classes without another Python adapter or contributions.py edit.
     """
+
+
+# ----------------------------------------------------------------------------
+# SIMPLE COMPLETE STIMULI — copy one class; no other code needs changing.
+# The Scene convenience functions remain available above via an import.
+# ----------------------------------------------------------------------------
+
+class LinePatch(LibraryStimulus):
+    """A line at arbitrary orientation (0° = vertical)."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 2., units="degrees", minimum=.1, maximum=45),
+        ConfigField("length_deg", "Line length", "float", 1., units="degrees", minimum=.01, maximum=10),
+        ConfigField("width_deg", "Line thickness", "float", .08, units="degrees", minimum=.001, maximum=2),
+        ConfigField("orientation_deg", "Orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        angle = np.deg2rad(parameters["orientation_deg"])
+        u = x_deg*np.cos(angle) + y_deg*np.sin(angle)
+        v = -x_deg*np.sin(angle) + y_deg*np.cos(angle)
+        inside = (np.abs(u) <= parameters["width_deg"]/2) & (np.abs(v) <= parameters["length_deg"]/2)
+        return np.where(inside, parameters["intensity"], .5)
+
+    SPEC = StimulusSpec(
+        id="oriented_line", display_name="Oriented line",
+        description="An oriented filled line, specified in degrees.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="line", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class SquarePatch(LibraryStimulus):
+    """A filled square centred on the stimulus origin."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 3., units="degrees", minimum=.1, maximum=45),
+        ConfigField("side_deg", "Square side", "float", 1., units="degrees", minimum=.01, maximum=20),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        half = parameters["side_deg"]/2
+        inside = (np.abs(x_deg) <= half) & (np.abs(y_deg) <= half)
+        return np.where(inside, parameters["intensity"], .5)
+
+    SPEC = StimulusSpec(
+        id="square_patch", display_name="Square",
+        description="A filled square with a digital background of 0.5.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="shape", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class RectanglePatch(LibraryStimulus):
+    """A filled rectangle; size is the overall display patch diameter."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 3., units="degrees", minimum=.1, maximum=45),
+        ConfigField("width_deg", "Rectangle width", "float", 1., units="degrees", minimum=.01, maximum=20),
+        ConfigField("height_deg", "Rectangle height", "float", 2., units="degrees", minimum=.01, maximum=20),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        inside = ((np.abs(x_deg) <= parameters["width_deg"]/2)
+                  & (np.abs(y_deg) <= parameters["height_deg"]/2))
+        return np.where(inside, parameters["intensity"], .5)
+
+    SPEC = StimulusSpec(
+        id="rectangle_patch", display_name="Rectangle",
+        description="A filled width-by-height rectangle.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="shape", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class EllipsePatch(LibraryStimulus):
+    """A filled ellipse defined by the two semi-axes, not the full diameters."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=60),
+        ConfigField("radius_x_deg", "Horizontal semi-axis", "float", 2., units="degrees", minimum=.01, maximum=30),
+        ConfigField("radius_y_deg", "Vertical semi-axis", "float", 1., units="degrees", minimum=.01, maximum=30),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        r2 = (x_deg/parameters["radius_x_deg"])**2 + (y_deg/parameters["radius_y_deg"])**2
+        return np.where(r2 <= 1., parameters["intensity"], .5)
+
+    SPEC = StimulusSpec(
+        id="ellipse_patch", display_name="Filled ellipse",
+        description="A filled ellipse with semi-axes in degrees.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="shape", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class AnnulusPatch(LibraryStimulus):
+    """Elliptical annulus with an inner-to-outer semi-axis ratio."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=60),
+        ConfigField("radius_x_deg", "Horizontal semi-axis", "float", 2., units="degrees", minimum=.01, maximum=30),
+        ConfigField("radius_y_deg", "Vertical semi-axis", "float", 1., units="degrees", minimum=.01, maximum=30),
+        ConfigField("inner_ratio", "Inner-to-outer radius ratio", "float", .85, minimum=0, maximum=.99),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        r2 = (x_deg/parameters["radius_x_deg"])**2 + (y_deg/parameters["radius_y_deg"])**2
+        inside = (r2 <= 1.) & (r2 >= parameters["inner_ratio"]**2)
+        return np.where(inside, parameters["intensity"], .5)
+
+    SPEC = StimulusSpec(
+        id="annulus_patch", display_name="Elliptical annulus",
+        description="An elliptical ring with a fractional inner semi-axis.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="shape", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class GaussianDot(LibraryStimulus):
+    """A Gaussian dot, smoothly blended with its background."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 2., units="degrees", minimum=.1, maximum=45),
+        ConfigField("sigma_deg", "Gaussian standard deviation", "float", .2, units="degrees", minimum=.001, maximum=10),
+        ConfigField("intensity", "Peak digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        sigma = parameters["sigma_deg"]
+        r2 = x_deg*x_deg + y_deg*y_deg
+        envelope = np.where(r2 <= (4*sigma)**2, np.exp(-r2/(2*sigma*sigma)), 0.)
+        return .5 + (parameters["intensity"]-.5)*envelope
+
+    SPEC = StimulusSpec(
+        id="gaussian_dot", display_name="Gaussian dot",
+        description="A Gaussian dot truncated at four standard deviations.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="shape", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class SinusoidalGrating(LibraryStimulus):
+    """A rectangular-patch sinusoid, distinct from the reference CSF shader."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=45),
+        ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
+        ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
+        ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=-360, maximum=360),
+        ConfigField("contrast", "Digital modulation", "float", .2, units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        theta = np.deg2rad(parameters["orientation_deg"])
+        coordinate = x_deg*np.cos(theta) + y_deg*np.sin(theta)
+        wave = np.sin(2*np.pi*parameters["spatial_frequency_cpd"]*coordinate
+                      + np.deg2rad(parameters["phase_deg"]))
+        inside = (np.abs(x_deg) <= parameters["size_deg"]/2) & (np.abs(y_deg) <= parameters["size_deg"]/2)
+        return np.where(inside, .5 + .5*parameters["contrast"]*wave, .5)
+
+    SPEC = StimulusSpec(
+        id="sine_grating", display_name="Sinusoidal grating",
+        description="NumPy sinusoid in cpd; NOT the physical CSF reference GLSL.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="grating", render=render,
+        calibration_requirements=("geometry",),
+    )
+
+
+class GaborPatch(LibraryStimulus):
+    """A Gaussian-windowed grating in degrees, independent of CSF's GLSL."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=45),
+        ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
+        ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20),
+        ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
+        ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=-360, maximum=360),
+        ConfigField("contrast", "Digital modulation", "float", .2, units="0–1", minimum=0, maximum=1),
+    )
+
+    def render(parameters, x_deg, y_deg):
+        theta = np.deg2rad(parameters["orientation_deg"])
+        coordinate = x_deg*np.cos(theta) + y_deg*np.sin(theta)
+        carrier = np.cos(2*np.pi*parameters["spatial_frequency_cpd"]*coordinate
+                         + np.deg2rad(parameters["phase_deg"]))
+        r2 = x_deg*x_deg + y_deg*y_deg
+        sigma = parameters["sigma_deg"]
+        envelope = np.exp(-r2/(2*sigma*sigma))
+        inside = (np.abs(x_deg) <= parameters["size_deg"]/2) & (np.abs(y_deg) <= parameters["size_deg"]/2)
+        return np.where(inside, .5 + .5*parameters["contrast"]*envelope*carrier, .5)
+
+    SPEC = StimulusSpec(
+        id="gabor_patch", display_name="Gabor patch",
+        description="Gaussian-windowed cosine carrier in cycles per degree.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="gabor", render=render,
+        calibration_requirements=("geometry",),
+    )
 
 
 class FixationCross(LibraryStimulus):
