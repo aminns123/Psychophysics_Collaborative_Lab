@@ -400,13 +400,27 @@ class StimuliScreen(HubPage):
                 yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
                 yield Static("", id="stimulus-inspection")
                 yield Button("Inspect stimulus code", id="view-stimulus-source", variant="primary")
-                yield Static("[b]First exercise — reusable white line[/b]\nStart with the standalone learning guide. New stimuli use the small centred-line renderer (PARAMETERS and render()) plus defaults JSON.")
+                yield Static(
+                    "[b]START HERE — one shared stimulus library[/b]\n"
+                    "For new drawing mathematics, add a named function in "
+                    "src/psychophysics_lab/stimulus_library.py. Combine the functions "
+                    "using Scene in a separate experiment. You do not need one new "
+                    "stimulus module for every shape or combination."
+                )
+                with Horizontal(classes="buttons"):
+                    yield Button("Open shared stimulus functions", id="view-shared-stimulus-library", variant="primary")
+                    yield Button("Open Scene composition example", id="view-shared-scene-example")
                 yield Button("Learn PsyCoLab — stimulus tutorial", id="learn-stimuli")
-                yield Button("Read example stimulus.py", id="read-example-stimulus")
-                yield Button("Read example stimulus JSON", id="read-example-stimulus-json")
-                yield Static("[b]Build a new stimulus[/b]: creates the canonical centred vertical-line Python + JSON pair. Edit appearance and defaults, Preview / validate (PNG only), then Mark Ready. No experiment Python is generated.")
-                yield Input(placeholder="e.g. my_ellipse", id="new-stimulus-name")
-                yield Button("Build new stimulus", id="build-new-stimulus")
+                yield Static(
+                    "[b]Compatibility / advanced authoring[/b]\n"
+                    "The older per-stimulus Python + JSON adapter workflow remains "
+                    "available for independent renderers and existing experiments. "
+                    "It is NOT the default way to add a new simple shape to the shared library."
+                )
+                yield Button("Read existing adapter Python", id="read-example-stimulus")
+                yield Button("Read existing adapter defaults JSON", id="read-example-stimulus-json")
+                yield Input(placeholder="e.g. independent_adapter_name", id="new-stimulus-name")
+                yield Button("Advanced: create independent stimulus adapter", id="build-new-stimulus")
                 yield AuthoringPanel("stimulus")
             else:
                 yield Static("No reusable stimulus modules are currently registered in the package.")
@@ -439,6 +453,15 @@ class StimuliScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"view-shared-stimulus-library", "view-shared-scene-example"}:
+            event.stop()
+            relative = (
+                "src/psychophysics_lab/stimulus_library.py"
+                if event.button.id == "view-shared-stimulus-library"
+                else "examples/shared_stimuli.py"
+            )
+            self.app.inspect_source(self.app.repo_root / relative)
             return
         if event.button.id == "learn-stimuli":
             event.stop()

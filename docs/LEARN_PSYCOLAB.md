@@ -35,6 +35,47 @@ flanker/ellipse reconstructions are explicitly development-only.
 Run `python -m examples.shared_stimuli --output NEW_PREVIEW_FOLDER` for a gallery,
 a combined scene and an editable scene recipe. This requires no TUI or display.
 
+### Create another drawing in the ONE shared library
+
+Open `src/psychophysics_lab/stimulus_library.py` (or **Build Stimuli →
+Open shared stimulus functions**). Each public function currently constructs
+an immutable `Drawing`. For example, `line(...)` provides the line geometry;
+`Scene(line(...), fixation(...))` arranges it with other drawings.
+
+**To add a genuinely new shape, such as a filled diamond:**
+
+1. Add `def diamond(...): return Drawing("diamond", locals())` alongside the
+   other named functions. Give it meaningful angular dimensions, intensity
+   and placement parameters, with defaults.
+2. In `Drawing._layer`, add the mathematical mask for `"diamond"`, using
+   the already rotated local coordinates `u` and `v`; return the drawing
+   intensity and mask. In `Drawing.radius_bound`, add a conservative bound
+   so `Scene.parameters(...)` can reject clipped scenes.
+3. Add `diamond` to the closed `_FUNCTIONS` tuple. This registers its
+   parameter names automatically through `_FIELDS`; arbitrary JSON cannot
+   evaluate Python expressions. Add tests for appearance, units, serialisation
+   and composition before using it.
+
+For example, one possible filled-diamond mask (with full width and height
+in degrees) is:
+
+```python
+mask = abs(u) / (width_deg / 2) + abs(v) / (height_deg / 2) <= 1
+```
+
+That is an illustrative mathematical expression, **not** a complete
+ready-to-paste registered function. The extension still needs the three
+edits above and tests. Do not modify the core display engine to add it.
+
+**If you only need a new combination**, you do not add a function at all.
+Use the existing functions in a `Scene` and keep condition positions,
+timing, response choices and adaptation in the experiment procedure.
+
+**Important authoring distinction:** adding a function to the library changes
+shared scientific code. Previously tested scenes/procedures that import the
+library must be retested before any renewed Ready/human qualification. A
+virtual preview is not physical calibration.
+
 The exercises below remain supported **registered-adapter / JSON-builder
 workflows**. Their separate module files are compatible with older experiments;
 new simple drawing mathematics belongs in the shared library.
@@ -67,12 +108,16 @@ Do not confuse:
   last two in Configure Experiment: they are separate approaches to the same
   task, **not an accidental double registration**.
 
-## Exercise 1 — create a white vertical line from scratch
+## Exercise 1 — compatibility example: create a registered white-line adapter
 
 **Start:** double-click `run_user_env.bat` in the repository root.
 Look for `(USER_env)` at the terminal prompt.
 
-Create a unique ID. For example:
+This exercise demonstrates the **older independent-module authoring route**.
+For a new shape or a complex stimulus assembled from existing shapes, use
+`stimulus_library.py` and `Scene` above instead.
+
+Create a unique ID for a compatibility adapter, for example:
 
 ```cmd
 python -m psychophysics_lab --scaffold my_first_line --blueprint stimulus
