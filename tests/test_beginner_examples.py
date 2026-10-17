@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from psychophysics_lab.scaffold import scaffold
+from _manual_authoring_fixture import scaffold
 from psychophysics_lab.experiments.registry import get_experiment, register_experiment
 from psychophysics_lab.stimuli.registry import get_stimulus, register_stimulus
 from psychophysics_lab.config.stimulus_parameters import load_parameters

@@ -6,8 +6,9 @@ from types import SimpleNamespace
 import pytest
 from textual.app import App
 from textual.widgets import Button, Select, Static
-from psychophysics_lab.authoring import scaffold_draft, inventory, mark_tested, publish
-from psychophysics_lab.scaffold import scaffold
+from _manual_authoring_fixture import scaffold_draft
+from psychophysics_lab.authoring import inventory, mark_tested, publish
+from _manual_authoring_fixture import scaffold
 from test_beginner_examples import _load
 from psychophysics_lab.ui.authoring import AuthoringPanel
 

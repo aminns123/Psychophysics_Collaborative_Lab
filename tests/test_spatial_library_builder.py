@@ -11,7 +11,7 @@ from psychophysics_lab.experiments.library_builder import (
     validate_design, test_design as run_library_test, mark_ready,
 )
 from psychophysics_lab.experiments.registry import get_experiment, list_experiments
-from psychophysics_lab.scaffold import scaffold_vertical_line
+from _manual_authoring_fixture import scaffold_vertical_line
 from psychophysics_lab.stimuli.registry import get_stimulus
 from simulations.run import simulate
 from scripts.validate_run import validate_run

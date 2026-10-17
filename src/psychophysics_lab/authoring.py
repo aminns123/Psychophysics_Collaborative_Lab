@@ -206,16 +206,3 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     return problems
 
 
-def scaffold_draft(repo_root: Path, name: str, kind: str) -> tuple[Path, ...]:
-    """Generate using the supported existing blueprint, then register as draft."""
-    from .scaffold import scaffold
-    paths = scaffold(Path(repo_root), name, kind=kind)
-    try:
-        kinds = ("stimulus", "experiment") if kind == "pair" else (kind,)
-        for component_kind in kinds:
-            stage(repo_root, component_kind, name)
-    except Exception:
-        # Keep generated files for investigation rather than silently deleting
-        # authored source; never publish them on a failed registration.
-        raise
-    return paths

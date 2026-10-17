@@ -5,8 +5,9 @@ from pathlib import Path
 import pytest
 
 from psychophysics_lab.authoring import (
-    inventory, scaffold_draft, mark_tested, publish, fingerprint, stage,
+    inventory, mark_tested, publish, fingerprint, stage,
 )
+from _manual_authoring_fixture import scaffold_draft
 from psychophysics_lab.development import user_data_root
 from psychophysics_lab.app import build_parser
 from psychophysics_lab.experiments.registry import get_experiment
