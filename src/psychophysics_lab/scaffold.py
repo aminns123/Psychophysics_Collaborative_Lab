@@ -15,7 +15,7 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
     files = {}
     # Beginner projects start from explicit examples, NOT copied Gabor science.
     if kind in {"pair", "stimulus"}:
-        template = (source / "stimuli/vertical_line_probe.py").read_text(encoding="utf-8")
+        template = (source / "blueprints/stimulus_line_compat.py.txt").read_text(encoding="utf-8")
         files[f"src/psychophysics_lab/stimuli/{name}.py"] = template.replace("vertical_line_probe", name)
         from .stimuli.vertical_line_probe import SPEC
         from .config.stimulus_parameters import document_for
@@ -56,7 +56,7 @@ def scaffold_vertical_line(repo_root: Path, name: str) -> tuple[Path, ...]:
         raise ValueError("Use a new lowercase Python module name.")
     root = Path(repo_root).resolve()
     sources = Path(__file__).parent
-    code = (sources / "stimuli/vertical_line_probe.py").read_text(encoding="utf-8")
+    code = (sources / "blueprints/stimulus_line_compat.py.txt").read_text(encoding="utf-8")
     code = code.replace("vertical_line_probe", name)
     document = json.loads((sources.parent.parent / "configs/stimuli/vertical_line_probe.json").read_text(encoding="utf-8"))
     document["stimulus_id"] = name

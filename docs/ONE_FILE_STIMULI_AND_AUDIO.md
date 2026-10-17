@@ -56,3 +56,15 @@ TRIAL = TrialTimeline((
 
 See [REPO_SURFACE_AUDIT.md](REPO_SURFACE_AUDIT.md) for what is ordinary user
 science, what stays for compatibility and why old CSF code is retained.
+
+### The optional old-style adapter generator
+
+The **Advanced: create independent stimulus adapter** button remains for
+experiments that require truly separate custom rendering modules. It uses
+`src/psychophysics_lab/blueprints/stimulus_line_compat.py.txt`, not one
+of the minimal import shims. This safeguards older USER_env workflows,
+which still generate editable standalone Python + JSON pairs.
+
+For new normal stimuli, **do not** use that generator. Edit the shared
+classes in `stimulus_library.py`; subclassing `LibraryStimulus` makes
+new definitions discoverable without extra source files.
