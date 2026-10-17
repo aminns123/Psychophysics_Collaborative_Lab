@@ -8,7 +8,7 @@ from psychophysics_lab.researcher import (
     TrialTimeline, Show, Stimulus, CollectResponse, RecordState, UpdateState,
     UpdateAdaptive, AdaptiveSelection, StaircaseConfig, Step, ParticipantAbort,
 )
-from psychophysics_lab.experiments import registry
+from psychophysics_lab.experiments._internal import registry
 from psychophysics_lab.core.presentation import Response
 from psychophysics_lab.core.timeline import scientific_snapshot
 from psychophysics_lab.core.trial_execution import execute_timeline

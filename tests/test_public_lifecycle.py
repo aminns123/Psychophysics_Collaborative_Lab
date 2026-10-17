@@ -9,7 +9,7 @@ from psychophysics_lab.core.synthetic import SimulationRun
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.preflight import validate_setup, human_blockers
-from psychophysics_lab.experiments import registry
+from psychophysics_lab.experiments._internal import registry
 from scripts.validate_run import validate_run
 
 ROOT = Path(__file__).resolve().parents[1]

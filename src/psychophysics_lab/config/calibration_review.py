@@ -33,7 +33,7 @@ def review_summary(profile, root):
     if not profile.qualified_experiments:
         outstanding.append('Experiment qualification: none declared. Choose Check / qualify experiment to inspect its requirements. This does not prevent finishing setup.')
     else:
-        from ..experiments.registry import list_experiments
+        from psychophysics_lab.experiments._internal.registry import list_experiments
         names_by_id = {spec.id: spec.display_name for spec in list_experiments()}
         lines.append('Explicit experiment qualification: ' + ', '.join(names_by_id.get(key, key) for key in profile.qualified_experiments))
     return '\n\n'.join(lines), '\n\n'.join(outstanding) or 'No setup/review actions outstanding. Human acquisition still checks its actual configuration and connected display.'
@@ -140,7 +140,7 @@ def save_verification(profile, root, *, geometry_status, calibration_status,
         if photometry_is_test_data(candidate):
             raise ValueError('Fake/synthetic photometer data cannot be declared physically verified.')
     # Do not retain qualifications whose registered requirements no longer hold.
-    from ..experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     keep = []
     for identity in candidate.qualified_experiments:
         try:

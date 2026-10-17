@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Any
 from .adaptive import AdaptiveSelection, AdaptiveAlgorithm, StaircaseConfig, Step, get_algorithm
-from .experiments.spec import ConfigField, ExperimentSpec
-from .experiments.responses import ResponseParadigm, LEFT_RIGHT, TWO_INTERVAL
+from psychophysics_lab.experiments._internal.spec import ConfigField, ExperimentSpec
+from psychophysics_lab.experiments._internal.responses import ResponseParadigm, LEFT_RIGHT, TWO_INTERVAL
 from .stimuli.registry import StimulusSpec
 from .data.trials import TrialLog
 from .data.session import atomic_write_json

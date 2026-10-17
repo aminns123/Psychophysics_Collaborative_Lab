@@ -5,7 +5,7 @@ handling only. New experiments use experiments/<id>.py and RunContext; this
 fixture is neither a scientific task nor a researcher authoring example.
 """
 from pathlib import Path
-from psychophysics_lab.experiments.spec import ConfigField, ExperimentSpec
+from psychophysics_lab.experiments._internal.spec import ConfigField, ExperimentSpec
 from psychophysics_lab.data.session import atomic_write_json
 from psychophysics_lab.data.trials import TrialLog
 

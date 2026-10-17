@@ -6,7 +6,7 @@ from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Sta
 
 from ..config.calibration_review import save_verification, save_one_verification, qualify_experiment
 from ..config.preflight import qualification_checks
-from ..experiments.registry import list_experiments, get_experiment
+from psychophysics_lab.experiments._internal.registry import list_experiments, get_experiment
 
 
 class PhysicalVerificationScreen(Screen):

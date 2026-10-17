@@ -15,7 +15,7 @@ registration list to add your own class.
 """
 import json
 import numpy as np
-from .experiments.spec import ConfigField
+from psychophysics_lab.experiments._internal.spec import ConfigField
 from .stimuli.registry import StimulusSpec
 from .core.scene_primitives import (
     Drawing, Scene, fixation, line, rectangle, square, ellipse, annulus,

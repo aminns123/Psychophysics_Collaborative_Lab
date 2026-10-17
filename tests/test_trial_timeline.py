@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from psychophysics_lab.core.timeline import Phase, TrialTimeline, load_timeline
-from psychophysics_lab.experiments.registry import get_experiment, register_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment, register_experiment
 from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
 from psychophysics_lab.stimuli.registry import get_stimulus
 from scripts.validate_run import validate_run
@@ -90,7 +90,7 @@ def test_timed_sequence_simulates_saves_phases_and_keeps_response_metadata(tmp_p
 
 
 def test_two_stimuli_can_appear_in_order_and_record_custom_measurement(tmp_path, monkeypatch):
-    from psychophysics_lab.experiments import registry
+    from psychophysics_lab.experiments._internal import registry
     monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
     def procedure(run):
         run.initialise(expected_trials=1, resolution={"task": "test sequential patch selection"})

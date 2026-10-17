@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from psychophysics_lab.experiments.csf_thesis import SPEC, one_trial, change_contrast, procedure
+from psychophysics_lab.experiments.csf_thesis import SPEC, make_trial, change_contrast, procedure
 from psychophysics_lab.adaptive import AdaptiveRun, StaircaseConfig, Step
 from psychophysics_lab.researcher import RunContext
 from psychophysics_lab.stimulus_library import ThesisCSFGrating, ThesisGaussianFixation
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize("side,x", [("left", -.5), ("right", .5)])
 def test_figure_4_3a_has_exactly_the_three_participant_visible_stages(side, x):
-    phases = one_trial(side).resolve(SPEC.field_defaults()).phases
+    phases = make_trial(side).resolve(SPEC.field_defaults()).phases
     assert [(p.name, p.duration_ms) for p in phases] == [("fixation", 500), ("grating", 300), ("answer", 0)]
     assert [s.slot for s in phases[0].placements] == ["fixation"]
     assert [(s.slot, s.x_deg) for s in phases[1].placements] == [("grating", x)]

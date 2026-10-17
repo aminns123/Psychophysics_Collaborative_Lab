@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.ui.setup import _source_candidates, _stimulus_sources
 
 

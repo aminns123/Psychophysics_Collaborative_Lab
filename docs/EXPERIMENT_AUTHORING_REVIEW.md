@@ -52,7 +52,7 @@ The old public `experiments/contrast_sensitivity.py` file has been removed; its
 compatibility definition/validation is relocated to `_reference_csf/experiment_definition.py`.
 Existing IDs/data retain their old meaning; the new protocol ID is `csf_thesis`.
 
-The first section gives named scientific constants. `one_trial()` expresses:
+The first section gives named scientific constants. `make_trial()` expresses:
 
     Gaussian fixation, 500 ms
         -> grating alone, 300 ms, x = -0.5 or +0.5 degrees
@@ -118,7 +118,22 @@ is therefore blocked in the new protocol; direct calls are blocked before any
 display opens. Software tests demonstrate the stated procedure and records,
 not complete physical reproduction of the thesis measurements.
 
-## Other experiments still need the same treatment
+## Consistent structure applied across all experiment files
+
+All nine researcher files now follow the same seven sections, named helpers and
+explicit six-step run narrative. All editable field declarations and stimulus/
+response choices are at the top. Non-editing machinery has moved to
+`experiments/_internal/`, including the old flanker-response alias. The adaptive
+orientation and legacy reconstructions now consume their TUI-selected adaptive
+values rather than retaining a second hardcoded set inside their loops. Defaults
+preserve the earlier scientific policy. Frozen historical trace tests protect
+the reconstructed flanker/ellipse behaviour, and TUI-to-simulation checks cover
+the adaptive families. Shared mechanisms are explained at the point of use.
+
+This standardisation changes organisation; it does not resolve the remaining
+thesis/design discrepancies below or establish physical equivalence.
+
+## Remaining scientific and human-readability validation
 
 Base/flanker files should read as one matched above/below trial, with the flanker
 added only in the flanker condition. The thesis defines two distinct ellipse
@@ -128,7 +143,7 @@ fixation geometry; a generic `ellipse_2d` wrapper is not enough to communicate
 both designs. Their 500 ms fixation, two 250 ms intervals, 250 ms ISI, onset cues,
 and first/second response meanings should be visible together.
 
-Those procedures have not been silently changed in this step. The thesis also
+Their layout is now consistent; their scientific procedure has not been silently changed. The thesis also
 contains an unresolved Subject 6 step-ratio description in Table 4.4: the printed
 1/3 ratio is not equal to the stated .14/.19 steps. That must be reconciled before
 implementing that participant-specific protocol; it is not a reason to guess.

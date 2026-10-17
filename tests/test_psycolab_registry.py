@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from psychophysics_lab.config.models import MonitorProfile
-from psychophysics_lab.experiments.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
 
 
 def test_csf_is_explicitly_registered():

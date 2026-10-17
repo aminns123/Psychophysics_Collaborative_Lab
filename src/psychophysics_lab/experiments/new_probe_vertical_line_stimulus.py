@@ -1,25 +1,58 @@
-"""START HERE: left/right line task. Edit the six labelled scientific sections.
+"""Above/below line task. Follow the same seven sections as every experiment.
 
 The companion JSON supplies settings; the TUI can override them for a run.
 PsyCoLab owns geometry, display, keys, validation and all saving.
 """
+
+
 from psychophysics_lab.researcher import (
     ConfigField, ResponseParadigm, experiment, TrialTimeline,
     Show, Stimulus, CollectResponse, RecordState, UpdateState,
 )
 
-# 1. STIMULUS: choose a registered stimulus in definition() below.
-# 2. CONDITIONS: 0 means left, 1 means right.
-def make_trial_order(trial_count):
-    return [trial % 2 for trial in range(trial_count)]
+
+# 1. SETTINGS AND STIMULI
+# Defaults below populate the TUI; run.values contains the selections for this run.
+FIELDS = (
+    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
+    ConfigField("fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1),
+    ConfigField("stimulus_ms", "Probe time", "int", 200, units="ms", minimum=1),
+    ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1),
+    ConfigField("response_timeout_ms", "Response timeout", "int", 0, units="ms", minimum=0),
+)
 
 
-# 4. RESPONSE MEANING / NEXT STATE: this function only returns scientific values.
-def update_from_response(state, response):
-    return dict(state) | {"correct_count": state["correct_count"] + int(response["correct"])}
+RESPONSES = ResponseParadigm(
+    "probe_position",
+    ("above", "below"),
+    ("F", "J"),
+)
 
 
-# 3. CHRONOLOGICAL ACTIONS: duration names refer to validated JSON/TUI settings.
+STIMULUS_SLOTS = {
+    "fixation": "fixation",
+    "target": "simple_line",
+}
+
+
+STIMULUS_DEFAULTS = {
+    "fixation": "fixation_cross",
+    "target": "new_probe_vertical_line",
+}
+
+
+# 2. CONDITIONS AND TRIAL ORDER
+def make_conditions(values):
+    return [trial % 2 for trial in range(values["trial_count"])]
+
+
+# 3. PREPARE STIMULI
+def prepare_stimuli(target):
+    """The vertical placement is the only stimulus change between conditions."""
+    return 2.0 if target == 0 else -2.0
+
+
+# 4. ONE TRIAL
 def make_trial(probe_y_deg):
     return TrialTimeline((
         # Show the registered fixation cross
@@ -53,8 +86,16 @@ def make_trial(probe_y_deg):
     ))
 
 
+# 5. RESPONSES AND ADAPTATION
+# Correctness is target/response alternative equality. Count correct answers only;
+# no adaptive stimulus change. The loop finishes at the selected trial count.
+def update_from_response(state, response):
+    return dict(state) | {"correct_count": state["correct_count"] + int(response["correct"])}
+
+
+# 6. RUN AND FINISH
 def procedure(run):
-    conditions = make_trial_order(run.values["trial_count"])
+    conditions = make_conditions(run.values)
 
     run.initialise(
         expected_trials=len(conditions),
@@ -75,8 +116,11 @@ def procedure(run):
     for target in conditions:
 
         # 0 = above, 1 = below
-        probe_y = 2.0 if target == 0 else -2.0
+        # 1. CHOOSE A CONDITION; 2. PREPARE ITS STIMULI.
+        probe_y = prepare_stimuli(target)
 
+        # 3. PRESENT ONE TRIAL; 4. INTERPRET the named response by index equality.
+        # 5. UPDATE correct_count using update_from_response in the trial plan.
         run.play_trial(
             make_trial(probe_y),
             target=target,
@@ -87,13 +131,14 @@ def procedure(run):
         )
 
         state = dict(run.trial_state)
+        # 6. CHECK WHETHER TO FINISH: the loop ends after the configured trial count.
 
     run.complete()
 
-# 5. OPTIONAL ADAPTATION: this beginner task has none.
-# See orientation_adaptive.py / orientation_task.py for UpdateAdaptive.
+
+# 7. FRAMEWORK CONNECTION
 def definition(identity="new_probe_vertical_line_stimulus",
-               stimulus="new_probe_vertical_line"):
+               stimulus=STIMULUS_DEFAULTS["target"]):
     return experiment(
         id=identity,
         name="Probe Above or Below Fixation",
@@ -101,27 +146,14 @@ def definition(identity="new_probe_vertical_line_stimulus",
         procedure=procedure,
         default_config=f"configs/experiments/{identity}.json",
 
-        fields=(
-            ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
-            ConfigField("fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1),
-            ConfigField("stimulus_ms", "Probe time", "int", 200, units="ms", minimum=1),
-            ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1),
-            ConfigField("response_timeout_ms", "Response timeout", "int", 0, units="ms", minimum=0),
-        ),
+        fields=FIELDS,
 
-        responses=ResponseParadigm(
-            "probe_position",
-            ("above", "below"),
-            ("F", "J"),
-        ),
+        responses=RESPONSES,
 
         calibration_requirements=("geometry", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
 
-        stimulus_slots={
-            "fixation": "fixation",
-            "target": "simple_line",
-        },
+        stimulus_slots=STIMULUS_SLOTS,
 
         stimulus_defaults={
             "fixation": "fixation_cross",

@@ -5,6 +5,8 @@ Read top to bottom: settings -> what is shown -> one trial -> contrast updates
 This is a new protocol (csf_thesis), not a reinterpretation of older CSF runs.
 The software protocol is implemented; raster/photometric equivalence is unverified.
 """
+
+
 import random
 from statistics import median, mean
 from psychophysics_lab.researcher import (
@@ -12,7 +14,9 @@ from psychophysics_lab.researcher import (
     Step, TrialTimeline, Show, Stimulus, CollectResponse, UpdateAdaptive, UpdateState,
 )
 
-# 1. THESIS DEFAULTS: the TUI supplies the selected settings for each run.
+
+# 1. SETTINGS AND STIMULI
+# Defaults below populate the TUI; run.values contains the selections for this run.
 FIXATION_MS = 500
 GRATING_MS = 300
 GRATING_OFFSET_DEG = .5
@@ -21,11 +25,47 @@ CORRECT_BEFORE_DECREASE = 4
 LOG_INCREASE = .36
 LOG_DECREASE = .30294
 REVERSALS_TO_FINISH = 10
-STAIRCASES_PER_FREQUENCY = 4  # thesis permits 2–4 independent CSF staircases
+STAIRCASES_PER_FREQUENCY = 4
+FIELDS = (
+    ConfigField("frequencies_cpd", "Spatial frequencies (cpd; select at least 8 for a full thesis CSF)", "text", "2,8"),
+    ConfigField("fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"),
+    ConfigField("grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"),
+    ConfigField("staircases_per_condition", "Independent staircases per frequency", "int", STAIRCASES_PER_FREQUENCY, minimum=1),
+    ConfigField("starting_contrast", "Starting digital modulation", "float", .1, minimum=.000001, maximum=1),
+    ConfigField("background_intensity", "Digital background (requires measured calibration for acquisition)", "float", .5, minimum=.001, maximum=.999),
+    ConfigField("n_down", "Consecutive correct answers before decreasing contrast", "int", CORRECT_BEFORE_DECREASE, minimum=1),
+    ConfigField("n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1),
+    ConfigField("logUNIT_UP", "Contrast increase (log10 units)", "float", LOG_INCREASE, minimum=.000001),
+    ConfigField("logUNIT_DW", "Contrast decrease (log10 units)", "float", LOG_DECREASE, minimum=.000001),
+    ConfigField("initial_one_down_limit", "Initial one-down responses (0 disables; thesis default)", "int", 0, minimum=0, maximum=1000),
+    ConfigField("reversal_termination", "Reversals required per staircase", "int", REVERSALS_TO_FINISH, minimum=1),
+    ConfigField("threshold_reversals", "Final reversals used for the threshold median", "int", 8, minimum=1),
+    ConfigField("max_trials", "Software safety ceiling (not scientific completion)", "int", 10000, minimum=1),
+)
 
 
-# 2. ONE TRIAL: fixation -> grating alone -> fixation while awaiting LEFT/RIGHT.
-def one_trial(side):
+RESPONSES = ResponseParadigm("csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT"))
+STIMULUS_SLOTS = {"fixation": "thesis_fixation", "grating": "thesis_csf"}
+STIMULUS_DEFAULTS = {"fixation": "thesis_gaussian_fixation", "grating": "thesis_csf_grating"}
+
+
+# 2. CONDITIONS AND TRIAL ORDER
+def make_conditions(settings):
+    frequencies = [float(f.strip()) for f in settings["frequencies_cpd"].split(",")]
+    return [(f, repeat+1) for f in frequencies for repeat in range(settings["staircases_per_condition"])]
+
+
+# 3. PREPARE STIMULI
+def prepare_stimuli(run, frequency, contrast, background):
+    return {
+        "grating": run.stimulus_parameters("grating", sigma_deg=GAUSSIAN_SIGMA_DEG,
+            spatial_frequency_cpd=frequency, contrast=contrast, background=background),
+        "fixation": run.stimulus_parameters("fixation", background=background),
+    }
+
+
+# 4. ONE TRIAL
+def make_trial(side):
     x = -GRATING_OFFSET_DEG if side == "left" else GRATING_OFFSET_DEG
     return TrialTimeline((
         Show("fixation", slot="fixation", duration="fixation_ms"),
@@ -34,13 +74,12 @@ def one_trial(side):
     ))
 
 
-# 3. RESPONSE -> NEXT CONTRAST: use the log steps selected in the TUI.
-# Shared AdaptiveRun owns counters so they are tested consistently across experiments:
-# correct answers reset the incorrect streak and vice versa; a step resets its streak.
-# Optional initial one-down ends at the first error or selected response count (0 = off).
-# Reversals are changes between nonzero adjustments; holds are ignored. The first
-# recorded next contrast seeds direction tracking; starting contrast is not another observation.
-# This file owns the chosen settings, contrast equation, scheduling and estimator.
+# 5. RESPONSES AND ADAPTATION
+# The shared staircase resets the opposite answer streak, and resets a streak
+# after its step. Optional initial one-down ends at the first error or selected
+# response count (0 disables it). Holds do not count as reversals; the first
+# recorded next contrast seeds direction tracking. Counters stay shared and
+# tested in adaptive/staircase.py; settings, log mathematics and estimator live here.
 def change_contrast(state, response, step):
     exponent = -state["log_down"] if step == Step.DOWN else state["log_up"] if step == Step.UP else 0
     contrast = state["contrast"] * 10**exponent
@@ -49,13 +88,13 @@ def change_contrast(state, response, step):
     return contrast
 
 
-# 4. RUN: interleave independent staircases; randomise left/right on each trial.
+# 6. RUN AND FINISH
 def procedure(run):
     if not run.synthetic:
         raise ValueError(SPEC.acquisition_block_reason)
     settings = run.values
-    frequencies = [float(f.strip()) for f in settings["frequencies_cpd"].split(",")]
-    conditions = [(f, repeat+1) for f in frequencies for repeat in range(settings["staircases_per_condition"])]
+    conditions = make_conditions(settings)
+    frequencies = list(dict.fromkeys(frequency for frequency, repeat in conditions))
     staircase = run.adaptive({i: StaircaseConfig(settings["n_down"], settings["n_up"], settings["reversal_termination"],
                                                         settings["initial_one_down_limit"])
                               for i in range(1, len(conditions)+1)}, settings["max_trials"])
@@ -81,26 +120,27 @@ def procedure(run):
     }
     run.initialise(expected_trials=settings["max_trials"], resolution=description, background_intensity=background)
     while staircase.status == "running":
+        # 1. CHOOSE A CONDITION: uniformly select an active staircase.
         identity = staircase.select(randomise.choice)
         frequency, repeat = conditions[identity-1]
         target = randomise.randrange(2)  # 0 = left; 1 = right. Correctness is equality with the response.
         side = ("left", "right")[target]
         contrast = contrasts[identity]
+        # 2. PREPARE ITS STIMULI for this frequency, contrast and background.
+        parameters = prepare_stimuli(run, frequency, contrast, background)
         previous_reversals = staircase.states[identity].reversal_count
         def record_adjustment(state, response):
             current = staircase.states[identity]
             return dict(state) | {"reversal": int(current.reversal_count > previous_reversals),
                 "reversal_count": current.reversal_count, "staircase_complete": int(current.complete)}
-        trial = TrialTimeline(one_trial(side).phases + (
+        trial = TrialTimeline(make_trial(side).phases + (
             UpdateAdaptive(staircase, identity, change_contrast, state_key="next_contrast"),
             UpdateState(record_adjustment, name="record_staircase_change"),
         ))
+        # 3. PRESENT ONE TRIAL.
+        # 4. INTERPRET left/right by target equality; 5. UPDATE via change_contrast.
         run.play_trial(trial, target=target, condition=frequency, adaptive_record=staircase,
-            parameters_by_slot={
-                "grating": run.stimulus_parameters("grating", sigma_deg=GAUSSIAN_SIGMA_DEG,
-                    spatial_frequency_cpd=frequency, contrast=contrast, background=background),
-                "fixation": run.stimulus_parameters("fixation", background=background),
-            },
+            parameters_by_slot=parameters,
             state={"contrast": contrast, "maximum_contrast": 2*min(background, 1-background),
                    "log_up": settings["logUNIT_UP"], "log_down": settings["logUNIT_DW"],
                    "next_contrast": None, "staircase_id": identity,
@@ -116,6 +156,7 @@ def procedure(run):
         if staircase.states[identity].reversal_count > previous_reversals:
             reversals[identity].append(contrast)
         run.save_adaptive(staircase, value_column="next_display_contrast")
+        # 6. CHECK WHETHER TO FINISH: all staircases complete or response ceiling reached.
     # Thesis point estimator. Incomplete conditions never receive a fabricated threshold.
     thresholds = {i: median(values[-settings["threshold_reversals"]:])
                   for i, values in reversals.items() if staircase.states[i].complete}
@@ -130,6 +171,7 @@ def procedure(run):
     run.complete_adaptive(staircase)
 
 
+# 7. FRAMEWORK CONNECTION
 def validate_settings(values):
     try:
         frequencies = [float(f.strip()) for f in values["frequencies_cpd"].split(",")]
@@ -144,34 +186,22 @@ def validate_settings(values):
         yield "Starting contrast exceeds the available digital range."
 
 
-# 5. TUI CONNECTION: optional run overrides; no separate scientific JSON or registry edit.
-SPEC = experiment(
-    id="csf_thesis", name="CSF — thesis procedure (software validation)", procedure=procedure,
-    description="500 ms fixation, 300 ms grating at +/-0.5 degrees, LEFT/RIGHT; thesis adaptive defaults, editable in the TUI.",
-    fields=(
-        ConfigField("frequencies_cpd", "Spatial frequencies (cpd; select at least 8 for a full thesis CSF)", "text", "2,8"),
-        ConfigField("fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"),
-        ConfigField("grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"),
-        ConfigField("staircases_per_condition", "Independent staircases per frequency", "int", STAIRCASES_PER_FREQUENCY, minimum=1),
-        ConfigField("starting_contrast", "Starting digital modulation", "float", .1, minimum=.000001, maximum=1),
-        ConfigField("background_intensity", "Digital background (requires measured calibration for acquisition)", "float", .5, minimum=.001, maximum=.999),
-        ConfigField("n_down", "Consecutive correct answers before decreasing contrast", "int", CORRECT_BEFORE_DECREASE, minimum=1),
-        ConfigField("n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1),
-        ConfigField("logUNIT_UP", "Contrast increase (log10 units)", "float", LOG_INCREASE, minimum=.000001),
-        ConfigField("logUNIT_DW", "Contrast decrease (log10 units)", "float", LOG_DECREASE, minimum=.000001),
-        ConfigField("initial_one_down_limit", "Initial one-down responses (0 disables; thesis default)", "int", 0, minimum=0, maximum=1000),
-        ConfigField("reversal_termination", "Reversals required per staircase", "int", REVERSALS_TO_FINISH, minimum=1),
-        ConfigField("threshold_reversals", "Final reversals used for the threshold median", "int", 8, minimum=1),
-        ConfigField("max_trials", "Software safety ceiling (not scientific completion)", "int", 10000, minimum=1),
-    ),
-    responses=ResponseParadigm("csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT")),
-    adaptive=AdaptiveSelection("consecutive_up_down",
-        controls=("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit",
-                  "staircases_per_condition", "reversal_termination", "max_trials"),
-        step_calculator="garcia_perez_1998", step_parameterization="log10_display_contrast"), validator=validate_settings, supports_simulation=True,
-    stimulus_slots={"fixation": "thesis_fixation", "grating": "thesis_csf"},
-    stimulus_defaults={"fixation": "thesis_gaussian_fixation", "grating": "thesis_csf_grating"},
-    calibration_requirements=("geometry", "luminance", "timing"), monitor_capabilities=("display_binding", "resolution"),
-    acquisition_block_reason="Thesis protocol implemented for software tests; raster aperture, grayscale precision, calibrated contrast/luminance and physical timing must be qualified before human acquisition. The 2,8 cpd defaults are a short software example, not the thesis frequency list.",
-    source_paths=("src/psychophysics_lab/experiments/csf_thesis.py",),
-)
+def definition(identity="csf_thesis"):
+    return experiment(
+        id=identity, name="CSF — thesis procedure (software validation)", procedure=procedure,
+        description="500 ms fixation, 300 ms grating at +/-0.5 degrees, LEFT/RIGHT; thesis adaptive defaults, editable in the TUI.",
+        fields=FIELDS,
+        responses=RESPONSES,
+        adaptive=AdaptiveSelection("consecutive_up_down",
+            controls=("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit",
+                      "staircases_per_condition", "reversal_termination", "max_trials"),
+            step_calculator="garcia_perez_1998", step_parameterization="log10_display_contrast"), validator=validate_settings, supports_simulation=True,
+        stimulus_slots=STIMULUS_SLOTS,
+        stimulus_defaults=STIMULUS_DEFAULTS,
+        calibration_requirements=("geometry", "luminance", "timing"), monitor_capabilities=("display_binding", "resolution"),
+        acquisition_block_reason="Thesis protocol implemented for software tests; raster aperture, grayscale precision, calibrated contrast/luminance and physical timing must be qualified before human acquisition. The 2,8 cpd defaults are a short software example, not the thesis frequency list.",
+        source_paths=("src/psychophysics_lab/experiments/csf_thesis.py",),
+    )
+
+
+SPEC = definition()

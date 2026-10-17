@@ -157,7 +157,7 @@ def test_calibration_researcher_workflow_persistence_and_revision_policy(tmp_pat
     from psychophysics_lab.config.monitor import _profile_from_dict
     from psychophysics_lab.config.preflight import validate_setup
     from psychophysics_lab.config.models import SetupRequest
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     root=config_root(ROOT)
     p=save_profile(root,profile())
     fake_pyglet(monkeypatch)

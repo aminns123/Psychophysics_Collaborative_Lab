@@ -12,7 +12,7 @@ from textual.widgets import Button, Input, Static, Collapsible
 from simulations.controls import effective_experiment_values, effective_observer_values
 from simulations.scenarios import get_scenario, run_scenario
 from simulations.run import simulate
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.analysis.thresholds import analyse_thresholds
 from psychophysics_lab.analysis.previews import (
     create_staircase_preview, latest_staircase_plot, latest_threshold_plot,

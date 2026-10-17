@@ -76,6 +76,6 @@ def list_algorithms() -> tuple[AdaptiveAlgorithm, ...]:
 
 register_algorithm(AdaptiveAlgorithm(
     "consecutive_up_down", "Legacy consecutive correct/incorrect response staircase",
-    AdaptiveRun, ("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit", "staircases_per_condition", "reversal_termination", "max_trials"),
+    AdaptiveRun, ("down_factor", "up_factor", "n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit", "staircases_per_condition", "reversal_termination", "max_trials"),
     ("legacy_staircase",),
 ))

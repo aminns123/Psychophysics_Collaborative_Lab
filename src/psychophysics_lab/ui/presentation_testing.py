@@ -20,7 +20,7 @@ class PresentationTestScreen(ModalScreen):
                 if not self.query_one('#presentation-ack',Checkbox).value: raise ValueError('Acknowledge the test-data distinction before launch.')
                 from ..core.presentation_testing import PresentationTestRequest,validate_presentation
                 from ..config.monitor import load_monitor_profiles
-                from ..experiments.registry import get_experiment
+                from psychophysics_lab.experiments._internal.registry import get_experiment
                 profile=load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
                 validate_presentation(self.request,get_experiment(self.request.experiment_id),profile)
                 self.app.exit(PresentationTestRequest(self.request))

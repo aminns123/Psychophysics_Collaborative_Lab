@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 
 from psychophysics_lab.core.presentation import render_pixels
-from psychophysics_lab.experiments.library_builder import (
+from psychophysics_lab.experiments._internal.library_builder import (
     BUILTIN, create_design, default_design, inventory, make_spec,
     validate_design, test_design as run_library_test, mark_ready,
 )
-from psychophysics_lab.experiments.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
 from _manual_authoring_fixture import scaffold_vertical_line
 from psychophysics_lab.stimuli.registry import get_stimulus
 from simulations.run import simulate
@@ -120,7 +120,7 @@ def test_library_create_never_writes_new_python_experiment_module(tmp_path):
 def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_path):
     """Real virtual observer + validator, no authored experiment Python file."""
     import shutil
-    from psychophysics_lab.experiments.library_builder import test_design, mark_ready, _catalog
+    from psychophysics_lab.experiments._internal.library_builder import test_design, mark_ready, _catalog
 
     # Isolated miniature checkout with exactly the files needed for a library
     # design; never generate new researcher files in the actual repository.
@@ -128,7 +128,7 @@ def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_p
         # Thin adapters now depend on the single authoritative science file;
         # a standalone copy must include that source to verify exact hashes.
         "src/psychophysics_lab/stimulus_library.py",
-        "src/psychophysics_lab/experiments/library_builder.py",
+        "src/psychophysics_lab/experiments/_internal/library_builder.py",
         "configs/stimuli/fixation_cross.json",
         "configs/stimuli/vertical_line_probe.json",
         "configs/experiment_designs/probe_above_below.json",
@@ -149,7 +149,7 @@ def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_p
     assert _catalog(tmp_path)[0]["tested_sha256"]
     mark_ready(tmp_path, "my_spatial_task")
     assert _catalog(tmp_path)[0]["status"] == "ready"
-    from psychophysics_lab.experiments.library_builder import load_library
+    from psychophysics_lab.experiments._internal.library_builder import load_library
     assert not load_library(tmp_path, tolerate_errors=False)
     assert not [check for check in validate_run(saved) if not check.passed]
 

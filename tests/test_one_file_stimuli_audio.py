@@ -107,10 +107,10 @@ def test_legacy_timeline_json_beep_is_explicit(tmp_path):
 def test_new_single_file_class_is_discoverable_and_needs_no_json(monkeypatch):
     from dataclasses import replace
     from psychophysics_lab.stimulus_library import LibraryStimulus, library_stimulus_specs
-    from psychophysics_lab.experiments.spec import ConfigField
+    from psychophysics_lab.experiments._internal.spec import ConfigField
     from psychophysics_lab.stimuli import registry as stimuli
     from psychophysics_lab.stimuli.registry import StimulusSpec
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
     from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
 
     class MyNewLine(LibraryStimulus):

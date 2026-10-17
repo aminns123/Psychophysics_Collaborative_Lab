@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .._reference_csf.experiment_definition import CSF_SPEC
-from .spec import ExperimentSpec
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments._internal.spec import ExperimentSpec
 
 _REGISTRY: dict[str, ExperimentSpec] = {
     CSF_SPEC.id: CSF_SPEC,
@@ -9,7 +9,7 @@ _REGISTRY: dict[str, ExperimentSpec] = {
 
 
 def list_experiments() -> tuple[ExperimentSpec, ...]:
-    from psychophysics_lab.experiments.contributions import load_contributions
+    from psychophysics_lab.experiments._internal.contributions import load_contributions
     load_contributions()
     # Adding a development protocol must not change the established launch
     # default. Keep the reference first, then normal and blocked experiments.
@@ -18,7 +18,7 @@ def list_experiments() -> tuple[ExperimentSpec, ...]:
 
 
 def get_experiment(experiment_id: str) -> ExperimentSpec:
-    from psychophysics_lab.experiments.contributions import load_contributions
+    from psychophysics_lab.experiments._internal.contributions import load_contributions
     load_contributions()
     try:
         return _REGISTRY[experiment_id]

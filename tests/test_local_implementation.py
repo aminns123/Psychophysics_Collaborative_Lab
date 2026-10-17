@@ -19,8 +19,8 @@ from psychophysics_lab.core.display import DisplayInfo, resolve_binding, screen_
 from psychophysics_lab.core.display_tests import temporal_plan, frame_command, resolve_test, interval_summary
 from psychophysics_lab.core.geometry_check import GeometryCheckRequest, run_geometry_check, record_geometry_measurement
 from psychophysics_lab.core.runner import run_request
-from psychophysics_lab.experiments.registry import get_experiment
-from psychophysics_lab.experiments.spec import ConfigField
+from psychophysics_lab.experiments._internal.registry import get_experiment
+from psychophysics_lab.experiments._internal.spec import ConfigField
 from psychophysics_lab.ui.editor import editor_command, open_source
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
 from scripts.validate_run import validate_run
@@ -215,7 +215,7 @@ def test_diagnostic_report_and_measurements_stay_in_local_configuration(tmp_path
     with pytest.raises(ValueError): record_geometry_measurement(data_root=config_root(ROOT),report_file=result.report_file,measured_length_mm=math.nan)
 
 def test_extension_adapter_runs_without_csf_configuration_or_hardware(tmp_path,monkeypatch):
-    import psychophysics_lab.experiments.registry as registry
+    import psychophysics_lab.experiments._internal.registry as registry
     from _legacy_adapter_fixture import SPEC
     monkeypatch.setitem(registry._REGISTRY,SPEC.id,SPEC)
     request=SetupRequest('S001','new',SPEC.id,'legacy_reference_display',{'example_level':.7})

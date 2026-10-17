@@ -75,7 +75,7 @@ def list_stimuli() -> tuple[StimulusSpec, ...]:
             parameters=tuple(f for f in CSF_SPEC.fields if f.section == "Stimulus conditions"),
             validator=_validate_csf_parameters,
         )
-    from psychophysics_lab.experiments.contributions import load_contributions
+    from psychophysics_lab.experiments._internal.contributions import load_contributions
     load_contributions()
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
 

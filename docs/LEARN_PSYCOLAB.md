@@ -133,9 +133,19 @@ save complete staircase histories. Check a run with
 ## Read the experiment as a participant's sequence
 
 Open `experiments/csf_thesis.py` for the current thesis example. Read the constants,
-then `one_trial()`: fixation -> grating alone -> fixation and left/right response.
+then `make_trial()`: fixation -> grating alone -> fixation and left/right response.
 `change_contrast()` gives the response-to-next-trial rule; `procedure()` chooses
 conditions and repeats trials until the declared staircase stopping rule. `SPEC`
 at the bottom connects those scientific choices to the TUI. Recording and source
 metadata are handled by PsyCoLab. The old CSF compatibility definition is internal
 and is not a template for a new experiment.
+
+
+## The same reading pattern in every experiment
+
+Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md).
+All nine files put settings, conditions, stimulus preparation, one trial,
+response/adaptation, the run loop and the framework connection in the same order.
+Use `probe_above_below.py` as the small fixed-trial example. Internal discovery,
+validation and historical loaders are in `_internal/`; researchers do not edit
+those files when changing scientific behaviour.

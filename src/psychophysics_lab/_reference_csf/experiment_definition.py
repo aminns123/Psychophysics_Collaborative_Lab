@@ -41,9 +41,9 @@ import math
 from typing import Any
 
 from ..config.models import MonitorProfile
-from ..experiments.spec import ConfigField, ExperimentSpec
+from psychophysics_lab.experiments._internal.spec import ConfigField, ExperimentSpec
 from ..adaptive import AdaptiveSelection
-from ..experiments.responses import LEFT_RIGHT
+from psychophysics_lab.experiments._internal.responses import LEFT_RIGHT
 
 
 def trial_timeline(values):

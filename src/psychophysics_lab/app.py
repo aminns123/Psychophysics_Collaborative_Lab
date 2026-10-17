@@ -8,7 +8,7 @@ from typing import Any, Sequence
 
 from .data.workspace import preferred_data_root, remember_data_root
 from .diagnostics import start_fatal_fault_capture, write_crash_report
-from .experiments.registry import list_experiments
+from psychophysics_lab.experiments._internal.registry import list_experiments
 from .paths import default_data_root, find_repo_root, resolve_data_root
 
 
@@ -146,19 +146,19 @@ def _main(
         return 0
 
     if args.library_list:
-        from .experiments.library_builder import inventory
+        from psychophysics_lab.experiments._internal.library_builder import inventory
         for record in inventory(repo_root):
             print(f"{record['id']:32} {record['status']}")
         return 0
 
     if args.library_test:
-        from .experiments.library_builder import test_design
+        from psychophysics_lab.experiments._internal.library_builder import test_design
         path = test_design(repo_root, args.library_test)
         print(f"PASS: validated synthetic run saved to {path}")
         return 0
 
     if args.library_ready:
-        from .experiments.library_builder import mark_ready
+        from psychophysics_lab.experiments._internal.library_builder import mark_ready
         path = mark_ready(repo_root, args.library_ready)
         print(f"READY: {path} (software-tested only; normal human preflight still required).")
         print("Restart PsyCoLab to refresh its experiment catalogue.")

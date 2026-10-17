@@ -12,7 +12,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
 from ..config.readiness import profile_readiness
-from ..experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 
 
 GUIDE_STEPS = (

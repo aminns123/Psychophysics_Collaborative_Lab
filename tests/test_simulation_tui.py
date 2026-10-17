@@ -185,7 +185,7 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
 @pytest.mark.parametrize("size", [(80, 24), (100, 30)])
 def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, size):
     """Button must open a separate editor, not silently scroll an already-open panel."""
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
 
     async def scenario():
         data_root = tmp_path / "local_psychophysics_data"
@@ -240,7 +240,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
 
 
 def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
-    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.experiments._internal.registry import get_experiment
 
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "local_psychophysics_data")

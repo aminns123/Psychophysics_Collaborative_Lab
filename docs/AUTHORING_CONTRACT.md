@@ -23,6 +23,29 @@
   writes canonical output outside the Git checkout. The user never adds file
   writing to a `render()` method or a timed response callback.
 
+## Required reading order for every experiment
+
+Use the same seven sections, in order: settings and stimuli; conditions and trial
+order; prepare stimuli; one trial; responses and adaptation; run and finish;
+framework connection. Place the actual `make_conditions()`, `prepare_stimuli()`,
+`make_trial()`, `procedure()` and `definition()` functions in that reading order.
+Use `FIELDS`, `STIMULUS_SLOTS`, `STIMULUS_DEFAULTS` and `RESPONSES` at the top.
+Keep scientific helpers beside the relevant section; do not hide condition policy
+in a shared experiment base class. Fixed tasks state that adaptation is absent.
+
+The main loop identifies: choose a condition → prepare its stimuli → present one
+trial → interpret the response → update the experiment → check whether to finish.
+Interpretation and update callbacks execute within `run.play_trial()` in plan
+order, before it returns. Do not execute them a second time in the outer loop.
+The TUI supplies selected adaptive parameters; the file explains their semantics.
+
+Only experiment definitions belong at the top level of `experiments/` (plus its
+required `__init__.py` and README). Registration, discovery, field validation and
+historical design compatibility belong in `experiments/_internal/`. This move
+changes internal import paths; normal researcher imports remain the public
+`psychophysics_lab.researcher` API. Do not add forwarding helper files to the
+researcher folder.
+
 ## Creation and validation
 
 Write the code directly. The framework loads subclasses from the shared
@@ -66,7 +89,7 @@ validation gates.
 | `core/timeline.py`, `core/trial_execution.py`, `researcher.py` | Resolve and execute the same phases for live and virtual responses; collect/save raw input and meaning | Ordered phases, durations, alternatives, correctness by index equality and update callbacks |
 | `core/presentation.py`, `core/tone.py`, `config/` | Display creation/calibration, frame requests, devices and Windows beep output | When to display or beep and the requested tone parameters; no claim of measured photon/acoustic onset |
 | `data/`, `core/runner.py` | Shared serialization, errors, immutable acquisition/provenance | Named scientific measurements and experiment source identity |
-| `experiments/library_builder.py` | Interpret pre-existing saved JSON designs and test historical equivalence | New experiments use Python; the built-in spatial task is now `probe_above_below.py` |
+| `experiments/_internal/library_builder.py` | Interpret pre-existing saved JSON designs and test historical equivalence | New experiments use Python; the built-in spatial task is now `probe_above_below.py` |
 | `_reference_csf/`, `simulations/csf.py` | Preserve the reference shader/event/adaptive bridge until physical/state parity is established | `_reference_csf/experiment_definition.py` retains the old phase queue and documents geometric/audio choices and virtual substitutions |
 
 Base, Indirect Flanker and Ellipse 2D own independent procedure files; the

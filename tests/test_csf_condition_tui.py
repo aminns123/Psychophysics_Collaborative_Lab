@@ -7,7 +7,7 @@ from textual.widgets import Button, Input, Collapsible
 
 from simulations.controls import effective_experiment_values
 from simulations.scenarios import get_scenario
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.ui.setup import (
     ExperimentConfigScreen, PsyCoLabSetupApp
 )

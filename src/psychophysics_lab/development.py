@@ -10,7 +10,7 @@ import hashlib
 import json
 
 from .authoring import inventory, mark_tested, load_authored
-from .experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from .stimuli.registry import get_stimulus
 
 

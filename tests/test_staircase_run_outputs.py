@@ -9,7 +9,7 @@ from simulations.run import simulate
 from simulations.scenarios import run_scenario
 from psychophysics_lab.analysis.previews import create_staircase_preview, latest_staircase_plot
 from psychophysics_lab.analysis.thresholds import analyse_thresholds
-from psychophysics_lab.experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.config.models import SetupRequest
 
 ROOT = Path(__file__).resolve().parents[1]

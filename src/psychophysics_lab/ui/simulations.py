@@ -16,7 +16,7 @@ from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, parse_seeds
 from ..paths import resolve_data_root
 from ..adaptive.steps import paired_step, NOTICE
-from ..experiments.registry import get_experiment
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from ..config.preflight import compatible, validate_setup
 from ..config.models import SetupRequest
 from ..config.monitor import load_monitor_profiles
