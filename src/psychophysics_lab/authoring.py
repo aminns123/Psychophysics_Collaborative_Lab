@@ -92,6 +92,19 @@ def fingerprint(repo_root: Path, item: Component) -> str:
     root = Path(repo_root).resolve()
     source = _path(root, item.kind, item.name)
     paths = [source]
+    # Shared-library authors must retest when their drawing mathematics change.
+    # Parse imports without executing an untested author module. Existing modules
+    # that do not use the shared library retain their historical fingerprint.
+    import ast
+    tree = ast.parse(source.read_text(encoding="utf-8-sig"))
+    shared = any(
+        (isinstance(node, ast.ImportFrom) and (node.module or "").endswith("stimulus_library"))
+        or (isinstance(node, ast.Import) and any(alias.name.endswith("stimulus_library") for alias in node.names))
+        or (isinstance(node, ast.ImportFrom) and node.module == "psychophysics_lab"
+            and any(alias.name == "stimulus_library" for alias in node.names))
+        for node in ast.walk(tree))
+    if shared:
+        paths.append(root / "src/psychophysics_lab/stimulus_library.py")
     if item.kind in {"stimulus", "experiment"}:
         config = root / "configs" / KINDS[item.kind] / (item.name + ".json")
         if not config.is_file():

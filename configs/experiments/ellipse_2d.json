@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ellipse_2d",
+  "values": {
+    "condition_positions_deg": "[]",
+    "trials_per_condition": 10,
+    "background": 0.24,
+    "start_contrast": 1.0,
+    "scene_size_deg": 18.0,
+    "reference_width_px": 0,
+    "reference_height_px": 0,
+    "decision_scene": "unresolved",
+    "response_keys": "1,2"
+  }
+}

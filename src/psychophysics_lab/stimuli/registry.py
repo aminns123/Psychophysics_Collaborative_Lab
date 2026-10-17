@@ -17,6 +17,8 @@ class StimulusSpec:
     extent_parameter: str = "size_deg"
     frequency_parameter: str = "spatial_frequency_cpd"
     validator: Callable | None = None
+    source_dependencies: tuple[str, ...] = ()
+    spatial_frequencies: Callable | None = None
 
     def validate_parameters(self, values):
         if not isinstance(values, dict):
@@ -46,6 +48,10 @@ def register_stimulus(spec: StimulusSpec) -> None:
     path = PurePosixPath(spec.source_path)
     if path.is_absolute() or ".." in path.parts or "\\" in spec.source_path or not spec.source_path.endswith(".py"):
         raise ValueError("Stimulus source must be a relative Python file.")
+    for dependency in spec.source_dependencies:
+        path = PurePosixPath(dependency)
+        if path.is_absolute() or ".." in path.parts or "\\" in dependency or not dependency.endswith(".py"):
+            raise ValueError("Stimulus dependency must be a relative Python file.")
     if spec.id in _REGISTRY:
         raise ValueError(f"Stimulus already registered: {spec.id}")
     _REGISTRY[spec.id] = spec

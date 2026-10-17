@@ -96,6 +96,7 @@ class ExperimentSpec:
     stimulus_field_bindings: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     supports_simulation: bool = False
     default_config: str = ""
+    acquisition_block_reason: str = ""
 
     def __post_init__(self):
         if self.procedure is not None:

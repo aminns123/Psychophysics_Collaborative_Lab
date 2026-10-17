@@ -39,7 +39,9 @@ class SimulationsScreen(HubPage):
         super().__init__()
         from simulations.scenarios import list_scenarios
         self.scenarios = list_scenarios()
-        self.experiment_ids = tuple(sorted({s.experiment_id for s in self.scenarios}))
+        self.experiment_ids = tuple(sorted({s.experiment_id for s in self.scenarios},
+            key=lambda identity: (identity != "contrast_sensitivity",
+                                  bool(get_experiment(identity).acquisition_block_reason), identity)))
 
     def _scenarios_for(self, experiment_id: str):
         return [item for item in self.scenarios if item.experiment_id == experiment_id]

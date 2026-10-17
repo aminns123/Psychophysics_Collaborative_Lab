@@ -189,6 +189,7 @@ def _digest(root, identity):
     for stim_id in doc["stimuli"].values():
         stim = get_stimulus(stim_id)
         files += [Path(root) / stim.source_path, Path(root) / stim.default_config]
+        files += [Path(root) / dependency for dependency in stim.source_dependencies]
     digest = sha256()
     for path in files:
         if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(Path(root).resolve()):

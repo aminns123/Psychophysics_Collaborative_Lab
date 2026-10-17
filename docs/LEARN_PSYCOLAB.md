@@ -12,11 +12,38 @@ For the exact file/ID rules, see [AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md).
 
 ## The idea in 30 seconds
 
+**Preferred Python authoring route:** open
+`src/psychophysics_lab/stimulus_library.py`. It contains one function for each
+simple stimulus. Use `Scene` to combine them and keep your experiment procedure
+in a separate file. You do not need another drawing file for each combination.
+
+```python
+from psychophysics_lab.stimulus_library import Scene, fixation, line, annulus
+
+fixation_scene = Scene(fixation())
+probe_scene = Scene(fixation(), annulus(x_deg=2), line(x_deg=2, y_deg=.6))
+parameters = probe_scene.parameters(size_deg=8)
+```
+
+In a procedure, declare scene slots with family `"scene"` and default
+`"composed_scene"`. Pass these parameters to `RunContext.play_trial` and use
+`Show("probe", slot="probe", duration=250)` in the normal `TrialTimeline`.
+The [complete source-based examples](LEGACY_STIMULUS_MIGRATION.md) demonstrate
+the next layers: responses, independent adaptation and canonical data. The
+flanker/ellipse reconstructions are explicitly development-only.
+
+Run `python -m examples.shared_stimuli --output NEW_PREVIEW_FOLDER` for a gallery,
+a combined scene and an editable scene recipe. This requires no TUI or display.
+
+The exercises below remain supported **registered-adapter / JSON-builder
+workflows**. Their separate module files are compatible with older experiments;
+new simple drawing mathematics belongs in the shared library.
+
 ```text
    STIMULUS LIBRARY                 EXPERIMENT DESIGN
    What does it look like?  ----->  Where? When? Which response?
-   white_line_probe.py              my_above_below.json
-   white_line_probe.json            fixation -> probe -> blank -> answer
+   stimulus_library.py             separate procedure or JSON design
+   functions -> Scene              fixation -> probe -> blank -> answer
                                              |
                                              v
                                 SIMULATE / VALIDATE / READY
@@ -27,7 +54,7 @@ For the exact file/ID rules, see [AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md).
 ```
 
 A **stimulus** is a reusable drawing: a line, fixation cross, Gabor or ellipse.
-Its `render()` receives arrays of `x_deg, y_deg` coordinates and returns a
+A Scene or compatibility adapter's `render()` receives arrays of `x_deg, y_deg` coordinates and returns a
 2D grayscale array between 0 and 1. The **experiment** chooses *where* to
 place the stimulus in degrees, its display duration, condition order and
 response. The framework handles display calibration, input and trial saving.

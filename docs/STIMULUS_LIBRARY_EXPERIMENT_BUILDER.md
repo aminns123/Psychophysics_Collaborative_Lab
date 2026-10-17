@@ -1,5 +1,13 @@
 # Build a reusable stimulus and a JSON-only spatial experiment
 
+For the preferred shared Python drawing library, start with
+`src/psychophysics_lab/stimulus_library.py` and `Scene`; see
+[Learn PsyCoLab](LEARN_PSYCOLAB.md) and the
+[legacy migration examples](LEGACY_STIMULUS_MIGRATION.md). The per-ID modules
+below are retained registered adapters. The JSON builder's two-slot spatial
+workflow remains supported, while multi-interval/adaptive Scene protocols use
+separate Python procedures and the same trial runner.
+
 **Goal:** Create one stimulus, reuse it in many experiments, and do not write a
 new Python experiment file for a simple 2-alternative forced-choice task.
 

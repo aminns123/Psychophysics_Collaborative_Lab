@@ -179,8 +179,14 @@ def validate_run(run_directory: Path) -> list[Check]:
             require(state["trial_count"] == len(trials), f"staircase {identity}: trial count differs")
             require([row["staircase_trial_index"] for row in trials] ==
                     [str(i) for i in range(1, len(trials) + 1)], f"staircase {identity}: indices differ")
-            require(type(state["complete"]) is bool and state["complete"] ==
-                    (state["reversal_count"] >= state["config"]["reversal_limit"]),
+            complete = state["reversal_count"] >= state["config"]["reversal_limit"]
+            if adaptive.get("completion_rule") == "reversals_or_trials":
+                require(manifest.get("adaptive_algorithm", {}).get("algorithm_id") == "legacy_flanker_log",
+                        "Unexpected algorithm for reversals_or_trials completion")
+                limit = state["config"]["condition_trial_limit"]
+                require(type(limit) is int and limit > 0, "Invalid condition trial limit")
+                complete = complete or len(trials) >= limit
+            require(type(state["complete"]) is bool and state["complete"] == complete,
                     f"staircase {identity}: completion criterion differs")
             if trials:
                 last = trials[-1]

@@ -1,0 +1,1064 @@
+{
+  "source_commit": "1c3177594e00f0b26fa361238db0f4db5de403fa",
+  "source_path": "Functions/functionUSE.py",
+  "source_sha256": "102f8a8ccef835fdebb788942488386ddec8fca666ce1510ba44a14815dfd481",
+  "capture": "AST-only numeric functions; original zero row, rounding and conditions() preserved",
+  "functions": [
+    "admID_staircase",
+    "appendTrials",
+    "check_values",
+    "conditionRateUPDW",
+    "conditions",
+    "count_Abs_type",
+    "count_reversals_HighLow",
+    "count_values_type",
+    "defineReversal_Multi",
+    "findCPU_fromWeberContrast",
+    "findIndex",
+    "findIndexFloat",
+    "rate_dw",
+    "returnOnce",
+    "weberContrast"
+  ],
+  "cases": [
+    {
+      "name": "initial_and_reversals",
+      "rows": [
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.316,
+          "next": 0.28795276,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.28795276,
+          "next": 0.27025615,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.27025615,
+          "next": 0.25909034,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.25909034,
+          "next": 0.25204519,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.25204519,
+          "next": 0.2476,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.2476,
+          "next": 0.24479528,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24479528,
+          "next": 0.24302562,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24302562,
+          "next": 0.24190904,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24190904,
+          "next": 0.24190904,
+          "correct_ticks": 1,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24190904,
+          "next": 0.24190904,
+          "correct_ticks": 2,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24190904,
+          "next": 0.24138149,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24138149,
+          "next": 0.24138149,
+          "correct_ticks": 1,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.24138149,
+          "next": 0.24213967,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24213967,
+          "next": 0.24213967,
+          "correct_ticks": 1,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24213967,
+          "next": 0.24213967,
+          "correct_ticks": 2,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24213967,
+          "next": 0.24154839,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.24154839,
+          "next": 0.24239817,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24239817,
+          "next": 0.24239817,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24239817,
+          "next": 0.24239817,
+          "correct_ticks": 2,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24239817,
+          "next": 0.24173545,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.24173545,
+          "next": 0.24268789,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24268789,
+          "next": 0.24268789,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24268789,
+          "next": 0.24268789,
+          "correct_ticks": 2,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24268789,
+          "next": 0.24194511,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.24194511,
+          "next": 0.24301262,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24301262,
+          "next": 0.24301262,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24301262,
+          "next": 0.24301262,
+          "correct_ticks": 2,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24301262,
+          "next": 0.2421801,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.2421801,
+          "next": 0.24337658,
+          "correct_ticks": 0,
+          "reversals": 8
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24337658,
+          "next": 0.24337658,
+          "correct_ticks": 1,
+          "reversals": 9
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24337658,
+          "next": 0.24337658,
+          "correct_ticks": 2,
+          "reversals": 9
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24337658,
+          "next": 0.24244349,
+          "correct_ticks": 0,
+          "reversals": 9
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.24244349,
+          "next": 0.24378452,
+          "correct_ticks": 0,
+          "reversals": 10
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24378452,
+          "next": 0.24378452,
+          "correct_ticks": 1,
+          "reversals": 11
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24378452,
+          "next": 0.24378452,
+          "correct_ticks": 2,
+          "reversals": 11
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.24378452,
+          "next": 0.2427387,
+          "correct_ticks": 0,
+          "reversals": 11
+        }
+      ]
+    },
+    {
+      "name": "interleaved",
+      "rows": [
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.316,
+          "next": 0.28795276,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.316,
+          "next": 0.28795276,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.28795276,
+          "next": 0.27025615,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.28795276,
+          "next": 0.31427003,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.27025615,
+          "next": 0.25909034,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.31427003,
+          "next": 0.31427003,
+          "correct_ticks": 1,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.25909034,
+          "next": 0.26956744,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.31427003,
+          "next": 0.31427003,
+          "correct_ticks": 2,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.26956744,
+          "next": 0.26956744,
+          "correct_ticks": 1,
+          "reversals": 1
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.31427003,
+          "next": 0.29374606,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.26956744,
+          "next": 0.28579454,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.29374606,
+          "next": 0.29374606,
+          "correct_ticks": 1,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.28579454,
+          "next": 0.28579454,
+          "correct_ticks": 1,
+          "reversals": 1
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.29374606,
+          "next": 0.32324279,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.28579454,
+          "next": 0.28579454,
+          "correct_ticks": 2,
+          "reversals": 1
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.32324279,
+          "next": 0.32324279,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.28579454,
+          "next": 0.27313956,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.32324279,
+          "next": 0.36892782,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.27313956,
+          "next": 0.27313956,
+          "correct_ticks": 1,
+          "reversals": 2
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.36892782,
+          "next": 0.36892782,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.27313956,
+          "next": 0.2913271,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.36892782,
+          "next": 0.36892782,
+          "correct_ticks": 2,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.2913271,
+          "next": 0.2913271,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.36892782,
+          "next": 0.33329957,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.2913271,
+          "next": 0.31949627,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.33329957,
+          "next": 0.33329957,
+          "correct_ticks": 1,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.31949627,
+          "next": 0.31949627,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.33329957,
+          "next": 0.38450392,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.31949627,
+          "next": 0.31949627,
+          "correct_ticks": 2,
+          "reversals": 3
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.38450392,
+          "next": 0.38450392,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.31949627,
+          "next": 0.29752806,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.38450392,
+          "next": 0.46381007,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.29752806,
+          "next": 0.29752806,
+          "correct_ticks": 1,
+          "reversals": 4
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.46381007,
+          "next": 0.46381007,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.29752806,
+          "next": 0.32910042,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.46381007,
+          "next": 0.46381007,
+          "correct_ticks": 2,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.32910042,
+          "next": 0.32910042,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.46381007,
+          "next": 0.40196181,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.32910042,
+          "next": 0.37800021,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.40196181,
+          "next": 0.40196181,
+          "correct_ticks": 1,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.37800021,
+          "next": 0.37800021,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.40196181,
+          "next": 0.49084914,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.37800021,
+          "next": 0.37800021,
+          "correct_ticks": 2,
+          "reversals": 5
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.49084914,
+          "next": 0.49084914,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.37800021,
+          "next": 0.33986487,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.49084914,
+          "next": 0.62851932,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.33986487,
+          "next": 0.33986487,
+          "correct_ticks": 1,
+          "reversals": 6
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.62851932,
+          "next": 0.62851932,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.33986487,
+          "next": 0.39467237,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.62851932,
+          "next": 0.62851932,
+          "correct_ticks": 2,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.39467237,
+          "next": 0.39467237,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.62851932,
+          "next": 0.52115488,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.39467237,
+          "next": 0.47955914,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.52115488,
+          "next": 0.52115488,
+          "correct_ticks": 1,
+          "reversals": 8
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.47955914,
+          "next": 0.47955914,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.52115488,
+          "next": 0.67545735,
+          "correct_ticks": 0,
+          "reversals": 8
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.47955914,
+          "next": 0.47955914,
+          "correct_ticks": 2,
+          "reversals": 7
+        },
+        {
+          "identity": 2,
+          "correct": true,
+          "presented": 0.67545735,
+          "next": 0.67545735,
+          "correct_ticks": 1,
+          "reversals": 9
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.47955914,
+          "next": 0.41335874,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 2,
+          "correct": false,
+          "presented": 0.67545735,
+          "next": 0.91444358,
+          "correct_ticks": 0,
+          "reversals": 9
+        }
+      ]
+    },
+    {
+      "name": "leading_holds",
+      "rows": [
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.316,
+          "next": 0.35771006,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.35771006,
+          "next": 0.4223113,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.4223113,
+          "next": 0.35503065,
+          "correct_ticks": 0,
+          "reversals": 0
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.35503065,
+          "next": 0.35503065,
+          "correct_ticks": 1,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.35503065,
+          "next": 0.35503065,
+          "correct_ticks": 2,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.35503065,
+          "next": 0.32324278,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.32324278,
+          "next": 0.3689278,
+          "correct_ticks": 0,
+          "reversals": 1
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.3689278,
+          "next": 0.3689278,
+          "correct_ticks": 1,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.3689278,
+          "next": 0.43968552,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.43968552,
+          "next": 0.54927625,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.54927625,
+          "next": 0.54927625,
+          "correct_ticks": 1,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.54927625,
+          "next": 0.54927625,
+          "correct_ticks": 2,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.54927625,
+          "next": 0.46381004,
+          "correct_ticks": 0,
+          "reversals": 2
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.46381004,
+          "next": 0.46381004,
+          "correct_ticks": 1,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.46381004,
+          "next": 0.58664071,
+          "correct_ticks": 0,
+          "reversals": 3
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.58664071,
+          "next": 0.58664071,
+          "correct_ticks": 1,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.58664071,
+          "next": 0.77688289,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.77688289,
+          "next": 1.07153314,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 1.07153314,
+          "next": 1.07153314,
+          "correct_ticks": 1,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 1.07153314,
+          "next": 1.07153314,
+          "correct_ticks": 2,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 1.07153314,
+          "next": 0.8417451,
+          "correct_ticks": 0,
+          "reversals": 4
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 0.8417451,
+          "next": 0.8417451,
+          "correct_ticks": 1,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 0.8417451,
+          "next": 1.17199281,
+          "correct_ticks": 0,
+          "reversals": 5
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 1.17199281,
+          "next": 1.17199281,
+          "correct_ticks": 1,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 1.17199281,
+          "next": 1.68348595,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 1.68348595,
+          "next": 2.47569503,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 2.47569503,
+          "next": 2.47569503,
+          "correct_ticks": 1,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 2.47569503,
+          "next": 2.47569503,
+          "correct_ticks": 2,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 2.47569503,
+          "next": 1.85787722,
+          "correct_ticks": 0,
+          "reversals": 6
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 1.85787722,
+          "next": 1.85787722,
+          "correct_ticks": 1,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": false,
+          "presented": 1.85787722,
+          "next": 2.74579513,
+          "correct_ticks": 0,
+          "reversals": 7
+        },
+        {
+          "identity": 1,
+          "correct": true,
+          "presented": 2.74579513,
+          "next": 2.74579513,
+          "correct_ticks": 1,
+          "reversals": 8
+        }
+      ]
+    }
+  ]
+}
