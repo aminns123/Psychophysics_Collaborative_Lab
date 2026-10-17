@@ -50,7 +50,9 @@ def validate_geometry(profile, resolution, stimulus, parameters):
     if min(pixels) < 2 or any(p > limit for p, limit in zip(pixels, resolution)):
         raise ValueError("Stimulus size does not fit the calibrated display.")
     geometry = resolve_spatial_geometry(profile, resolution)
-    if parameters.get(stimulus.frequency_parameter, 0) >= min(geometry.nyquist_cpd_at_centre):
+    frequencies = (stimulus.spatial_frequencies(parameters) if stimulus.spatial_frequencies
+                   else (parameters.get(stimulus.frequency_parameter, 0),))
+    if any(f >= min(geometry.nyquist_cpd_at_centre) for f in frequencies):
         raise ValueError("Stimulus spatial frequency reaches/exceeds the display Nyquist limit.")
     return pixels
 

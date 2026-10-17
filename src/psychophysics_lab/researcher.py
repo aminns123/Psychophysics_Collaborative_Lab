@@ -18,7 +18,8 @@ from .data.session import atomic_write_json
 def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                responses=None, source_paths=(), validator=None, monitor_validator=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
-               stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config=""):
+               stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
+               acquisition_block_reason=""):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
@@ -31,7 +32,8 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         calibration_requirements=tuple(calibration_requirements),
         calibration_not_applicable=calibration_not_applicable,
         monitor_capabilities=monitor_capabilities,
-        stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config)
+        stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config,
+        acquisition_block_reason=acquisition_block_reason)
 
 
 class ParticipantAbort(Exception):
@@ -96,6 +98,28 @@ class RunContext:
         self._save_lifecycle(reason)
         raise ParticipantAbort(reason)
 
+    def complete_adaptive(self, algorithm):
+        """Finish a declared response ceiling only when the owned algorithm stops.
+
+        Keep the original ceiling in lifecycle metadata; never pad missing
+        responses when every staircase has completed early.
+        """
+        if (self.status != "running" or
+                not any(algorithm is item for item in getattr(self, "_algorithms", ())) or
+                algorithm.status not in {"completed", "max_trials_reached"} or
+                algorithm.max_trials != self.expected_trials or
+                algorithm.total_trials != self.accepted_trials or self.accepted_trials < 1):
+            raise ValueError("Adaptive completion requires an owned, stopped algorithm and all accepted responses")
+        ceiling = self.expected_trials
+        self.expected_trials = self.accepted_trials
+        self.complete()
+        self.status = algorithm.status
+        atomic_write_json(self.run_directory / "procedure_lifecycle.json", {
+            "schema_version": 1, "status": self.status, "expected_trials": self.expected_trials,
+            "accepted_trials": self.accepted_trials, "response_ceiling": ceiling,
+            "adaptive_stop_status": algorithm.status, "reason": "Adaptive stopping rule",
+        })
+
     def fail(self, reason):
         self.status = "error"
         self._save_lifecycle(str(reason))
@@ -131,7 +155,7 @@ class RunContext:
                                instructions=instructions)
 
     def play_trial(self, timeline, *, target, condition, parameters_by_slot=None,
-                   instructions="", measurements=None, state=None):
+                   instructions="", measurements=None, state=None, record_from_state=None, adaptive_record=None):
         """Execute chronological scientific actions and persist at the trial boundary.
 
         Callbacks get immutable detached state and response, and return finite JSON
@@ -149,6 +173,9 @@ class RunContext:
             raise TypeError("play_trial requires a TrialTimeline.")
         if self.status != "running" or self.accepted_trials >= self.expected_trials:
             raise ValueError("Start a timeline only while a response is expected.")
+        if adaptive_record is not None and not any(
+                isinstance(p, UpdateAdaptive) and p.algorithm is adaptive_record for p in timeline.phases):
+            raise ValueError("Adaptive recording requires this trial's UpdateAdaptive action")
         timeline = timeline.resolve(self.values).validate_slots(self.stimulus_snapshots)
         self.responses.correct(target, target)
         observations = scientific_snapshot(dict(measurements or {}))
@@ -156,6 +183,16 @@ class RunContext:
             if not key.isidentifier() or type(value) not in (int, float, str, bool):
                 raise ValueError("Custom measurements require identifier keys and finite scalar values.")
         current = scientific_snapshot(dict(state if state is not None else self.trial_state))
+        from .data.trials import TRIAL_COLUMNS
+        projection = dict(record_from_state or {})
+        owned = {"trial_index", "recorded_utc", "event_time_s", "stimulus_condition",
+                 "target_alternative", "participant_response", "response_key", "correct", "run_status"}
+        if set(projection) - (set(TRIAL_COLUMNS) - owned) or any(
+                not isinstance(key, str) or key not in current for key in projection.values()):
+            raise ValueError("Canonical projection requires declared scalar state fields and non-engine-owned columns")
+        if any(current[key] is not None and type(current[key]) not in (str, int, float, bool)
+               for key in projection.values()):
+            raise ValueError("Canonical projection values must be scalar")
         condition = scientific_snapshot(condition)
         resolved = {}
         for phase in timeline.phases:
@@ -261,9 +298,14 @@ class RunContext:
             atomic_write_json(self.run_directory / "trial_actions.json",
                               {"schema_version": 1, "trials": self._action_trials})
             if accepted_response is not None:
+                # Preserve an accepted response even if later scientific state
+                # is incomplete: missing/non-scalar values remain unknown.
+                projected = {column: current.get(key) if current.get(key) is None or
+                             type(current.get(key)) in (str, int, float, bool) else None
+                             for column, key in projection.items()}
                 self.record(stimulus_condition=condition, target_alternative=target,
                             participant_response=accepted_response.alternative,
-                            response_key=accepted_response.key, correct=int(correct))
+                            response_key=accepted_response.key, correct=int(correct), adaptive=adaptive_record, **projected)
                 if not hasattr(self, "_presentations"):
                     self._presentations = []
                 self._presentations.append({"trial_index": trial_index, "slot": response_slot,
@@ -308,7 +350,7 @@ class RunContext:
         self._algorithms.append(algorithm)
         return algorithm
 
-    def record(self, **trial):
+    def record(self, *, adaptive=None, **trial):
         """Append one accepted response using the documented canonical columns."""
         if self.status != "running" or self.accepted_trials >= self.expected_trials:
             raise ValueError("Record responses only in a running procedure within its planned trial count.")
@@ -317,6 +359,13 @@ class RunContext:
             raise ValueError(f"Response is missing canonical fields: {sorted(required - trial.keys())}")
         trial["trial_index"] = self.accepted_trials + 1
         trial["run_status"] = "running"
+        if adaptive is not None:
+            if not any(adaptive is item for item in getattr(self, "_algorithms", ())):
+                raise ValueError("Adaptive recording requires an owned algorithm")
+            # An action may have failed before committing its adaptive update.
+            # Keep that accepted response; the run's error metadata explains it.
+            if adaptive.total_trials == self.accepted_trials + 1:
+                trial["run_status"] = adaptive.status
         if self.synthetic:
             trial["response_key"] = "SIMULATED_" + str(trial.get("response_key", ""))
             from .core.synthetic import synthetic_recorded_utc

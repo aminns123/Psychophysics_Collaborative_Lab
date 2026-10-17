@@ -1,4 +1,4 @@
-# PsyCoLab authoring contract (version 1)
+# PsyCoLab authoring contract (version 2)
 
 **Read this before changing any generator, experiment or teaching text.**
 One system, two ways to describe a trial. Do not silently copy one
@@ -8,13 +8,15 @@ experiment's scientific choices into another.
 
 | Role | Source of truth | Researcher edits | Engine owns |
 |---|---|---|---|
-| Visual stimulus | `src/psychophysics_lab/stimuli/<id>.py` + `configs/stimuli/<id>.json` | `PARAMETERS`, `render(parameters, x_deg, y_deg)`, default parameters | Calibrated degree grids, rasterisation, fullscreen display |
+| Simple visual stimulus | `src/psychophysics_lab/stimulus_library.py` | One function per primitive; geometry/intensity arguments | Validation, immutable drawing recipes, calibrated rasterisation |
+| Composition | `Scene` in the same library | Ordered drawings on one background | Safe recipe serialization; `composed_scene` registry adapter |
+| Registered stimulus adapter / existing authored module | `src/psychophysics_lab/stimuli/<id>.py` + `configs/stimuli/<id>.json` | Parameter schema/defaults or compatibility rendering | Existing IDs and TUI loading remain supported |
 | Simple spatial two-choice experiment | `configs/experiment_designs/<id>.json` | Stimulus library selections, condition positions, ordered actions, response labels/keys, timings | Shared `library_builder.py` procedure; no new experiment Python file |
 | Advanced procedure | `src/psychophysics_lab/experiments/<id>.py` + `configs/experiments/<id>.json` | Condition algorithm, `TrialTimeline`, scientific state/adaptation | `RunContext.play_trial`, response collection, saving |
 | Optional adaptive method | `src/psychophysics_lab/adaptive/<id>.py` | Adaptive mathematics | Tracking, integration and histories |
 | Authoring status | `authoring/components.json` (Python) or `authoring/library_experiments.json` (JSON) | TUI/CLI Draft → test → Ready actions | Fingerprints, validation and publication |
 
-**Identifiers:** filenames, JSON IDs and `SPEC.id` must match. A stimulus ID
+**Identifiers:** for registered adapters, filenames, JSON IDs and `SPEC.id` must match. Public primitive functions share the single library and do not need individual files. A stimulus ID
 names a reusable drawing component; an experiment ID names the *task*, not the
 stimulus. Use names such as `white_line_probe` and `probe_above_below`, NOT
 `new_probe_vertical_line_stimulus` for an experiment.
@@ -25,7 +27,14 @@ means**, and **how the scientific state changes**. The framework owns input,
 monitor conversion, validation, provenance and data. No participant file I/O
 inside `render()` or a timed action.
 
-**Placement:** `Stimulus("probe", x_deg=0, y_deg=2)` places an existing
+**Composition first:** `Scene(fixation(), line(x_deg=0, y_deg=2))` combines
+drawings without per-object background rectangles. Pass `scene.parameters(8)`
+for a slot selecting `composed_scene`, then use the usual `Show`/`CollectResponse`.
+One slot has fixed parameters within a trial; use distinct scene slots for
+different interval contents. Import primitives directly from
+`psychophysics_lab.stimulus_library` so authoring fingerprints include that source.
+
+**Compatibility placement:** `Stimulus("probe", x_deg=0, y_deg=2)` places an existing
 registered stimulus in degrees relative to screen centre. Do not encode
 between-condition position by editing the stimulus's internal pixel geometry.
 Opaque patches are drawn in listed order: draw fixation first, probe last.
@@ -43,11 +52,13 @@ calibration, human readiness checks and hardware verification.
 ## Before adding anything new
 
 1. Check the existing stimulus and experiment libraries for equivalent work.
-2. Prefer reusing a stimulus definition and its validated defaults; only add a
-   new Python stimulus when its *rendering mathematics* actually differ.
+2. Prefer a function in the shared library and compose it with `Scene`. Add new
+   simple drawing mathematics in that one module. Registered specs and per-ID
+   Python modules remain adapters or compatibility routes, not the preferred
+   place to duplicate a line/ellipse/grating definition.
 3. Prefer a JSON-only experiment for supported simple two-choice spatial tasks.
    Use an advanced Python procedure only for new scientific algorithms/actions.
-4. New work gets a unique ID, two files for a Python authoring component or
+4. New registered work gets a unique ID, two files for a Python authoring component or
    one JSON file for a simple library task. Never overwrite another author's
    `Ready` sources or rewrite historical runs.
 5. Run software preview or virtual simulation, inspect outputs, then Mark Ready.
@@ -73,3 +84,13 @@ Start at [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md). This contract defines
 the permanent roles; [TRIAL_ACTION_ARCHITECTURE.md](TRIAL_ACTION_ARCHITECTURE.md)
 describes the action system; [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md)
 states the separate, unfinished CSF hardware-equivalence boundary.
+
+The source audit and development flanker/ellipse protocols are documented in
+[LEGACY_STIMULUS_MIGRATION.md](LEGACY_STIMULUS_MIGRATION.md). Their human block is
+deliberate: unresolved source choices and unproven display/audio equivalence
+cannot be promoted Ready through calibration alone. Existing CSF remains the
+authoritative acquisition implementation. `RunContext.complete_adaptive()`
+records an owned algorithm's actual stopping status and retains the response
+ceiling. Optional `record_from_state` projects declared scalar scientific state
+into canonical non-engine-owned trial columns; response identity/correctness
+remain owned by the runner.

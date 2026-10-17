@@ -67,6 +67,9 @@ def human_requirements(spec, profile, values=None):
             "action": {"verification":"Review physical " + ("photometry" if key=="luminance" else key),"qualification":"Check experiment requirements","settings":"Edit contrast settings","calibration":"Open " + (stage or "display") + " calibration"}[destination]})
     add("qualification","Experiment qualification",compatible(spec,profile),
         "This experiment/profile combination has not been qualified. Explicitly review the registered experiment requirements; calibration completion does not qualify human acquisition.","qualification")
+    if spec.acquisition_block_reason:
+        add("protocol", "Protocol migration incomplete", False,
+            spec.acquisition_block_reason, "qualification")
     from .models import photometry_is_test_data
     if profile.origin=="local" or spec.procedure is not None:
         for check in qualification_checks(spec,profile):

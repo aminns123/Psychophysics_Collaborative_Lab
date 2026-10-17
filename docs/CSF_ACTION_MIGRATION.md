@@ -3,6 +3,13 @@
 **Status: PARTIAL. The retained CSF is still the default human implementation.**
 No claim of full migration follows from its Phase/JSON adapter.
 
+The shared `stimulus_library.py` and Scene adapter do not replace CSF.
+`experiments/flanker_response.py` exposes the existing `CSF_SPEC` unchanged.
+The development indirect/base/ellipse procedures use a separately translated
+legacy flanker rule, not the current CSF staircase. See
+[LEGACY_STIMULUS_MIGRATION.md](LEGACY_STIMULUS_MIGRATION.md) for source conflicts
+and the distinct numeric fixture evidence.
+
 ## Captured baseline
 
 Main ad7c132, PR42 merged. Tests capture the actual LegacyStaircaseSession event

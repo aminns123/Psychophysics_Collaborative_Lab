@@ -468,9 +468,9 @@ def run_request(
                     observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
                     seed=simulation.metadata["seed"] if simulation is not None else 0)
                 spec.procedure(procedure_context)
-                if procedure_context.status != "completed":
+                if procedure_context.status not in {"completed", "max_trials_reached"}:
                     raise ValueError("Procedure returned without complete(); initialise, record all planned responses, then complete, or abort explicitly.")
-                payload["status"] = "completed"
+                payload["status"] = procedure_context.status
             elif simulation is not None:
                 simulation.runtime(str(conditions_file), str(parameters_file), str(response_file), str(state_dir))
             else:
@@ -526,6 +526,8 @@ def run_request(
             if spec.id != "contrast_sensitivity":
                 payload.get("files", {}).pop("adaptive_session", None)
         if runtime_display_file.exists():
+            if spec.procedure is not None and (run_dir / "procedure_lifecycle.json").exists():
+                payload["files"]["procedure_lifecycle"] = "procedure_lifecycle.json"
             try: payload["runtime_display"] = json.loads(runtime_display_file.read_text(encoding="utf-8"))
             except Exception as exc:
                 payload["runtime_display_error"] = repr(exc)
