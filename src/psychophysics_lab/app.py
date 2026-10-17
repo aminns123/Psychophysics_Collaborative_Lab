@@ -46,7 +46,9 @@ def _print_run_summary(artifacts: Any) -> None:
     print("\n" + "=" * 60)
     if status == "completed":
         print("PsyCoLab experiment completed successfully.")
-        print("All adaptive staircases reached their termination criteria.")
+        print("All adaptive staircases reached their termination criteria." if completed or unfinished else "All planned responses were recorded.")
+    elif status == "test_finished":
+        print("Experiment test finished; the study's stopping rules were not reached.")
     elif status == "max_trials_reached":
         print("PsyCoLab experiment ended at the response safety ceiling.")
         print("Not all adaptive staircases reached their termination criteria.")

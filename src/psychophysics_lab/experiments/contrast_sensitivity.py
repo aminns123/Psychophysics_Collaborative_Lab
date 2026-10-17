@@ -20,7 +20,6 @@ from psychophysics_lab.researcher import (
     Stimulus,
     CollectResponse,
     UpdateAdaptive,
-    UpdateState,
 )
 
 # 1. SETTINGS AND STIMULI
@@ -246,17 +245,9 @@ def change_contrast(state, response, step):
 def update_experiment(run, condition, state, response, trial):
     staircase, identity = state["adaptive"], condition["id"]
 
-    def record_adjustment(values, answer):
-        current = staircase.states[identity]
-        return dict(values) | {
-            "reversal": int(current.reversal_count > condition["previous_reversals"]),
-            "reversal_count": current.reversal_count,
-            "staircase_complete": int(current.complete),
-        }
-
     trial.apply(
         UpdateAdaptive(staircase, identity, change_contrast, state_key="next_contrast"),
-        UpdateState(record_adjustment, name="record_staircase_change"),
+        run.staircase_record_action(staircase, identity),
     )
     state["contrasts"][identity] = trial.state["next_contrast"]
     if staircase.states[identity].reversal_count > condition["previous_reversals"]:
@@ -265,51 +256,28 @@ def update_experiment(run, condition, state, response, trial):
 
 
 def trial_record(run, condition, state):
-    settings, staircase = run.values, state["adaptive"]
-    identity, contrast = condition["id"], condition["contrast"]
-    frequency, repeat, target = (
-        condition["frequency_cpd"],
-        condition["repeat"],
-        condition["target"],
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=2
+        * min(settings["background_intensity"], 1 - settings["background_intensity"]),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements={
+            "spatial_frequency_cpd": condition["frequency_cpd"],
+            "staircase_repeat": condition["repeat"],
+            "grating_x_deg": (
+                -GRATING_OFFSET_DEG if condition["target"] == 0 else GRATING_OFFSET_DEG
+            ),
+        },
+        instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
     )
-    background = settings["background_intensity"]
-    return {
-        "state": {
-            "contrast": contrast,
-            "maximum_contrast": 2 * min(background, 1 - background),
-            "log_up": settings["logUNIT_UP"],
-            "log_down": settings["logUNIT_DW"],
-            "next_contrast": None,
-            "staircase_id": identity,
-            "staircase_trial_index": staircase.states[identity].trial_count + 1,
-            "reversal": None,
-            "reversal_count": None,
-            "staircase_complete": None,
-        },
-        "record_from_state": {
-            "staircase_id": "staircase_id",
-            "staircase_trial_index": "staircase_trial_index",
-            "presented_display_contrast": "contrast",
-            "next_display_contrast": "next_contrast",
-            "reversal": "reversal",
-            "reversal_count": "reversal_count",
-            "staircase_complete": "staircase_complete",
-        },
-        "measurements": {
-            "spatial_frequency_cpd": frequency,
-            "staircase_repeat": repeat,
-            "grating_x_deg": -GRATING_OFFSET_DEG if target == 0 else GRATING_OFFSET_DEG,
-        },
-        "adaptive_record": staircase,
-        "adaptive_value_column": "next_display_contrast",
-        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    }
 
 
 # 6. RUN AND FINISH
 def initialise_experiment(run, conditions):
-    if not run.synthetic:
-        raise ValueError(SPEC.acquisition_block_reason)
     settings = run.values
     frequencies = list(dict.fromkeys(c["frequency_cpd"] for c in conditions))
     staircase = run.adaptive(
@@ -413,8 +381,6 @@ def finish_experiment(run, conditions, state):
 
 
 def procedure(run):
-    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
-        raise ValueError(SPEC.acquisition_block_reason)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
     while not is_finished(run, conditions, state):

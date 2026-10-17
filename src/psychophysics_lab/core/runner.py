@@ -381,7 +381,7 @@ def run_request(
         payload["created_utc"] = started_utc
         payload["data_kind"] = data_kind
         if presentation is not None:
-            payload['presentation_test']={'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST — NOT HUMAN EXPERIMENTAL DATA'}
+            payload['presentation_test']={'test_response_limit':presentation.trial_limit,'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST — NOT HUMAN EXPERIMENTAL DATA'}
             atomic_write_json(run_dir/'UNCALIBRATED_TEST_DATA.json',payload['presentation_test']|{'data_kind':data_kind})
         if simulation is not None:
             payload["simulation"] = simulation.metadata
@@ -467,7 +467,8 @@ def run_request(
                     stimulus_snapshots=request.stimulus_snapshots,
                     observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
                     seed=simulation.metadata["seed"] if simulation is not None else (0 if spec.historical else __import__("secrets").randbits(64)),
-                    observer_probability=simulation.response_probability if simulation is not None else None)
+                    observer_probability=simulation.response_probability if simulation is not None else None,
+                    test_trial_limit=presentation.trial_limit if presentation is not None else None)
                 spec.procedure(procedure_context)
                 if procedure_context.status not in {"completed", "max_trials_reached"}:
                     raise ValueError("Procedure returned without complete(); initialise, record all planned responses, then complete, or abort explicitly.")
@@ -480,7 +481,13 @@ def run_request(
     except BaseException as exc:
         # Preserve interrupts through finalisation without recording success.
         from ..researcher import ParticipantAbort
-        if isinstance(exc, ParticipantAbort):
+        from .presentation_testing import PresentationTestComplete
+        if isinstance(exc, PresentationTestComplete) and presentation is not None:
+            payload["status"] = "test_finished"
+            payload["test_stop_reason"] = str(exc)
+            procedure_context.status = "test_finished"
+            procedure_context._save_lifecycle(str(exc))
+        elif isinstance(exc, ParticipantAbort):
             payload["status"] = "aborted_by_user"
             payload["abort_reason"] = str(exc)
             if procedure_context is not None:

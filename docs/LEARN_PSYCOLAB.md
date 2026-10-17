@@ -1,164 +1,86 @@
-# Build a stimulus and an experiment in PsyCoLab
+# From stimulus idea to a tested experiment
 
-**Two places to edit. No generator. No per-stimulus Python files.**
+## 1. Draw the stimulus
 
-1. **Drawings:** `src/psychophysics_lab/stimulus_library.py`
-2. **Experiments:** `src/psychophysics_lab/experiments/<task>.py`
+Open `src/psychophysics_lab/stimulus_library.py`. Each `LibraryStimulus` class has
+`PARAMETERS`, a `render()` function, and `SPEC`. Read a similar class before adding
+your own. Keep the drawing rule and scientific units in that class. Restart
+PsyCoLab after Python source edits; parameter edits within the interface do not
+require a restart.
 
-The framework handles monitor geometry, human responses, simulation, data, and calibration.
+Open PsyCoLab → **Build Stimuli**, choose a stimulus, and press **Preview stimulus**.
+Its default appearance opens in your image viewer. In Experiment setup, **Edit
+parameters** previews different values and saves a named preset; shared defaults
+are preserved. Advanced JSON editing remains available when needed.
 
-## 1. Create or edit a stimulus
+An image preview is an 8-bit appearance aid, not a physical contrast measurement.
+Low requested contrasts can look identical in the preview. Actual scientific
+presentation retains floating commands and requires separate display qualification.
 
-Open **Build Stimuli → Open stimulus_library.py**, or open the file directly in
-VS Code. Find `FixationCross`, `VerticalLineProbe`, `LinePatch`, `SquarePatch`,
-`RectanglePatch`, `EllipsePatch`, `AnnulusPatch`, `GaussianDot`,
-`SinusoidalGrating`, `GaborPatch`, `TeachingGabor`, `CSFGrating`
-and `ComposedScene`. Each keeps three familiar
-sections together:
+## 2. Describe the experiment
 
-- **PARAMETERS:** units, allowable ranges, defaults
-- **render(parameters, x_deg, y_deg):** numerical grayscale image in 0–1
-- **SPEC:** ID, description, renderer and calibration requirements
+Open one file in `src/psychophysics_lab/experiments/`:
 
-To add something new, copy the closest **class in that same file**, rename it,
-give it a unique `SPEC.id`, and set
-`source_path="src/psychophysics_lab/stimulus_library.py"`.
-Inherit from `LibraryStimulus`; PsyCoLab discovers these classes automatically.
-**Do not create a new .py file, edit a registry list or make a JSON file.**
-`ConfigField` defaults work without a separate JSON file when
-`default_config=""`.
+- `orientation_task.py`: fixed-trial orientation judgement.
+- `contrast_sensitivity.py`: adaptive left/right grating detection.
+- `ellipse_major_axis.py`: first/second interval line detection.
 
-When combining shapes, you may use existing `Scene` utilities (e.g.
-`fixation`, `line`, `ellipse`, `annulus`, `gabor`) **within the new
-class's render()**. You never edit a shared dispatch table or another class
-to register new stimulus mathematics; put entirely new mathematics directly
-in your new class's render() method.
+Read settings → conditions/order → stimulus preparation → one trial → responses
+and adaptation → run/finish → framework connection. `TrialTimeline` states the
+display order. Keep the participant's alternatives, units, adaptive change,
+stopping rule and primary estimator explicit. The TUI supplies the chosen values.
+Do not copy an example's scientific choices unless they fit your study.
 
-### Reference CSF
+For a new file, export `SPEC` with its matching experiment ID. Discovery needs no
+registry edit. Fixed-trial and adaptive loops may differ. Repeated recording
+machinery is shared; each experiment still declares strength, steps, gamut and
+extra measurements at its recording call.
 
-`CSFGrating` in the same library owns the exact reference GLSL shader.
-It is a special hardware-rendered class, **not** an ordinary NumPy
-`render()` preview. Do not substitute a teaching Gabor and assume
-equivalent luminance, phase or timing. Its historical experiment definition
-and hardware driver are internal to `_reference_csf/`.
+## 3. Try the actual trials
 
-The new `experiments/contrast_sensitivity.py` is a separate protocol using
-`ContrastSensitivityGrating` and `GaussianFixation`, ordinary NumPy renderers in the
-same library. Its thesis defaults can be overridden through the TUI. It requires
-separate physical qualification before human acquisition; it does not establish
-rendering equivalence with the historical shader.
+Open **Experiment**, choose your experiment and display, configure, and review.
+Choose **Try the experiment**. Enter the number of responses to try (default eight;
+blank runs the full experiment), acknowledge test data and start.
 
-## 2. Preview the stimulus
+Use the experiment's response keys. Escape stops. A short test ends with
+`test_finished`; this means the test response limit was reached, not that the
+study or staircase completed. Settings and accepted responses remain saved.
 
-Restart the main TUI after editing the shared file. In USER_env:
+Test records go to `psycolab_presentation_tests`, beside local configuration,
+separate from participant data. The completion message gives the exact run folder.
+Open `trials_readable.txt` for responses, `resolved_experiment.json` for scientific
+settings and `manifest.json` for run status and provenance.
 
-```cmd
-python -m psychophysics_lab --dev-preview fixation_cross
-```
+If a test cannot start, follow its specific monitor, geometry or rendering message.
+A photometer is not required merely to inspect trials. Participant acquisition
+still requires the experiment's physical qualification checks.
 
-Replace `fixation_cross` with your class's `SPEC.id`. The terminal prints
-the saved PNG path, which you can open in Windows. **No physical stimulus is
-displayed or calibrated by this command.** No separate stimulus Ready/Publish
-step is needed; software validation does not qualify your lab hardware.
+## 4. Check the procedure with simulated responses
 
-## 3. Write the experiment
+Use the **same Experiment setup**, then choose **Simulate responses**. Start with
+the default observer, or expand **Virtual observer settings** to change the model
+or seed. Simulations do not show or qualify the physical display.
 
-Create **one** experiment Python module, such as
-`src/psychophysics_lab/experiments/my_task.py`, describing the condition
-order, `TrialTimeline`, response meanings, adaptive science and `procedure(run)`.
-Declare defaults with `ConfigField` in that Python file; a companion JSON is
-optional for saved settings. Export `SPEC` with `SPEC.id == "my_task"`; discovery
-needs no registry edits. See
-`experiments/example_experiment.py` for a *left/right worked example*, or
-`experiments/ellipse_major_axis.py` for a two-interval detection procedure.
-Neither example should be blindly copied as a scientific design.
+Simulation records use `synthetic_` identities in the selected external data folder.
+Inspect the reported status, responses and analysis. A run that executes correctly
+does not by itself demonstrate unbiased threshold recovery; read the protocol's
+recovery evidence and boundary failures.
 
-The experiment uses **registered stimulus IDs** from the one library; it
-controls when and where each drawing appears. Beep is optional:
+## 5. Prepare for participant data
 
-```python
-from psychophysics_lab.researcher import TrialTimeline, Show, CollectResponse, Beep
+Use **Calibrate** to bind the actual monitor and collect geometry, luminance and
+timing evidence. Choose **Collect participant data** only after the required checks
+pass. A successful preview, physical test or simulation does not qualify a display.
+See [display setup](TUI_AND_LOCAL_DISPLAYS.md) for the measurement workflow.
 
-TRIAL = TrialTimeline((
-    Show("fixation", slot="fixation", duration=500),
-    Show("probe", slot="target", duration=200, beep=Beep(450, 35)),
-    Show("blank", duration=150),
-    CollectResponse(actions=("above", "below"), beep=Beep(550, 35)),
-))
-```
+## Optional: tracked researcher contributions and terminal tools
 
-Omit `beep=` for silence; the beep at response happens after an accepted
-key. Software audio requests are not hardware-synchronisation evidence.
+For Draft/Test/Ready protection, register an existing file with
+`python -m psychophysics_lab --dev-stage experiment ID`, test it with
+`--dev-test ID`, then use `--dev-ready experiment ID`. Changed tracked files must
+be retested. Ready describes software testing, not physical calibration.
 
-## 4. Test and register your experiment
-
-For a manually authored file called `my_task.py`:
-
-```cmd
-python -m psychophysics_lab --dev-stage experiment my_task
-python -m psychophysics_lab --dev-test my_task
-python -m psychophysics_lab --dev-ready experiment my_task
-```
-
-You can also use **Build Experiments → Register existing experiment as Draft**
-after writing the Python file. The first terminal command **only registers the existing file as a Draft**. It does
-not generate anything. Run the test again after source/JSON edits, then mark
-the tested revision Ready. Restart the TUI to reload the experiment catalogue.
-Physical human acquisition still requires the appropriate monitor calibration.
-
-`experiments/probe_above_below.py` now owns the built-in above/below procedure.
-Its old JSON design/loader are retained internally for saved-data interpretation
-and parity tests, not offered as a competing authoring route. The reference CSF
-uses a retained shader implementation pending scientific/hardware equivalence.
-
-**Remember:** stimulus = appearance; experiment = conditions and time;
-framework = hardware, responses, calibration, storage.
-
-
-## 5. Run and find the data
-
-In the TUI select your experiment and a display profile, configure values, then
-Review → Run simulation. For human acquisition, satisfy the profile's calibration
-checks and use Run human experiment. Draft/Test/Ready describes software testing;
-it cannot certify physical display, input or acoustic timing.
-
-The TUI prints the run folder under your selected external data repository.
-Read `trials.tsv` for accepted responses, `trial_actions.json` for interpreted
-responses and scientific state, `stimulus_parameters.json` for actual stimulus
-parameters, and `manifest.json` for source/version provenance. Adaptive runs also
-save complete staircase histories. Check a run with
-`python scripts/validate_run.py <run_directory>`.
-
-
-## Read the experiment as a participant's sequence
-
-Open `experiments/contrast_sensitivity.py` for the current thesis example. Read the constants,
-then `make_trial()`: fixation -> grating alone -> fixation and left/right response.
-`change_contrast()` gives the response-to-next-trial rule; `procedure()` chooses
-conditions and repeats trials until the declared staircase stopping rule. `SPEC`
-at the bottom connects those scientific choices to the TUI. Recording and source
-metadata are handled by PsyCoLab. The old CSF compatibility definition is internal
-and is not a template for a new experiment.
-
-
-## The same reading pattern in every experiment
-
-Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md).
-All nine files put settings, conditions, stimulus preparation, one trial,
-response/adaptation, the run loop and the framework connection in the same order.
-Use `probe_above_below.py` as the small fixed-trial example. Internal discovery,
-validation and historical loaders are in `_internal/`; researchers do not edit
-those files when changing scientific behaviour.
-
-
-## Explicit response and update calls
-
-All experiment files now share the same executable main loop and helper input/
-output contracts. `make_trial(settings, condition)` describes only what is shown,
-when input is accepted and optional observation markers. The procedure enters
-`run.trial()`, then explicitly calls `interpret_response()` and `update_experiment()`.
-The shared recorder saves once when that trial context ends. See the
-[folder guide](../src/psychophysics_lab/experiments/README.md) for the complete flow.
-The public CSF source is `contrast_sensitivity.py`, with menu name Contrast
-Sensitivity; source attribution remains documented, and old saved-run IDs retain
-their original meanings.
+`--dev-preview STIMULUS_ID` remains a headless PNG export for scripts. The normal
+interface opens previews automatically. `--learn` prints this guide without
+opening the interface. Historical simulation commands remain compatibility tools;
+use explicit experiment IDs and read their model-specific interpretation.

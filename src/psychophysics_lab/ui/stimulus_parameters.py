@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Select, Static, TextArea
+from textual.widgets import Button, Input, Label, Select, Static, TextArea, Collapsible
 from ..stimuli.registry import list_stimuli, get_stimulus
 from ..config.stimulus_parameters import load_parameters, save_parameter_preset, snapshot, document_for
 
@@ -54,11 +54,13 @@ class StimulusParametersPanel(Vertical):
         yield Select([(item.display_name, item.id) for item in compatible], value=self.stimulus.id,
                      allow_blank=False, id="stimulus-select-" + self.slot)
         yield Select([], id="stimulus-preset-" + self.slot, prompt="Choose default or named preset")
-        yield Input(placeholder="JSON path (select or paste, then Reload and validate)", id="stimulus-path-" + self.slot)
         with Horizontal(classes="buttons"):
+            yield Button("Edit parameters", id="stimulus-values-" + self.slot)
+            yield Button("Preview", id="stimulus-preview-" + self.slot)
+        with Collapsible(title="Advanced presets / JSON", collapsed=True):
+            yield Input(placeholder="Preset JSON path", id="stimulus-path-" + self.slot)
             yield Button("Open / edit JSON", id="stimulus-edit-" + self.slot)
             yield Button("Reload and validate", id="stimulus-reload-" + self.slot)
-            yield Button("Preview", id="stimulus-preview-" + self.slot)
         yield Static("", id="stimulus-summary-" + self.slot, markup=False)
 
     def on_mount(self):
@@ -176,16 +178,17 @@ class StimulusParametersPanel(Vertical):
     def on_button_pressed(self, event):
         event.stop()
         try:
-            if event.button.id == "stimulus-reload-" + self.slot:
+            if event.button.id == "stimulus-values-" + self.slot:
+                from .stimulus_editor import StimulusValueEditor
+                self.app.push_screen(StimulusValueEditor(self))
+            elif event.button.id == "stimulus-reload-" + self.slot:
                 self.load(Path(self.query_one("#stimulus-path-" + self.slot, Input).value))
             elif event.button.id == "stimulus-edit-" + self.slot:
                 self.app.push_screen(JsonPresetEditor(self))
             elif event.button.id == "stimulus-preview-" + self.slot:
-                from uuid import uuid4
-                from ..core.presentation import preview_stimulus
-                output = self.app.local_config_root / "previews" / (str(uuid4()) + ".png")
-                output.parent.mkdir(parents=True, exist_ok=True)
-                preview_stimulus(self.stimulus.id, self.current()["document"]["parameters"], output)
-                self.app.notify(f"Preview saved: {output}", timeout=10)
+                from .preview import show_stimulus_preview
+                show_stimulus_preview(self.stimulus.id, self.current()["document"]["parameters"],
+                    self.app.local_config_root / "previews")
+                self.app.notify("Preview opened. Appearance only; physical contrast and timing are unverified.", timeout=8)
         except (ValueError, OSError, KeyError) as exc:
             self.query_one("#stimulus-summary-" + self.slot, Static).update(str(exc))

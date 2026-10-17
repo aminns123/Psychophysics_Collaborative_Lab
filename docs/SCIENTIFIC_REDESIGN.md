@@ -167,3 +167,13 @@ avoids silently changing established scripts; normal TUI catalogs exclude it.
 
 No hardware or researcher-comprehension validation is claimed by these checks.
 The full default modern CSF simulation (seed 123, two frequencies, four independent staircases per frequency) also completed: 488 responses, all eight staircases complete, two primary condition results. This is an additional pipeline check, not a recovery or hardware qualification.
+
+
+## Later researcher workflow refinement
+
+[RESEARCHER_TEST_WORKFLOW.md](RESEARCHER_TEST_WORKFLOW.md) updates the everyday
+preview/testing route. Unqualified **participant acquisition** remains blocked;
+isolated physical **test presentation** is now allowed with the normal renderer
+and keyboard, separately marked records and an optional test-only response limit.
+Canonical projection/counter recording is shared to shorten experiment files;
+scientific contrast rules, bounds and estimators remain local.

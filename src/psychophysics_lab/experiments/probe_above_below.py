@@ -180,8 +180,6 @@ def finish_experiment(run, conditions, state):
 
 
 def procedure(run):
-    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
-        raise ValueError(SPEC.acquisition_block_reason)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
     while not is_finished(run, conditions, state):
