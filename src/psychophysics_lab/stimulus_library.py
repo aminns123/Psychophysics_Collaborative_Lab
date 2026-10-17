@@ -1,8 +1,18 @@
-"""Researcher-facing drawings and composition, independent of the TUI/display.
+"""PsyCoLab — THE ONLY FILE FOR AUTHORING NEW VISUAL STIMULI.
 
-Add simple drawings here. Coordinates and sizes are degrees; intensities are
-digital commands, NOT measured luminance. A function makes an immutable drawing;
-Scene combines drawings in written order. Procedures own time, input and state.
+START HERE (no generator, no extra Python files):
+  1. Find the closest LibraryStimulus class below (e.g. FixationCross).
+  2. Copy that CLASS within this same file; give it a unique SPEC.id.
+  3. Edit PARAMETERS, render(parameters, x_deg, y_deg) and SPEC together.
+  4. Set SPEC.source_path = "src/psychophysics_lab/stimulus_library.py".
+     For a new class, set default_config="" to use ConfigField defaults.
+  5. Restart PsyCoLab and run --dev-preview SPEC_ID in USER_env.
+
+This file also has reusable primitive functions and Scene composition.
+Use them instead of copying existing rendering mathematics. Experiments,
+in their own Python files, control position, timing, responses and sounds.
+Coordinates are degrees; 0–1 intensities are DIGITAL commands, not measured
+luminance. A saved preview is not physical calibration.
 """
 from dataclasses import dataclass
 from types import MappingProxyType

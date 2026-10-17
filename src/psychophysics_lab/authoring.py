@@ -1,7 +1,8 @@
 """Project-local, explicit draft/ready authoring inventory.
 
-Only files scaffolded/registered by the researcher are listed. Drafts are loaded
-in USER_env, never in the normal human-acquisition catalogue. 'Ready' means
+Manually written experiment/adaptive files registered by researchers are listed.
+Drafts are loaded in USER_env, never in the normal human-acquisition catalogue.
+All new stimuli live directly in stimulus_library.py. 'Ready' means
 software-tested; it is *not* physical calibration or ethical approval.
 """
 from __future__ import annotations
