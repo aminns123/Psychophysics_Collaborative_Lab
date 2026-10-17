@@ -17,7 +17,8 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
     if kind in {"pair", "stimulus"}:
         template = (source / "blueprints/stimulus_line_compat.py.txt").read_text(encoding="utf-8")
         files[f"src/psychophysics_lab/stimuli/{name}.py"] = template.replace("vertical_line_probe", name)
-        from .stimuli.vertical_line_probe import SPEC
+        from .stimulus_library import VerticalLineProbe
+        SPEC = VerticalLineProbe.SPEC
         from .config.stimulus_parameters import document_for
         document = document_for(SPEC)
         document["stimulus_id"] = name

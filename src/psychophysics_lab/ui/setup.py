@@ -21,7 +21,6 @@ from ..config.preflight import compatible, validate_setup
 from ..config.readiness import readiness_text
 from .editor import open_source
 from .authoring import AuthoringPanel
-from .library_builder import LibraryExperimentBuilder
 from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
     GeometryCheckRequest,
@@ -300,11 +299,13 @@ class ExperimentsScreen(HubPage):
                 yield Button("Read example experiment.py", id="read-example-experiment")
                 yield Button("Edit example settings JSON", id="read-example-timeline")
                 yield Button("Read CSF timeline JSON", id="read-csf-timeline")
-            yield Static("[b]Preferred for simple two-choice spatial tasks[/b]\nChoose existing library stimuli and create one JSON experiment. No new experiment Python file.")
-            yield LibraryExperimentBuilder()
-            yield Static("[b]Advanced Python experiment (custom science)[/b]\nCreates a neutral, unfinished procedure and settings JSON. You must define condition meaning and actions yourself; unlike the left/right worked example, it will not pretend to be a completed experiment.")
-            yield Input(placeholder="e.g. my_custom_science", id="new-experiment-name")
-            yield Button("Create advanced Python experiment", id="build-new-experiment")
+            yield Static(
+                "[b]ONE experiment structure[/b]\n"
+                "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
+                "and SPEC. Settings belong in configs/experiments/<task>.json. "
+                "No auto-generation or separate JSON experiment editor.")
+            yield Static("Register manually authored experiment modules as Draft, "
+                         "simulate/test, and mark the tested revision Ready.")
             yield AuthoringPanel("experiment")
         yield Footer()
 
@@ -352,17 +353,6 @@ class ExperimentsScreen(HubPage):
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
             return
-        if event.button.id == "build-new-experiment":
-            event.stop()
-            try:
-                from ..authoring import scaffold_draft
-                paths = scaffold_draft(self.app.repo_root, self.query_one("#new-experiment-name", Input).value.strip(), kind="experiment")
-                self.query_one(AuthoringPanel).refresh_inventory()
-                self.app.notify(f"Created {len(paths)} draft files. Complete the two scientific TODOs; simulate and then Mark Ready.")
-                self.app.inspect_source(paths[0])
-            except (ValueError, OSError) as exc:
-                self.app.notify(str(exc), severity="error")
-            return
         spec = self._selected()
         sources = _source_candidates(self.app.repo_root, spec)
         if event.button.id == "view-selected-source":
@@ -382,124 +372,44 @@ class ExperimentsScreen(HubPage):
 
 
 class StimuliScreen(HubPage):
+    """One editable stimulus library; no per-stimulus creation wizard."""
     page_title = "Stimuli"
 
     def compose(self) -> ComposeResult:
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
-        sources = _stimulus_sources(self.app.repo_root)
-        # Beginner navigation shows only the shared authoring entrypoint.
-        # Compatibility/legacy sources are inspectable below, not another
-        # apparent set of places to add new stimuli.
-        options = [(path.stem.replace("_", " ").title(), str(path))
-                   for path in sources
-                   if path.name != "stimulus_library.py"]
         with VerticalScroll(classes="page-body"):
-            yield Static(
-                "[b]Reusable stimuli[/b]\n"
-                "Stimuli define what is presented. Experiment procedures, adaptive methods and "
-                "framework lifecycle remain separate responsibilities."
-            )
-            if options:
-                yield Static(
-                    "[b]START HERE — one shared stimulus library[/b]\n"
-                    "Add a complete stimulus CLASS to stimulus_library.py. Each "
-                    "class has PARAMETERS, render() and SPEC in one place; the file "
-                    "also contains primitives and Scene composition. Existing "
-                    "stimuli/*.py files are compatibility adapters, not separate "
-                    "places to author science."
-                )
-                with Horizontal(classes="buttons"):
-                    yield Button("Open shared stimulus functions", id="view-shared-stimulus-library", variant="primary")
-                    yield Button("Open Scene composition example", id="view-shared-scene-example")
-                yield Button("Learn PsyCoLab — stimulus tutorial", id="learn-stimuli")
-                yield Static("[b]Existing components (read-only compatibility and calibration code)[/b]")
-                yield Select(options, value=options[0][1], allow_blank=False, id="inspect-stimulus")
-                yield Static("", id="stimulus-inspection")
-                yield Button("Inspect selected legacy/compatibility code", id="view-stimulus-source")
-                yield Static(
-                    "[b]Compatibility / advanced authoring[/b]\n"
-                    "The older per-stimulus Python + JSON adapter workflow remains "
-                    "available for independent renderers and existing experiments. "
-                    "It is NOT the normal way to add or edit a stimulus; use the shared "
-                    "file above. Retained for existing IDs and specialist renderers."
-                )
-                yield Button("Read existing adapter Python", id="read-example-stimulus")
-                yield Button("Read existing adapter defaults JSON", id="read-example-stimulus-json")
-                yield Input(placeholder="e.g. independent_adapter_name", id="new-stimulus-name")
-                yield Button("Advanced: create independent stimulus adapter", id="build-new-stimulus")
-                yield AuthoringPanel("stimulus")
-            else:
-                yield Static("No reusable stimulus modules are currently registered in the package.")
+            yield Static("[b]ONE place for all stimulus science[/b]\n"
+                "Open stimulus_library.py. Define LibraryStimulus classes "
+                "with PARAMETERS, render(), and SPEC. There is no new-file generator "
+                "or manual per-stimulus registry step.")
+            yield Button("Open stimulus_library.py", id="view-shared-stimulus-library", variant="primary")
+            yield Button("See Scene example", id="view-shared-scene-example")
+            yield Button("Read short authoring guide", id="learn-stimuli")
+            yield Static("[b]Already available[/b]\n"
+                "Fixation, white lines, Gabor, gratings, ellipse, annulus, square, "
+                "rectangle, Gaussian dot and composable Scenes.")
+            yield Static("[b]Preview directly[/b]\n"
+                "USER_env: python -m psychophysics_lab --dev-preview STIMULUS_ID\n"
+                "Preview saves a PNG, not a physically calibrated presentation.")
         yield Footer()
-
-    def on_mount(self) -> None:
-        if self.query("#inspect-stimulus"):
-            self._refresh()
-
-    def _selected_path(self) -> Path:
-        value = self.query_one("#inspect-stimulus", Select).value
-        return Path(str(value))
-
-    def _refresh(self) -> None:
-        path = self._selected_path()
-        relative = path.relative_to(self.app.repo_root)
-        text = path.read_text(encoding="utf-8")
-        first_doc = ""
-        if '"""' in text:
-            chunks = text.split('"""', 2)
-            if len(chunks) >= 3:
-                first_doc = chunks[1].strip()
-        self.query_one("#stimulus-inspection", Static).update(
-            f"[b]{path.stem.replace('_', ' ').title()}[/b]\n{relative}\n\n{first_doc}"
-        )
-
-    def on_select_changed(self, event: Select.Changed) -> None:
-        if event.select.id == "inspect-stimulus":
-            self._refresh()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
             return
-        if event.button.id in {"view-shared-stimulus-library", "view-shared-scene-example"}:
+        files = {
+            "view-shared-stimulus-library": "src/psychophysics_lab/stimulus_library.py",
+            "view-shared-scene-example": "examples/shared_stimuli.py",
+        }
+        if event.button.id in files:
             event.stop()
-            relative = (
-                "src/psychophysics_lab/stimulus_library.py"
-                if event.button.id == "view-shared-stimulus-library"
-                else "examples/shared_stimuli.py"
-            )
-            self.app.inspect_source(self.app.repo_root / relative)
-            return
-        if event.button.id == "learn-stimuli":
+            self.app.inspect_source(self.app.repo_root / files[event.button.id])
+        elif event.button.id == "learn-stimuli":
             event.stop()
             self.app.push_screen(CodeViewScreen(
-                title="Learn PsyCoLab — standalone guide",
+                title="Learn PsyCoLab",
                 path=self.app.repo_root / "docs/LEARN_PSYCOLAB.md"))
-            return
-        if event.button.id in {"read-example-stimulus", "read-example-stimulus-json"}:
-            event.stop()
-            path = ("src/psychophysics_lab/stimuli/vertical_line_probe.py"
-                    if event.button.id == "read-example-stimulus"
-                    else "configs/stimuli/vertical_line_probe.json")
-            self.app.inspect_source(self.app.repo_root / path)
-            return
-        if event.button.id == "build-new-stimulus":
-            event.stop()
-            try:
-                from ..authoring import scaffold_draft
-                name = self.query_one("#new-stimulus-name", Input).value.strip()
-                paths = scaffold_draft(self.app.repo_root, name, kind="stimulus")
-                self.query_one(AuthoringPanel).refresh_inventory()
-                self.app.notify(f"Created {len(paths)} draft files. Edit, Preview / validate, then Mark Ready here.")
-                self.app.inspect_source(paths[0])
-            except (ValueError, OSError) as exc:
-                self.app.notify(str(exc), severity="error")
-            return
-        if event.button.id == "view-stimulus-source":
-            event.stop()
-            path = self._selected_path()
-            self.app.inspect_source(path)
 
 
 class DisplayCheckScreen(HubPage):

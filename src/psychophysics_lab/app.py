@@ -103,7 +103,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--library-separation", type=float, default=2.0, help="Above/below distance in degrees for --library-create.")
     parser.add_argument("--library-test", metavar="NAME", help="Simulate and validate an authored JSON library experiment.")
     parser.add_argument("--library-ready", metavar="NAME", help="Publish a successfully simulated JSON experiment.")
-    parser.add_argument("--dev-list", action="store_true", help="List authored Draft/Tested/Ready components.")
+    parser.add_argument("--dev-list", action="store_true", help="List manually authored experiment/adaptive drafts.")
+    parser.add_argument("--dev-stage", nargs=2, metavar=("KIND", "NAME"),
+                        help="Register an existing experiment/adaptive Python file as Draft; never creates files.")
     parser.add_argument("--dev-preview", metavar="STIMULUS", help="Preview/test a stimulus without a physical display.")
     parser.add_argument("--dev-test", metavar="EXPERIMENT", help="Simulate and validate an experiment with a virtual observer.")
     parser.add_argument("--dev-values", type=Path, metavar="JSON", help="Experiment parameters JSON for --dev-test.")
@@ -168,9 +170,20 @@ def _main(
         print("Restart PsyCoLab to refresh its experiment catalogue.")
         return 0
 
+    if args.dev_stage:
+        from .authoring import stage
+        kind, name = args.dev_stage
+        if kind not in {"experiment", "adaptive"}:
+            raise ValueError("Add stimuli directly to stimulus_library.py; --dev-stage supports experiment/adaptive only.")
+        item = stage(repo_root, kind, name)
+        print(f"DRAFT: {item.kind} {item.name}; run --dev-test NAME, then --dev-ready KIND NAME.")
+        return 0
+
     if args.dev_list:
         from .authoring import inventory, fingerprint
         for item in inventory(repo_root):
+            if item.kind == "stimulus":
+                continue
             try:
                 tested = bool(item.tested_fingerprint and item.tested_fingerprint == fingerprint(repo_root, item))
             except (OSError, ValueError):

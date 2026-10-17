@@ -82,15 +82,17 @@ def execute_user_action(repo_root: Path, operation: str, identity: str, values: 
         from .config.stimulus_parameters import load_parameters
         from .core.presentation import preview_stimulus
         stimulus = get_stimulus(identity)
-        if not stimulus.default_config:
-            raise ValueError("This stimulus has no JSON-based preview; use its existing calibration page.")
-        selected = load_parameters(repo_root / stimulus.default_config, stimulus)
+        if stimulus.render is None:
+            raise ValueError("Reference CSF/monitor diagnostic has no raster preview.")
+        if stimulus.default_config:
+            selected = load_parameters(repo_root / stimulus.default_config, stimulus)
+        else:
+            from .config.stimulus_parameters import document_for
+            selected = {"document": document_for(stimulus)}
         preview_folder = root / "previews"
         preview_folder.mkdir(parents=True, exist_ok=True)
         path = preview_folder / (identity + ".png")
         preview_stimulus(identity, selected["document"]["parameters"], path)
-        if any(item.name == identity and item.kind == "stimulus" for item in inventory(repo_root)):
-            mark_tested(repo_root, "stimulus", identity)
         print("Preview saved:", path)
         print("This is a digital illustration, NOT physically calibrated luminance or timing.")
         return 0

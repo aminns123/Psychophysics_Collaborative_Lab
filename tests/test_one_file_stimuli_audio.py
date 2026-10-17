@@ -30,7 +30,7 @@ def test_registered_stimulus_science_is_in_one_file(identity, klass):
     # bypassing the gate or silently marking an untested revision Ready.
     spec = klass.SPEC if identity == "new_probe_vertical_line" else get_stimulus(identity)
     assert spec is klass.SPEC
-    assert "src/psychophysics_lab/stimulus_library.py" in spec.source_dependencies
+    assert spec.source_path == "src/psychophysics_lab/stimulus_library.py"
     assert callable(klass.render)
     default = json.loads((ROOT / spec.default_config).read_text())["parameters"]
     points = np.linspace(-0.2, .2, 9)
@@ -73,12 +73,11 @@ def test_beep_is_in_scientific_api():
     assert PublicBeep is Beep
 
 
-def test_legacy_adapters_contain_no_independent_scientific_rendering():
+def test_only_one_authoritative_stimulus_python_file():
     for name in ("fixation_cross", "vertical_line_probe", "example_stimulus",
                  "teaching_gabor", "composed_scene", "new_probe_vertical_line"):
-        source = (ROOT / "src/psychophysics_lab/stimuli" / (name + ".py")).read_text()
-        assert "from ..stimulus_library import" in source
-        assert "def render(" not in source
+        assert not (ROOT / "src/psychophysics_lab/stimuli" / (name + ".py")).exists()
+    assert (ROOT / "src/psychophysics_lab/stimulus_library.py").is_file()
 
 
 def test_phd_beep_uses_no_audio_when_not_requested():

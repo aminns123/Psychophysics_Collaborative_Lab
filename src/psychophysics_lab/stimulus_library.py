@@ -207,7 +207,7 @@ class Scene:
 # ============================================================================
 # A class keeps PARAMETERS, render() and SPEC next to one another.
 # Experiment timing, stimulus placement and beeps belong in experiment files.
-# The original stimuli/*.py modules are SMALL IMPORT ADAPTERS for old IDs.
+# The original individual modules are retired: edit this file only.
 # Primitive functions and Scene above can be mixed to make more complex art.
 from dataclasses import replace as _replace
 from .experiments.spec import ConfigField
@@ -222,7 +222,7 @@ class LibraryStimulus:
 
 
 class FixationCross(LibraryStimulus):
-    """Registered legacy-compatible fixation_cross; edit PARAMETERS, render and SPEC here."""
+    """Registered fixation_cross; edit PARAMETERS, render and SPEC here."""
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 0.8, units="degrees", minimum=0.2, maximum=3),
         ConfigField("arm_length_deg", "Cross arm length", "float", 0.35, units="degrees", minimum=0.05, maximum=1),
@@ -240,11 +240,11 @@ class FixationCross(LibraryStimulus):
     
     SPEC = StimulusSpec(
         "fixation_cross", "Fixation cross", "Reusable + drawn in degrees.",
-        "src/psychophysics_lab/stimuli/fixation_cross.py",
+        "src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, default_config="configs/stimuli/fixation_cross.json",
         family="fixation", render=render, calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class VerticalLineProbe(LibraryStimulus):
@@ -264,11 +264,11 @@ class VerticalLineProbe(LibraryStimulus):
     
     SPEC = StimulusSpec(
         "vertical_line_probe", "Vertical white line", "Reusable visual-angle line.",
-        "src/psychophysics_lab/stimuli/vertical_line_probe.py",
+        "src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, default_config="configs/stimuli/vertical_line_probe.json",
         family="line", render=render, calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class ExampleWhiteLine(LibraryStimulus):
@@ -303,14 +303,14 @@ class ExampleWhiteLine(LibraryStimulus):
         id="example_stimulus",
         display_name="Example: White Line",
         description="Beginner visual stimulus: a line on a grey background.",
-        source_path="src/psychophysics_lab/stimuli/example_stimulus.py",
+        source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS,
         default_config="configs/stimuli/example_stimulus.json",
         family="simple_line",
         render=render,
         calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class TeachingGabor(LibraryStimulus):
@@ -335,10 +335,10 @@ class TeachingGabor(LibraryStimulus):
     
     
     SPEC = StimulusSpec("teaching_gabor", "Teaching Gabor", "Gaussian-windowed grating; degrees and digital contrast.",
-        "src/psychophysics_lab/stimuli/teaching_gabor.py", parameters=PARAMETERS,
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
         default_config="configs/stimuli/teaching_gabor.json", family="orientation_patch", render=render,
         calibration_requirements=("geometry",))
-    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+    SPEC = _replace(SPEC, source_dependencies=())
 
 
 class ComposedScene(LibraryStimulus):
@@ -372,7 +372,7 @@ class ComposedScene(LibraryStimulus):
     )
     SPEC = StimulusSpec("composed_scene", "Composed scene",
         "Ordered drawings from the shared stimulus library.",
-        "src/psychophysics_lab/stimuli/composed_scene.py", parameters=PARAMETERS,
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
         default_config="configs/stimuli/composed_scene.json", family="scene",
         render=render.__func__, validator=validate.__func__,
         calibration_requirements=("geometry", "luminance"),
@@ -423,14 +423,14 @@ class ResearcherVerticalLine(LibraryStimulus):
         id="new_probe_vertical_line",
         display_name="Example: White Line",
         description="Beginner visual stimulus: a line on a grey background.",
-        source_path="src/psychophysics_lab/stimuli/new_probe_vertical_line.py",
+        source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS,
         default_config="configs/stimuli/new_probe_vertical_line.json",
         family="simple_line",
         render=render,
         calibration_requirements=("geometry",),
     )
-    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+    SPEC = _replace(SPEC, source_dependencies=())
 
 
 def library_stimulus_specs():

@@ -147,7 +147,6 @@ def publish(repo_root: Path, kind: str, name: str) -> Component:
         importlib.invalidate_caches()
         spec = importlib.reload(importlib.import_module(target.module)).SPEC
         for dependency_kind, dependencies in (
-            ("stimulus", spec.stimulus_defaults.values()),
             ("adaptive", (spec.adaptive.algorithm_id,) if spec.adaptive else ())):
             for dependency in dependencies:
                 authored = next((i for i in records if i.kind == dependency_kind and i.name == dependency), None)
@@ -170,7 +169,9 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     from .adaptive import registry as adaptive
     from .stimuli import registry as stimuli
     from .experiments import registry as experiments
-    items = [i for i in inventory(repo_root) if include_drafts or i.status == "ready"]
+    # Older single-file stimulus drafts are migrated to stimulus_library.py.
+    # This loader is for independent experiments and adaptive code only.
+    items = [i for i in inventory(repo_root) if i.kind != "stimulus" and (include_drafts or i.status == "ready")]
     items.sort(key=lambda i: (i.kind == "experiment", i.kind, i.name))
     problems = {}
     importlib.invalidate_caches()

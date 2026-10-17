@@ -60,7 +60,7 @@ def register_stimulus(spec: StimulusSpec) -> None:
 def get_stimulus(identity):
     list_stimuli()
     if identity not in _REGISTRY:
-        raise ValueError(f"Unknown stimulus {identity!r}; register its module in contributions.py.")
+        raise ValueError(f"Unknown stimulus {identity!r}; add a LibraryStimulus class in stimulus_library.py.")
     return _REGISTRY[identity]
 
 def list_stimuli() -> tuple[StimulusSpec, ...]:
