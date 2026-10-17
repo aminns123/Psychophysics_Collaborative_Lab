@@ -97,10 +97,6 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Read the standalone start-to-finish authoring tutorial.")
     # The separate USER_env environment is a plain terminal, not another TUI.
     parser.add_argument("--library-list", action="store_true", help="List JSON-only stimulus-library experiments.")
-    parser.add_argument("--library-create", metavar="NAME", help="Create a basic 2AFC experiment using registered library stimuli (JSON only).")
-    parser.add_argument("--library-probe", default="vertical_line_probe", help="Registered probe stimulus for --library-create.")
-    parser.add_argument("--library-fixation", default="fixation_cross", help="Registered fixation stimulus for --library-create.")
-    parser.add_argument("--library-separation", type=float, default=2.0, help="Above/below distance in degrees for --library-create.")
     parser.add_argument("--library-test", metavar="NAME", help="Simulate and validate an authored JSON library experiment.")
     parser.add_argument("--library-ready", metavar="NAME", help="Publish a successfully simulated JSON experiment.")
     parser.add_argument("--list-stimuli", action="store_true", help="List visual stimuli from the one shared stimulus library.")
@@ -153,14 +149,6 @@ def _main(
         from .experiments.library_builder import inventory
         for record in inventory(repo_root):
             print(f"{record['id']:32} {record['status']}")
-        return 0
-
-    if args.library_create:
-        from .experiments.library_builder import create_design
-        path = create_design(repo_root, args.library_create, probe=args.library_probe,
-                             fixation=args.library_fixation, separation_deg=args.library_separation)
-        print(f"Created DRAFT JSON-only experiment: {path}")
-        print("Use --library-test NAME, then --library-ready NAME. No new Python experiment file.")
         return 0
 
     if args.library_test:

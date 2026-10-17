@@ -55,7 +55,9 @@ def test_no_second_dispatch_or_generator_in_researcher_facing_file():
     assert "class LibraryStimulus:" in source
     assert (ROOT / "src/psychophysics_lab/core/scene_primitives.py").is_file()
     opts = build_parser()
-    assert not any(action.dest in {"scaffold", "blueprint"} for action in opts._actions)
+    assert not any(action.dest in {"scaffold", "blueprint", "library_create",
+                                    "library_probe", "library_fixation", "library_separation"}
+                   for action in opts._actions)
 
 
 def test_render_without_separate_json_file(tmp_path):
