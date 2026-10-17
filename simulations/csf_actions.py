@@ -23,7 +23,7 @@ from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
 from psychophysics_lab.stimuli.registry import get_stimulus
 from psychophysics_lab.paths import find_repo_root
-from Events.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
+from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
 
 BASIS = "DEVELOPMENT STATE REPLAY ONLY: no pixels, hardware, actual phase timing or human data"
 PATTERN = (True, True, False, True, False, False)
@@ -39,9 +39,9 @@ class StateReplay(VirtualPresentation):
 
 def capture_legacy(case, directory):
     """Fixture capture through the ACTUAL legacy event adapter; not an oracle rewrite."""
-    from Events.adaptive_session import LegacyStaircaseSession
-    from Events.adaptiveMethods import Trials_read_write_staircase_conditions
-    import Functions.functionsForUse as files
+    from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
+    from psychophysics_lab._reference_csf.adaptiveMethods import Trials_read_write_staircase_conditions
+    import psychophysics_lab._reference_csf.functionsForUse as files
     directory.mkdir(parents=True, exist_ok=False)
     conditions, parameters, responses = [directory / n for n in ("conditions.json", "parameters.json", "legacy_response.txt")]
     n = len(case["conditions"])
