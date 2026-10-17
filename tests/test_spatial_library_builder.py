@@ -125,6 +125,9 @@ def test_full_user_workflow_from_two_ready_stimuli_to_json_only_ready_task(tmp_p
     # Isolated miniature checkout with exactly the files needed for a library
     # design; never generate new researcher files in the actual repository.
     required = [
+        # Thin adapters now depend on the single authoritative science file;
+        # a standalone copy must include that source to verify exact hashes.
+        "src/psychophysics_lab/stimulus_library.py",
         "src/psychophysics_lab/stimuli/fixation_cross.py",
         "src/psychophysics_lab/stimuli/vertical_line_probe.py",
         "src/psychophysics_lab/experiments/library_builder.py",
