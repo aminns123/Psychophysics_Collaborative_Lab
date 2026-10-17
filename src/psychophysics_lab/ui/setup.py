@@ -186,7 +186,9 @@ def _source_inventory(repo_root, experiment):
                 entries.append((f"Stimulus / renderer: {stimulus.id}", path))
     timeline = repo_root / "configs" / "experiments" / f"{experiment.id}.json"
     if timeline.is_file():
-        entries.append(("Experiment settings JSON" if experiment.default_config else "Trial timeline JSON", timeline))
+        role = ("Experiment settings JSON" if experiment.default_config else
+                "Legacy timeline example (not executed)" if experiment.procedure else "Trial timeline JSON")
+        entries.append((role, timeline))
     return entries
 
 
@@ -259,8 +261,6 @@ def experiment_choice_label(spec: ExperimentSpec, repo_root: Path) -> str:
                 for item in authored_inventory(repo_root)}
     if ("experiment", spec.id) in authored:
         origin = f"Researcher Python, {authored['experiment', spec.id].title()}"
-    elif spec.id == "probe_above_below":
-        origin = "Built-in JSON example"
     elif getattr(spec.procedure, "__module__", "") == "psychophysics_lab.experiments.library_builder":
         origin = "JSON library"
     elif spec.id == "example_experiment":
@@ -283,7 +283,7 @@ class ExperimentsScreen(HubPage):
         with VerticalScroll(classes="page-body"):
             yield Static(
                 "[b]Registered experiments[/b]\n"
-                "Experiments are registered explicitly. CSF is the current reference experiment, "
+                "Python experiment definitions are discovered automatically. CSF is the current reference experiment, "
                 "not the definition of PsyCoLab."
             )
             yield Select(options, value=specs[0].id, allow_blank=False, id="inspect-experiment")
@@ -297,15 +297,15 @@ class ExperimentsScreen(HubPage):
             yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
                 yield Button("Read example experiment.py", id="read-example-experiment")
-                yield Button("Edit example settings JSON", id="read-example-timeline")
+                yield Button("Optional example settings preset", id="read-example-timeline")
                 yield Button("Read CSF timeline JSON", id="read-csf-timeline")
             yield Static(
                 "[b]ONE experiment structure[/b]\n"
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
-                "and SPEC. Settings belong in configs/experiments/<task>.json. "
+                "and SPEC. Declare defaults in that Python file; JSON presets are optional. "
                 "No auto-generation or separate JSON experiment editor.")
-            yield Static("Already wrote the Python experiment and its JSON settings? "
-                         "Register that existing pair as Draft, then simulate and mark Ready.")
+            yield Static("Already wrote the Python experiment? "
+                         "Track it as Draft to require simulation before marking it Ready.")
             yield Input(placeholder="Existing experiment ID, e.g. my_task", id="register-experiment-name")
             yield Button("Register existing experiment as Draft", id="register-existing-experiment")
             yield AuthoringPanel("experiment")
@@ -1515,14 +1515,14 @@ class HelpScreen(HubPage):
                 "[b]Scientific rule[/b] — do not silently change stimulus mathematics, timings, "
                 "response mappings, staircase rules, calibration semantics, contrast definitions "
                 "or the retained 31.5 scaling. Such changes require explicit scientific review.\n\n"
-                "The Build Experiments and Build Stimuli pages create a template and inspect source. This build "
+                "Build Experiments and Build Stimuli open the scientific source and validation controls. This build "
                 "also includes an extension guide/template, while intentionally avoiding an "
                 "unrestricted source-code editor inside the acquisition TUI."
             )
-            yield Static("[b]Start a contribution[/b]\nCreate an experiment Python file in src/psychophysics_lab/experiments and its settings JSON under configs/experiments. Add visual definitions as classes in the ONE stimulus_library.py. Then run --dev-stage experiment ID, --dev-test ID and --dev-ready experiment ID. No code is generated.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
+            yield Static("[b]Start a contribution[/b]\nCreate one experiment Python file in src/psychophysics_lab/experiments with defaults and SPEC; JSON presets are optional. Add visual definitions as classes in the ONE stimulus_library.py. Then run --dev-stage experiment ID, --dev-test ID and --dev-ready experiment ID. No code is generated.\n\n[b]Human or virtual experiment[/b]\nUse Experiment → Configure → Review, then choose Run human experiment or Run simulation. The Scenarios page retains an advanced direct scenario runner.\nCLI alternative: python -m simulations --seed 123\nSaved under the same external data root using a reserved synthetic_ participant ID. No physical display or human participant is used. See docs/SIMULATION_TESTING.md.", classes="info-card")
             yield Button("Learn PsyCoLab — standalone tutorial", id="learn-guide", variant="primary")
             yield Button("Authoring structure and ID rules", id="authoring-contract")
-            yield Button("Open researcher registration in editor", id="edit-contributions")
+            yield Button("Open internal extension declarations", id="edit-contributions")
             yield Button("Open Extension Guide", id="view-extension-guide", variant="primary")
         yield Footer()
 
@@ -1542,7 +1542,7 @@ class HelpScreen(HubPage):
             self.app.inspect_source(self.app.repo_root / "src/psychophysics_lab/contributions.py")
         if event.button.id == "view-extension-guide":
             event.stop()
-            path = self.app.repo_root / "docs" / "RESEARCHER_QUICKSTART.md"
+            path = self.app.repo_root / "docs" / "LEARN_PSYCOLAB.md"
             self.app.push_screen(CodeViewScreen(title="Extending PsyCoLab", path=path))
 
 

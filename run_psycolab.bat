@@ -79,7 +79,7 @@ if not exist ".venv\Scripts\python.exe" (
 echo.
 echo Starting PsyCoLab...
 echo.
-".venv\Scripts\python.exe" -m psychophysics_lab
+".venv\Scripts\python.exe" -m psychophysics_lab %*
 set "APP_EXIT=%ERRORLEVEL%"
 
 if not "%APP_EXIT%"=="0" (

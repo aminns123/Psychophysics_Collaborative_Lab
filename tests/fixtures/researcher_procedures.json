@@ -1,0 +1,273 @@
+{
+  "cases": {
+    "base_flanker": {
+      "accuracy": 0.65,
+      "expected": {
+        "actions_sha256": "85dd3043517ca2f4ee31ba58e7796d5ef1caa8ab502d0e40f28aebb90ceaaa42",
+        "adaptive": {
+          "active_staircase_ids": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "canonical_trial_log": "trials.tsv",
+          "completed_staircase_ids": [],
+          "completion_rule": "reversals_or_trials",
+          "max_trials": 8,
+          "staircases": {
+            "1": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.25478372,
+              "next_intensity": 0.25478372,
+              "presented": [
+                0.278,
+                0.26397638,
+                0.25512807,
+                0.24954517
+              ],
+              "reversal_count": 0,
+              "trial_count": 4
+            },
+            "2": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.278,
+              "next_intensity": 0.278,
+              "presented": [],
+              "reversal_count": 0,
+              "trial_count": 0
+            },
+            "3": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.26397638,
+              "next_intensity": 0.26397638,
+              "presented": [
+                0.278
+              ],
+              "reversal_count": 0,
+              "trial_count": 1
+            },
+            "4": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 1,
+              "last_value": 0.27713502,
+              "next_intensity": 0.27713502,
+              "presented": [
+                0.278,
+                0.26397638,
+                0.27713502
+              ],
+              "reversal_count": 1,
+              "trial_count": 3
+            }
+          },
+          "status": "max_trials_reached",
+          "stop_policy": "development immediate retirement; legacy delayed termination not reproduced",
+          "total_trials": 8,
+          "unfinished_staircase_ids": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "trials_tsv": "trial_index\trecorded_utc\tevent_time_s\tstaircase_id\tstaircase_trial_index\tstimulus_condition\tstimulus_position_px\ttarget_alternative\tparticipant_response\tresponse_key\tcorrect\tpresented_display_contrast\tpresented_screen_intensity\tstep\treversal\treversal_count\tnext_display_contrast\tnext_screen_intensity\tstaircase_complete\trun_status\n1\t2000-01-01T00:00:01+00:00\t1.0\t4\t1\t0.5\t\t1\t1\tSIMULATED_DOWN\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n2\t2000-01-01T00:00:02+00:00\t2.0\t1\t1\t0.25\t\t0\t0\tSIMULATED_UP\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n3\t2000-01-01T00:00:03+00:00\t3.0\t4\t2\t0.5\t\t1\t0\tSIMULATED_UP\t0\t0.03154786842105266\t0.26397638\tup\t0\t0\t0.048861868421052654\t0.27713502\t0\trunning\n4\t2000-01-01T00:00:04+00:00\t4.0\t1\t2\t0.25\t\t1\t1\tSIMULATED_DOWN\t1\t0.03154786842105266\t0.26397638\tdown\t0\t0\t0.019905355263157887\t0.25512807\t0\trunning\n5\t2000-01-01T00:00:05+00:00\t5.0\t1\t3\t0.25\t\t1\t1\tSIMULATED_DOWN\t1\t0.019905355263157887\t0.25512807\tdown\t0\t0\t0.01255943421052634\t0.24954517\t0\trunning\n6\t2000-01-01T00:00:06+00:00\t6.0\t3\t1\t0.4166666666666667\t\t0\t0\tSIMULATED_UP\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n7\t2000-01-01T00:00:07+00:00\t7.0\t4\t3\t0.5\t\t0\t0\tSIMULATED_UP\t1\t0.048861868421052654\t0.27713502\thold\t1\t1\t0.048861868421052654\t0.27713502\t0\trunning\n8\t2000-01-01T00:00:08+00:00\t8.0\t1\t4\t0.25\t\t1\t0\tSIMULATED_UP\t0\t0.01255943421052634\t0.24954517\tup\t0\t0\t0.019452263157894736\t0.25478372\t0\tmax_trials_reached\n"
+      },
+      "seed": 123,
+      "values": {
+        "reference_height_px": 1080,
+        "reference_width_px": 1920,
+        "start_contrast": 0.05,
+        "trials_per_condition": 2
+      }
+    },
+    "ellipse_2d": {
+      "accuracy": 0.65,
+      "expected": {
+        "actions_sha256": "c5c17ce4b8e5097b023d4934cc1c0c2b44666815bfa5be019445987745063f0e",
+        "adaptive": {
+          "active_staircase_ids": [
+            1,
+            2
+          ],
+          "canonical_trial_log": "trials.tsv",
+          "completed_staircase_ids": [],
+          "completion_rule": "reversals_or_trials",
+          "max_trials": 4,
+          "staircases": {
+            "1": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.25512807,
+              "next_intensity": 0.25512807,
+              "presented": [
+                0.278,
+                0.26397638
+              ],
+              "reversal_count": 0,
+              "trial_count": 2
+            },
+            "2": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.27713502,
+              "next_intensity": 0.27713502,
+              "presented": [
+                0.278,
+                0.26397638
+              ],
+              "reversal_count": 0,
+              "trial_count": 2
+            }
+          },
+          "status": "max_trials_reached",
+          "stop_policy": "development immediate retirement; legacy delayed termination not reproduced",
+          "total_trials": 4,
+          "unfinished_staircase_ids": [
+            1,
+            2
+          ]
+        },
+        "trials_tsv": "trial_index\trecorded_utc\tevent_time_s\tstaircase_id\tstaircase_trial_index\tstimulus_condition\tstimulus_position_px\ttarget_alternative\tparticipant_response\tresponse_key\tcorrect\tpresented_display_contrast\tpresented_screen_intensity\tstep\treversal\treversal_count\tnext_display_contrast\tnext_screen_intensity\tstaircase_complete\trun_status\n1\t2000-01-01T00:00:01+00:00\t1.0\t1\t1\t0.25\t\t1\t1\tSIMULATED_2\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n2\t2000-01-01T00:00:02+00:00\t2.0\t2\t1\t0.5\t\t1\t1\tSIMULATED_2\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n3\t2000-01-01T00:00:03+00:00\t3.0\t2\t2\t0.5\t\t0\t1\tSIMULATED_2\t0\t0.03154786842105266\t0.26397638\tup\t0\t0\t0.048861868421052654\t0.27713502\t0\trunning\n4\t2000-01-01T00:00:04+00:00\t4.0\t1\t2\t0.25\t\t0\t0\tSIMULATED_1\t1\t0.03154786842105266\t0.26397638\tdown\t0\t0\t0.019905355263157887\t0.25512807\t0\tmax_trials_reached\n"
+      },
+      "seed": 123,
+      "values": {
+        "condition_positions_deg": "[0.25, 0.5]",
+        "decision_scene": "fixation_only_development",
+        "reference_height_px": 1080,
+        "reference_width_px": 1920,
+        "start_contrast": 0.05,
+        "trials_per_condition": 2
+      }
+    },
+    "indirect_flanker": {
+      "accuracy": 0.65,
+      "expected": {
+        "actions_sha256": "45a3e0013cf4e5f673dcabbb5e52d31ba1f39dd03fa268a94592d5d2119805c8",
+        "adaptive": {
+          "active_staircase_ids": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "canonical_trial_log": "trials.tsv",
+          "completed_staircase_ids": [],
+          "completion_rule": "reversals_or_trials",
+          "max_trials": 8,
+          "staircases": {
+            "1": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.25478372,
+              "next_intensity": 0.25478372,
+              "presented": [
+                0.278,
+                0.26397638,
+                0.25512807,
+                0.24954517
+              ],
+              "reversal_count": 0,
+              "trial_count": 4
+            },
+            "2": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.278,
+              "next_intensity": 0.278,
+              "presented": [],
+              "reversal_count": 0,
+              "trial_count": 0
+            },
+            "3": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 0,
+              "last_value": 0.26397638,
+              "next_intensity": 0.26397638,
+              "presented": [
+                0.278
+              ],
+              "reversal_count": 0,
+              "trial_count": 1
+            },
+            "4": {
+              "complete": false,
+              "config": {
+                "condition_trial_limit": 101,
+                "reversal_limit": 10
+              },
+              "correct_ticks": 1,
+              "last_value": 0.27713502,
+              "next_intensity": 0.27713502,
+              "presented": [
+                0.278,
+                0.26397638,
+                0.27713502
+              ],
+              "reversal_count": 1,
+              "trial_count": 3
+            }
+          },
+          "status": "max_trials_reached",
+          "stop_policy": "development immediate retirement; legacy delayed termination not reproduced",
+          "total_trials": 8,
+          "unfinished_staircase_ids": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "trials_tsv": "trial_index\trecorded_utc\tevent_time_s\tstaircase_id\tstaircase_trial_index\tstimulus_condition\tstimulus_position_px\ttarget_alternative\tparticipant_response\tresponse_key\tcorrect\tpresented_display_contrast\tpresented_screen_intensity\tstep\treversal\treversal_count\tnext_display_contrast\tnext_screen_intensity\tstaircase_complete\trun_status\n1\t2000-01-01T00:00:01+00:00\t1.0\t4\t1\t0.5\t\t1\t1\tSIMULATED_DOWN\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n2\t2000-01-01T00:00:02+00:00\t2.0\t1\t1\t0.25\t\t0\t0\tSIMULATED_UP\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n3\t2000-01-01T00:00:03+00:00\t3.0\t4\t2\t0.5\t\t1\t0\tSIMULATED_UP\t0\t0.03154786842105266\t0.26397638\tup\t0\t0\t0.048861868421052654\t0.27713502\t0\trunning\n4\t2000-01-01T00:00:04+00:00\t4.0\t1\t2\t0.25\t\t1\t1\tSIMULATED_DOWN\t1\t0.03154786842105266\t0.26397638\tdown\t0\t0\t0.019905355263157887\t0.25512807\t0\trunning\n5\t2000-01-01T00:00:05+00:00\t5.0\t1\t3\t0.25\t\t1\t1\tSIMULATED_DOWN\t1\t0.019905355263157887\t0.25512807\tdown\t0\t0\t0.01255943421052634\t0.24954517\t0\trunning\n6\t2000-01-01T00:00:06+00:00\t6.0\t3\t1\t0.4166666666666667\t\t0\t0\tSIMULATED_UP\t1\t0.050000000000000044\t0.278\tdown\t0\t0\t0.03154786842105266\t0.26397638\t0\trunning\n7\t2000-01-01T00:00:07+00:00\t7.0\t4\t3\t0.5\t\t0\t0\tSIMULATED_UP\t1\t0.048861868421052654\t0.27713502\thold\t1\t1\t0.048861868421052654\t0.27713502\t0\trunning\n8\t2000-01-01T00:00:08+00:00\t8.0\t1\t4\t0.25\t\t1\t0\tSIMULATED_UP\t0\t0.01255943421052634\t0.24954517\tup\t0\t0\t0.019452263157894736\t0.25478372\t0\tmax_trials_reached\n"
+      },
+      "seed": 123,
+      "values": {
+        "reference_height_px": 1080,
+        "reference_width_px": 1920,
+        "start_contrast": 0.05,
+        "trials_per_condition": 2
+      }
+    }
+  },
+  "physical_equivalence": false,
+  "source_revision": "651b928371dc577717dbef96acdaa9c292d02c1a"
+}

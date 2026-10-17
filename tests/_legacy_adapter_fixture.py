@@ -1,7 +1,8 @@
-"""Hardware-free extension example; explicitly register it in a local entry point.
+"""Internal test fixture for the retained four-path adapter bridge.
 
-This is a pipeline adapter demonstration, not a scientific participant task.
-It uses the current four-path adapter contract and never changes CSF settings.
+This deliberately fabricated hardware-free run tests compatibility and error
+handling only. New experiments use experiments/<id>.py and RunContext; this
+fixture is neither a scientific task nor a researcher authoring example.
 """
 from pathlib import Path
 from psychophysics_lab.experiments.spec import ConfigField, ExperimentSpec
@@ -11,10 +12,10 @@ from psychophysics_lab.data.trials import TrialLog
 SPEC = ExperimentSpec(
     id="pipeline_example", display_name="Pipeline extension example",
     description="Hardware-free demonstration of a user experiment adapter.",
-    legacy_module="examples.minimal_experiment", legacy_experiment_type="pipeline_example",
-    configure_module="examples.minimal_experiment", configure_function="configure",
+    legacy_module="_legacy_adapter_fixture", legacy_experiment_type="pipeline_example",
+    configure_module="_legacy_adapter_fixture", configure_function="configure",
     fields=(ConfigField("example_level", "Example level", "float", default=0.5, minimum=0, maximum=1),),
-    source_paths=("examples/minimal_experiment.py",))
+    source_paths=("tests/_legacy_adapter_fixture.py",))
 
 def configure(participant_id, data_root, setup, *, run_directory):
     state = Path(run_directory) / "state"

@@ -59,6 +59,11 @@ def register_algorithm(algorithm: AdaptiveAlgorithm) -> None:
 
 
 def get_algorithm(identity: str) -> AdaptiveAlgorithm:
+    # A researcher can import one experiment directly, before catalogue loading.
+    # Load this built-in mechanism lazily without importing other experiments.
+    if identity == "legacy_flanker_log" and identity not in _REGISTRY:
+        from .legacy_flanker import SPEC
+        register_algorithm(SPEC)
     try:
         return _REGISTRY[identity]
     except KeyError as exc:

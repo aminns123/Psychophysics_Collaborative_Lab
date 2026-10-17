@@ -48,8 +48,15 @@ comparison checklist in [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md).
 | `src/psychophysics_lab/ui/` | Researcher interface/inspection |
 | `src/psychophysics_lab/_reference_csf/` | Internal, still-active physical CSF reference implementation |
 | `simulations/` | Synthetic observers/scenarios and test visualisations |
-| `tests/`, `scripts/`, `docs/history/` | Verification and preserved evidence |
+| `tests/`, `scripts/`, `docs/audit_evidence/` | Verification and preserved evidence |
 
 This design is intended to minimise the files a scientist needs to read,
 not to hide scientific assumptions: unit conversions, saved state and
 physical display calibration remain explicitly documented and testable.
+
+
+Each Python experiment owns its full scientific policy and exports `SPEC` for
+automatic discovery. Managed Drafts continue through the existing fingerprint
+gate. No companion JSON or authoring-list edit is required for a new definition.
+See [the authoring contract](AUTHORING_CONTRACT.md#scientific-decisions-retained-internally)
+for every shared-mechanism justification and the documented reference-CSF exception.

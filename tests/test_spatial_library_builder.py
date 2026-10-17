@@ -33,7 +33,7 @@ def test_stimulus_library_contains_real_cross_and_white_line():
     assert not np.array_equal(cross_pixels, line_pixels)
 
 
-def test_spatial_probe_demo_is_registered_without_an_experiment_python_file():
+def test_spatial_probe_demo_is_discovered_from_its_experiment_python_file():
     spec = get_experiment("probe_above_below")
     assert spec.procedure is not None and spec.supports_simulation
     assert spec.stimulus_defaults == {"fixation": "fixation_cross", "probe": "vertical_line_probe"}
@@ -42,7 +42,7 @@ def test_spatial_probe_demo_is_registered_without_an_experiment_python_file():
     assert spec.calibration_requirements == ("geometry",)
     assert any(x.id == "probe_above_below" for x in list_experiments())
     assert (ROOT / "configs/experiment_designs/probe_above_below.json").is_file()
-    assert not (ROOT / "src/psychophysics_lab/experiments/probe_above_below.py").exists()
+    assert (ROOT / "src/psychophysics_lab/experiments/probe_above_below.py").is_file()
 
 
 def test_full_demo_virtual_run_saves_actions_conditions_and_positions(tmp_path):
@@ -54,7 +54,7 @@ def test_full_demo_virtual_run_saves_actions_conditions_and_positions(tmp_path):
     failures = [check for check in validate_run(artifacts.run_directory) if not check.passed]
     assert not failures, failures
     data = json.loads((artifacts.run_directory / "resolved_experiment.json").read_text())
-    assert data["library_design"]["stimuli"]["fixation"] == "fixation_cross"
+    assert data["stimulus_slots"]["fixation"]["document"]["stimulus_id"] == "fixation_cross"
     events = json.loads((artifacts.run_directory / "trial_actions.json").read_text())
     assert events["trials"]
     positions = []

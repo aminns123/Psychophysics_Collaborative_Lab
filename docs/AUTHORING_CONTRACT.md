@@ -10,8 +10,11 @@
   utilities are imported from `core/scene_primitives.py`, a framework
   internal nobody must edit to add a class. No second registry, shape-dispatch
   edit, auto-generator or extra per-stimulus Python file.
-- **Experiments:** `src/psychophysics_lab/experiments/<id>.py`, with
-  validated run settings in `configs/experiments/<id>.json`. A trial selects
+- **Experiments:** `src/psychophysics_lab/experiments/<id>.py`, containing
+  scientific defaults (`ConfigField`), conditions, geometry, trial ordering,
+  timing, response meanings, adaptive choices and stopping rules. Companion
+  JSON presets are optional. Export `SPEC` with its ID matching the filename;
+  definitions are discovered without editing a registration list. A trial selects
   registered stimuli, places them in visual degrees, schedules `Show` and
   `CollectResponse`, updates scientific/adaptive state, and ends with
   `run.complete()`. A beep is an optional **experiment action**, never part of
@@ -23,7 +26,8 @@
 ## Creation and validation
 
 Write the code directly. The framework loads subclasses from the shared
-library without editing registration files. Experiments are explicit:
+library without editing registration files. To apply Draft/Test/Ready protection
+to an experiment file, use:
 `python -m psychophysics_lab --dev-stage experiment ID`;
 `python -m psychophysics_lab --dev-test ID`;
 `python -m psychophysics_lab --dev-ready experiment ID`.
@@ -50,3 +54,24 @@ The internal reference code is still scientifically active, not dead code.
 See [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md) for the short walkthrough and
 [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md) for the remaining
 validation gates.
+
+
+## Scientific decisions retained internally
+
+| Internal service | Why it stays central | Experiment-owned scientific choice |
+|---|---|---|
+| `core/scene_primitives.py` | Reuse shape/render equations across Scene compositions | Primitive types, sizes, amplitudes, positions, order and background |
+| `adaptive/legacy_flanker.py` | One fixture-backed historical logarithmic update and reversal counter | Explicit n-down, log increments, initial phase, reversal/trial limits and global ceiling in each flanker experiment |
+| `adaptive/staircase.py` | Shared consecutive-response counters and adaptive state | n-down/n-up and contrast factors/clamps declared by the orientation experiment |
+| `core/timeline.py`, `core/trial_execution.py`, `researcher.py` | Resolve and execute the same phases for live and virtual responses; collect/save raw input and meaning | Ordered phases, durations, alternatives, correctness by index equality and update callbacks |
+| `core/presentation.py`, `core/tone.py`, `config/` | Display creation/calibration, frame requests, devices and Windows beep output | When to display or beep and the requested tone parameters; no claim of measured photon/acoustic onset |
+| `data/`, `core/runner.py` | Shared serialization, errors, immutable acquisition/provenance | Named scientific measurements and experiment source identity |
+| `experiments/library_builder.py` | Interpret pre-existing saved JSON designs and test historical equivalence | New experiments use Python; the built-in spatial task is now `probe_above_below.py` |
+| `_reference_csf/`, `simulations/csf.py` | Preserve the reference shader/event/adaptive bridge until physical/state parity is established | `contrast_sensitivity.py` declares the phase queue and documents all retained geometric/audio choices and virtual substitutions |
+
+Base, Indirect Flanker and Ellipse 2D are independent readable procedure files.
+Their matched scientific policies intentionally repeat; display, input, staircase
+algorithms, audio and storage do not. Frozen pre-audit traces test the entire
+trial plan, stimulus parameters, target/response meanings, adaptive states and
+canonical trial rows, ignoring only relocated callback module qualifications.
+The development acquisition blocks remain in force.

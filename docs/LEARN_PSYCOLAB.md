@@ -61,7 +61,9 @@ step is needed; software validation does not qualify your lab hardware.
 Create **one** experiment Python module, such as
 `src/psychophysics_lab/experiments/my_task.py`, describing the condition
 order, `TrialTimeline`, response meanings, adaptive science and `procedure(run)`.
-Write the values in `configs/experiments/my_task.json`. See
+Declare defaults with `ConfigField` in that Python file; a companion JSON is
+optional for saved settings. Export `SPEC` with `SPEC.id == "my_task"`; discovery
+needs no registry edits. See
 `experiments/example_experiment.py` for a *left/right worked example*, or
 `experiments/ellipse_2d.py` for a development-only advanced procedure.
 Neither example should be blindly copied as a scientific design.
@@ -94,14 +96,30 @@ python -m psychophysics_lab --dev-ready experiment my_task
 ```
 
 You can also use **Build Experiments → Register existing experiment as Draft**
-after writing the files. The first terminal command **only registers the existing file as a Draft**. It does
+after writing the Python file. The first terminal command **only registers the existing file as a Draft**. It does
 not generate anything. Run the test again after source/JSON edits, then mark
 the tested revision Ready. Restart the TUI to reload the experiment catalogue.
 Physical human acquisition still requires the appropriate monitor calibration.
 
-The existing `probe_above_below` JSON experiment is preserved for historic
-compatibility, not offered as a competing authoring route. The reference CSF
+`experiments/probe_above_below.py` now owns the built-in above/below procedure.
+Its old JSON design/loader are retained internally for saved-data interpretation
+and parity tests, not offered as a competing authoring route. The reference CSF
 uses a retained shader implementation pending scientific/hardware equivalence.
 
 **Remember:** stimulus = appearance; experiment = conditions and time;
 framework = hardware, responses, calibration, storage.
+
+
+## 5. Run and find the data
+
+In the TUI select your experiment and a display profile, configure values, then
+Review → Run simulation. For human acquisition, satisfy the profile's calibration
+checks and use Run human experiment. Draft/Test/Ready describes software testing;
+it cannot certify physical display, input or acoustic timing.
+
+The TUI prints the run folder under your selected external data repository.
+Read `trials.tsv` for accepted responses, `trial_actions.json` for interpreted
+responses and scientific state, `stimulus_parameters.json` for actual stimulus
+parameters, and `manifest.json` for source/version provenance. Adaptive runs also
+save complete staircase histories. Check a run with
+`python scripts/validate_run.py <run_directory>`.

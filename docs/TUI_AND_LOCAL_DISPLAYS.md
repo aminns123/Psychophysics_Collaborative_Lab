@@ -189,5 +189,5 @@ commands; and inspect two source files while an unrelated VS Code project is
 open. Automated tests do not stand in for those physical/editor checks.
 
 Collaborators can start with `docs/EXTENDING_PSYCOLAB.md` and
-`examples/minimal_experiment.py`. Changes to scientific procedures still need
+`src/psychophysics_lab/experiments/example_experiment.py`. Changes to scientific procedures still need
 their own review and equivalence/laboratory evidence.

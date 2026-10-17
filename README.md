@@ -21,10 +21,24 @@ Open **`src/psychophysics_lab/stimulus_library.py`** to edit or add
 registration wizard.
 
 Write each new experiment in **`src/psychophysics_lab/experiments/<id>.py`**
-with its configuration at **`configs/experiments/<id>.json`**. Register an
-existing file using `python -m psychophysics_lab --dev-stage experiment ID`,
+with scientific defaults, stimulus selection, condition order, timing, response
+meanings, adaptive choices and stopping rules in that same file. Companion JSON
+presets are optional. Python `SPEC` definitions are discovered automatically;
+no registry list is edited. For Draft/Test/Ready protection, track a file using `python -m psychophysics_lab --dev-stage experiment ID`,
 test it using `--dev-test ID`, then mark it Ready with
 `--dev-ready experiment ID`. No files are generated automatically.
+
+For a real example, open `TeachingGabor` in `stimulus_library.py` and
+`experiments/orientation_adaptive.py`: the class draws the Gaussian-windowed
+grating; the experiment balances/shuffles tilt alternatives, declares fixation,
+stimulus, blank and response phases, maps F/J to negative/positive tilt, chooses
+2-down/1-up adaptation with .8/1.25 contrast factors, and ends at the declared
+response count. Human and virtual observers run that same procedure. PsyCoLab
+handles display calibration, input, staircase state, seeds and saving.
+
+The reference CSF is an explicit exception: its experiment file documents the
+retained driver's geometry, feedback, response semantics and simulation limits.
+Hardware/event-loop equivalence is required before moving that internal driver.
 
 See the [short build walkthrough](docs/LEARN_PSYCOLAB.md) and
 [retention audit](docs/REPO_SURFACE_AUDIT.md).
@@ -417,8 +431,8 @@ display.
 
 ## Develop new stimuli and experiments (USER_env)
 
-**New researcher? Begin with [the four-file beginner example](docs/START_HERE_EXPERIMENTS.md).**
+**New researcher? Begin with [the stimulus-and-experiment walkthrough](docs/LEARN_PSYCOLAB.md).**
 The Build Stimuli and Build Experiments pages in the normal TUI now let you open
-the example scientific code and companion JSON before creating your own draft.
+the scientific code and optional saved settings before creating your own draft.
 
 Double-click `run_user_env.bat` on Windows to automatically install/check PsyCoLab's Python 3.11 dependencies in a separate `USER_env` and open a **plain persistent Command Prompt**. Paste commands such as `python "C:\path\to\my_experiment.py"`; no separate USER_env graphical TUI exists. The normal PsyCoLab TUI still builds/inspects Python and JSON, while optional command-line `--dev-preview`, `--dev-test` and `--dev-ready` preserve Draft → Tested → Ready registration. Additional script-specific libraries can be placed in `user_requirements.txt` and installed automatically on the next launch. See [USER_env](docs/USER_ENV.md). A virtual environment is **not** a security sandbox; physical display/timing calibration remains separate.

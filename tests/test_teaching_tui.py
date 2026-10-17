@@ -70,7 +70,7 @@ def test_exact_source_roles_and_editor_fallback(tmp_path, monkeypatch):
         assert any(role.startswith("Stimulus / renderer") for role, _ in roles)
     roles = dict(_source_inventory(ROOT, get_experiment("orientation_adaptive")))
     assert roles["Definition"].name == "orientation_adaptive.py"
-    assert roles["Procedure"].name == "orientation_task.py"
+    assert roles["Procedure"] == roles["Definition"]
     def unavailable(*args, **kwargs):
         raise FileNotFoundError("No editor installed")
     monkeypatch.setattr("psychophysics_lab.ui.setup.open_source", unavailable)

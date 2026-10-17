@@ -66,7 +66,7 @@ def test_json_and_user_python_experiments_are_distinguishable(tmp_path):
     authored_spec = replace(get_experiment("example_experiment"),
                             id="researcher_task", display_name="Probe task")
     user_label = experiment_choice_label(authored_spec, tmp_path)
-    assert "Built-in JSON" in json_label and "probe_above_below" in json_label
+    assert "Built-in Python" in json_label and "probe_above_below" in json_label
     assert "Researcher Python" in user_label
     assert "researcher_task" in user_label
 

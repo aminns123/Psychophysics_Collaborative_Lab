@@ -1,4 +1,4 @@
-"""Library-first, JSON-only experiments using the ordinary TrialTimeline/RunContext.
+"""Internal compatibility for existing JSON designs and saved-data interpretation.
 
 This builder deliberately supports *simple two-choice spatial tasks*. Arbitrary
 scientific updates remain Python, not executable strings in JSON. Every human
@@ -256,6 +256,10 @@ def load_library(root=None, *, include_drafts=False, tolerate_errors=True):
             if name not in BUILTIN and not include_drafts:
                 if record["tested_sha256"] != _digest(root, name):
                     raise ValueError("Library design or stimulus changed since validation.")
+            if (name in BUILTIN and name in _REGISTRY and
+                    getattr(_REGISTRY[name].procedure, "__module__", "") ==
+                    "psychophysics_lab.experiments." + name):
+                continue  # Python now owns this built-in's complete procedure.
             spec = make_spec(root, name)
             if name in _REGISTRY:
                 # A catalog refresh must not reject existing loaded versions.

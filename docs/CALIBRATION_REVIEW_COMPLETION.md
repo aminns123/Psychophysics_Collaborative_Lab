@@ -28,7 +28,7 @@ is a separate action and does not occur automatically when a measurement is
 saved.
 
 **For software testing without a photometer**, choose **Test experiment
-presentation** during Experiment setup (see `RESEARCHER_QUICKSTART.md`) and
+presentation** during Experiment setup (see `LEARN_PSYCOLAB.md`) and
 keep Photometry unverified. Your synthetic luminance pairs can still be offered
 for the test workflow, but must not be used to qualify human acquisition.
 

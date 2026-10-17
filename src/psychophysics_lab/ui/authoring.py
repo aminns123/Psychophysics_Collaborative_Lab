@@ -17,11 +17,11 @@ class AuthoringPanel(Vertical):
         self.kind = kind
 
     def compose(self):
-        yield Static("Your components: edit Python/JSON, preview or simulate, then mark the tested version Ready.")
+        yield Static("Your components: edit Python (optional JSON presets), preview or simulate, then mark the tested version Ready.")
         yield Select([], prompt="Choose your draft or Ready component", id="author-component")
         with Horizontal(classes="buttons"):
             yield Button("Edit Python", id="author-python")
-            yield Button("Edit JSON", id="author-json")
+            yield Button("Optional JSON preset", id="author-json")
             yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
             yield Button("Mark Ready", id="author-ready")
             yield Button("Refresh", id="author-refresh")
@@ -61,7 +61,11 @@ class AuthoringPanel(Vertical):
             folder = "stimuli" if self.kind == "stimulus" else "experiments"
             relative = (f"src/psychophysics_lab/{folder}/{name}.py" if identity == "author-python"
                         else f"configs/{folder}/{name}.json")
-            self.app.inspect_source(self.app.repo_root / relative)
+            path = self.app.repo_root / relative
+            if not path.is_file():
+                self.query_one("#author-result", Static).update("No optional preset: defaults are declared in the Python file.")
+                return
+            self.app.inspect_source(path)
             return
         self.perform(identity, str(name))
 

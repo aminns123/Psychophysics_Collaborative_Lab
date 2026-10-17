@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 import pytest
 from psychophysics_lab.adaptive.legacy_flanker import LegacyFlankerAdaptive
-from psychophysics_lab.experiments.flanker_protocol import timeline, scenes
+from psychophysics_lab.experiments.indirect_flanker import timeline
+from psychophysics_lab.experiments.ellipse_2d import scenes, timeline as ellipse_timeline
 from psychophysics_lab.experiments.registry import get_experiment
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
@@ -56,7 +57,7 @@ def test_source_phase_order_and_response_meanings():
     assert [(p.name,p.duration_ms) for p in pair.phases[:5]] == [
         ("leading_fixation",250),("fixation",250),("pre_interval",250),("stimulus",250),("delay",500)]
     assert pair.phases[-2].actions == ("up","down")
-    ellipse = timeline(ellipse=True)
+    ellipse = ellipse_timeline()
     assert [p.name for p in ellipse.phases] == ["fixation","pre_interval","decision","interval_one",
         "inter_interval","interval_two","delay","answer","accepted_response"]
     assert ellipse.phases[-2].actions == ("first","second")
@@ -127,13 +128,13 @@ def test_human_preflight_and_direct_calls_are_blocked_before_display():
 
 def test_ellipse_literal_geometry_and_both_interval_orders():
     from types import SimpleNamespace
-    from psychophysics_lab.experiments.flanker_protocol import pixel_geometry
+    from psychophysics_lab.experiments.ellipse_2d import pixel_geometry
     from psychophysics_lab.config.monitor import load_monitor_profiles
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     g = pixel_geometry(SimpleNamespace(display=profile, values={"reference_width_px":1920,"reference_height_px":1080}))
     v = {"background":.24}
-    a = scenes(v,g,family="ellipse",position=.25,target=0,intensity=.4)
-    b = scenes(v,g,family="ellipse",position=.25,target=1,intensity=.4)
+    a = scenes(v,g,position=.25,target=0,intensity=.4)
+    b = scenes(v,g,position=.25,target=1,intensity=.4)
     assert a["first"].to_dict() == b["second"].to_dict()
     assert a["second"].to_dict() == b["first"].to_dict()
     ring,probe,dot = a["first"].drawings
@@ -144,7 +145,7 @@ def test_ellipse_literal_geometry_and_both_interval_orders():
 
 def test_missing_monitor_resolution_is_not_invented():
     from types import SimpleNamespace
-    from psychophysics_lab.experiments.flanker_protocol import pixel_geometry
+    from psychophysics_lab.experiments.ellipse_2d import pixel_geometry
     from psychophysics_lab.config.monitor import load_monitor_profiles
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     with pytest.raises(ValueError,match="historical resolution is unknown"):

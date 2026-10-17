@@ -1,17 +1,37 @@
-"""CSF reference EXPERIMENT DEFINITION.
+"""Reference CSF: left/right spatial discrimination (not interval selection).
 
-This is the scientific contract for the existing CSF experiment:
-* CONDITIONS + ADAPTIVE METHOD: CSF_SPEC fields below
-* CHRONOLOGICAL STIMULUS STATES: configs/experiments/contrast_sensitivity.json
-* RESPONSE MAPPING: LEFT_RIGHT and the legacy CSF trial event handler
-* DATA/VALIDATION: shared PsyCoLab output pipeline
-* LEGACY RENDERER AND STATE MACHINE: src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py
+Read CSF_SPEC for conditions, units, step sizes, initial one-down policy,
+reversal criterion, shared response ceiling and timing fields. trial_timeline()
+below owns the five repeated roles. Default response keys LEFT/RIGHT mean
+left/right target position; correctness is equality of those spatial indices.
 
-The CSF timeline already uses the same Phase/TrialTimeline description as
-example_experiment.py. Unlike the beginner example, the real CSF STILL runs
-its retained OpenGL/Trial_ADMs path to avoid altering validated science and
-historical data semantics. Do not interpret this adapter as a completed CSF
-runtime migration or measured timing equivalence.
+Retained scientific exception, justified by unproven hardware/event-loop parity:
+_reference_csf/contrast_sensitivity_function.py constructs Pyglet Trial_ADMs;
+_reference_csf/adaptiveMethods.py interprets its events, while adaptive_session.py
+owns independent staircases and accepted-response termination. These internal
+services are NOT an alternative authoring workflow. Keep them until equivalent
+display commands, event semantics and hardware timing have been demonstrated.
+
+Scientific choices still embedded in that driver (inspect before changing them):
+* Title for 5000 ms, SPACE welcome, one leading fixation; then the five roles below.
+* Grating width 5 degrees; positions at +/-5 degrees horizontally from centre,
+  uniformly chosen with Python random.choice; no bitwise human/virtual RNG parity.
+* Central fixation: background+.09, sigma=.035, edge=2, res=64; blank marker
+  at background, sigma=.00001. Grating is static, theta=0, phase=0, box=False.
+* CSFGrating in stimulus_library.py owns the actual GLSL shader, including envelope,
+  digital contrast and cpd/explicit legacy-phase modes; no substitute raster.
+* Adaptive display contrast C=(I-background)/(1-background), not optical Weber
+  contrast. Conditions select active independent staircases. Stop when all finish
+  or the global accepted-response ceiling is reached; Escape saves an abort.
+* Legacy feedback uses Windows winsound.Beep: 1000 Hz correct / 300 Hz incorrect,
+  and 550 Hz trial cues where enabled. Software calls are not acoustic-onset evidence.
+* Data record raw key, spatial alternative, correctness, condition, actual settings,
+  source hashes, per-staircase history and final stop status via shared machinery.
+
+simulations/csf.py reuses the retained response handler/adaptive session with a
+seeded CSF observer; it substitutes positions, clock and response delivery. It
+does NOT execute the physical phase queue or verify rendering/timing equivalence.
+simulations/csf_actions.py provides separate fixture-backed state parity evidence.
 """
 
 from __future__ import annotations
@@ -24,6 +44,23 @@ from ..config.models import MonitorProfile
 from .spec import ConfigField, ExperimentSpec
 from ..adaptive import AdaptiveSelection
 from .responses import LEFT_RIGHT
+
+
+def trial_timeline(values):
+    """Authoritative repeated CSF roles; retained driver adds a leading fixation.
+
+    Slots describe scientific roles; original objects determine fixation/blank
+    drawing. Durations are milliseconds and timeT=0 waits for an accepted key.
+    """
+    from ..core.timeline import Phase, TrialTimeline
+    return TrialTimeline((
+        Phase("fixation", "show", duration_ms=values["timeFixate"]),
+        Phase("new_condition", "show", duration_ms=values["timeInterval"]),
+        Phase("stimuli", "show", "target", values["timeAB"]),
+        Phase("interval", "show", duration_ms=values["timeInterval"]),
+        Phase("response", "response", duration_ms=values["timeT"]),
+    ))
+
 
 LUMINANCE_CHOICES = (19.0, 29.0, 41.0, 49.0, 204.0, 255.0, 300.0, 322.0, 370.0, 403.0, 415.0, 500.0)
 SCREEN_INTENSITY_CHOICES = (0.24, 0.294, 0.34, 0.374, 0.72, 0.8, 0.86, 0.89, 0.95, 0.98, 0.99)

@@ -1,0 +1,135 @@
+{
+  "source_head": "651b928371dc577717dbef96acdaa9c292d02c1a",
+  "branch": "audit/researcher-facing-procedures",
+  "coverage": {
+    "repository_paths": 312,
+    "python_modules_parsed": 209,
+    "text_files_read": 295,
+    "binary_files_hashed": 3,
+    "generated_inventory_manifests_omit_self_hashes": true
+  },
+  "classifications": {
+    "active and essential": 263,
+    "scientifically required but internal": 37,
+    "obsolete": 11,
+    "redundant": 1
+  },
+  "directories": [
+    {
+      "directory": ".agents",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": ".git",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": ".github",
+      "repository_files": 1,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": ".psycolab_logs",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": ".pytest_cache",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": ".venv",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": "__pycache__",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    },
+    {
+      "directory": "authoring",
+      "repository_files": 1,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "configs",
+      "repository_files": 17,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "docs",
+      "repository_files": 62,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "examples",
+      "repository_files": 2,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "scripts",
+      "repository_files": 8,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "simulations",
+      "repository_files": 16,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "src",
+      "repository_files": 108,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "tests",
+      "repository_files": 89,
+      "classification": "repository-managed; classified recursively in TSV",
+      "reason": "See per-file disposition and import/reference evidence."
+    },
+    {
+      "directory": "USER_env",
+      "repository_files": 0,
+      "classification": "local/generated (preserved)",
+      "reason": "Git internals, local environments/preferences, tooling state, logs or caches; not scientific authoring sources."
+    }
+  ],
+  "dynamic_usage_checks": [
+    "Experiment SPEC discovery, manifest fingerprint gate and internal JSON allowlists inspected.",
+    "Stimulus subclass discovery and adaptive factory registrations inspected.",
+    "Reference modules are imported by spec legacy_module/configure_module and dynamic runtime loading.",
+    "Import counts are evidence, not a dead-code deletion oracle; fixtures/configuration/runtime tests also checked."
+  ],
+  "removed_paths": [
+    "docs/EXPERIMENT_AUTHORING_PROPOSAL.md",
+    "docs/RESEARCHER_QUICKSTART.md",
+    "docs/START_HERE_EXPERIMENTS.md",
+    "docs/STIMULUS_LIBRARY_EXPERIMENT_BUILDER.md",
+    "docs/TEACHING_GUIDE.md",
+    "docs/history/2026-09-15-overlay/OVERLAY_MANIFEST.txt",
+    "docs/history/2026-09-15-overlay/PSYCOLAB_UPDATE_NOTES.md",
+    "docs/history/2026-09-15-overlay/README.md",
+    "docs/history/EXPERIMENT_AUTHORING_PROPOSAL_OLD.md",
+    "examples/minimal_experiment.py",
+    "src/psychophysics_lab/experiments/flanker_protocol.py",
+    "src/psychophysics_lab/ui/library_builder.py"
+  ]
+}

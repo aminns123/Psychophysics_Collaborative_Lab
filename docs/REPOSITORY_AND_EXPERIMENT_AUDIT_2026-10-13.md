@@ -164,7 +164,7 @@ The inventory covers the complete tracked Python source tree, legacy `Events/`, 
 
 Registries explicitly reject duplicate IDs and load listed contributor modules atomically; scaffolds refuse existing paths. `RunContext` is a useful minimal bridge but does not enforce a universal scientific trial procedure. Simulation-specific models/evaluators remain separate. Local run allocation uses exclusive mkdir, and profile/index writes use advisory locks. `_legacy_runtime_context` changes process-wide cwd/import paths and synthetic output redirection changes global stdout; concurrent acquisition threads in one process are not supported. Independent processes on local filesystems are the tested model; cloud-sync locks are not a distributed guarantee. No speculative framework rewrite.
 
-Acceptance: keep separate processes for simultaneous studies; design experiment-specific lifecycle/preview hooks before a builder. [Authoring proposal](EXPERIMENT_AUTHORING_PROPOSAL.md). Approval: separate follow-up review, not part of this patch.
+Acceptance: keep separate processes for simultaneous studies; design experiment-specific lifecycle/preview hooks before a builder. [Current authoring contract](AUTHORING_CONTRACT.md). Approval: separate follow-up review, not part of this patch.
 
 ### E06 — P2 — Confirmed failure-report limitation and extreme-observer risk (open)
 

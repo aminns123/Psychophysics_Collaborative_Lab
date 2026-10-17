@@ -152,10 +152,8 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
 
         # One explicit chronological contract for CSF and researcher-authored
         # experiments. This legacy adapter still uses the validated CSF shader.
-        from psychophysics_lab.core.timeline import load_timeline
-        timeline = load_timeline(
-            Path(__file__).resolve().parents[1] / "configs/experiments/contrast_sensitivity.json",
-            timings=experiment_params, slots={"target"})
+        from psychophysics_lab.experiments.contrast_sensitivity import trial_timeline
+        timeline = trial_timeline(experiment_params)
 
         # ------------------------------ Stimulus parameters ------------------------------
         kwargs_fixate = {

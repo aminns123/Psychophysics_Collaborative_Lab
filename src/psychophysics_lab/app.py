@@ -96,9 +96,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learn", action="store_true",
                         help="Read the standalone start-to-finish authoring tutorial.")
     # The separate USER_env environment is a plain terminal, not another TUI.
-    parser.add_argument("--library-list", action="store_true", help="List JSON-only stimulus-library experiments.")
-    parser.add_argument("--library-test", metavar="NAME", help="Simulate and validate an authored JSON library experiment.")
-    parser.add_argument("--library-ready", metavar="NAME", help="Publish a successfully simulated JSON experiment.")
+    parser.add_argument("--library-list", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--library-test", metavar="NAME", help=argparse.SUPPRESS)
+    parser.add_argument("--library-ready", metavar="NAME", help=argparse.SUPPRESS)
     parser.add_argument("--list-stimuli", action="store_true", help="List visual stimuli from the one shared stimulus library.")
     parser.add_argument("--dev-list", action="store_true", help="List manually authored experiment/adaptive drafts.")
     parser.add_argument("--dev-stage", nargs=2, metavar=("KIND", "NAME"),
@@ -115,7 +115,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--list-experiments",
         action="store_true",
-        help="List explicitly registered experiments and exit.",
+        help="List discovered Python experiments and exit.",
     )
     parser.add_argument("--preview-stimulus", metavar="ID", help="Render a registered stimulus preview without hardware.")
     parser.add_argument("--stimulus-json", type=Path)

@@ -30,8 +30,8 @@ def get_experiment(experiment_id: str) -> ExperimentSpec:
 def register_experiment(spec: ExperimentSpec) -> None:
     """Small explicit registry hook for future experiments.
 
-    The public-v1 repository intentionally does not implement automatic plugin
-    discovery. A contributor adds a new ExperimentSpec explicitly.
+    Local experiments export SPEC and are discovered automatically. This hook
+    remains for internal loaders and explicit programmatic registration.
     """
     if spec.id in _REGISTRY:
         raise ValueError(f"Experiment id already registered: {spec.id}")

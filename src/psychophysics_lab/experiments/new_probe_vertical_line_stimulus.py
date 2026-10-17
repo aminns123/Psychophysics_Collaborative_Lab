@@ -83,7 +83,7 @@ def procedure(run):
             condition="above" if target == 0 else "below",
             measurements={"probe_y_deg": probe_y},
             state=state | {"probe_y_deg": probe_y},
-            instructions="Above: F   Below: J",
+            instructions=f"Above: {run.responses.keys[0]}   Below: {run.responses.keys[1]}",
         )
 
         state = dict(run.trial_state)
