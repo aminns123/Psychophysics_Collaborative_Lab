@@ -70,8 +70,8 @@ def test_framework_helpers_do_not_appear_as_experiment_files():
 def test_tui_values_reach_each_adaptive_engine_and_preserve_valid_data(
     tmp_path, monkeypatch, identity
 ):
-    module = importlib.import_module("psychophysics_lab.experiments." + identity)
     legacy = identity != "orientation_adaptive"
+    module = importlib.import_module("psychophysics_lab.experiments." + ("_internal.historical." if legacy else "") + identity)
     selected = (
         {
             "n_down": 4,
@@ -97,7 +97,7 @@ def test_tui_values_reach_each_adaptive_engine_and_preserve_valid_data(
         }
 
     async def collect():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "tui_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "tui_data")
         async with app.run_test(size=(100, 40)) as pilot:
             app.push_screen(
                 ExperimentConfigScreen(
@@ -150,7 +150,7 @@ def test_tui_values_reach_each_adaptive_engine_and_preserve_valid_data(
     assert all(check.passed for check in validate_run(artifacts.run_directory))
 
 
-def test_every_procedure_has_the_identical_executable_six_step_flow():
+def test_scientific_interfaces_are_readable_without_identical_main_loops():
     import inspect
 
     contracts = {
@@ -169,6 +169,8 @@ def test_every_procedure_has_the_identical_executable_six_step_flow():
     for identity in EXPERIMENTS:
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
         for name, arguments in contracts.items():
+            if name in {"update_experiment","is_finished"} and module.SPEC.adaptive is None and not hasattr(module,name):
+                continue
             assert tuple(inspect.signature(getattr(module, name)).parameters) == arguments, (
                 identity,
                 name,
@@ -181,7 +183,7 @@ def test_every_procedure_has_the_identical_executable_six_step_flow():
             and n.func.id in {"UpdateAdaptive", "UpdateState"}
             for n in ast.walk(ast.parse(inspect.getsource(module.make_trial)))
         )
-    assert len(set(procedures)) == 1
+    assert len(set(procedures)) > 1  # scientifically justified fixed/adaptive structures differ
 
 
 @pytest.mark.parametrize("identity", EXPERIMENTS)
@@ -216,9 +218,12 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         }
     if identity == "contrast_sensitivity":
         values |= {"max_trials": 4, "frequencies_cpd": "2", "starting_contrast": 0.02}
+    if identity in {"line_position_baseline","line_position_flanker","ellipse_major_axis","ellipse_centre"}:
+        values = {"max_trials":4,"probe_vertical_offset_deg":.5} if identity.startswith("line_") else {"max_trials":4,"ring_increment":.1}
+        if identity == "line_position_flanker": values["flanker_cpd"] = 2.
     calls = []
     prepare, make_trial = module.prepare_stimuli, module.make_trial
-    interpret, update = module.interpret_response, module.update_experiment
+    interpret, update = module.interpret_response, getattr(module,"update_experiment",None)
 
     def checked_prepare(run, condition, state):
         assert isinstance(condition, dict) and {"target", "value"} <= condition.keys()
@@ -260,7 +265,8 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
     monkeypatch.setattr(module, "prepare_stimuli", checked_prepare)
     monkeypatch.setattr(module, "make_trial", checked_trial)
     monkeypatch.setattr(module, "interpret_response", checked_interpret)
-    monkeypatch.setattr(module, "update_experiment", checked_update)
+    if update is not None:
+        monkeypatch.setattr(module, "update_experiment", checked_update)
     artifacts, _ = simulate(
         repo_root=ROOT,
         data_root=tmp_path / "data",
@@ -273,6 +279,6 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
     assert calls == [
         stage
         for _ in range(artifacts.accepted_trials)
-        for stage in ("prepare", "interpret", "update")
+        for stage in (("prepare", "interpret", "update") if update is not None else ("prepare", "interpret"))
     ]
     assert all(check.passed for check in validate_run(artifacts.run_directory))

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_test_intent_is_default_and_participant_identity_is_human_only(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "config"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,38)) as pilot:
             assert app.query_one("#run-intent",Select).value=="test"
             assert not app.query_one("#human-participant-panel",Vertical).display
@@ -61,7 +61,7 @@ def test_review_shows_selected_mode_only_and_keeps_human_blockers(tmp_path, monk
     }
     request=SetupRequest("synthetic_preview","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(125,48)) as pilot:
             await app.push_screen(ReviewScreen(request=request))
             await pilot.pause()

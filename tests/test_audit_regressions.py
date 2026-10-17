@@ -147,7 +147,7 @@ def test_profile_detection_preserves_existing_monitor_binding(tmp_path, monkeypa
     monkeypatch.setattr('psychophysics_lab.ui.profiles.enumerate_displays', lambda: monitors)
     saved = save_profile(config_root(ROOT), profile(id='local', origin='local', display_binding=asdict(monitors[1]), qualified_experiments=('contrast_sensitivity',)))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.push_screen(ProfileScreen(profile=saved))
             await pilot.pause()
@@ -190,7 +190,7 @@ def test_setup_keeps_compatible_monitor_selection(tmp_path):
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
     saved = save_profile(config_root(ROOT), profile(id='local', origin='local', qualified_experiments=('contrast_sensitivity',)))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             selector = app.screen.query_one('#monitor-profile', Select)
             selector.value = saved.id
@@ -367,7 +367,7 @@ def test_loading_workspace_with_removed_experiment_uses_current_selection(tmp_pa
     data = tmp_path/'data'
     save_workspace_state(data,SetupRequest('S001','new','removed_experiment','legacy_reference_display',{}),status='returned')
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT,data_root=data)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=data)
         async with app.run_test() as pilot:
             app._refresh_data_root()
             await pilot.pause()
@@ -379,7 +379,7 @@ def test_tui_rejects_config_data_overlap_before_creating_directory(tmp_path):
     from textual.widgets import Input
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             forbidden = app.local_config_root/'nested-data'
             app.screen.query_one('#data-root',Input).value = str(forbidden)

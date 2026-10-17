@@ -1,8 +1,8 @@
 # Researcher experiment files
 
 Edit one experiment here and its stimulus class in `../stimulus_library.py`.
-Every experiment uses the same function signatures, return types and executable
-main loop. Its purpose and `PARADIGM` identify the participant's two alternatives:
+Experiments share section order, units and response conventions. They may use
+different scientifically justified loops. Purpose and `PARADIGM` identify the participant's two alternatives:
 spatial/property 2AFC, or first/second interval (two-interval forced choice,
 also called 2AFTC here).
 
@@ -25,7 +25,7 @@ also called 2AFTC here).
    the scientific update once and returns state. `trial_record()` declares named
    measurements and canonical data fields. No file-writing code belongs here.
 6. **Run and finish:** setup, a Boolean stopping rule, the point estimator where
-   applicable, and the identical `procedure()` below.
+   applicable, and a procedure that follows the scientific design.
 7. **Framework connection:** validation and `SPEC = definition()` connect these
    scientific functions to the TUI and shared machinery.
 
@@ -58,11 +58,17 @@ leaving it saves once. An exception preserves accepted input, partial events and
 state, and marks the run interrupted/failed. A failed adaptive update remains
 incomplete rather than being invented to make counts agree. Do not perform file
 access in an update callback. The compatibility `play_trial()` API still exists
-for internal/older action plans, but researcher files all use the flow above.
+for internal/older action plans. The example above is an adaptive pattern; a
+fixed-trial procedure can use a for loop and omit an adaptive update.
 
-Start with `probe_above_below.py` for a fixed-trial example, `contrast_sensitivity.py`
-for interleaved staircases, and `ellipse_2d.py` for two explicit temporal intervals.
-Historical reconstructions retain their scientific quirks and acquisition blocks.
+Start with `orientation_task.py` for fixed trials, `contrast_sensitivity.py`
+for interleaved staircases, and `ellipse_major_axis.py` for two explicit temporal
+intervals. `line_position_baseline.py` and `line_position_flanker.py` show the
+matched spatial task; `ellipse_centre.py` shows a different temporal geometry.
+The scientific specification and declared primary estimator state what a result
+means. A safety ceiling does not make incomplete staircases adequate.
+Historical reconstructions live under `_internal/historical/`, preserve their
+quirks for explicit replay and are absent from normal menus.
 The edited custom probe retains its existing Draft/Test/Ready gate.
 
 `_internal/` holds discovery, declaration validation, source-name compatibility and
@@ -76,3 +82,11 @@ ID `csf_thesis` is retained internally: the older ID `contrast_sensitivity` alre
 means a scientifically different historical shader protocol. The internal
 `source_names.py` migration map prevents either kind of saved run from being
 silently reinterpreted. New experiment files still match their own IDs normally.
+
+
+Required study choices remain blank in setup until selected. Adaptive n-up/down,
+step sizes, reversal counts and retention come from TUI values, never hidden
+historical constants. Shared staircase state, primary analysis and display
+services have documented reasons in `docs/SCIENTIFIC_REDESIGN.md`. Scientific
+stimuli preserve floating commands through texture upload; output precision and
+optical timing still require physical qualification before acquisition.

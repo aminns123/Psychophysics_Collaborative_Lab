@@ -143,7 +143,7 @@ def test_dynamic_constraint_errors_follow_authoritative_validators(key,bad):
 def test_linked_background_and_live_range_preserve_starting_probe(tmp_path):
     p=profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'human')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'human')
         async with app.run_test(size=(100,30)) as pilot:
             editor=ExperimentConfigScreen(data_root=tmp_path/'human',participant_id='H001',session_mode='new',experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=values())
             app.push_screen(editor); await pilot.pause()
@@ -163,7 +163,7 @@ def test_linked_background_and_live_range_preserve_starting_probe(tmp_path):
 def test_luminance_editor_save_discard_restart_and_noop(tmp_path):
     p=profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'human')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'human')
         async with app.run_test(size=(80,24)) as pilot:
             app.push_screen(LuminanceDataScreen(p)); await pilot.pause()
             screen=app.screen
@@ -201,7 +201,7 @@ def test_actual_pipeline_presentation_output_is_isolated_and_human_stays_blocked
     assert not result.run_directory.is_relative_to(human) and sentinel.read_bytes()==b'KEEP'
     assert not (human/'workspace_state.json').exists()
     async def inspect():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=human)
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=human)
         async with app.run_test() as pilot:
             app.query_one('#nav-data',Button).press(); await pilot.pause()
             app.screen.query_one('#inspect-presentation-manifest',Button).press(); await pilot.pause()
@@ -313,7 +313,7 @@ def test_switching_monitor_rebuilds_mapping_and_retains_invalid_pair_for_correct
     second=save_profile(config_root(ROOT),replace(p,id='second_lab',revision=0,profile_uuid='',
         luminance_calibration=(LuminanceCalibrationPoint(0,.2),LuminanceCalibrationPoint(.5,60),LuminanceCalibrationPoint(1,300))),expected_revision=0)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'human')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'human')
         async with app.run_test() as pilot:
             editor=ExperimentConfigScreen(data_root=tmp_path/'human',participant_id='H001',session_mode='new',experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=values())
             app.push_screen(editor); await pilot.pause()
@@ -356,7 +356,7 @@ def test_focused_verification_returns_with_current_instrument_and_noop_save(tmp_
     p=profile(); data=merge_observations(raw_dataset(p),[observation(.25,10,kind='genuine'),observation(.5,49,kind='genuine'),observation(1,200,kind='genuine')],mode='replace_all',confirmed=True)
     p,saved=save_active(config_root(ROOT),p,data,expected_version=0)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'human')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'human')
         async with app.run_test() as pilot:
             screen=LuminanceDataScreen(p,experiment_id=CSF_SPEC.id); app.push_screen(screen); await pilot.pause()
             screen.query_one('#dataset-verify',Button).press(); await pilot.pause()

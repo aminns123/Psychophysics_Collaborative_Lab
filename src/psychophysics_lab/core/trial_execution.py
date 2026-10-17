@@ -47,10 +47,10 @@ class VirtualPresentation:
         self.elapsed_ms = 0
 
     def prepare(self, timeline, resolved):
-        from .presentation import render_pixels
+        from .presentation import render_values
         from ..stimuli.registry import get_stimulus
         for identity, parameters in resolved.values():
-            render_pixels(get_stimulus(identity), parameters)
+            render_values(get_stimulus(identity), parameters)
 
     def play_phase(self, phase, event, *, instructions=""):
         event["planned_onset_ms"] = self.elapsed_ms  # schema-1 compatibility

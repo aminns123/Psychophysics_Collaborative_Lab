@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize("screen_size", [(80, 24), (100, 30)])
 def test_simulation_tui_exposes_ordered_conditions_and_introductory_rule(tmp_path, screen_size):
     async def test():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "psy_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "psy_data")
         async with app.run_test(size=screen_size) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await pilot.pause()
@@ -69,7 +69,7 @@ def test_human_config_same_fields_and_validates_conditions(tmp_path):
     defaults = experiment.normalise_values(dict(DEFAULT_VALUES))
 
     async def test():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "psy_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "psy_data")
         async with app.run_test(size=(100, 30)) as pilot:
             app.push_screen(
                 ExperimentConfigScreen(

@@ -125,7 +125,7 @@ def test_contribution_loading_is_explicit_and_atomic(monkeypatch):
 @pytest.mark.parametrize("size", [(80,24),(100,30)])
 def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"human")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"human")
         async with app.run_test(size=size) as pilot:
             app.query_one("#participant",Input).value="S001"
             app.query_one("#configure",Button).press()

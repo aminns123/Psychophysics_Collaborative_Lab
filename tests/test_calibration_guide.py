@@ -74,7 +74,7 @@ def test_review_guide_is_persistent_navigable_and_user_dismissible(tmp_path,monk
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(110,34)) as pilot:
             app.push_screen(ReviewScreen(request=request))
             await pilot.pause()
@@ -119,7 +119,7 @@ def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_pa
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(110,34)) as pilot:
             app.push_screen(ReviewScreen(request=request))
             await pilot.pause()
@@ -142,7 +142,7 @@ def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_pa
 def test_duration_control_defaults_to_manual_exit(tmp_path,monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path/"machine"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one("#nav-display",Button).press()
             await pilot.pause()
@@ -170,7 +170,7 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
 
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(110,34)) as pilot:
             app.push_screen(ExperimentConfigScreen(
                 data_root=tmp_path/"data",participant_id="P001",session_mode="new",

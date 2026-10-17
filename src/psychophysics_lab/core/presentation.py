@@ -18,7 +18,8 @@ class Response:
     reaction_time_s: float
 
 
-def render_pixels(stimulus, parameters, *, pixels=(256, 256), extent_deg=None):
+def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None):
+    """Scientific floating-point command image, before any display encoding."""
     parameters = stimulus.validate_parameters(parameters)
     extent = extent_deg or parameters[stimulus.extent_parameter]
     width, height = pixels
@@ -28,7 +29,12 @@ def render_pixels(stimulus, parameters, *, pixels=(256, 256), extent_deg=None):
     result = np.asarray(stimulus.render(parameters, xx, yy), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
         raise ValueError("Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape.")
-    return np.rint(result * 255).astype(np.uint8)
+    return result
+
+
+def render_pixels(stimulus, parameters, *, pixels=(256,256), extent_deg=None):
+    """Explicit 8-bit teaching/PNG preview; not a precision-qualified stimulus."""
+    return np.rint(render_values(stimulus,parameters,pixels=pixels,extent_deg=extent_deg)*255).astype(np.uint8)
 
 
 def preview_stimulus(identity, parameters, output):
@@ -73,13 +79,15 @@ class Presentation:
         self.held = set()
         self.window.push_handlers(on_key_release=lambda symbol, modifiers: self.held.discard(symbol))
         self.resolution = (self.window.width, self.window.height)
+        self.refresh_rate_hz = profile.refresh_rate_hz
         if profile.expected_resolution_px != self.resolution:
             self.window.close()
             raise ValueError("Actual fullscreen size differs from calibration; rebind the display.")
         self.metadata = {"monitor_profile_id": profile.id, "physical_display_used": True,
                          "resolution_px": self.resolution, "display_identity": identity,
                          "photon_timing_verified": False, "input_latency_verified": False,
-                         "timing_basis": "software perf_counter; self-paced response"}
+                         "timing_basis": "vsync frame-counted show stages; self-paced response",
+                         "output_precision_verified":False, "display_encoding":"unqualified framebuffer; float texture where requested"}
 
     def close(self):
         self.window.close()
@@ -88,6 +96,9 @@ class Presentation:
     def prepare(self, timeline, parameters_by_slot):
         """Prepare all images before the first timed phase; no disk IO."""
         import pyglet
+        for pictures in getattr(self,"_rendered",{}).values():
+            for _,_,picture in pictures:
+                if isinstance(picture,FloatingTexture):picture.delete()
         rendered = {}
         for phase in timeline.phases:
             if not hasattr(phase, "placements"):
@@ -98,8 +109,13 @@ class Presentation:
                 stimulus = get_stimulus(stimulus_id)
                 pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
                 x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
-                array = render_pixels(stimulus, params, pixels=pixels)
-                pictures.append((x, y, pyglet.image.ImageData(*pixels, "L", array.tobytes(), pitch=pixels[0])))
+                if stimulus.floating_raster:
+                    array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels),dtype=np.float32)
+                    picture = FloatingTexture(array)
+                else:
+                    array = render_pixels(stimulus,params,pixels=pixels)
+                    picture = pyglet.image.ImageData(*pixels,"L",array.tobytes(),pitch=pixels[0])
+                pictures.append((x,y,picture))
             rendered[phase.name] = pictures
         self._rendered = rendered
 
@@ -142,17 +158,48 @@ class Presentation:
             for x, y, picture in self._rendered[phase.name]:
                 picture.blit(x, y)
             label = instructions if instructions and phase.kind == "response" else phase.instructions
-            if label:
-                pyglet.text.Label(label, x=self.resolution[0]//2,
+            text = pyglet.text.Label(label, x=self.resolution[0]//2,
                                   y=25 if phase.placements else self.resolution[1]//2,
-                                  anchor_x="center", font_size=16).draw()
+                                  anchor_x="center", font_size=16) if label else None
+            if text is not None:
+                text.draw()
             self.window.flip()
             onset = time.perf_counter()
             event["software_onset_s"] = onset
+            previous = getattr(self,"_last_visual_event",None)
+            if previous is not None:
+                previous["next_flip_s"] = onset
+                previous["actual_display_duration_s"] = onset-previous["software_onset_s"]
+                if "requested_frames" in previous:
+                    interval = onset-previous["flip_times_s"][-1]
+                    previous["frame_intervals_s"].append(interval)
+                    previous["dropped_frame_intervals"] += int(interval>1.5/self.refresh_rate_hz)
+            self._last_visual_event = event
+            event["flip_times_s"] = [onset]
             if phase.kind == "show" and phase.beep is not None:
                 from .tone import request_beep
                 event["audio"] = request_beep(phase.beep, trigger="display_onset")
             accepting = phase.kind == "response"
+            hz = getattr(self,"refresh_rate_hz",None)
+            if phase.kind == "show" and hz is not None:
+                frames = max(1,round(phase.duration_ms*hz/1000))
+                event.update(requested_duration_ms=phase.duration_ms,requested_frames=frames,
+                             quantized_duration_ms=frames*1000/hz,frame_intervals_s=[],dropped_frame_intervals=0)
+                for _ in range(1,frames):
+                    self.window.dispatch_events()
+                    if aborted or self.window.has_exit:
+                        raise ParticipantAbort("Escape or close during frame-counted phase")
+                    self.window.clear()
+                    for x,y,picture in self._rendered[phase.name]:picture.blit(x,y)
+                    if text is not None:
+                        text.draw()
+                    self.window.flip()
+                    flip = time.perf_counter()
+                    interval = flip-event["flip_times_s"][-1]
+                    event["frame_intervals_s"].append(interval)
+                    event["dropped_frame_intervals"] += int(interval>1.5/hz)
+                    event["flip_times_s"].append(flip)
+                return None
             while True:
                 if aborted or self.window.has_exit:
                     raise ParticipantAbort("Escape or window close during trial timeline")
@@ -205,3 +252,41 @@ def placement_pixels(profile, resolution, pixels, placement):
     if x < 0 or y < 0 or x + pixels[0] > resolution[0] or y + pixels[1] > resolution[1]:
         raise ValueError("Positioned stimulus does not fit the calibrated display.")
     return x, y
+
+
+class FloatingTexture:
+    """Preserve floating commands through upload; never certify physical bit depth.
+
+    Requires ARB_texture_float. The final framebuffer/LUT/panel still require
+    independent precision and luminance measurements before scientific acquisition.
+    """
+    def __init__(self, array):
+        import ctypes
+        from pyglet import gl
+        if not gl.gl_info.have_extension("GL_ARB_texture_float"):
+            raise ValueError("Floating scientific stimuli require GL_ARB_texture_float; no 8-bit fallback.")
+        self.width,self.height=array.shape[1],array.shape[0]
+        self.identifier=gl.GLuint()
+        gl.glGenTextures(1,ctypes.byref(self.identifier))
+        gl.glBindTexture(gl.GL_TEXTURE_2D,self.identifier)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MIN_FILTER,gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D,gl.GL_TEXTURE_MAG_FILTER,gl.GL_NEAREST)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT,1)
+        gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_LUMINANCE32F_ARB,self.width,self.height,0,
+            gl.GL_LUMINANCE,gl.GL_FLOAT,array.ctypes.data_as(ctypes.POINTER(ctypes.c_float)))
+
+    def blit(self,x,y):
+        from pyglet import gl
+        gl.glEnable(gl.GL_TEXTURE_2D)
+        gl.glBindTexture(gl.GL_TEXTURE_2D,self.identifier)
+        gl.glColor4f(1,1,1,1)
+        gl.glBegin(gl.GL_QUADS)
+        for u,v,px,py in ((0,0,x,y),(1,0,x+self.width,y),(1,1,x+self.width,y+self.height),(0,1,x,y+self.height)):
+            gl.glTexCoord2f(u,v);gl.glVertex2f(px,py)
+        gl.glEnd()
+        gl.glDisable(gl.GL_TEXTURE_2D)
+
+    def delete(self):
+        import ctypes
+        from pyglet import gl
+        gl.glDeleteTextures(1,ctypes.byref(self.identifier))

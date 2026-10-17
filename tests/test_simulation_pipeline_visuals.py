@@ -103,7 +103,7 @@ def test_canonical_trials_unchanged_after_exploratory_n_reversal_analysis(tmp_pa
 
 def test_tui_exposes_human_config_and_step_calculator(tmp_path):
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-simulations", Button).press()
             await pilot.pause()
@@ -145,7 +145,7 @@ def test_data_browser_can_open_saved_staircases_without_hardware(tmp_path, monke
     monkeypatch.setattr(image_viewer, "open_analysis_png",
                         lambda data_root, image_path: opened.append(Path(image_path)))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=root)
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-data", Button).press()
             await pilot.pause()

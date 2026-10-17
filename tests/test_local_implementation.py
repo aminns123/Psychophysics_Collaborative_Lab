@@ -137,7 +137,7 @@ def test_editor_uses_explicit_project_and_real_file_without_shell(tmp_path,monke
 @pytest.mark.parametrize('size',[(80,24),(140,48)])
 def test_navigation_does_not_move_with_scroll_content_page_or_resize(tmp_path,size):
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=size) as pilot:
             baseline=app.screen.query_one('#nav-setup',Button).region.y
             assert baseline==1
@@ -163,7 +163,7 @@ def test_navigation_does_not_move_with_scroll_content_page_or_resize(tmp_path,si
 
 def test_config_draft_survives_help_and_returns_with_fixed_review_action(tmp_path):
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(80,30)) as pilot:
             app.screen.query_one('#participant',Input).value='S001'
             assert await pilot.click(app.screen.query_one('#configure',Button))
@@ -184,7 +184,7 @@ def test_profile_editor_saves_locally_without_replacing_reference(tmp_path,monke
     from psychophysics_lab.ui.profiles import ProfileScreen
     monkeypatch.setattr('psychophysics_lab.ui.profiles.enumerate_displays',lambda:[DisplayInfo(1,1920,0,1920,1080,59.94,'monitor-B')])
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(100,40)) as pilot:
             app.open_hub_page('display');await pilot.pause()
             app.screen.query_one('#edit-profile',Button).press();await pilot.pause()

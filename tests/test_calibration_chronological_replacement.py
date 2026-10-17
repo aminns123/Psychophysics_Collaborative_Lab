@@ -62,7 +62,7 @@ def test_explicit_replacement_ui_preserves_prior_readings_until_save(tmp_path, m
     original = active.read_bytes()
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"participants")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"participants")
         async with app.run_test(size=(125, 45)) as pilot:
             await app.push_screen(LuminanceDataScreen(changed))
             await pilot.pause()
@@ -121,7 +121,7 @@ def test_explicit_replacement_ui_preserves_prior_readings_until_save(tmp_path, m
 def test_six_calibration_pages_present_next_action_without_certification(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path/"config"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"data")
         async with app.run_test(size=(118, 39)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()
@@ -147,7 +147,7 @@ def test_keep_old_test_values_goes_to_experiment_without_modifying_measurements(
     original=active.read_bytes()
 
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"participants")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"participants")
         async with app.run_test(size=(120, 40)) as pilot:
             await app.push_screen(LuminanceDataScreen(changed))
             await pilot.pause()

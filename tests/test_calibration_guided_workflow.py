@@ -51,7 +51,7 @@ def test_profile_save_stays_on_luminance_until_explicit_next(tmp_path, monkeypat
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "participants")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "participants")
         async with app.run_test(size=(118, 37)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()
@@ -98,7 +98,7 @@ def test_direct_json_import_one_click_saves_local_revision_and_advances(tmp_path
     from psychophysics_lab.config.calibration_templates import example_luminance_document
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "participants")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "participants")
         async with app.run_test(size=(115, 37)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()

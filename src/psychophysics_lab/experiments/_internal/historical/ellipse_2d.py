@@ -21,7 +21,7 @@ mechanisms, so each can be read and changed independently. Tests protect pairing
 import json
 import math
 import random
-from ..researcher import (
+from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
     ResponseParadigm,
@@ -33,7 +33,7 @@ from ..researcher import (
     UpdateAdaptive,
     UpdateState,
 )
-from ..stimulus_library import Scene, gaussian_dot, line, grating, annulus
+from psychophysics_lab.stimulus_library import Scene, gaussian_dot, line, grating, annulus
 
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
@@ -549,7 +549,7 @@ def definition():
                 "condition_trial_limit",
             ),
         ),
-        supports_simulation=True,
+        supports_simulation=True, historical=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
@@ -557,7 +557,7 @@ def definition():
         acquisition_block_reason=BLOCK_REASON,
         default_config="configs/experiments/ellipse_2d.json",
         source_paths=(
-            "src/psychophysics_lab/experiments/ellipse_2d.py",
+            "src/psychophysics_lab/experiments/_internal/historical/ellipse_2d.py",
             "src/psychophysics_lab/stimulus_library.py",
             "src/psychophysics_lab/adaptive/legacy_flanker.py",
         ),

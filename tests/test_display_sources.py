@@ -32,7 +32,7 @@ def test_detection_and_manual_override_are_explicit(tmp_path,monkeypatch):
     detected=DisplayInfo(0,0,0,1600,900,59.94,"A")
     monkeypatch.setattr("psychophysics_lab.ui.profiles.enumerate_displays",lambda:[detected])
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"human")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"human")
         async with app.run_test(size=(100,30)) as pilot:
             app.push_screen(ProfileScreen(profile=app.monitor_profiles["legacy_reference_display"]))
             await pilot.pause()

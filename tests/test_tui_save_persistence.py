@@ -27,7 +27,7 @@ def test_calibration_save_unbound_draft_updates_visible_profile_and_survives_res
 
     async def scenario():
         data_root = tmp_path / "experiment_data"
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=data_root)
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()
@@ -58,7 +58,7 @@ def test_calibration_save_unbound_draft_updates_visible_profile_and_survives_res
             assert "2560" in str(app.screen.query_one("#geometry-preview", Static).render())
 
         # Reconstruct the program, do not just inspect in-memory screen state.
-        fresh = PsyCoLabSetupApp(repo_root=ROOT, data_root=data_root)
+        fresh = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=data_root)
         assert "legacy_reference_display_local" in fresh.monitor_profiles
         assert fresh.monitor_profiles["legacy_reference_display_local"].physical_width_m == pytest.approx(.535)
         assert (machine / "profiles" / "legacy_reference_display_local" / "revision_000001.json").is_file()
@@ -68,7 +68,7 @@ def test_calibration_save_unbound_draft_updates_visible_profile_and_survives_res
 def test_calibration_invalid_save_keeps_editor_open_and_shows_fixed_error(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(80, 24)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()
@@ -90,7 +90,7 @@ def test_calibration_invalid_save_keeps_editor_open_and_shows_fixed_error(tmp_pa
 def test_display_revision_save_uses_latest_value_and_preserves_previous_version(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(100, 30)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()
@@ -125,7 +125,7 @@ def test_display_revision_save_uses_latest_value_and_preserves_previous_version(
 def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         experiment = get_experiment("contrast_sensitivity")
         defaults = experiment.normalise_values(dict(DEFAULT_VALUES))
         async with app.run_test(size=(100, 30)) as pilot:

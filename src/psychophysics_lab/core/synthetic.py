@@ -98,6 +98,7 @@ class SimulationRun:
     workspace: Path
     metadata: dict
     runtime: Callable
+    response_probability: Callable | None = None
 
     def validate(self, data: Path, repo_root: Path, request):
         if data.resolve() != simulation_workspace(self.workspace, repo_root):

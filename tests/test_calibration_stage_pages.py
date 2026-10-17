@@ -105,7 +105,7 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
 def test_calibration_six_pages_are_navigable_and_keep_shared_inputs(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(130, 42)) as pilot:
             app.query_one("#nav-display", Button).press()
             await pilot.pause()

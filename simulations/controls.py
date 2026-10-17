@@ -13,7 +13,16 @@ from .registry import get_simulation
 def effective_experiment_values(scenario):
     model = get_simulation(scenario.experiment_id)
     experiment = get_experiment(scenario.experiment_id)
-    return experiment.normalise_values(dict(model.defaults) | dict(scenario.experiment_values))
+    values = dict(model.defaults) | dict(scenario.experiment_values)
+    # A draft form must display required study choices as empty fields. The
+    # execution boundary still normalises the complete settings before any run.
+    if any(value is None for value in values.values()):
+        fields = {field.key:field for field in experiment.fields}
+        if set(values)-set(fields):
+            raise ValueError("Scenario contains unknown experiment settings.")
+        return {key:fields[key].coerce(value) if value is not None else None
+                for key,value in values.items()}
+    return experiment.normalise_values(values)
 
 
 def effective_observer_values(scenario):

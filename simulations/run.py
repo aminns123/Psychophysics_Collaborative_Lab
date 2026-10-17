@@ -28,6 +28,7 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     metadata = {"seed": seed, "rng": "python.random.Random MT19937",
         "observer_model": type(observer).__name__, "observer_parameters": observer_parameters,
         "physical_display_used": False, "human_participant": False,
+        "validation_kind":"psychometric_observer" if callable(getattr(observer,"probability_correct",None)) else "pipeline_smoke_test",
         "note": "Synthetic pipeline test; model ground truth is not necessarily the adaptive estimator's target."}
     if workspace is not None and data_root is not None:
         raise ValueError("Specify data_root only; workspace is a retained compatibility alias.")
@@ -37,7 +38,7 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     test_root = simulation_workspace(Path(selected_root), root)
     request = SetupRequest(f"synthetic_{seed}", "new", experiment_id, monitor_profile_id or spec.monitor_profile_id, selected_values, monitor_profile_hash=monitor_profile_hash, stimulus_snapshots=stimulus_snapshots or {})
     algorithm_id = experiment.adaptive.algorithm_id if experiment.adaptive else None
-    simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id))
+    simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id), response_probability=getattr(observer,"probability_correct",None))
     artifacts = run_request(request, repo_root=root, data_root=test_root, simulation=simulation)
     # Both human and synthetic runs already get a per-condition staircase
     # figure during shared run finalisation; avoid generating it twice here.

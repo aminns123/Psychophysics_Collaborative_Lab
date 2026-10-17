@@ -79,6 +79,9 @@ STIMULUS_DEFAULTS = {"fixation": "fixation_cross", "probe": "vertical_line_probe
 PARADIGM = "two_alternative_forced_choice"
 
 
+SCIENTIFIC_SPEC = {'version': 'probe_above_below-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
+
+
 # 2. CONDITIONS AND TRIAL ORDER
 def make_conditions(settings):
     order = [i % 2 for i in range(settings["trial_count"])]
@@ -203,7 +206,7 @@ def definition(identity="probe_above_below"):
         name="Probe Above or Below Fixation",
         description="A white vertical line is shown above or below a central fixation cross.",
         procedure=procedure,
-        fields=FIELDS,
+        fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,

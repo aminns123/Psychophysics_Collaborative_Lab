@@ -46,10 +46,12 @@ def test_consolidated_procedure_matches_original_complete_scientific_trace(tmp_p
 
 
 def test_every_python_procedure_is_owned_by_its_named_file():
-    for spec in list_experiments():
+    for spec in list_experiments(include_historical=True):
         if spec.procedure is None:
             assert spec.id == "contrast_sensitivity"  # documented retained renderer exception
             continue
+        if spec.historical:
+            continue  # Frozen replay tests qualify archived scientific behaviour.
         if spec.procedure.__module__.endswith("library_builder"):
             continue  # saved-design compatibility; absent from normal authoring UI
         from psychophysics_lab.experiments._internal.source_names import source_name
@@ -115,8 +117,8 @@ def test_single_python_file_can_be_staged_and_fingerprinted_without_companion(tm
 
 @pytest.mark.parametrize("identity", ["base_flanker", "indirect_flanker", "ellipse_2d"])
 def test_adaptive_policy_is_explicit_in_the_experiment(identity):
-    source = (ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text()
-    module = importlib.import_module("psychophysics_lab.experiments." + identity)
+    source = (ROOT / f"src/psychophysics_lab/experiments/_internal/historical/{identity}.py").read_text()
+    module = importlib.import_module("psychophysics_lab.experiments._internal.historical." + identity)
     defaults = module.SPEC.field_defaults()
     for key, value in {"n_down":3, "trial_point":9, "reverse_point":1,
                        "reversal_limit":10, "condition_trial_limit":101}.items():

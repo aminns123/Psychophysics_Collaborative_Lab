@@ -180,7 +180,7 @@ def test_tui_buttons_launch_request_and_show_editable_pilot_path(tmp_path,monkey
     monkeypatch.setattr(os,"startfile",lambda path:opened.append(path),raising=False)
 
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"human_workspace")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"human_workspace")
         launches=[]
         monkeypatch.setattr(app,"exit",lambda arg=None:launches.append(arg))
         async with app.run_test(size=(112,34)) as pilot:

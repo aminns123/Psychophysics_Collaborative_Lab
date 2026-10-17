@@ -101,7 +101,7 @@ def test_review_can_choose_real_or_virtual_with_one_condition_configuration(tmp_
     request = SetupRequest("H001","new","contrast_sensitivity",profile.id,
                            checked, str(tmp_path/"external"))
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"external")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"external")
         captured=[]
         monkeypatch.setattr(app,"exit",lambda result=None: captured.append(result))
         async with app.run_test(size=(100,30)) as pilot:
@@ -132,7 +132,7 @@ def test_review_can_choose_real_or_virtual_with_one_condition_configuration(tmp_
 def test_calibration_widget_is_non_photometric_and_numerically_meaningful(tmp_path):
     from psychophysics_lab.ui.setup import DisplayCheckScreen
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one("#nav-display",Button).press()
             await pilot.pause()
@@ -151,7 +151,7 @@ def test_human_cpd_acquisition_blocks_uncalibrated_resolution_but_virtual_path_w
     request = SetupRequest("H021","new","contrast_sensitivity",p.id,
                            values,str(tmp_path/"workspace"))
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"workspace")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"workspace")
         exited=[]
         monkeypatch.setattr(app,"exit",lambda result=None: exited.append(result))
         async with app.run_test(size=(100,30)) as pilot:

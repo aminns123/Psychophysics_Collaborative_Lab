@@ -40,7 +40,7 @@ def test_spatial_probe_demo_is_discovered_from_its_experiment_python_file():
     assert spec.response_paradigm.alternatives == ("above", "below")
     assert spec.response_paradigm.keys == ("F", "J")
     assert spec.calibration_requirements == ("geometry",)
-    assert any(x.id == "probe_above_below" for x in list_experiments())
+    assert any(x.id == "probe_above_below" for x in list_experiments(include_historical=True))
     assert (ROOT / "configs/experiment_designs/probe_above_below.json").is_file()
     assert (ROOT / "src/psychophysics_lab/experiments/probe_above_below.py").is_file()
 

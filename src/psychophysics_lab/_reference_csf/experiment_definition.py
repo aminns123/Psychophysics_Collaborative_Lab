@@ -200,7 +200,7 @@ def _validate_monitor(values, profile):
         raise ValueError("Maximum luminance differs from the measured full-command endpoint.")
 
 
-CSF_SPEC = ExperimentSpec(
+CSF_SPEC = ExperimentSpec(historical=True,
     id="contrast_sensitivity",
     display_name="Historical CSF (compatibility; not thesis protocol)",
     description=(

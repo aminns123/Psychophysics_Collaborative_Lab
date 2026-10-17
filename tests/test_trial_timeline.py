@@ -134,7 +134,7 @@ def test_one_file_stimulus_ui_no_generators(tmp_path, monkeypatch):
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentsScreen, StimuliScreen
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         seen = []
         monkeypatch.setattr(app, "inspect_source", lambda path: seen.append(path))
         async with app.run_test(size=(120, 40)) as pilot:

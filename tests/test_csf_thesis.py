@@ -65,6 +65,7 @@ def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_esti
             identity = kwargs["state"]["staircase_id"]
             count = seen.get(identity, 0)
             seen[identity] = count+1
+            run.observer_probability = None  # This test scripts responses, rather than using a psychometric observer.
             run.observer_parameters = {"accuracy": 0. if count % 5 == 4 else 1.}
         return original(run, *args, **kwargs)
     monkeypatch.setattr(RunContext, "trial", scripted)
@@ -130,7 +131,7 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
                 "initial_one_down_limit":0, "staircases_per_condition":1,
                 "max_trials":100, "frequencies_cpd":"2", "starting_contrast":.02}
     async def collect():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"tui_data")
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"tui_data")
         async with app.run_test(size=(100, 40)) as pilot:
             app.push_screen(ExperimentConfigScreen(data_root=tmp_path/"tui_data",
                 participant_id="T001", session_mode="new", experiment=SPEC,
@@ -147,6 +148,7 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     presented = []
     def scripted(run, *args, **kwargs):
         presented.append(kwargs["state"]["contrast"])
+        run.observer_probability = None  # This test scripts responses, rather than using a psychometric observer.
         run.observer_parameters = {"accuracy":1. if (len(presented)-1) % 4 < 2 else 0.}
         return original(run, *args, **kwargs)
     monkeypatch.setattr(RunContext, "trial", scripted)

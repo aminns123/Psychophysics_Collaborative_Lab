@@ -40,13 +40,15 @@ def _load() -> None:
     _loaded = True
 
 
-def list_scenarios(experiment_id: str | None = None) -> tuple[SimulationScenario, ...]:
+def list_scenarios(experiment_id: str | None = None, *, include_historical=False) -> tuple[SimulationScenario, ...]:
     _load()
     from psychophysics_lab.experiments._internal.registry import list_experiments
-    extra = tuple(SimulationScenario("teaching_demo", spec.id, "Seeded teaching observer; no physical qualification", expect_analysis=False)
-                  for spec in list_experiments() if spec.supports_simulation and (experiment_id is None or spec.id == experiment_id))
+    specs = list_experiments(include_historical=include_historical or experiment_id is not None)
+    visible = {spec.id for spec in specs}
+    extra = tuple(SimulationScenario("teaching_demo", spec.id, "Seeded pipeline demonstration; inspect observer metadata; no physical qualification", expect_analysis=False)
+                  for spec in specs if spec.supports_simulation and (experiment_id is None or spec.id == experiment_id))
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY)
-                 if experiment_id is None or key[0] == experiment_id) + extra
+                 if key[0] in visible and (experiment_id is None or key[0] == experiment_id)) + extra
 
 
 def get_scenario(experiment_id: str, scenario_id: str) -> SimulationScenario:

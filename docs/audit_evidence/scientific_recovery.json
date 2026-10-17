@@ -1,0 +1,141 @@
+{
+  "scenarios": [
+    {
+      "threshold": 0.005,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.0,
+      "seeds": 200,
+      "successful_runs": 200,
+      "boundary_runs": 0,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.0054605933648006885,
+      "median_log10_bias": 0.03826983173539206,
+      "between_run_16_84_percentiles": [
+        0.004555394365256656,
+        0.006679569604712642
+      ],
+      "median_responses": 214.5,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.005,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.05,
+      "seeds": 200,
+      "successful_runs": 197,
+      "boundary_runs": 3,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.006286562406428811,
+      "median_log10_bias": 0.09944322679714684,
+      "between_run_16_84_percentiles": [
+        0.004731177922614798,
+        0.008556075102546417
+      ],
+      "median_responses": 223.0,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.02,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.0,
+      "seeds": 200,
+      "successful_runs": 200,
+      "boundary_runs": 0,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.021842373459202754,
+      "median_log10_bias": 0.03826983173539206,
+      "between_run_16_84_percentiles": [
+        0.018221577461026622,
+        0.026718278418850567
+      ],
+      "median_responses": 214.5,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.02,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.05,
+      "seeds": 200,
+      "successful_runs": 193,
+      "boundary_runs": 7,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.025146249625715242,
+      "median_log10_bias": 0.09944322679714684,
+      "between_run_16_84_percentiles": [
+        0.018848025743763534,
+        0.03432456706045921
+      ],
+      "median_responses": 222.0,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.08,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.0,
+      "seeds": 200,
+      "successful_runs": 196,
+      "boundary_runs": 4,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.08736949383681102,
+      "median_log10_bias": 0.03826983173539206,
+      "between_run_16_84_percentiles": [
+        0.07286349028032103,
+        0.10671857741105518
+      ],
+      "median_responses": 214.0,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.08,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.05,
+      "seeds": 200,
+      "successful_runs": 109,
+      "boundary_runs": 91,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": 0.08735876152464707,
+      "median_log10_bias": 0.038216481468256604,
+      "between_run_16_84_percentiles": [
+        0.07010035536853648,
+        0.11833521471098891
+      ],
+      "median_responses": 197.5,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    },
+    {
+      "threshold": 0.8,
+      "threshold_probability": 0.8584343138866298,
+      "lapse": 0.02,
+      "seeds": 200,
+      "successful_runs": 0,
+      "boundary_runs": 200,
+      "incomplete_runs": 0,
+      "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+      "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
+      "median_estimate": null,
+      "median_log10_bias": null,
+      "between_run_16_84_percentiles": [],
+      "median_responses": 4.0,
+      "estimator": "median",
+      "qualification": "model-specific recovery diagnostic; not physical or human validation"
+    }
+  ]
+}

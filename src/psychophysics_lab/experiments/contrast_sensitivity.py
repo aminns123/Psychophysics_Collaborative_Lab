@@ -8,7 +8,6 @@ The software protocol is implemented; raster/photometric equivalence is unverifi
 """
 
 import random
-from statistics import median, mean
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -42,8 +41,12 @@ FIELDS = (
         "text",
         "2,8",
     ),
-    ConfigField("fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"),
-    ConfigField("grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"),
+    ConfigField(
+        "fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"
+    ),
+    ConfigField(
+        "grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"
+    ),
     ConfigField(
         "staircases_per_condition",
         "Independent staircases per frequency",
@@ -75,13 +78,25 @@ FIELDS = (
         minimum=1,
     ),
     ConfigField(
-        "n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1
+        "n_up",
+        "Consecutive incorrect answers before increasing contrast",
+        "int",
+        1,
+        minimum=1,
     ),
     ConfigField(
-        "logUNIT_UP", "Contrast increase (log10 units)", "float", LOG_INCREASE, minimum=0.000001
+        "logUNIT_UP",
+        "Contrast increase (log10 units)",
+        "float",
+        LOG_INCREASE,
+        minimum=0.000001,
     ),
     ConfigField(
-        "logUNIT_DW", "Contrast decrease (log10 units)", "float", LOG_DECREASE, minimum=0.000001
+        "logUNIT_DW",
+        "Contrast decrease (log10 units)",
+        "float",
+        LOG_DECREASE,
+        minimum=0.000001,
     ),
     ConfigField(
         "initial_one_down_limit",
@@ -99,19 +114,44 @@ FIELDS = (
         minimum=1,
     ),
     ConfigField(
-        "threshold_reversals", "Final reversals used for the threshold median", "int", 8, minimum=1
+        "threshold_reversals",
+        "Final reversals used for the threshold median",
+        "int",
+        8,
+        minimum=1,
     ),
     ConfigField(
-        "max_trials", "Software safety ceiling (not scientific completion)", "int", 10000, minimum=1
+        "max_trials",
+        "Software safety ceiling (not scientific completion)",
+        "int",
+        10000,
+        minimum=1,
     ),
 )
 
 
-RESPONSES = ResponseParadigm("csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT"))
+RESPONSES = ResponseParadigm(
+    "csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT")
+)
 STIMULUS_SLOTS = {"fixation": "thesis_fixation", "grating": "thesis_csf"}
-STIMULUS_DEFAULTS = {"fixation": "thesis_gaussian_fixation", "grating": "thesis_csf_grating"}
+STIMULUS_DEFAULTS = {
+    "fixation": "thesis_gaussian_fixation",
+    "grating": "thesis_csf_grating",
+}
 
 PARADIGM = "two_alternative_forced_choice"
+
+
+SCIENTIFIC_SPEC = {
+    "version": "csf-spatial-1",
+    "response": "Left or right grating location; target/response alternative equality.",
+    "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
+    "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
+    "adaptive": "TUI-selected consecutive n-down/n-up log10 changes, initial phase and reversal limit. No guaranteed target probability for arbitrary settings.",
+    "stopping": "Each staircase completes at its reversal limit; global response ceiling is incomplete termination.",
+    "exclusions": "No post-hoc response exclusion. Timeout/abort/errors stop and preserve accepted input; out-of-gamut changes fail without clipping.",
+    "estimator": "Median final TUI-selected presented reversal contrasts per complete staircase; mean across all configured staircases of a complete frequency.",
+}
 
 
 # 2. CONDITIONS AND TRIAL ORDER
@@ -120,7 +160,12 @@ def make_conditions(settings):
     return [
         {"id": i, "frequency_cpd": frequency, "repeat": repeat + 1}
         for i, (frequency, repeat) in enumerate(
-            ((f, r) for f in frequencies for r in range(settings["staircases_per_condition"])), 1
+            (
+                (f, r)
+                for f in frequencies
+                for r in range(settings["staircases_per_condition"])
+            ),
+            1,
         )
     ]
 
@@ -159,7 +204,11 @@ def make_trial(settings, condition):
     return TrialTimeline(
         (
             Show("fixation", slot="fixation", duration="fixation_ms"),
-            Show("grating", stimuli=(Stimulus("grating", x_deg=x),), duration="grating_ms"),
+            Show(
+                "grating",
+                stimuli=(Stimulus("grating", x_deg=x),),
+                duration="grating_ms",
+            ),
             CollectResponse(actions=("left", "right"), slot="fixation"),
         )
     )
@@ -182,7 +231,9 @@ def interpret_response(condition, response):
 # contrast equation, gamut policy, scheduling and threshold estimator are here.
 def change_contrast(state, response, step):
     exponent = (
-        -state["log_down"] if step == Step.DOWN else state["log_up"] if step == Step.UP else 0
+        -state["log_down"]
+        if step == Step.DOWN
+        else state["log_up"] if step == Step.UP else 0
     )
     contrast = state["contrast"] * 10**exponent
     if not 0 < contrast <= state["maximum_contrast"]:
@@ -216,7 +267,11 @@ def update_experiment(run, condition, state, response, trial):
 def trial_record(run, condition, state):
     settings, staircase = run.values, state["adaptive"]
     identity, contrast = condition["id"], condition["contrast"]
-    frequency, repeat, target = condition["frequency_cpd"], condition["repeat"], condition["target"]
+    frequency, repeat, target = (
+        condition["frequency_cpd"],
+        condition["repeat"],
+        condition["target"],
+    )
     background = settings["background_intensity"]
     return {
         "state": {
@@ -271,9 +326,23 @@ def initialise_experiment(run, conditions):
     )
     contrasts = {i: settings["starting_contrast"] for i in staircase.states}
     reversals = {i: [] for i in staircase.states}
-    randomise = random.Random(run.seed)
+    randomise = random.Random(f"{run.seed}:conditions")
     background = settings["background_intensity"]
+    # Fixed n-down/one-up steps have this asymptotic accuracy target. Finite
+    # reversal estimates (especially with lapses) still require recovery checks.
+    accuracy_target = (
+        (settings["logUNIT_UP"] / (settings["logUNIT_UP"] + settings["logUNIT_DW"]))
+        ** (1 / settings["n_down"])
+        if settings["n_up"] == 1
+        else None
+    )
     description = {
+        "asymptotic_accuracy_target": accuracy_target,
+        "adaptive_interpretation": (
+            "fixed n-down/one-up stationary target; finite-run bias unqualified"
+            if accuracy_target is not None
+            else "n-up greater than one: threshold accuracy interpretation requires separate validation"
+        ),
         "protocol": "thesis Chapter 4, Fig. 4.3A; fixation -> grating -> self-paced spatial response",
         "timings_ms": {
             "fixation": settings["fixation_ms"],
@@ -321,35 +390,26 @@ def is_finished(run, conditions, state):
 
 
 def finish_experiment(run, conditions, state):
-    settings, staircase = run.values, state["adaptive"]
-    reversals, description = state["reversals"], state["description"]
-    frequencies = list(dict.fromkeys(c["frequency_cpd"] for c in conditions))
-    # Thesis point estimator. Incomplete conditions never receive a fabricated threshold.
-    thresholds = {
-        i: median(values[-settings["threshold_reversals"] :])
-        for i, values in reversals.items()
-        if staircase.states[i].complete
-    }
-    condition_thresholds = {}
-    for frequency in frequencies:
-        ids = [c["id"] for c in conditions if c["frequency_cpd"] == frequency]
-        if all(i in thresholds for i in ids):
-            threshold = mean(thresholds[i] for i in ids)
-            condition_thresholds[str(frequency)] = {
-                "threshold": threshold,
-                "sensitivity": 1 / threshold,
-            }
     run.save_resolution(
         **(
-            description
-            | {
-                "reversal_contrasts": {str(i): r for i, r in reversals.items()},
-                "staircase_thresholds": {str(i): t for i, t in thresholds.items()},
-                "condition_thresholds": condition_thresholds,
-            }
+            state["description"]
+            | {"reversal_contrasts": {str(i): v for i, v in state["reversals"].items()}}
         )
     )
-    run.complete_adaptive(staircase)
+    run.complete_adaptive(state["adaptive"])
+    # One declared estimator is used here and by post-hoc analysis.
+    run.save_primary(
+        {
+            "version": 1,
+            "value_column": "presented_display_contrast",
+            "within_staircase": "median",
+            "across_staircases": "arithmetic_mean",
+            "retained_reversals": run.values["threshold_reversals"],
+            "completion": "all configured staircases complete",
+            "units": "digital_peak_to_peak",
+        },
+        conditions,
+    )
 
 
 def procedure(run):
@@ -401,6 +461,7 @@ def definition(identity="csf_thesis"):
         procedure=procedure,
         description="500 ms fixation, 300 ms grating at +/-0.5 degrees, LEFT/RIGHT; adaptive settings editable in the TUI.",
         fields=FIELDS,
+        scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         adaptive=AdaptiveSelection(
             "consecutive_up_down",

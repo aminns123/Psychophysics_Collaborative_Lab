@@ -52,7 +52,7 @@ def test_exact_local_profile_calibrate_configure_review_virtual_restart_flow(tmp
     assert readiness["geometry_check"]["measurement"]["error_percent"] == pytest.approx(.777,abs=.01)
     launched=[]
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         monkeypatch.setattr(app,"exit",lambda result=None:launched.append(result))
         async with app.run_test(size=size) as pilot:
             await pilot.pause(.2)
@@ -99,7 +99,7 @@ def test_exact_local_profile_calibrate_configure_review_virtual_restart_flow(tmp
     assert not runtime["physical_geometry_verified_by_simulation"]
     assert all(c.passed for c in validate_run(run)), [c for c in validate_run(run) if not c.passed]
     async def restart():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=size) as pilot:
             await pilot.pause(.2)
             assert app.query_one("#monitor-profile",Select).value==profile.id
@@ -109,7 +109,7 @@ def test_exact_local_profile_calibrate_configure_review_virtual_restart_flow(tmp
 def test_change_display_cancel_apply_retains_draft_and_requires_new_validation(tmp_path,monkeypatch):
     p=calibrated_fixture(monkeypatch,tmp_path)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(80,24)) as pilot:
             app.query_one("#monitor-profile",Select).value="legacy_reference_display"
             app.query_one("#configure",Button).press()
@@ -144,7 +144,7 @@ def test_stale_review_and_multiseed_dispatch_rejected_before_any_acquisition(tmp
     values=CSF_SPEC.normalise_values(dict(DEFAULT_VALUES,condition_unit="cycles_per_degree",condition_values="2,8"))
     request=validate_setup(SetupRequest("synthetic_preview","new",CSF_SPEC.id,p.id,values,str(tmp_path/"data")),CSF_SPEC,p,mode="configuration")
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         captures=[]
         monkeypatch.setattr(app,"exit",lambda result=None:captures.append(result))
         async with app.run_test() as pilot:
@@ -216,7 +216,7 @@ def test_missing_active_profile_is_visible_without_reference_fallback(tmp_path):
     from psychophysics_lab.config.local import save_preferences
     save_preferences(config_root(ROOT),active_monitor_profile_id="missing_lab_monitor")
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test() as pilot:
             await pilot.pause(.2)
             assert app.query_one("#monitor-profile",Select).value=="missing_lab_monitor"
@@ -240,7 +240,7 @@ def test_stale_ruler_measurement_rejected_in_calibration_page(tmp_path,monkeypat
     p=calibrated_fixture(monkeypatch,tmp_path)
     save_profile(config_root(ROOT),replace(p,viewing_distance_m=.55),expected_revision=2)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test() as pilot:
             app.push_screen(DisplayCheckScreen())
             await pilot.pause(.2)

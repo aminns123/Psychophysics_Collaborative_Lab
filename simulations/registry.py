@@ -49,16 +49,20 @@ def get_simulation(experiment_id: str) -> SimulationSpec:
         from psychophysics_lab.experiments._internal.registry import get_experiment
         experiment = get_experiment(experiment_id)
         if experiment.procedure and experiment.supports_simulation:
-            return SimulationSpec(experiment_id, TeachingObserver, lambda *args: (lambda *runtime: None), experiment.field_defaults())
+            from .psychometric import PsychometricObserver
+            factory = PsychometricObserver if experiment.scientific_spec.get("version", "").startswith(("csf-spatial-", "line_position_", "ellipse_")) else TeachingObserver
+            return SimulationSpec(experiment_id, factory, lambda *args: (lambda *runtime: None), experiment.field_defaults(),
+                analysis_factory=analyse_thresholds if factory is PsychometricObserver else None,
+                unavailable_analysis_messages=("Primary thresholds unavailable",))
     try:
         return _REGISTRY[experiment_id]
     except KeyError as exc:
         raise ValueError(f"No experiment-specific observer registered for {experiment_id}.") from exc
 
 
-def list_simulations() -> tuple[SimulationSpec, ...]:
+def list_simulations(*, include_historical=False) -> tuple[SimulationSpec, ...]:
     from psychophysics_lab.experiments._internal.registry import list_experiments
-    keys = set(_REGISTRY) | {spec.id for spec in list_experiments() if spec.supports_simulation}
+    keys = {spec.id for spec in list_experiments(include_historical=include_historical) if spec.supports_simulation}
     return tuple(get_simulation(key) for key in sorted(keys))
 
 

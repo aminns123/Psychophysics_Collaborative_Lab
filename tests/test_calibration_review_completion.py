@@ -64,7 +64,7 @@ def test_finish_completed_measurements_without_qualification_returns_to_experime
     initial=[file.read_bytes() for file in revisions(p)]
     assert calibration_progress(p,config_root(ROOT))['review']['completed']
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=size) as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -91,7 +91,7 @@ def test_finish_completed_measurements_without_qualification_returns_to_experime
 def test_incomplete_setup_can_also_finish_without_profile_save(tmp_path):
     p=fixture_profile(observations=False)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -107,7 +107,7 @@ def test_incomplete_setup_can_also_finish_without_profile_save(tmp_path):
 def test_general_editor_noop_save_does_not_create_revision_or_advance(tmp_path):
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -126,7 +126,7 @@ def test_general_editor_noop_save_does_not_create_revision_or_advance(tmp_path):
 def test_verification_requires_deliberate_review_preserves_observations_and_returns(tmp_path):
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -156,7 +156,7 @@ def test_verification_requires_deliberate_review_preserves_observations_and_retu
 def test_registry_qualification_failure_is_explained_and_no_save(tmp_path):
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -177,7 +177,7 @@ def test_registry_qualification_failure_is_explained_and_no_save(tmp_path):
 def test_explicit_qualified_experiment_and_restart(tmp_path):
     p=fixture_profile(verified=True)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test() as pilot:
             app.query_one('#nav-display',Button).press()
             await pilot.pause()
@@ -191,7 +191,7 @@ def test_explicit_qualified_experiment_and_restart(tmp_path):
             focused.query_one('#qualification-save',Button).press()
             await pilot.pause()
             assert app.screen is review
-        restart=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with restart.run_test() as pilot:
             assert restart.query_one('#monitor-profile',Select).value==p.id
             assert CSF_SPEC.id in restart.monitor_profiles[p.id].qualified_experiments
@@ -287,7 +287,7 @@ def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_pa
         expected_revision=p.revision,
     )
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             screen = PhysicalVerificationScreen(
                 fake, experiment_id='contrast_sensitivity'
@@ -316,7 +316,7 @@ def test_calibration_luminance_editor_button_handles_unreadable_active_json(tmp_
     original = path.read_bytes()
 
     async def scenario():
-        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / 'data')
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             app.open_hub_page('display')
             await pilot.pause()
@@ -363,7 +363,7 @@ def test_simple_verification_ui_saves_category_and_keeps_others(tmp_path):
     from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
     p=fixture_profile()
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(125,48)) as pilot:
             page=PhysicalVerificationScreen(p,experiment_id=CSF_SPEC.id)
             await app.push_screen(page)
@@ -397,7 +397,7 @@ def test_synthetic_photometry_has_no_yes_verified_selection(tmp_path):
     fake=save_profile(config_root(ROOT),replace(p,calibration_method='photometer fake'),
                       expected_revision=p.revision)
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
+        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(125,48)) as pilot:
             page=PhysicalVerificationScreen(fake,experiment_id=CSF_SPEC.id,
                                             focus_category='calibration_status')

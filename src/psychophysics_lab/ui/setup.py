@@ -277,7 +277,7 @@ class ExperimentsScreen(HubPage):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
-        specs = list_experiments()
+        specs = list_experiments(include_historical=self.app.include_historical)
         options = [(experiment_choice_label(spec, self.app.repo_root), spec.id)
                    for spec in specs]
         with VerticalScroll(classes="page-body"):
@@ -1458,6 +1458,7 @@ class DataScreen(HubPage):
                         last_n_reversals=last_n,
                         reversal_value_column=column,
                         create_plot=True,
+                        exploratory=True,
                     )
                 except ValueError as exc:
                     if preview is None or "No reversal observations" not in str(exc):
@@ -2571,8 +2572,9 @@ class PsyCoLabSetupApp(App):
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
-                 geometry_summary: str | None = None) -> None:
+                 geometry_summary: str | None = None, include_historical: bool = False) -> None:
         super().__init__()
+        self.include_historical = include_historical
         self.simulation_summary = simulation_summary
         self.geometry_summary = geometry_summary
         self.repo_root = repo_root.resolve()
@@ -2641,7 +2643,7 @@ class PsyCoLabSetupApp(App):
         cls = pages.get(page)
         if cls is None:
             return
-        screen = cls()
+        screen = cls(include_historical=self.include_historical) if page == "simulations" else cls()
         if len(self.screen_stack) > 1:
             self.switch_screen(screen)
         else:
@@ -2658,7 +2660,7 @@ class PsyCoLabSetupApp(App):
         return request_from_workspace_state(state), state, warning
 
     def compose(self) -> ComposeResult:
-        experiments = list_experiments()
+        experiments = list_experiments(include_historical=self.include_historical)
         experiment_options = [(experiment_choice_label(spec, self.repo_root), spec.id)
                               for spec in experiments]
 
@@ -2928,7 +2930,7 @@ class PsyCoLabSetupApp(App):
                 last_request.participant_id if last_request.participant_id in participants else "__new__"
             )
             self.screen_stack[0].query_one("#session-mode", Select).value = "reuse"
-            if any(spec.id == last_request.experiment_id for spec in list_experiments()):
+            if any(spec.id == last_request.experiment_id for spec in list_experiments(include_historical=self.include_historical)):
                 self.screen_stack[0].query_one("#experiment", Select).value = last_request.experiment_id
             self._refresh_experiment_context()
             if last_request.monitor_profile_id in self.monitor_profiles:

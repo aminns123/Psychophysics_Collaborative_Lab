@@ -1,4 +1,4 @@
-"""Report whether the line is above (UP) or below (DOWN) fixation; grating at left.
+"""Report whether the line is above (UP) or below (DOWN) fixation; no grating.
 
 This file owns settings, geometry, conditions, ordering, timing, responses,
 adaptive choices and recorded measurements. Read make_conditions(), prepare_stimuli(), make_trial(), procedure()
@@ -20,7 +20,7 @@ mechanisms, so each can be read and changed independently. Tests protect pairing
 import json
 import math
 import random
-from ..researcher import (
+from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
     ResponseParadigm,
@@ -32,7 +32,7 @@ from ..researcher import (
     UpdateAdaptive,
     UpdateState,
 )
-from ..stimulus_library import Scene, gaussian_dot, line, grating, annulus
+from psychophysics_lab.stimulus_library import Scene, gaussian_dot, line, grating, annulus
 
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
@@ -171,7 +171,7 @@ FIELDS += (
 
 
 SLOTS = ("fixation", "stimulus")
-RESPONSES = ResponseParadigm("indirect_flanker", ("up", "down"), ("UP", "DOWN"))
+RESPONSES = ResponseParadigm("base_flanker", ("up", "down"), ("UP", "DOWN"))
 STIMULUS_SLOTS = {s: "scene" for s in SLOTS}
 STIMULUS_DEFAULTS = {s: "composed_scene" for s in SLOTS}
 
@@ -296,16 +296,7 @@ def prepare_stimuli(run, condition, state):
         x_deg=position,
         y_deg=fy + (0.6 if target == 0 else -0.6),
     )
-    surround = (
-        grating(
-            size_deg=5.0,
-            spatial_frequency_cpd=31.5 * values["legacy_frequency_label"] / (2 * math.pi * 5),
-            amplitude=0.018 / 2,
-            mean=bg,
-            x_deg=values["flanker_x_deg"],
-            y_deg=fy,
-        ),
-    )
+    surround = ()
     drawings = {
         "fixation": fixation,
         "stimulus": Scene(*surround, probe, dot, background=bg),
@@ -462,7 +453,7 @@ def initialise_experiment(run, conditions):
         expected_trials=ceiling,
         resolution={
             "source_commit": SOURCE_COMMIT,
-            "family": "indirect",
+            "family": "base",
             "migration_status": BLOCK_REASON,
             "geometry": geometry,
             "condition_positions_deg": [c["position_deg"] for c in conditions],
@@ -530,8 +521,8 @@ def validate(values):
 
 def definition():
     return experiment(
-        id="indirect_flanker",
-        name="DEVELOPMENT: " + "indirect_flanker".replace("_", " ").title(),
+        id="base_flanker",
+        name="DEVELOPMENT: " + "base_flanker".replace("_", " ").title(),
         description="Source-based virtual reconstruction; human acquisition blocked pending parity review.",
         procedure=procedure,
         fields=FIELDS,
@@ -550,15 +541,15 @@ def definition():
                 "condition_trial_limit",
             ),
         ),
-        supports_simulation=True,
+        supports_simulation=True, historical=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason=BLOCK_REASON,
-        default_config="configs/experiments/indirect_flanker.json",
+        default_config="configs/experiments/base_flanker.json",
         source_paths=(
-            "src/psychophysics_lab/experiments/indirect_flanker.py",
+            "src/psychophysics_lab/experiments/_internal/historical/base_flanker.py",
             "src/psychophysics_lab/stimulus_library.py",
             "src/psychophysics_lab/adaptive/legacy_flanker.py",
         ),

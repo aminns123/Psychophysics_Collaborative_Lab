@@ -70,7 +70,7 @@ Declare defaults with `ConfigField` in that Python file; a companion JSON is
 optional for saved settings. Export `SPEC` with `SPEC.id == "my_task"`; discovery
 needs no registry edits. See
 `experiments/example_experiment.py` for a *left/right worked example*, or
-`experiments/ellipse_2d.py` for a development-only advanced procedure.
+`experiments/ellipse_major_axis.py` for a two-interval detection procedure.
 Neither example should be blindly copied as a scientific design.
 
 The experiment uses **registered stimulus IDs** from the one library; it

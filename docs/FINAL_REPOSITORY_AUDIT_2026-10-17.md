@@ -1,5 +1,9 @@
 # PsyCoLab final repository audit — 17 October 2026
 
+> Historical review: later scientific changes and current paths are recorded in
+> [SCIENTIFIC_REDESIGN.md](SCIENTIFIC_REDESIGN.md). Exact-loop requirements below
+> are superseded; archived reconstructions are under `experiments/_internal/historical/`.
+
 The local checkout now gives each supported Python experiment one file that owns
 its scientific procedure. Stimulus classes remain in `stimulus_library.py`.
 The reference CSF is the documented exception: its phase declaration and a
