@@ -122,6 +122,9 @@ class Presentation:
                 if phase.duration_ms and elapsed * 1000 >= phase.duration_ms:
                     return True  # A late queued key cannot turn a timeout into acceptance.
                 answer = Response(self.responses.decode(key), key, elapsed)
+                if phase.beep is not None:
+                    from .tone import request_beep
+                    event["audio"] = request_beep(phase.beep, trigger="accepted_response")
                 return True
 
         self.window.push_handlers(on_key_press=keypress)
@@ -141,6 +144,9 @@ class Presentation:
             self.window.flip()
             onset = time.perf_counter()
             event["software_onset_s"] = onset
+            if phase.kind == "show" and phase.beep is not None:
+                from .tone import request_beep
+                event["audio"] = request_beep(phase.beep, trigger="display_onset")
             accepting = phase.kind == "response"
             while True:
                 if aborted or self.window.has_exit:

@@ -51,6 +51,10 @@ class VirtualPresentation:
         event["planned_onset_ms"] = self.elapsed_ms  # schema-1 compatibility
         event["virtual_onset_ms"] = self.elapsed_ms
         event["timing_basis"] = "simulated schedule, not measured presentation"
+        if phase.kind == "show" and phase.beep is not None:
+            event["audio"] = {"trigger": "display_onset", **phase.beep.to_dict(),
+                              "output": "virtual schedule only; no sound generated",
+                              "virtual_request_ms": self.elapsed_ms}
         if phase.kind == "response":
             elapsed = self.response.reaction_time_s * 1000
             if phase.duration_ms and elapsed > phase.duration_ms:
@@ -60,6 +64,10 @@ class VirtualPresentation:
             self.elapsed_ms += elapsed
             event["virtual_offset_ms"] = self.elapsed_ms
             event["planned_offset_ms"] = None
+            if phase.beep is not None:
+                event["audio"] = {"trigger": "accepted_response", **phase.beep.to_dict(),
+                                  "output": "virtual schedule only; no sound generated",
+                                  "virtual_request_ms": self.elapsed_ms}
             return self.response
         self.elapsed_ms += phase.duration_ms
         event["planned_offset_ms"] = self.elapsed_ms

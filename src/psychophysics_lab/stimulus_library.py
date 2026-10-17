@@ -200,3 +200,242 @@ class Scene:
             if max(abs(p["x_deg"]), abs(p["y_deg"])) + drawing.radius_bound > size/2:
                 raise ValueError("Scene aperture could clip a drawing; enlarge size_deg")
         return {"size_deg": size, "scene_json": json.dumps(self.to_dict(), sort_keys=True, allow_nan=False)}
+
+
+# ============================================================================
+# REGISTERED RESEARCH STIMULI — EDIT HERE (one class per complete stimulus)
+# ============================================================================
+# A class keeps PARAMETERS, render() and SPEC next to one another.
+# Experiment timing, stimulus placement and beeps belong in experiment files.
+# The original stimuli/*.py modules are SMALL IMPORT ADAPTERS for old IDs.
+# Primitive functions and Scene above can be mixed to make more complex art.
+from dataclasses import replace as _replace
+from .experiments.spec import ConfigField
+from .stimuli.registry import StimulusSpec
+
+class LibraryStimulus:
+    """Marker for complete registered definitions inside this ONE file.
+
+    Subclass with PARAMETERS, render and SPEC; the registry discovers new
+    classes without another Python adapter or contributions.py edit.
+    """
+
+
+class FixationCross(LibraryStimulus):
+    """Registered legacy-compatible fixation_cross; edit PARAMETERS, render and SPEC here."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 0.8, units="degrees", minimum=0.2, maximum=3),
+        ConfigField("arm_length_deg", "Cross arm length", "float", 0.35, units="degrees", minimum=0.05, maximum=1),
+        ConfigField("width_deg", "Cross line width", "float", 0.06, units="degrees", minimum=0.01, maximum=0.3),
+        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0–1", minimum=0, maximum=1),
+    )
+    
+    def render(parameters, x_deg, y_deg):
+        """Draw a cross around the centre of its degree-coordinate patch."""
+        half_arm    = parameters["arm_length_deg"] / 2
+        half_width  = parameters["width_deg"] / 2
+        horizontal  = (np.abs(y_deg) <= half_width) & (np.abs(x_deg) <= half_arm)
+        vertical    = (np.abs(x_deg) <= half_width) & (np.abs(y_deg) <= half_arm)
+        return np.where(horizontal | vertical, parameters["intensity"], 0.5)
+    
+    SPEC = StimulusSpec(
+        "fixation_cross", "Fixation cross", "Reusable + drawn in degrees.",
+        "src/psychophysics_lab/stimuli/fixation_cross.py",
+        parameters=PARAMETERS, default_config="configs/stimuli/fixation_cross.json",
+        family="fixation", render=render, calibration_requirements=("geometry",),
+    )
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+class VerticalLineProbe(LibraryStimulus):
+    """Registered legacy-compatible vertical_line_probe; edit PARAMETERS, render and SPEC here."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch diameter", "float", 1.0, units="degrees", minimum=0.3, maximum=5),
+        ConfigField("length_deg", "Line length", "float", 0.6, units="degrees", minimum=0.1, maximum=2),
+        ConfigField("width_deg", "Line width", "float", 0.08, units="degrees", minimum=0.02, maximum=0.5),
+        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0–1", minimum=0, maximum=1),
+    )
+    
+    def render(parameters, x_deg, y_deg):
+        """Return digital greyscale, one command value per pixel."""
+        inside = ((np.abs(x_deg) <= parameters["width_deg"] / 2)
+                  & (np.abs(y_deg) <= parameters["length_deg"] / 2))
+        return np.where(inside, parameters["intensity"], 0.5)
+    
+    SPEC = StimulusSpec(
+        "vertical_line_probe", "Vertical white line", "Reusable visual-angle line.",
+        "src/psychophysics_lab/stimuli/vertical_line_probe.py",
+        parameters=PARAMETERS, default_config="configs/stimuli/vertical_line_probe.json",
+        family="line", render=render, calibration_requirements=("geometry",),
+    )
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+class ExampleWhiteLine(LibraryStimulus):
+    """Registered legacy-compatible example_stimulus; edit PARAMETERS, render and SPEC here."""
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch size", "float", 5.0,
+                    units="degrees", minimum=4.0, maximum=8.0),
+        ConfigField("offset_deg", "Horizontal position", "float", 1.0,
+                    units="degrees", minimum=-2.0, maximum=2.0),
+        ConfigField("line_width_deg", "Line width", "float", 0.15,
+                    units="degrees", minimum=0.03, maximum=0.5),
+        ConfigField("line_length_deg", "Line length", "float", 1.2,
+                    units="degrees", minimum=0.2, maximum=2.0),
+        ConfigField("intensity", "Digital line intensity", "float", 1.0,
+                    units="0–1 command", minimum=0.5, maximum=1.0),
+    )
+    
+    
+    # EDIT 2: DRAW THE STIMULUS
+    def render(parameters, x_deg, y_deg):
+        """Return a 2D array: 0 = black, 0.5 = grey, 1 = white."""
+        inside_line = (
+            (np.abs(x_deg - parameters["offset_deg"]) < parameters["line_width_deg"] / 2)
+            & (np.abs(y_deg) < parameters["line_length_deg"] / 2)
+        )
+        return np.where(inside_line, parameters["intensity"], 0.5)
+    
+    
+    # FRAMEWORK DECLARATION: generated files already have the correct ID/paths.
+    # The stimulus family is how a compatible experiment recognises this shape.
+    SPEC = StimulusSpec(
+        id="example_stimulus",
+        display_name="Example: White Line",
+        description="Beginner visual stimulus: a line on a grey background.",
+        source_path="src/psychophysics_lab/stimuli/example_stimulus.py",
+        parameters=PARAMETERS,
+        default_config="configs/stimuli/example_stimulus.json",
+        family="simple_line",
+        render=render,
+        calibration_requirements=("geometry",),
+    )
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+class TeachingGabor(LibraryStimulus):
+    """Registered legacy-compatible teaching_gabor; edit PARAMETERS, render and SPEC here."""
+    PARAMETERS = (
+        ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.05, maximum=30),
+        ConfigField("orientation_deg", "Orientation", "float", 30., units="degrees", minimum=-90, maximum=90),
+        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=20),
+        ConfigField("contrast", "Digital Michelson modulation", "float", .2, units="fraction", minimum=0, maximum=1),
+        ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=0, maximum=360),
+    )
+    
+    
+    def render(parameters, x_deg, y_deg):
+        """EDIT APPEARANCE: return grayscale commands in [0,1], one per grid pixel."""
+        angle       = np.deg2rad(parameters["orientation_deg"])
+        coordinate  = x_deg * np.cos(angle) + y_deg * np.sin(angle)
+        carrier     = np.cos(2 * np.pi * parameters["spatial_frequency_cpd"] * coordinate + np.deg2rad(parameters["phase_deg"]))
+        sigma       = parameters["size_deg"] / 6
+        envelope    = np.exp(-(x_deg*x_deg + y_deg*y_deg) / (2*sigma*sigma))
+        return .5 + .5 * parameters["contrast"] * envelope * carrier
+    
+    
+    SPEC = StimulusSpec("teaching_gabor", "Teaching Gabor", "Gaussian-windowed grating; degrees and digital contrast.",
+        "src/psychophysics_lab/stimuli/teaching_gabor.py", parameters=PARAMETERS,
+        default_config="configs/stimuli/teaching_gabor.json", family="orientation_patch", render=render,
+        calibration_requirements=("geometry",))
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+class ComposedScene(LibraryStimulus):
+    """A registered adapter from a Scene recipe to the existing raster backend.
+
+    Compose fixtures, lines, gratings and elliptical surrounds in experiment
+    procedures. All drawing mathematics remain in THIS stimulus library.
+    """
+
+    @staticmethod
+    def scene(parameters):
+        return Scene.from_dict(json.loads(parameters["scene_json"]))
+
+    @staticmethod
+    def validate(parameters):
+        ComposedScene.scene(parameters).parameters(parameters["size_deg"])
+
+    @staticmethod
+    def render(parameters, x_deg, y_deg):
+        return ComposedScene.scene(parameters).render(x_deg, y_deg)
+
+    @staticmethod
+    def frequencies(parameters):
+        return tuple(d.parameters["spatial_frequency_cpd"]
+                     for d in ComposedScene.scene(parameters).drawings
+                     if "spatial_frequency_cpd" in d.parameters)
+
+    PARAMETERS = (
+        ConfigField("size_deg", "Scene aperture", "float", 12., units="degrees", minimum=.01, maximum=90),
+        ConfigField("scene_json", "Scene recipe", "text", json.dumps(Scene(fixation()).to_dict())),
+    )
+    SPEC = StimulusSpec("composed_scene", "Composed scene",
+        "Ordered drawings from the shared stimulus library.",
+        "src/psychophysics_lab/stimuli/composed_scene.py", parameters=PARAMETERS,
+        default_config="configs/stimuli/composed_scene.json", family="scene",
+        render=render.__func__, validator=validate.__func__,
+        calibration_requirements=("geometry", "luminance"),
+        source_dependencies=("src/psychophysics_lab/stimulus_library.py",),
+        spatial_frequencies=frequencies.__func__)
+
+
+# Hardware-dependent reference CSF (Events/stimuliC.py) and monitor diagnostic
+# geometry_bar are deliberately NOT reimplemented here: duplicating them would
+# invent an unverified rendering model. Keep these as read-only adapters until
+# physical equivalence has been established. Custom researcher modules already
+# tied to saved experiment versions are also preserved, not overwritten.
+
+
+class ResearcherVerticalLine(LibraryStimulus):
+    """Researcher's original vertical-line stimulus, migrated without altering its maths.
+
+    Keep these PARAMETERS/render defaults stable for experiment provenance.
+    Existing Ready fingerprints require fresh test and Ready after migration.
+    """
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch size", "float", 5.0,
+                    units="degrees", minimum=4.0, maximum=8.0),
+        ConfigField("offset_deg", "Horizontal position", "float", 0.0,
+                    units="degrees", minimum=-2.0, maximum=2.0),
+        ConfigField("line_width_deg", "Line width", "float", 0.15,
+                    units="degrees", minimum=0.03, maximum=0.5),
+        ConfigField("line_length_deg", "Line length", "float", 1.2,
+                    units="degrees", minimum=0.2, maximum=2.0),
+        ConfigField("intensity", "Digital line intensity", "float", 1.0,
+                    units="0–1 command", minimum=0.5, maximum=1.0),
+    )
+    
+    
+    # EDIT 2: DRAW THE STIMULUS
+    def render(parameters, x_deg, y_deg):
+        """Return a 2D array: 0 = black, 0.5 = grey, 1 = white."""
+        inside_line = (
+            (np.abs(x_deg - parameters["offset_deg"]) < parameters["line_width_deg"] / 2)
+            & (np.abs(y_deg) < parameters["line_length_deg"] / 2)
+        )
+        return np.where(inside_line, parameters["intensity"], 0.5)
+    
+    
+    # FRAMEWORK DECLARATION: generated files already have the correct ID/paths.
+    # The stimulus family is how a compatible experiment recognises this shape.
+    SPEC = StimulusSpec(
+        id="new_probe_vertical_line",
+        display_name="Example: White Line",
+        description="Beginner visual stimulus: a line on a grey background.",
+        source_path="src/psychophysics_lab/stimuli/new_probe_vertical_line.py",
+        parameters=PARAMETERS,
+        default_config="configs/stimuli/new_probe_vertical_line.json",
+        family="simple_line",
+        render=render,
+        calibration_requirements=("geometry",),
+    )
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))
+
+
+def library_stimulus_specs():
+    """Discover explicitly subclassed shared definitions only."""
+    specifications = tuple(cls.SPEC for cls in LibraryStimulus.__subclasses__())
+    if len({spec.id for spec in specifications}) != len(specifications):
+        raise ValueError("Shared stimulus classes require unique SPEC.id values.")
+    return specifications

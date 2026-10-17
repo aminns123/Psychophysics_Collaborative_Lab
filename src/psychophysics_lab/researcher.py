@@ -396,4 +396,4 @@ def configure(participant_id, data_root, setup, *, run_directory):
 
 # Small public chronological vocabulary; existing Phase/JSON stays compatible.
 from .core.timeline import (TrialTimeline, Phase, Show, Stimulus, CollectResponse,
-                            RecordState, UpdateState, UpdateAdaptive)
+                            RecordState, UpdateState, UpdateAdaptive, Beep)
