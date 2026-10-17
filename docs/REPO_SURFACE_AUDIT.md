@@ -23,7 +23,8 @@ Researchers can also create basic JSON-only two-choice experiments under
 | `stimulus_library.py` | **Researcher-facing authoritative science** | Keep, extend here |
 | `stimuli/fixation_cross.py`, `vertical_line_probe.py`, `example_stimulus.py`, `teaching_gabor.py`, `composed_scene.py` | Compatibility import modules | Reduce to *thin adapters*; retain stable IDs and import paths |
 | `stimuli/geometry.py`, `spatial_calibration.py`, `contrast_validation.py` | Geometry, sampling and calibration internals | Keep separate; not researcher stimulus classes |
-| `stimuli/new_probe_vertical_line.py` and researcher experiment modules | Researcher-authored, version-sensitive work | **Do not rewrite or delete without owner approval** |
+| `stimuli/new_probe_vertical_line.py` | Researcher-authored stimulus | Moved verbatim to `ResearcherVerticalLine` class in shared library, with original ID preserved via thin import adapter. Historical test fingerprints must be refreshed. |
+| Researcher-authored experiment modules | Researcher-owned, version-sensitive trial work | Preserve exact procedures and historical data |
 | `Events/stimuliC.py`, `Experiments/contrast_sensitivity_function.py` | Authoritative retained human CSF renderer/procedure | **Keep until hardware-verified parity**, not an ordinary stimulus class |
 | `experiments/flanker_protocol.py`, `adaptive/legacy_flanker.py` | Development-only historical reconstructions | Keep separately; cannot acquire human data yet |
 | `configs/stimuli/*.json` | Stimulus defaults, calibration/compatibility settings and reproducibility | Keep even if they look similar; some ID-specific paths are needed |
@@ -41,10 +42,9 @@ historical fingerprints, without simplifying researcher work further.
 - **Primitive functions:** fixation, line, rectangle, square, ellipse,
   annulus, Gaussian dot, grating, Gabor.
 - **Registered complete classes:** FixationCross, VerticalLineProbe,
-  ExampleWhiteLine, TeachingGabor, ComposedScene.
+  ExampleWhiteLine, TeachingGabor, ComposedScene, ResearcherVerticalLine.
 - **Deliberately external:** geometry_bar (monitor diagnostic),
-  legacy_csf (unverified shader), researcher's new_probe_vertical_line
-  (preserved historical authored revision).
+  legacy_csf (unverified shader).
 - **Not stimuli:** response collection, adaptive staircase, experiment timing,
   sound cues and acquisition storage.
 

@@ -377,3 +377,49 @@ class ComposedScene:
 # invent an unverified rendering model. Keep these as read-only adapters until
 # physical equivalence has been established. Custom researcher modules already
 # tied to saved experiment versions are also preserved, not overwritten.
+
+
+class ResearcherVerticalLine:
+    """Researcher's original vertical-line stimulus, migrated without altering its maths.
+
+    Keep these PARAMETERS/render defaults stable for experiment provenance.
+    Existing Ready fingerprints require fresh test and Ready after migration.
+    """
+    PARAMETERS = (
+        ConfigField("size_deg", "Patch size", "float", 5.0,
+                    units="degrees", minimum=4.0, maximum=8.0),
+        ConfigField("offset_deg", "Horizontal position", "float", 0.0,
+                    units="degrees", minimum=-2.0, maximum=2.0),
+        ConfigField("line_width_deg", "Line width", "float", 0.15,
+                    units="degrees", minimum=0.03, maximum=0.5),
+        ConfigField("line_length_deg", "Line length", "float", 1.2,
+                    units="degrees", minimum=0.2, maximum=2.0),
+        ConfigField("intensity", "Digital line intensity", "float", 1.0,
+                    units="0–1 command", minimum=0.5, maximum=1.0),
+    )
+    
+    
+    # EDIT 2: DRAW THE STIMULUS
+    def render(parameters, x_deg, y_deg):
+        """Return a 2D array: 0 = black, 0.5 = grey, 1 = white."""
+        inside_line = (
+            (np.abs(x_deg - parameters["offset_deg"]) < parameters["line_width_deg"] / 2)
+            & (np.abs(y_deg) < parameters["line_length_deg"] / 2)
+        )
+        return np.where(inside_line, parameters["intensity"], 0.5)
+    
+    
+    # FRAMEWORK DECLARATION: generated files already have the correct ID/paths.
+    # The stimulus family is how a compatible experiment recognises this shape.
+    SPEC = StimulusSpec(
+        id="new_probe_vertical_line",
+        display_name="Example: White Line",
+        description="Beginner visual stimulus: a line on a grey background.",
+        source_path="src/psychophysics_lab/stimuli/new_probe_vertical_line.py",
+        parameters=PARAMETERS,
+        default_config="configs/stimuli/new_probe_vertical_line.json",
+        family="simple_line",
+        render=render,
+        calibration_requirements=("geometry",),
+    )
+    SPEC = _replace(SPEC, source_dependencies=("src/psychophysics_lab/stimulus_library.py",))

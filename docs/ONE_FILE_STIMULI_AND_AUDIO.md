@@ -31,7 +31,9 @@ TRIAL = TrialTimeline((
 ))
 ```
 
-- Omit `beep=` for **silence**.
+- Omit `beep=` for **silence**. For older timeline JSON files, add
+  `"beep": {"frequency_hz": 450, "duration_ms": 35}` to a `show` or
+  `response` phase instead. The exact two-number JSON cue is validated.
 - `Show` supports a beep at the start of *any* timed phase, including
   `Show("blank", duration=...)` when there is intentionally no image.
 - `CollectResponse` beeps **only after an accepted valid response**, not

@@ -145,8 +145,13 @@ def load_timeline(path: Path, *, timings: Mapping[str, int] = (), slots=()) -> T
         raise ValueError("Timeline phases must be a JSON array.")
     phases = []
     for raw in document["phases"]:
-        if not isinstance(raw, dict) or set(raw) - {"name", "kind", "slot", "duration_ms", "instructions"}:
+        if not isinstance(raw, dict) or set(raw) - {"name", "kind", "slot", "duration_ms", "instructions", "beep"}:
             raise ValueError("Timeline phase has invalid or unknown fields.")
+        tone = raw.get("beep")
+        if tone is not None:
+            if not isinstance(tone, dict) or set(tone) != {"frequency_hz", "duration_ms"}:
+                raise ValueError("Beep JSON needs frequency_hz and duration_ms only.")
+            tone = Beep(**tone)
         duration = raw.get("duration_ms", 0)
         if isinstance(duration, dict):
             if set(duration) != {"field"} or duration["field"] not in timings:
@@ -154,7 +159,7 @@ def load_timeline(path: Path, *, timings: Mapping[str, int] = (), slots=()) -> T
             duration = timings[duration["field"]]
         phases.append(Phase(name=raw["name"], kind=raw["kind"],
                             slot=raw.get("slot"), duration_ms=duration,
-                            instructions=raw.get("instructions", "")))
+                            instructions=raw.get("instructions", ""), beep=tone))
     return TrialTimeline(tuple(phases)).validate_slots(slots)
 
 
