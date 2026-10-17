@@ -7,11 +7,11 @@ from pathlib import Path
 
 
 def find_repo_root(start: Path | None = None) -> Path:
-    """Find the checkout containing the legacy experiment implementation."""
+    """Find the PsyCoLab checkout using its modern package layout."""
     override = os.environ.get("PSYCOLAB_REPO_ROOT")
     if override:
         root = Path(override).expanduser().resolve()
-        if (root / "Experiments").is_dir() and (root / "Interface").is_dir():
+        if (root / "pyproject.toml").is_file() and (root / "src/psychophysics_lab/stimulus_library.py").is_file():
             return root
         raise RuntimeError(f"PSYCOLAB_REPO_ROOT is not a PsyCoLab checkout: {root}")
 
@@ -31,9 +31,8 @@ def find_repo_root(start: Path | None = None) -> Path:
             continue
         seen.add(candidate)
         if (
-            (candidate / "Experiments").is_dir()
-            and (candidate / "Interface").is_dir()
-            and (candidate / "libC.py").exists()
+            (candidate / "pyproject.toml").is_file()
+            and (candidate / "src/psychophysics_lab/stimulus_library.py").is_file()
         ):
             return candidate
 

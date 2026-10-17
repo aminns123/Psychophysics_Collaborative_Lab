@@ -1,6 +1,6 @@
 import unittest
 
-from Events.staircase import AdaptiveRun, ResponseStreak, StaircaseConfig, Step
+from psychophysics_lab._reference_csf.staircase import AdaptiveRun, ResponseStreak, StaircaseConfig, Step
 
 
 class ResponseRuleTests(unittest.TestCase):
@@ -122,7 +122,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(run.states[0].reversal_count, 2)
 
     def test_reversals_match_existing_detector_on_recorded_values(self):
-        from Events.adaptiveMethods import count_reversals_HighLow
+        from psychophysics_lab._reference_csf.adaptiveMethods import count_reversals_HighLow
         for values in ([1], [1, 1, 1], [3, 2, 2, 3, 3, 2], [1, 1, 2, 3, 2, 1, 2]):
             with self.subTest(values=values):
                 run = self.make_run((100,))

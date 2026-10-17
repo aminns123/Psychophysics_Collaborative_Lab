@@ -175,9 +175,11 @@ def test_physical_renderer_uses_angular_glsl_phase_and_preserves_legacy():
     # The actual shader is hardware-dependent and must still be tested on Windows.
     # Guard the production GLSL source against accidental reversion to the
     # old uncalibrated fs*(x*cos+y*sin) path for physical frequencies.
-    shader_source=(ROOT/"Events"/"stimuliC.py").read_text()
+    from psychophysics_lab.stimulus_library import CSFGrating
+    shader_source=CSFGrating.FRAGMENT_SOURCE
+    presenter_source=(ROOT/"src/psychophysics_lab/_reference_csf/stimuliC.py").read_text()
     assert "frequency_phase = 2.0 * pi * fs" in shader_source
     assert "degrees(atan(screen_m / eyeDistance))" in shader_source
     assert "if (physicalFrequency > 0.5)" in shader_source
     assert "frequency_phase = fs * (x*cos(theta)+y*sin(theta))" in shader_source
-    assert "glUniform1f(self.uniforms['stimCx'],x)" in shader_source
+    assert "glUniform1f(self.uniforms['stimCx'],x)" in presenter_source

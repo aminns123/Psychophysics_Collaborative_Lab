@@ -39,10 +39,6 @@ LOCAL_FILE_NAMES = {
 SCAN_PREFIXES = (
     "src/",
     "simulations/",
-    "Events/",
-    "Experiments/",
-    "Functions/",
-    "Interface/",
     "scripts/",
     "configs/",
     ".github/",
@@ -52,7 +48,6 @@ ROOT_TEXT_FILES = {
     "run_psycolab.bat",
     "pyproject.toml",
     ".gitignore",
-    "libC.py",
 }
 
 ALLOWED_TEXT_SUFFIXES = {".py", ".json", ".toml", ".bat", ".sh", ".yaml", ".yml", ".txt"}

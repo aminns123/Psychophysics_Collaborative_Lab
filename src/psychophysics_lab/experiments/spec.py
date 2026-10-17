@@ -82,7 +82,7 @@ class ExperimentSpec:
     trial_column_overrides: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     monitor_validator: Callable | None = None
-    configure_module: str = "Interface.config"
+    configure_module: str = "psychophysics_lab._reference_csf.config"
     configure_function: str = "run_configure_experiment"
     source_paths: tuple[str, ...] = ()
     adaptive: Any = None

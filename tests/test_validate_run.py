@@ -9,9 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
-from Events.adaptive_session import LegacyStaircaseSession
-from Events.adaptiveMethods import Trials_read_write_staircase_conditions
-import Functions.functionsForUse as funcs
+from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
+from psychophysics_lab._reference_csf.adaptiveMethods import Trials_read_write_staircase_conditions
+import psychophysics_lab._reference_csf.functionsForUse as funcs
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.core.runner import run_request
 from scripts.validate_run import validate_run
@@ -57,7 +57,7 @@ def synthetic_run(tmp_path, monkeypatch, status="max_trials_reached"):
             def trial(name):
                 return session.attach(Trials_read_write_staircase_conditions(
                     name, [], 250, [10, 0], conditions, parameters, response, keys=["LEFT", "RIGHT"]))
-            with patch("random.choice", return_value=identity), patch("Events.adaptiveMethods._beep"):
+            with patch("random.choice", return_value=identity), patch("psychophysics_lab._reference_csf.adaptiveMethods._beep"):
                 logger("TRIAL", 0, trial("new_condition"), [])
                 target = trial("response")
                 logger("TRIAL", 0, target, [])
@@ -73,7 +73,7 @@ def synthetic_run(tmp_path, monkeypatch, status="max_trials_reached"):
         funcs.correctFileSpacings(response)
 
     def import_module(name, *args, **kwargs):
-        if name == "Experiments.contrast_sensitivity_function":
+        if name == "psychophysics_lab._reference_csf.contrast_sensitivity_function":
             return SimpleNamespace(run_experiment=experiment)
         return real_import(name, *args, **kwargs)
 

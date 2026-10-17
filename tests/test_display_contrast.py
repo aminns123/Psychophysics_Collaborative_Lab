@@ -3,12 +3,12 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from Events.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
-from Events.adaptiveMethods import (
+from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
+from psychophysics_lab._reference_csf.adaptiveMethods import (
     _to_weber, convert_screen_intensity_history_to_weber_contrast_list,
     convert_weber_contrast_to_screenIntensity,
 )
-from Interface.config import run_configure_experiment
+from psychophysics_lab._reference_csf.config import run_configure_experiment
 
 
 class DisplayContrastTests(unittest.TestCase):

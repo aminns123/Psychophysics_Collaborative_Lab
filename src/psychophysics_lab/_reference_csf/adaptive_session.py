@@ -10,11 +10,11 @@ import json
 import os
 from pathlib import Path
 
-from Events.adaptiveMethods import record_event
-from Events.display_contrast import normalized_display_contrast
-from Events.staircase import AdaptiveRun, StaircaseConfig
+from psychophysics_lab._reference_csf.adaptiveMethods import record_event
+from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast
+from psychophysics_lab._reference_csf.staircase import AdaptiveRun, StaircaseConfig
 from psychophysics_lab.adaptive import get_algorithm
-import Functions.functionsForUse as funcs
+import psychophysics_lab._reference_csf.functionsForUse as funcs
 from psychophysics_lab.core.lifecycle import request_window_end
 from psychophysics_lab.data.trials import TrialLog
 

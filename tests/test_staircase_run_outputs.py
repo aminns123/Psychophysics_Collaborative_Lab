@@ -115,9 +115,9 @@ def test_human_finalisation_generates_staircases_from_actual_canonical_records(t
     from simulations.csf import DEFAULT_VALUES
 
     # Emulate a human event source WITHOUT importing physical Pyglet/GLU.
-    legacy = ModuleType("Experiments.contrast_sensitivity_function")
+    legacy = ModuleType("psychophysics_lab._reference_csf.contrast_sensitivity_function")
     legacy.run_experiment = fake_human_study
-    monkeypatch.setitem(sys.modules, "Experiments.contrast_sensitivity_function", legacy)
+    monkeypatch.setitem(sys.modules, "psychophysics_lab._reference_csf.contrast_sensitivity_function", legacy)
     artifacts = run_request(
         SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display",
                      dict(DEFAULT_VALUES, max_trials=10, starting_probe_intensity=.7)), repo_root=ROOT, data_root=root,

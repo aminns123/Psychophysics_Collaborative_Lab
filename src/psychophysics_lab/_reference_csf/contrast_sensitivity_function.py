@@ -5,13 +5,13 @@ import random
 import numpy as np
 import pyglet
 
-import Functions.functionsForUse as funcs
-from Events.adaptive_session import LegacyStaircaseSession
+import psychophysics_lab._reference_csf.functionsForUse as funcs
+from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
 from psychophysics_lab.experiments.registry import get_experiment
 from psychophysics_lab.config.local import content_hash
-from Events.stimuliC import Dot_stairCase_centre, Grating_ADM
-from libC import ExpWindow, Params, key, run
-from Events.adaptiveMethods import Trials_read_write_staircase_conditions, Trial_small
+from psychophysics_lab._reference_csf.stimuliC import Dot_stairCase_centre, Grating_ADM
+from psychophysics_lab._reference_csf.libC import ExpWindow, Params, key, run
+from psychophysics_lab._reference_csf.adaptiveMethods import Trials_read_write_staircase_conditions, Trial_small
 from psychophysics_lab.core.lifecycle import install_escape_handler
 
 

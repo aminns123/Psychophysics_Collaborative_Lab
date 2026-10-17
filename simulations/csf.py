@@ -55,10 +55,10 @@ DEFAULT_VALUES = {"Max_monitor_Luminance": 500., "Background_Luminance": 49.,
 def runtime(observer, seed, algorithm_id):
     """Factory with its own RNG; no monkeypatching, global seeding or graphics."""
     def acquire(conditions, parameters, response, state):
-        from Events.adaptive_session import LegacyStaircaseSession
-        from Events.adaptiveMethods import Trials_read_write_staircase_conditions
-        from Events.display_contrast import normalized_display_contrast
-        import Functions.functionsForUse as funcs
+        from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
+        from psychophysics_lab._reference_csf.adaptiveMethods import Trials_read_write_staircase_conditions
+        from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast
+        import psychophysics_lab._reference_csf.functionsForUse as funcs
         from psychophysics_lab.data.session import atomic_write_json
         rng = random.Random(seed)
         root = Path(response).parent

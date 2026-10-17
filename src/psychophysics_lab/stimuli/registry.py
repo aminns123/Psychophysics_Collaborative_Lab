@@ -67,10 +67,14 @@ def list_stimuli() -> tuple[StimulusSpec, ...]:
     from dataclasses import replace
     from ..experiments.contrast_sensitivity import CSF_SPEC
     if not _REGISTRY["legacy_csf"].parameters:
-        _REGISTRY["legacy_csf"] = replace(_REGISTRY["legacy_csf"], family="csf",
+        # A single researcher-facing definition owns the reference shader.
+        # Keep the original ID and CSF-specific validator and human gate.
+        from ..stimulus_library import CSFGrating
+        _REGISTRY["legacy_csf"] = replace(
+            CSFGrating.SPEC,
             parameters=tuple(f for f in CSF_SPEC.fields if f.section == "Stimulus conditions"),
-            default_config="configs/stimuli/legacy_csf.json", calibration_requirements=CSF_SPEC.calibration_requirements,
-            validator=_validate_csf_parameters)
+            validator=_validate_csf_parameters,
+        )
     from psychophysics_lab.experiments.contributions import load_contributions
     load_contributions()
     return tuple(_REGISTRY[key] for key in sorted(_REGISTRY))
@@ -83,4 +87,4 @@ def _validate_csf_parameters(values):
         raise ValueError("number_conditions must match the number of condition_values.")
 
 register_stimulus(StimulusSpec("geometry_bar", "Geometry bar", "Calibration diagnostic configured on Geometry; not an experiment stimulus.", "src/psychophysics_lab/stimuli/geometry.py", default_config="configs/stimuli/geometry_bar.json"))
-register_stimulus(StimulusSpec("legacy_csf", "Reference CSF renderer", "Existing CSF scientific renderer and timing semantics.", "Events/stimuliC.py"))
+register_stimulus(StimulusSpec("legacy_csf", "Reference CSF renderer", "Existing CSF scientific renderer and timing semantics.", "src/psychophysics_lab/stimulus_library.py"))

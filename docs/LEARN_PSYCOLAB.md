@@ -30,6 +30,15 @@ If the drawing already exists, use `Scene` and its functions (`fixation`,
 `line`, `ellipse`, `annulus`, `gabor`, `grating`, `square`, etc.)
 instead of copying the drawing mathematics.
 
+### Reference CSF
+
+`CSFGrating` in the same library owns the exact reference GLSL shader.
+It is a special hardware-rendered class, **not** an ordinary NumPy
+`render()` preview. Do not substitute a teaching Gabor and assume
+equivalent luminance, phase or timing. CSF's experiment settings remain
+in `experiments/contrast_sensitivity.py`; its hardware driver is internal
+and requires separate lab qualification.
+
 ## 2. Preview the stimulus
 
 Restart the main TUI after editing the shared file. In USER_env:

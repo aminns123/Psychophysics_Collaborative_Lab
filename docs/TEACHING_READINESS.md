@@ -1,3 +1,8 @@
+> **Historical acceptance record, not current authoring instructions.**
+> For the only supported new authoring route see
+> [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md). Older generator/scaffold details
+> below describe a past release, not options now available in the TUI.
+
 # PsyCoLab teaching readiness — acceptance and handover
 
 This document records **software evidence**, not certification of a physical laboratory setup.

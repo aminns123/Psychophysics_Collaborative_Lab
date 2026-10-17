@@ -3,7 +3,8 @@ from __future__ import division
 
 import os
 import sys
-sys.path[:0] = ['packages.zip']
+from pathlib import Path
+sys.path[:0] = [str(Path(__file__).with_name('packages.zip'))]
 import traceback
 
 import time

@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from Events.adaptiveMethods import Trials_read_write_staircase_conditions, _check_responses_history
-from Events.adaptive_session import LegacyStaircaseSession
-import Functions.functionsForUse as funcs
+from psychophysics_lab._reference_csf.adaptiveMethods import Trials_read_write_staircase_conditions, _check_responses_history
+from psychophysics_lab._reference_csf.adaptive_session import LegacyStaircaseSession
+import psychophysics_lab._reference_csf.functionsForUse as funcs
 
 
 class SessionTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class SessionTests(unittest.TestCase):
         self.exits = []
         self.window.exit = lambda: self.exits.append(True)
         self.log = self.session.logger(self.window)
-        beep = patch('Events.adaptiveMethods._beep')
+        beep = patch('psychophysics_lab._reference_csf.adaptiveMethods._beep')
         beep.start()
         self.addCleanup(beep.stop)
 
@@ -143,7 +143,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(metadata['total_trials'], 1)
 
     def test_recording_failure_stops_queue_with_error(self):
-        with patch('Events.adaptiveMethods.funcs.write_toText', side_effect=OSError('disk full')):
+        with patch('psychophysics_lab._reference_csf.adaptiveMethods.funcs.write_toText', side_effect=OSError('disk full')):
             with self.assertRaises(OSError):
                 self.respond(0, True)
         self.assertEqual(self.window.trials, [])

@@ -70,35 +70,14 @@ environment.
 
 ## Optional build/test/publish commands (no extra TUI)
 
-The normal PsyCoLab TUI can scaffold experiment/stimulus files and open their
-source code. You can also use these **optional command-line tools** inside the
-USER_env terminal:
+The normal PsyCoLab TUI **does not generate stimulus files**.
+Add a `LibraryStimulus` class directly to
+`src/psychophysics_lab/stimulus_library.py`. Write experiment Python
+files explicitly in `src/psychophysics_lab/experiments/` and use
+`--dev-stage experiment ID`, `--dev-test ID` and
+`--dev-ready experiment ID` to validate. There is no second
+stimulus authoring interface.
 
-```cmd
-python -m psychophysics_lab --scaffold my_patch --blueprint stimulus
-python -m psychophysics_lab --dev-preview my_patch
-python -m psychophysics_lab --dev-ready stimulus my_patch
-
-python -m psychophysics_lab --scaffold my_task --blueprint experiment
-python -m psychophysics_lab --dev-test my_task
-python -m psychophysics_lab --dev-ready experiment my_task
-python -m psychophysics_lab --dev-list
-```
-
-Use a JSON file for experiment settings when required:
-
-```cmd
-python -m psychophysics_lab --dev-test my_task --dev-values "C:\path\to\settings.json"
-```
-
-These commands retain the existing Draft → Tested → Ready mechanism. The
-underlying scientific components are automatically added to the normal experiment
-list after they pass virtual validation and are published Ready. **Ready is a
-software-readiness status, not a physical calibration certificate.**
-
-Built-in virtual tests still use a protected data root
-`~/PsyCoLab_USER_env_data/<checkout-hash>/` and create internally consistent
-synthetic records; they never count as real participant measurements.
 
 ## Scientific and safety boundaries
 
