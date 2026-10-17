@@ -27,7 +27,7 @@ def _request(profile):
 
 def test_legacy_gl_module_binds_pyglet_before_using_pyglet_clock():
     """Catch the real Windows NameError without requiring a live OpenGL window."""
-    source=(ROOT/"libC.py").read_text(encoding="utf-8")
+    source=(ROOT/"src/psychophysics_lab/_reference_csf/libC.py").read_text(encoding="utf-8")
     tree=ast.parse(source)
     bound=[node.lineno for node in tree.body
            if isinstance(node,ast.Import)

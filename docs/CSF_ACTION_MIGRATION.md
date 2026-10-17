@@ -1,9 +1,13 @@
 # CSF action migration: development validation, incomplete acquisition migration
 
-**Status: PARTIAL. The retained CSF is still the default human implementation.**
+**Status: PARTIAL (internal relocation complete; generic human presenter replacement NOT qualified).**
 No claim of full migration follows from its Phase/JSON adapter.
 
-The shared `stimulus_library.py` and Scene adapter do not replace CSF.
+The `CSFGrating` class in `stimulus_library.py` now contains the *same
+GLSL shader source* that the reference hardware presenter consumes.
+The physical implementation has been relocated, without a change to its
+scientific algorithm, to `src/psychophysics_lab/_reference_csf/`.
+The generic Scene adapter still does NOT replace physical CSF acquisition.
 `experiments/flanker_response.py` exposes the existing `CSF_SPEC` unchanged.
 The development indirect/base/ellipse procedures use a separately translated
 legacy flanker rule, not the current CSF staircase. See

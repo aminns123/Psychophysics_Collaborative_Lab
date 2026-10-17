@@ -28,8 +28,11 @@ test it using `--dev-test ID`, then mark it Ready with
 
 See the [short build walkthrough](docs/LEARN_PSYCOLAB.md) and
 [retention audit](docs/REPO_SURFACE_AUDIT.md).
-The reference CSF renderer remains available as a scientifically active
-legacy runtime, not a separate authoring path.
+The reference CSF shader is defined by `CSFGrating` in that SAME library.
+Its existing hardware presenter is an internal implementation at
+`src/psychophysics_lab/_reference_csf/`. It still needs hardware-equivalence
+testing before replacement by the generic Scene presenter; do not remove that
+internal reference and assume CSF acquisition is preserved.
 
 ## First launch on Windows
 
@@ -315,7 +318,12 @@ src/psychophysics_lab/
 └── ui/
 ```
 
-Working legacy experiment/rendering code remains temporarily under:
+The historical top-level `Events/`, `Experiments/`, `Functions/`,
+`Interface/`, `libC.py` and `packages.zip` entry points have been
+removed from the checkout. The working physical reference CSF implementation
+is isolated under `src/psychophysics_lab/_reference_csf/`. The original code
+is still retained there, and human display equivalence must be established
+before its final replacement.
 
 ```text
 Events/

@@ -1,128 +1,55 @@
-# PsyCoLab architecture
-
-PsyCoLab is a general psychophysics framework. Contrast sensitivity (CSF) is
-the first reference experiment, not the definition of the framework.
+# PsyCoLab architecture — one mental model
 
 ```text
-PsyCoLab
-|-- configuration / TUI
-|-- experiment registry / specifications
-|-- monitor profiles
-|-- experiment runner / lifecycle
-|-- canonical data recording
-|-- adaptive methods (partly legacy)
-|-- stimuli / rendering (partly legacy)
-`-- legacy compatibility layer
+Researcher
+  ├─ stimulus_library.py        appearance, units, reusable Scene building blocks
+  └─ experiments/<task>.py      conditions, visual placement, chronological trials
+          │
+          ▼
+    ExperimentSpec + TrialTimeline
+          │
+          ▼
+    PsyCoLab core runner
+      ├─ monitor calibration and input validation
+      ├─ shared simulation / human RunContext + trial actions
+      ├─ scientific/adaptive algorithms
+      └─ canonical data / provenance in an EXTERNAL data folder
 ```
 
-## Current package boundaries
+The normal workflow requires **one shared stimulus file** and **one Python
+experiment per task**. It does not generate new stimulus modules. All
+framework internals are for engine maintenance, not researcher editing.
 
-| Under `src/psychophysics_lab/` | Responsibility |
+## Working reference CSF boundary
+
+The CSF uses the same public registered experiment and calibration gateway.
+Its shader is defined by `CSFGrating` in the shared stimulus library.
+For actual human presentation it still enters an **internal** reference
+driver at `src/psychophysics_lab/_reference_csf/` rather than the generic
+NumPy Scene / `TrialTimeline` presenter. This is a *technical compatibility
+boundary*, not a competing authoring design. It exists because physical
+shader, temporal, response and adaptive equivalence remain incomplete.
+
+All former root folders `Events/`, `Experiments/`, `Functions/`,
+`Interface/` and `libC.py` have been removed from current source paths;
+the same trusted CSF routines are now bundled within the package. Work to
+remove the internal reference driver must satisfy the quantitative
+comparison checklist in [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md).
+
+## Framework-only locations
+
+| Location | Responsibility |
 |---|---|
-| `__main__.py`, `app.py` | CLI, diagnostics, setup-to-acquisition handoff and final run summary. `python -m psychophysics_lab` and `psycolab` use this entry point. |
-| `config/` | Setup requests, monitor models, profile loading and validation of encoded luminance mappings. Profiles are stored in `configs/monitors/`. |
-| `ui/` | Textual participant, workspace, experiment and display selection; experiment-owned fields and review. The TUI closes before the renderer launches. |
-| `experiments/` | Explicit registry, `ExperimentSpec`/`ConfigField`, validation, grouping folders and trial dictionary overrides. CSF supplies its own defaults and legacy module. No automatic experiment discovery. |
-| `core/` | Runner owns run creation, configuration snapshots, provenance, finalization and index updates. Lifecycle helpers save an experiment-supplied termination reason and close its window; they do not define scientific completion criteria. |
-| `data/` | Portable identifiers, participant listing, workspace state, run allocation, atomic JSON snapshots, run index, append-only trial records, dictionary and readable exports. |
-| `adaptive/` | Intentional future boundary for reusable adaptive methods. Current working staircase mechanics still live in `Events/staircase.py`. |
-| `stimuli/` | Intentional future boundary for reusable stimulus APIs. Current renderer remains in the compatibility layer. |
-| `paths.py`, `diagnostics.py` | Checkout/external workspace resolution and local crash/fatal-fault diagnostics. |
+| `src/psychophysics_lab/core/` | Trial actions, real/synthetic presentation, run lifecycle, source hashes |
+| `src/psychophysics_lab/config/` | Monitor profiles, photometry, timing and geometry safety |
+| `src/psychophysics_lab/data/` | External experiment workspace and append-only trial records |
+| `src/psychophysics_lab/adaptive/` | Reusable staircase/state algorithms |
+| `src/psychophysics_lab/stimuli/` | Registry and geometry, NOT individual drawing modules |
+| `src/psychophysics_lab/ui/` | Researcher interface/inspection |
+| `src/psychophysics_lab/_reference_csf/` | Internal, still-active physical CSF reference implementation |
+| `simulations/` | Synthetic observers/scenarios and test visualisations |
+| `tests/`, `scripts/`, `docs/history/` | Verification and preserved evidence |
 
-These boundaries describe the current incremental migration, not a new API design.
-
-## Compatibility layer
-
-`Events/`, `Experiments/`, `Functions/`, `Interface/` and `libC.py` remain
-temporary compatibility code during incremental migration:
-
-- `Interface/config.py` translates setup into the established runtime files.
-- `Experiments/contrast_sensitivity_function.py` composes the reference experiment,
-  its phase queue, display, stimuli and response handling.
-- `Events/staircase.py` provides display-independent response streaks, staircase
-  state and completion; `adaptiveMethods.py` and `adaptive_session.py` adapt the
-  legacy events/files to these rules and the canonical recorder.
-- `Events/display_contrast.py` provides the existing digital contrast conversions.
-- `Events/stimuliC.py` and `libC.py` own the existing Pyglet/OpenGL stimuli and engine.
-- `Functions/functionsForUse.py` supplies legacy file and geometry helpers.
-
-The runner temporarily establishes the checkout working directory/import path
-for this layer. `packages.zip` remains a runtime dependency archive: static
-inspection found bundled Pyglet 1.5.19, `wmi.py`, and five Python 3.7 cache files.
-`libC.py` prepends this archive to the import path, so loading Pyglet from it is
-import-order dependent despite the installed Pyglet 1.5.27 requirement. The archive
-is retained unchanged until a separate renderer-equivalence and provenance review;
-see [installation and dependency limitations](INSTALLATION.md). A source checkout
-is still needed for acquisition; package installation alone does not replace it.
-
-## Acquisition and lifecycle
-
-An explicit experiment specification and selected monitor profile produce setup
-and fixed grouping components. The runner creates:
-
-```text
-participant / experiment / display / fixed conditions / YYYY-MM-DD / run_NNN
-```
-
-Data live outside the checkout. Each run owns its configuration, initial/final
-state snapshots and manifest. Workspace preferences and `runs_index.csv` are
-convenience records; the run folder is authoritative. Reusing setup starts a new
-run, not a resumed staircase.
-
-`trials.tsv` (schema 1) records accepted responses only, with distinct `presented_*`
-and `next_*` values. Its dictionary defines the saved columns; `trials_readable.txt`
-is a derived fixed-width view. The six-column legacy response remains compatible.
-
-Scientific completion, the response ceiling, Escape and errors remain distinct.
-The adapter saves each accepted response before automatic termination. Escape
-saves `aborted_by_user` without inventing a response. See
-[lifecycle](EXPERIMENT_LIFECYCLE.md), [data layout](DATA_LAYOUT.md) and
-[trial dictionary](TRIAL_DATA_DICTIONARY.md).
-
-## Runtime provenance
-
-The manifest keeps SHA256 fingerprints with sorted repository-relative POSIX
-paths. The acquisition-source inventory recursively includes all Python files
-under `src/psychophysics_lab/`, `Events/`, `Experiments/`, `Functions/` and
-`Interface/`, plus `libC.py` and `packages.zip`. New runtime helpers in these
-boundaries are therefore included automatically without import tracing or Git.
-
-Tests (`test_*.py`, `*_test.py`, `conftest.py`, test directories), hidden/local
-directories, caches, temporary/data directories and symlinks are excluded.
-Only Python sources and the named dependency archive are fingerprinted: no
-participant data, editor settings, bytecode or absolute machine paths.
-The selected monitor profile and resolved configuration are saved separately
-as run artifacts. Adding a runtime source boundary outside these roots requires
-deliberately extending the inventory.
-
-## Read-only validation
-
-```text
-python scripts/validate_run.py <run_directory>
-```
-
-The validator prints individual checks and PASS/FAIL, with exit code 0/1.
-It reads files only, compares supplied output hashes, checks trial schema/counts,
-adaptive status/state, interleaved staircase continuity, response ceilings,
-portable JSON metadata and agreement of dictionary/readable/configuration files.
-For CSF it also checks legacy post-response quantities and state snapshots.
-Numeric comparisons use relative and absolute tolerance `1e-12`.
-
-Use it after finalization. A consistent abort can pass; incomplete/crashed runs
-may fail for missing artifacts. Missing hashes are explicitly reported as
-unverified. PASS is internal consistency, not proof of untampered data, scientific
-validity, display calibration or stimulus timing. Dictionary checks use the
-current registered experiment definitions, so historical schema/definition
-versions may need their corresponding checkout. No repair is attempted.
-
-## Scientific changes remain a separate review
-
-Shader and staircase mathematics, phase timing, response mappings, contrast
-definitions, calibration semantics, geometry and the retained `31.5` scaling are
-unchanged. See [deferred stimulus review](DEFERRED_STIMULUS_REVIEW.md).
-
-## Current public trial actions
-
-See [the action architecture and duplication audit](TRIAL_ACTION_ARCHITECTURE.md),
-[authoring guide](START_HERE_EXPERIMENTS.md), and
-[explicit CSF migration boundary](CSF_ACTION_MIGRATION.md).
+This design is intended to minimise the files a scientist needs to read,
+not to hide scientific assumptions: unit conversions, saved state and
+physical display calibration remain explicitly documented and testable.

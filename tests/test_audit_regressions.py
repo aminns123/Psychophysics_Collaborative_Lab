@@ -203,7 +203,7 @@ def test_setup_keeps_compatible_monitor_selection(tmp_path):
 
 @pytest.mark.parametrize('phase', ['capture', 'record'])
 def test_adaptive_logger_preserves_primary_error_and_stops_queue(monkeypatch, phase):
-    import Events.adaptive_session as module
+    import psychophysics_lab._reference_csf.adaptive_session as module
     session = module.LegacyStaircaseSession.__new__(module.LegacyStaircaseSession)
     session.run = SimpleNamespace(total_trials=0)
     error = OSError('primary recording failure')
@@ -241,9 +241,9 @@ def test_csf_screen_failure_finalises_adaptive_error(tmp_path, monkeypatch):
     import importlib.util
     import psychophysics_lab.core.display as display
     monkeypatch.setitem(sys.modules, 'pyglet', SimpleNamespace(options={}, clock=SimpleNamespace(unschedule=lambda f: None)))
-    monkeypatch.setitem(sys.modules, 'libC', SimpleNamespace(ExpWindow=lambda **kw: None, Params=object, key=None, run=None))
-    monkeypatch.setitem(sys.modules, 'Events.stimuliC', SimpleNamespace(Dot_stairCase_centre=None, Grating_ADM=None))
-    spec = importlib.util.spec_from_file_location('csf_audit_stubbed', ROOT/'Experiments'/'contrast_sensitivity_function.py')
+    monkeypatch.setitem(sys.modules, 'psychophysics_lab._reference_csf.libC', SimpleNamespace(ExpWindow=lambda **kw: None, Params=object, key=None, run=None))
+    monkeypatch.setitem(sys.modules, 'psychophysics_lab._reference_csf.stimuliC', SimpleNamespace(Dot_stairCase_centre=None, Grating_ADM=None))
+    spec = importlib.util.spec_from_file_location('csf_audit_stubbed', ROOT/'src'/'psychophysics_lab'/'_reference_csf'/'contrast_sensitivity_function.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     saved, finished = [], []
@@ -305,7 +305,7 @@ def test_validator_distinguishes_windows_monitor_id_from_file_path(tmp_path, dev
 def test_legacy_parameter_helpers_accept_mapping_without_mutating_defaults():
     # Execute the real pure helpers without importing OpenGL during headless tests.
     import ast
-    tree = ast.parse((ROOT/'libC.py').read_text(encoding='utf-8'))
+    tree = ast.parse((ROOT/'src/psychophysics_lab/_reference_csf/libC.py').read_text(encoding='utf-8'))
     selected = [node for node in tree.body if isinstance(node,(ast.FunctionDef,ast.ClassDef)) and node.name in {'Params','copy_params','stim_factory'}]
     namespace = {}
     exec(compile(ast.Module(body=selected,type_ignores=[]),'libC.py','exec'),namespace)

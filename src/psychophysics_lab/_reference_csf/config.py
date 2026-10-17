@@ -2,9 +2,9 @@ import datetime
 import json
 from pathlib import Path
 
-import Functions.functionsForUse as funcs
+import psychophysics_lab._reference_csf.functionsForUse as funcs
 
-from Events.display_contrast import normalized_display_contrast
+from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast
 
 
 # ------------------------------ Experiment setup ------------------------------

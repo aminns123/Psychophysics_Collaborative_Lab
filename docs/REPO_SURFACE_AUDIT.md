@@ -1,45 +1,61 @@
-# Repository clean-up audit
+# What is kept and what was removed
 
-## Where a researcher edits code
+## Everyday researcher workflow
 
-- `src/psychophysics_lab/stimulus_library.py`: all visual drawing primitives,
-  reusable Scenes and registered stimulus **classes**.
-- `src/psychophysics_lab/experiments/<name>.py`: each experiment's scientific
-  procedure, timing, conditions, response keys and optional beeps.
-- `configs/experiments/<name>.json`: run-editable scientific settings.
+**Edit visual stimuli only here:** `src/psychophysics_lab/stimulus_library.py`
+(**classes** with `PARAMETERS`, `render`, `SPEC`; reusable `Scene`).
 
-The framework (`core/`, `config/`, `data/`, `stimuli/registry.py` and TUI)
-is not a researcher authoring location.
+**Edit experiments here:** `src/psychophysics_lab/experiments/<task>.py`,
+with settings in `configs/experiments/<task>.json`.
 
-## Removed
+`run_psycolab.bat`, TUI, simulation, monitor profiles, adaptive registry and
+trial storage remain framework-owned. There is no stimulus generator.
 
-Six thin per-stimulus Python modules (fixation, line, example, Gabor,
-composed scene and researcher line) whose mathematics already live in the
-single shared library. The registration list no longer points at these.
-Retired stimulus Draft/Ready authoring records are removed from the runtime
-inventory; the Git history preserves previous tested revisions.
+## Deleted from the working repository root
 
-The old stimulus-module generator is no longer exposed in the normal TUI/CLI.\nTwo unpublished, incomplete experiment Drafts and their unused settings are\nremoved from the active checkout; Git history retains their source.
-All new stimuli are direct edits to the shared library.
+The top-level `Events/`, `Experiments/`, `Functions/`, `Interface/`,
+`libC.py` and `packages.zip` were previously needed to **run** CSF.
+All ten associated files have been rehomed to one *internal* package:
+`src/psychophysics_lab/_reference_csf/`. The old paths are removed and
+their old content is recoverable from Git history. Internal imports, runtime
+source hashing, CSF dispatch and the shader diagnostic were updated.
 
-## Retained because they are still in use
+**This is a relocation/consolidation, not deletion of working CSF physics.**
+The `CSFGrating.FRAGMENT_SOURCE` in the single stimulus library is now
+the original authoritative physical shader source. The internal OpenGL
+presenter consumes it verbatim. The internal package still owns hardware
+windowing and exact old timing/staircase I/O. It is *not* a place for adding
+new stimuli or experiments.
 
-- `Events/`, `Experiments/contrast_sensitivity_function.py`,
-  `Functions/`, `Interface/`, `libC.py`: the *active* reference CSF
-  renderer, staircase, setup and OpenGL/shader implementation. Deleting them
-  now would disable scientific acquisition. This requires a **separate**
-  tested migration and a lab hardware-comparison before removal.
-- `simulations/`: the headless simulator used by tests and researchers.
+## Retained for a verified reason
+
+- `src/psychophysics_lab/_reference_csf/`: active reference CSF
+  presentation; removal before parity would break human acquisition.
+- `src/psychophysics_lab/core/`: universal run lifecycle, virtual/human
+  experiment dispatch, actions and data provenance.
 - `src/psychophysics_lab/stimuli/registry.py`, `geometry.py`,
-  `spatial_calibration.py`, `contrast_validation.py`: internal validation
-  and monitor geometry, **not** competing stimulus definitions.
-- Old research experiment code and defaults: used to decode trial
-  provenance or preserve source references. Do not remove without a
-  source-to-run trace and verified replacement.
-- Historic JSON-only experiments: old run reproduction; not advertised as
-  a new authoring workflow.
+  `spatial_calibration.py`, `contrast_validation.py`: internal
+  validation and physical geometry, NOT additional stimulus authoring files.
+- `simulations/`: active headless virtual scenario runner.
+- `configs/`: monitor calibrations, experiment settings and reference
+  parameters. `authoring/`: explicit experiment Ready history.
+- `scripts/`: portability, recording validation and actual physical
+  graphics probes.
+- `tests/`: regression fixtures, historical numerical CSF equivalence
+  tests and safety checks.
+- `docs/history/`, `docs/audit_evidence/`: provenance; not part of the
+  everyday authoring surface.
 
-**Rule for further deletion:** demonstrate zero runtime/config/import
-references, unchanged past-run readability, valid synthetic trials and
-Windows/Ubuntu CI. Keep original scientific CSF until a hardware-equivalent
-replacement is verified.
+## The remaining scientific migration
+
+A complete CSF rewrite must (1) replay the same condition order,
+staircase, contrast/phase, input and response rules through
+`TrialTimeline` + `RunContext`; (2) match the original GLSL pixels on
+real hardware, including luminance encoding; (3) match measured frame
+timing and sound latency; (4) compare canonical and legacy output,
+aborts and completion on actual lab PCs. Until then, do not remove the
+internal reference presenter or claim the two implementations are equivalent.
+
+We do not delete files merely because they have 'legacy' in their name;
+we delete unused code only after proving zero live imports and unchanged
+scientific behaviour.

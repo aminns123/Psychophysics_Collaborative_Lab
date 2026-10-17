@@ -58,7 +58,7 @@ class RunArtifacts:
 
 @contextmanager
 def _legacy_runtime_context(repo_root: Path) -> Iterator[None]:
-    """Make legacy root imports and packages.zip resolution deterministic."""
+    """Preserve working-directory semantics for the internally retained CSF presenter."""
     previous_cwd = Path.cwd()
     root_text = str(repo_root)
     added = False
@@ -126,7 +126,7 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
     each run; data, tooling, tests and local environment files are not sources.
     """
     repo_root = repo_root.resolve()
-    roots = ("src/psychophysics_lab", "Events", "Experiments", "Functions", "Interface", "simulations")
+    roots = ("src/psychophysics_lab", "simulations")
     excluded = {"tests", "test", "__pycache__", "tmp", "temp", "node_modules"}
     paths = []
     for relative_root in roots:
@@ -160,7 +160,7 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
                         and (within_package or not name.startswith("test_"))
                         and (within_package or not name.endswith("_test.py"))):
                     paths.append(path)
-    paths.extend(repo_root / name for name in ("libC.py", "packages.zip")
+    paths.extend(repo_root / name for name in ("src/psychophysics_lab/_reference_csf/packages.zip",)
                  if (repo_root / name).is_file() and not (repo_root / name).is_symlink())
     return {path.relative_to(repo_root).as_posix(): _sha256(path)
             for path in sorted(paths, key=lambda path: path.relative_to(repo_root).as_posix())}

@@ -5,7 +5,7 @@ This is the scientific contract for the existing CSF experiment:
 * CHRONOLOGICAL STIMULUS STATES: configs/experiments/contrast_sensitivity.json
 * RESPONSE MAPPING: LEFT_RIGHT and the legacy CSF trial event handler
 * DATA/VALIDATION: shared PsyCoLab output pipeline
-* LEGACY RENDERER AND STATE MACHINE: Experiments/contrast_sensitivity_function.py
+* LEGACY RENDERER AND STATE MACHINE: src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py
 
 The CSF timeline already uses the same Phase/TrialTimeline description as
 example_experiment.py. Unlike the beginner example, the real CSF STILL runs
@@ -171,7 +171,7 @@ CSF_SPEC = ExperimentSpec(
         "phase contract as new experiments, currently using the retained Pyglet/OpenGL "
         "renderer for scientific and temporal compatibility."
     ),
-    legacy_module="Experiments.contrast_sensitivity_function",
+    legacy_module="psychophysics_lab._reference_csf.contrast_sensitivity_function",
     legacy_experiment_type="contrast_sensitivity_function",
     compatible_monitor_profiles=("legacy_reference_display",),
     calibration_requirements=("geometry", "luminance", "timing"),
@@ -305,7 +305,7 @@ CSF_SPEC = ExperimentSpec(
     },
     validator=_validate,
     monitor_validator=_validate_monitor,
-    source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py", "Experiments/contrast_sensitivity_function.py"),
+    source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py", "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py"),
     stimulus_slots={"target": "csf"}, stimulus_defaults={"target": "legacy_csf"},
     stimulus_field_bindings={"target": {key: key for key in ("number_conditions", "condition_unit", "condition_values")}},
 )

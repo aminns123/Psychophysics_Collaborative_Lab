@@ -52,4 +52,4 @@ def test_development_replay_is_not_human_catalogue_or_replacement_csf():
     assert "csf_state_validation" not in {s.id for s in list_experiments()}
     original = get_experiment("contrast_sensitivity")
     assert original.procedure is None
-    assert original.legacy_module == "Experiments.contrast_sensitivity_function"
+    assert original.legacy_module == "psychophysics_lab._reference_csf.contrast_sensitivity_function"

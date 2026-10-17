@@ -170,8 +170,8 @@ def test_readiness_check_matches_exact_profile_revision(tmp_path,monkeypatch):
 
 
 def test_contrast_numeric_risk_and_mode_specific_fail_closed(tmp_path,monkeypatch):
-    from Events.adaptiveMethods import _update_probe_weber_contrast
-    from Events.display_contrast import display_contrast_to_screen_intensity
+    from psychophysics_lab._reference_csf.adaptiveMethods import _update_probe_weber_contrast
+    from psychophysics_lab._reference_csf.display_contrast import display_contrast_to_screen_intensity
     assert grating_command_bounds(1.,.374)==pytest.approx((-.126,.874))
     for n in (1,2,5):
         contrast=_update_probe_weber_contrast(1,1.,.35,.19208)

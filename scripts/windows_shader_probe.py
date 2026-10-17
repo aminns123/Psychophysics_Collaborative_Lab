@@ -29,15 +29,15 @@ def probe(output):
     condition_file.write_text(json.dumps({"staircase_Identity_active":[0],"condition_list":[2.],
         "stimulus_choice_active":[144],"weber_contrast_active":[.1]}))
     report={"hardware_test":"production GLSL offscreen readback", "optical_calibration":False,
-        "photon_timing_verified":False,"tests":[],"source_sha256":hashlib.sha256((ROOT/"Events/stimuliC.py").read_bytes()).hexdigest()}
+        "photon_timing_verified":False,"tests":[],"source_sha256":hashlib.sha256((ROOT/"src/psychophysics_lab/_reference_csf/stimuliC.py").read_bytes()).hexdigest()}
     window=None
     old_cwd=Path.cwd()
     try:
         os.chdir(ROOT)  # legacy dependency archive has checkout-relative imports
         window=pyglet.window.Window(width=256,height=256,visible=False,vsync=False)
         window.switch_to()
-        from Events.stimuliC import Grating_ADM
-        from libC import Params
+        from psychophysics_lab._reference_csf.stimuliC import Grating_ADM
+        from psychophysics_lab._reference_csf.libC import Params
         for key,enum in (("renderer",GL_RENDERER),("vendor",GL_VENDOR),("version",GL_VERSION)):
             report[key]=ctypes.cast(glGetString(enum),ctypes.c_char_p).value.decode(errors="replace")
         width=192.; cx,cy=144.,128.

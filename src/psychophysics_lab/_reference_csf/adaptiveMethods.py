@@ -3,15 +3,15 @@ Adaptive psychophysical methods (ADM staircase).
 
 This module implements contrast staircases for adaptive threshold experiments.
 Trial history remains in its legacy six-column format. Pure independent
-response state and lifecycle live in Events.staircase; this module adapts the
+response state and lifecycle live in psychophysics_lab._reference_csf.staircase; this module adapts the
 existing CSF trial/file interface to those mechanisms.
 """
 
 import math
 
-import Functions.functionsForUse as funcs
-from Events.staircase import ResponseStreak, Step
-from Events.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
+import psychophysics_lab._reference_csf.functionsForUse as funcs
+from psychophysics_lab._reference_csf.staircase import ResponseStreak, Step
+from psychophysics_lab._reference_csf.display_contrast import normalized_display_contrast, display_contrast_to_screen_intensity
 
 DEFAULT_PRE_REVERSAL_RATE = 0.3
 LEFT_RESPONSE = 0
