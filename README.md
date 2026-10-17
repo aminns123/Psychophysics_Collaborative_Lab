@@ -325,15 +325,8 @@ is isolated under `src/psychophysics_lab/_reference_csf/`. The original code
 is still retained there, and human display equivalence must be established
 before its final replacement.
 
-```text
-Events/
-Experiments/
-Functions/
-Interface/
-libC.py
-```
-
-This migration is intentionally incremental.
+The previous top-level legacy tree is gone. Its still-active reference
+implementation is internal, not a second authoring system.
 
 See [the current architecture](docs/ARCHITECTURE.md) for package responsibilities
 and provenance coverage, and [CONTRIBUTING.md](CONTRIBUTING.md) for development rules.

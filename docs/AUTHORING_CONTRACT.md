@@ -6,9 +6,10 @@
 
 - **Stimuli:** `src/psychophysics_lab/stimulus_library.py`. Add a
   `LibraryStimulus` class with `PARAMETERS`, `render(parameters,x_deg,y_deg)`
-  and `SPEC`. Use a unique stable stimulus ID. Basic shapes and `Scene` are
-  reusable building blocks *in that same file*. No stimulus generator or
-  separate per-stimulus Python file.
+  and `SPEC`. Use a unique stable stimulus ID. Built-in shapes are complete classes in that file. Optional `Scene`
+  utilities are imported from `core/scene_primitives.py`, a framework
+  internal nobody must edit to add a class. No second registry, shape-dispatch
+  edit, auto-generator or extra per-stimulus Python file.
 - **Experiments:** `src/psychophysics_lab/experiments/<id>.py`, with
   validated run settings in `configs/experiments/<id>.json`. A trial selects
   registered stimuli, places them in visual degrees, schedules `Show` and

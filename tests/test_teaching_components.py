@@ -30,8 +30,14 @@ def test_independent_tasks_use_public_pipeline_and_validate(tmp_path, identity):
 
 
 def test_all_defaults_validate_and_preset_edits_change_renderer(tmp_path):
+    from psychophysics_lab.config.stimulus_parameters import document_for
     for stimulus in list_stimuli():
-        load_parameters(ROOT / stimulus.default_config, stimulus)
+        if stimulus.default_config:
+            load_parameters(ROOT / stimulus.default_config, stimulus)
+        elif stimulus.render is not None:
+            # New self-contained classes declare ConfigField defaults directly;
+            # they intentionally have no companion JSON file to load.
+            document_for(stimulus)
     stimulus = get_stimulus("teaching_gabor")
     selected = load_parameters(ROOT / stimulus.default_config, stimulus)
     original = render_pixels(stimulus, selected["document"]["parameters"])
@@ -146,7 +152,6 @@ def test_adaptive_blueprint_registers_through_contribution_list_and_runs(tmp_pat
     monkeypatch.setitem(sys.modules, "student_step", module)
     monkeypatch.setattr(contributions, "ADAPTIVE_MODULES", ("student_step",))
     monkeypatch.setattr(contributions, "EXPERIMENT_MODULES", ())
-    monkeypatch.setattr(contributions, "STIMULUS_MODULES", ())
     monkeypatch.setattr(loader, "_loaded", False)
     loader.load_contributions()
     assert algorithms.get_algorithm("student_step") is module.SPEC
