@@ -103,3 +103,36 @@ def test_legacy_timeline_json_beep_is_explicit(tmp_path):
     file.write_text(json.dumps(document))
     with pytest.raises(ValueError, match="frequency"):
         load_timeline(file, slots={"target"})
+
+
+def test_new_single_file_class_is_discoverable_and_needs_no_json(monkeypatch):
+    from dataclasses import replace
+    from psychophysics_lab.stimulus_library import LibraryStimulus, library_stimulus_specs
+    from psychophysics_lab.experiments.spec import ConfigField
+    from psychophysics_lab.stimuli import registry as stimuli
+    from psychophysics_lab.stimuli.registry import StimulusSpec
+    from psychophysics_lab.experiments.registry import get_experiment
+    from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
+
+    class MyNewLine(LibraryStimulus):
+        PARAMETERS = (ConfigField("size_deg", "Patch diameter", "float",
+                                  1.0, minimum=0.1),)
+
+        @staticmethod
+        def render(parameters, x_deg, y_deg):
+            return np.full_like(x_deg, .5, dtype=float)
+
+        SPEC = StimulusSpec(
+            "one_file_test_line", "My one-file line", "Test-only renderer",
+            "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
+            family="simple_line", render=render.__func__, default_config="",
+            calibration_requirements=("geometry",),
+        )
+
+    assert MyNewLine.SPEC in library_stimulus_specs()
+    monkeypatch.setitem(stimuli._REGISTRY, MyNewLine.SPEC.id, MyNewLine.SPEC)
+    experiment = replace(get_experiment("example_experiment"),
+                         stimulus_defaults={"target": MyNewLine.SPEC.id})
+    resolved = resolve_stimuli(experiment, experiment.field_defaults(), repo_root=ROOT)
+    assert resolved["target"]["file_identity"] == "library_defaults"
+    assert resolved["target"]["document"]["parameters"] == {"size_deg": 1.0}
