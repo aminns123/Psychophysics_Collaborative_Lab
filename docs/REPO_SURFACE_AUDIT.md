@@ -19,7 +19,7 @@ single shared library. The registration list no longer points at these.
 Retired stimulus Draft/Ready authoring records are removed from the runtime
 inventory; the Git history preserves previous tested revisions.
 
-The old stimulus-module generator is no longer exposed in the normal TUI/CLI.
+The old stimulus-module generator is no longer exposed in the normal TUI/CLI.\nTwo unpublished, incomplete experiment Drafts and their unused settings are\nremoved from the active checkout; Git history retains their source.
 All new stimuli are direct edits to the shared library.
 
 ## Retained because they are still in use

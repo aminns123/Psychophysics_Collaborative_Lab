@@ -15,9 +15,8 @@ def test_standalone_learning_is_discoverable_without_textual(capsys):
     assert build_parser().parse_args(["--learn"]).learn is True
     assert _main(["--learn"]) == 0
     rendered = capsys.readouterr().out
-    for topic in ("--dev-preview", "--dev-ready stimulus", "--library-create",
-                  "--library-test", "--library-ready", "run_psycolab.bat",
-                  "trial_actions.json"):
+    for topic in ("--dev-preview", "--dev-stage experiment", "--dev-test",
+                  "--dev-ready experiment", "stimulus_library.py", "TrialTimeline"):
         assert topic in rendered
     assert chr(92) + chr(96) not in rendered
 
@@ -76,12 +75,14 @@ def test_tui_links_to_the_independent_guide():
     source = (ROOT / "src/psychophysics_lab/ui/setup.py").read_text(encoding="utf-8")
     for control in ("learn-guide", "learn-experiments", "learn-stimuli", "authoring-contract"):
         assert f'id="{control}"' in source
-    assert "yield LibraryExperimentBuilder()" in source
+    assert "yield LibraryExperimentBuilder()" not in source
+    assert 'id="build-new-experiment"' not in source
+    assert 'id="build-new-stimulus"' not in source
     assert 'id="view-shared-stimulus-library"' in source
     assert 'id="view-shared-scene-example"' in source
     assert "src/psychophysics_lab/stimulus_library.py" in source
     assert "examples/shared_stimuli.py" in source
-    assert "Advanced: create independent stimulus adapter" in source
+    assert "Advanced: create independent stimulus adapter" not in source
     assert (ROOT / "docs/LEARN_PSYCOLAB.md").is_file()
     assert (ROOT / "docs/AUTHORING_CONTRACT.md").is_file()
 

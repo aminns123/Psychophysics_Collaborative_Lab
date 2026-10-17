@@ -95,36 +95,12 @@ def test_human_cannot_reuse_user_env_output_folder(tmp_path):
     assert simulation_workspace(root, ROOT) == root.resolve()
 
 
-def test_published_revision_reverts_to_unavailable_after_edit(tmp_path):
-    """An untested edit must not register in human acquisition, but can be retested in USER_env."""
-    from psychophysics_lab.authoring import load_authored
-    import importlib
-    import sys
-    import psychophysics_lab.stimuli as stimuli_package
-    from psychophysics_lab.stimuli import registry
-
-    files = scaffold_draft(tmp_path, "student_patch_unverified", "stimulus")
-    # Temporary package module under the test repository, not global app checkout.
-    original_paths = list(stimuli_package.__path__)
-    stimuli_package.__path__.append(str(tmp_path / "src/psychophysics_lab/stimuli"))
-    monkey_registry = dict(registry._REGISTRY)
-    try:
-        mark_tested(tmp_path, "stimulus", "student_patch_unverified")
-        publish(tmp_path, "stimulus", "student_patch_unverified")
-        assert load_authored(tmp_path, tolerate_errors=True) == {}
-        assert "student_patch_unverified" in registry._REGISTRY
-        # Editing scientific Python invalidates the tested authoring fingerprint.
-        files[0].write_text(files[0].read_text() + "\n# changed after publication\n")
-        registry._REGISTRY.pop("student_patch_unverified")
-        failures = load_authored(tmp_path, tolerate_errors=True)
-        assert "stimulus:student_patch_unverified" in failures
-        assert "student_patch_unverified" not in registry._REGISTRY
-    finally:
-        stimuli_package.__path__[:] = original_paths
-        registry._REGISTRY.clear()
-        registry._REGISTRY.update(monkey_registry)
-        sys.modules.pop("psychophysics_lab.stimuli.student_patch_unverified", None)
-        importlib.invalidate_caches()
+def test_shared_library_is_only_registered_visual_stimulus_source():
+    from psychophysics_lab.stimulus_library import library_stimulus_specs
+    specs = library_stimulus_specs()
+    assert len(specs) >= 6
+    assert len({item.id for item in specs}) == len(specs)
+    assert all(x.source_path == "src/psychophysics_lab/stimulus_library.py" for x in specs)
 
 
 def test_main_tui_retains_build_and_source_inspection():
@@ -132,8 +108,9 @@ def test_main_tui_retains_build_and_source_inspection():
     assert ExperimentsScreen.page_title == "Experiments"
     assert StimuliScreen.page_title == "Stimuli"
     source = (ROOT / "src/psychophysics_lab/ui/setup.py").read_text(encoding="utf-8")
-    assert 'id="build-new-experiment"' in source
-    assert 'id="build-new-stimulus"' in source
+    assert 'id="build-new-experiment"' not in source
+    assert 'id="build-new-stimulus"' not in source
+    assert 'id="view-shared-stimulus-library"' in source
     assert 'id="view-selected-source"' in source
     assert 'launch-user-env-experiments' not in source
     assert 'launch-user-env-stimuli' not in source

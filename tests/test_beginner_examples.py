@@ -102,7 +102,8 @@ def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
 
 def test_normal_tui_has_explicit_example_source_controls():
     source = (ROOT / "src/psychophysics_lab/ui/setup.py").read_text(encoding="utf-8")
-    assert 'id="read-example-stimulus"' in source
+    assert 'id="read-example-stimulus"' not in source
+    assert 'id="view-shared-stimulus-library"' in source
     assert 'id="read-example-experiment"' in source
     assert 'id="read-example-timeline"' in source
     assert 'id="read-csf-timeline"' in source
