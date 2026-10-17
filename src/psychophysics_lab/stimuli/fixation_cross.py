@@ -15,10 +15,10 @@ PARAMETERS = (
 
 def render(parameters, x_deg, y_deg):
     """Draw a cross around the centre of its degree-coordinate patch."""
-    half_arm = parameters["arm_length_deg"] / 2
-    half_width = parameters["width_deg"] / 2
-    horizontal = (np.abs(y_deg) <= half_width) & (np.abs(x_deg) <= half_arm)
-    vertical = (np.abs(x_deg) <= half_width) & (np.abs(y_deg) <= half_arm)
+    half_arm    = parameters["arm_length_deg"] / 2
+    half_width  = parameters["width_deg"] / 2
+    horizontal  = (np.abs(y_deg) <= half_width) & (np.abs(x_deg) <= half_arm)
+    vertical    = (np.abs(x_deg) <= half_width) & (np.abs(y_deg) <= half_arm)
     return np.where(horizontal | vertical, parameters["intensity"], 0.5)
 
 SPEC = StimulusSpec(
