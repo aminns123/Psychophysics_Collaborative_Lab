@@ -33,7 +33,7 @@ def experiment_constraints(spec,profile,raw):
             reports['Background_Luminance']['domain']=f"Allowed: ≥ 0 and < {parsed['Max_monitor_Luminance']:g} cd/m²; verified mapping requires the measured pair."
         reports['Background_Screen_intensity']['domain']='Allowed range: 0 ≤ intensity < 1; background and starting intensity jointly determine contrast.'
         try:
-            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            from .._reference_csf.experiment_definition import resolved_condition_frequencies
             frequencies=resolved_condition_frequencies(parsed['condition_values'],parsed['condition_unit'])
             reports['number_conditions']['domain']=f'Allowed: exactly {len(frequencies)} for these condition values (1–24).'
             if parsed.get('number_conditions')!=len(frequencies): reports['number_conditions']['error']='Condition count must match the entered frequency list.'

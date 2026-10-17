@@ -10,7 +10,7 @@ from psychophysics_lab.data.trials import (
     TRIAL_SCHEMA_VERSION,
     write_trial_data_dictionary,
 )
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 
 
 def test_every_trial_column_has_exactly_one_definition():

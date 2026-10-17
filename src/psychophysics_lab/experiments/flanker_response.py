@@ -5,4 +5,4 @@ probe/indirect tasks; it is not an unambiguous experiment identifier. Existing
 PsyCoLab CSF runs MUST continue to use contrast_sensitivity and its renderer.
 Use simulations.csf_actions for existing fixture-backed action-state parity.
 """
-from .contrast_sensitivity import CSF_SPEC as SPEC
+from .._reference_csf.experiment_definition import CSF_SPEC as SPEC

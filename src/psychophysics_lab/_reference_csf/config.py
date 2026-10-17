@@ -61,7 +61,7 @@ def run_configure_experiment(NAME, data_save_repository, setupDict, run_director
     timeAB = int(setupDict.get("timeAB", 200))
     reversal_termination = int(setupDict["reversal_termination"])
     max_trials = int(setupDict.get("max_trials", 10 * 3))
-    from psychophysics_lab.experiments.contrast_sensitivity import resolved_condition_frequencies
+    from psychophysics_lab._reference_csf.experiment_definition import resolved_condition_frequencies
     # Existing older configurations had no unit and must retain historical
     # phase coefficients. Newly configured studies supply explicit units.
     input_unit = setupDict.get("condition_unit", "legacy_shader_radians")

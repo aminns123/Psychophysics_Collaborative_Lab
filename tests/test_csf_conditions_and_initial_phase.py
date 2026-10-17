@@ -6,7 +6,7 @@ import json
 import pytest
 
 from psychophysics_lab.adaptive.staircase import AdaptiveRun, StaircaseConfig, Step
-from psychophysics_lab.experiments.contrast_sensitivity import (
+from psychophysics_lab._reference_csf.experiment_definition import (
     parse_condition_values, CSF_SPEC
 )
 from simulations.csf import DEFAULT_VALUES

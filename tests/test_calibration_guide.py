@@ -15,7 +15,7 @@ from psychophysics_lab.core.display_tests import (
     diagnostic_timeout_reached, resolve_test,
 )
 from psychophysics_lab.core.geometry_check import GeometryCheckRequest
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.ui.calibration_guide import (
     CalibrationGuideScreen, GUIDE_STEPS, guide_statuses
 )

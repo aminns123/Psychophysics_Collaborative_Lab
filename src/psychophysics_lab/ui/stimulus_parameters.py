@@ -80,17 +80,21 @@ class StimulusParametersPanel(Vertical):
                     self.query_one('#stimulus-path-' + self.slot, Input).value = str(self.path)
             self.refresh_summary()
         elif not self.configuration.experiment.stimulus_field_bindings.get(self.slot):
-            self.load(self.app.repo_root / self.stimulus.default_config)
+            self.load_default()
         else:
             self.refresh_summary()
 
     def refresh_presets(self):
-        paths = [self.app.repo_root / self.stimulus.default_config]
+        paths = [self.app.repo_root / self.stimulus.default_config] if self.stimulus.default_config else []
         paths += sorted((self.app.local_config_root / "stimulus_presets" / self.stimulus.id).glob("*.json"))
         selector = self.query_one("#stimulus-preset-" + self.slot, Select)
         with self.prevent(Select.Changed):
-            selector.set_options([(p.name, str(p)) for p in paths])
-            selector.value = str(self.path) if self.path in paths else Select.BLANK
+            options = [(p.name, str(p)) for p in paths]
+            if not self.stimulus.default_config:
+                options.insert(0, ("Stimulus class defaults", "library_defaults"))
+            selector.set_options(options)
+            selector.value = str(self.path) if self.path in paths else (
+                "library_defaults" if self.loaded and self.loaded["file_identity"] == "library_defaults" else Select.BLANK)
 
     def current(self):
         if self.error:
@@ -108,6 +112,17 @@ class StimulusParametersPanel(Vertical):
             field = next(item for item in self.stimulus.parameters if item.key == parameter)
             values[parameter] = field.coerce(value)
         return snapshot(document_for(self.stimulus, values), file_identity="experiment_values")
+
+    def load_default(self):
+        if self.stimulus.default_config:
+            self.load(self.app.repo_root / self.stimulus.default_config)
+            return
+        self.loaded = snapshot(document_for(self.stimulus), file_identity="library_defaults")
+        self.path, self.error = None, None
+        self.app.stimulus_drafts[self.cache_key] = (self.loaded, None)
+        with self.prevent(Input.Changed):
+            self.query_one("#stimulus-path-" + self.slot, Input).value = ""
+        self.refresh_summary()
 
     def load(self, path):
         try:
@@ -150,10 +165,13 @@ class StimulusParametersPanel(Vertical):
             if event.value == self.stimulus.id:
                 return
             self.stimulus = get_stimulus(str(event.value))
-            self.load(self.app.repo_root / self.stimulus.default_config)
+            self.load_default()
             self.refresh_presets()
         elif event.select.id == "stimulus-preset-" + self.slot:
-            self.load(Path(str(event.value)))
+            if event.value == "library_defaults":
+                self.load_default()
+            else:
+                self.load(Path(str(event.value)))
 
     def on_button_pressed(self, event):
         event.stop()

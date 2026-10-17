@@ -298,7 +298,7 @@ class ExperimentsScreen(HubPage):
             with Horizontal(classes="buttons"):
                 yield Button("Read example experiment.py", id="read-example-experiment")
                 yield Button("Optional example settings preset", id="read-example-timeline")
-                yield Button("Read CSF timeline JSON", id="read-csf-timeline")
+                yield Button("Read thesis CSF experiment", id="read-csf-timeline")
             yield Static(
                 "[b]ONE experiment structure[/b]\n"
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
@@ -351,7 +351,7 @@ class ExperimentsScreen(HubPage):
             examples = {
                 "read-example-experiment": "src/psychophysics_lab/experiments/example_experiment.py",
                 "read-example-timeline": "configs/experiments/example_experiment.json",
-                "read-csf-timeline": "configs/experiments/contrast_sensitivity.json",
+                "read-csf-timeline": "src/psychophysics_lab/experiments/csf_thesis.py",
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
             return
@@ -728,7 +728,7 @@ class DisplayCheckScreen(HubPage):
         from ..config.preflight import qualification_checks
         progress = calibration_progress(profile, self.app.local_config_root)
         # These physical indicators use the same declarations as acquisition.
-        from ..experiments.contrast_sensitivity import CSF_SPEC
+        from .._reference_csf.experiment_definition import CSF_SPEC
         physical = {row['key']: row['passed'] for row in qualification_checks(CSF_SPEC, profile)}
         colours = {key: ('green' if physical.get(key, item['completed']) else
                          'yellow' if item['completed'] else 'red') for key, item in progress.items()}
@@ -2205,7 +2205,7 @@ class ReviewScreen(Screen):
             values = self.request.experiment_values
             down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
             count = values["number_conditions"] * values["staircases_per_condition"]
-            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            from .._reference_csf.experiment_definition import resolved_condition_frequencies
             frequencies = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
             lines.append(
                 f"Entered conditions: {values['condition_values']} "

@@ -41,9 +41,9 @@ import math
 from typing import Any
 
 from ..config.models import MonitorProfile
-from .spec import ConfigField, ExperimentSpec
+from ..experiments.spec import ConfigField, ExperimentSpec
 from ..adaptive import AdaptiveSelection
-from .responses import LEFT_RIGHT
+from ..experiments.responses import LEFT_RIGHT
 
 
 def trial_timeline(values):
@@ -202,7 +202,7 @@ def _validate_monitor(values, profile):
 
 CSF_SPEC = ExperimentSpec(
     id="contrast_sensitivity",
-    display_name="Contrast Sensitivity Function (reference experiment)",
+    display_name="Historical CSF (compatibility; not thesis protocol)",
     description=(
         "Reference CSF: same ordered fixation/condition/probe/interval/response "
         "phase contract as new experiments, currently using the retained Pyglet/OpenGL "
@@ -342,7 +342,7 @@ CSF_SPEC = ExperimentSpec(
     },
     validator=_validate,
     monitor_validator=_validate_monitor,
-    source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py", "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py"),
+    source_paths=("src/psychophysics_lab/_reference_csf/experiment_definition.py", "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py"),
     stimulus_slots={"target": "csf"}, stimulus_defaults={"target": "legacy_csf"},
     stimulus_field_bindings={"target": {key: key for key in ("number_conditions", "condition_unit", "condition_values")}},
 )

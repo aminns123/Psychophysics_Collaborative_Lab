@@ -12,7 +12,7 @@ from psychophysics_lab.config.local import config_root, save_profile
 from psychophysics_lab.config.models import LuminanceCalibrationPoint, SetupRequest
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.preflight import human_blockers
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.ui.luminance_data import LuminanceDataScreen
 from psychophysics_lab.ui.setup import DisplayCheckScreen, PsyCoLabSetupApp, ReviewScreen
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .contrast_sensitivity import CSF_SPEC
+from .._reference_csf.experiment_definition import CSF_SPEC
 from .spec import ExperimentSpec
 
 _REGISTRY: dict[str, ExperimentSpec] = {

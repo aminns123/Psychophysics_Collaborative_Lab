@@ -59,12 +59,17 @@ def validate_geometry(profile, resolution, stimulus, parameters):
 
 class Presentation:
     synthetic = False
-    def __init__(self, profile, responses):
+    background_intensity = .5
+    def __init__(self, profile, responses, *, background_intensity=.5):
+        import math
+        if type(background_intensity) not in (int, float) or not math.isfinite(background_intensity) or not 0 <= background_intensity <= 1:
+            raise ValueError("Background must be a finite digital command in [0, 1].")
         import pyglet
         from .display import select_screen
         screen, identity = select_screen(profile)
         self.window = pyglet.window.Window(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab — Escape aborts")
         self.profile, self.responses = profile, responses
+        self.background_intensity = background_intensity
         self.held = set()
         self.window.push_handlers(on_key_release=lambda symbol, modifiers: self.held.discard(symbol))
         self.resolution = (self.window.width, self.window.height)
@@ -132,7 +137,7 @@ class Presentation:
             self.window.dispatch_events()  # discard stale/held responses before onset
             if aborted or self.window.has_exit:
                 raise ParticipantAbort("Escape or window close before visual phase")
-            gl.glClearColor(.5, .5, .5, 1)
+            gl.glClearColor(self.background_intensity, self.background_intensity, self.background_intensity, 1)
             self.window.clear()
             for x, y, picture in self._rendered[phase.name]:
                 picture.blit(x, y)

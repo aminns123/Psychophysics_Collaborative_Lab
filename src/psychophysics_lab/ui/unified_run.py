@@ -40,7 +40,7 @@ class VirtualObserverOptionsScreen(Screen):
         if ("preferred_condition" in values and
                 self.request.experiment_id == "contrast_sensitivity" and
                 experiment_values.get("condition_unit") in {"cycles_per_degree", "degrees_per_cycle"}):
-            from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+            from .._reference_csf.experiment_definition import resolved_condition_frequencies
             conditions = resolved_condition_frequencies(
                 experiment_values["condition_values"], experiment_values["condition_unit"]
             )

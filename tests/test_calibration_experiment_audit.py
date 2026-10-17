@@ -15,7 +15,7 @@ from psychophysics_lab.config.readiness import profile_readiness
 from psychophysics_lab.core.display import DisplayInfo
 from psychophysics_lab.core.geometry_check import run_geometry_check, GeometryCheckRequest, record_geometry_measurement
 from psychophysics_lab.core.display_tests import resolve_test
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.stimuli.contrast_validation import validate_grating_command, grating_command_bounds
 from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen, ChangeDisplayScreen

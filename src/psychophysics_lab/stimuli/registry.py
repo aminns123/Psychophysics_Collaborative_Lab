@@ -65,7 +65,7 @@ def get_stimulus(identity):
 
 def list_stimuli() -> tuple[StimulusSpec, ...]:
     from dataclasses import replace
-    from ..experiments.contrast_sensitivity import CSF_SPEC
+    from .._reference_csf.experiment_definition import CSF_SPEC
     if not _REGISTRY["legacy_csf"].parameters:
         # A single researcher-facing definition owns the reference shader.
         # Keep the original ID and CSF-specific validator and human gate.
@@ -81,7 +81,7 @@ def list_stimuli() -> tuple[StimulusSpec, ...]:
 
 
 def _validate_csf_parameters(values):
-    from ..experiments.contrast_sensitivity import resolved_condition_frequencies
+    from .._reference_csf.experiment_definition import resolved_condition_frequencies
     conditions = resolved_condition_frequencies(values['condition_values'], values['condition_unit'])
     if len(conditions) != values['number_conditions']:
         raise ValueError("number_conditions must match the number of condition_values.")

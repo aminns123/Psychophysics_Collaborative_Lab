@@ -1,5 +1,5 @@
 from psychophysics_lab.config.models import MonitorProfile
-from psychophysics_lab.experiments.contrast_sensitivity import CSF_SPEC
+from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 
 
 def _values():

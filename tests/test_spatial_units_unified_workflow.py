@@ -10,7 +10,7 @@ from textual.widgets import Button, Input, Select, Static
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.config.preflight import validate_setup
-from psychophysics_lab.experiments.contrast_sensitivity import (
+from psychophysics_lab._reference_csf.experiment_definition import (
     CSF_SPEC, resolved_condition_frequencies
 )
 from psychophysics_lab.stimuli.spatial_calibration import (

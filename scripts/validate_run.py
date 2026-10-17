@@ -171,6 +171,8 @@ def validate_run(run_directory: Path) -> list[Check]:
         require(type(adaptive.get("total_trials")) is int and adaptive["total_trials"] == len(rows),
                 "adaptive total_trials differs from canonical count")
         require(adaptive.get("canonical_trial_log") == "trials.tsv", "adaptive trial reference differs")
+        value_column = adaptive.get("canonical_value_column", "next_screen_intensity")
+        require(value_column in {"next_screen_intensity", "next_display_contrast"}, "unknown adaptive value column")
         states = adaptive["staircases"]
         require(bool(states), "no staircase states")
         require(all(row["staircase_id"] in states for row in rows), "unknown staircase in trials")
@@ -192,7 +194,7 @@ def validate_run(run_directory: Path) -> list[Check]:
                 last = trials[-1]
                 require(int(last["reversal_count"]) == state["reversal_count"] and
                         last["staircase_complete"] == str(int(state["complete"])) and
-                        same_number(last["next_screen_intensity"], state["last_value"]),
+                        same_number(last[value_column], state["last_value"]),
                         f"staircase {identity}: final canonical state differs")
         completed = {identity for identity, state in states.items() if state["complete"]}
         for key, expected in (("completed_staircase_ids", completed),

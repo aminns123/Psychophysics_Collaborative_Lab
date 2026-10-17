@@ -39,9 +39,14 @@ in your new class's render() method.
 `CSFGrating` in the same library owns the exact reference GLSL shader.
 It is a special hardware-rendered class, **not** an ordinary NumPy
 `render()` preview. Do not substitute a teaching Gabor and assume
-equivalent luminance, phase or timing. CSF's experiment settings remain
-in `experiments/contrast_sensitivity.py`; its hardware driver is internal
-and requires separate lab qualification.
+equivalent luminance, phase or timing. Its historical experiment definition
+and hardware driver are internal to `_reference_csf/`.
+
+The new `experiments/csf_thesis.py` is a separate protocol using
+`ThesisCSFGrating` and `ThesisGaussianFixation`, ordinary NumPy renderers in the
+same library. Its thesis defaults can be overridden through the TUI. It requires
+separate physical qualification before human acquisition; it does not establish
+rendering equivalence with the historical shader.
 
 ## 2. Preview the stimulus
 
@@ -123,3 +128,14 @@ responses and scientific state, `stimulus_parameters.json` for actual stimulus
 parameters, and `manifest.json` for source/version provenance. Adaptive runs also
 save complete staircase histories. Check a run with
 `python scripts/validate_run.py <run_directory>`.
+
+
+## Read the experiment as a participant's sequence
+
+Open `experiments/csf_thesis.py` for the current thesis example. Read the constants,
+then `one_trial()`: fixation -> grating alone -> fixation and left/right response.
+`change_contrast()` gives the response-to-next-trial rule; `procedure()` chooses
+conditions and repeats trials until the declared staircase stopping rule. `SPEC`
+at the bottom connects those scientific choices to the TUI. Recording and source
+metadata are handled by PsyCoLab. The old CSF compatibility definition is internal
+and is not a template for a new experiment.
