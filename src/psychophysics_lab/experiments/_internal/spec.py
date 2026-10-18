@@ -46,11 +46,23 @@ class ConfigField:
         if self.kind in {"int", "float"}:
             if isinstance(value, bool):
                 raise ValueError(f"{self.display_label} must be a number, not a boolean.")
-            number = float(value)
-            if not math.isfinite(number):
-                raise ValueError(f"{self.display_label} must be finite.")
-            if self.kind == "int" and not number.is_integer():
-                raise ValueError(f"{self.display_label} must be a whole number.")
+            if self.kind == "int":
+                # JSON integers and TUI decimal strings must not pass through a
+                # binary float: valid 64-bit seeds can otherwise silently round.
+                from decimal import Decimal, InvalidOperation
+                try:
+                    exact = Decimal(str(value))
+                except InvalidOperation as exc:
+                    raise ValueError(f"{self.display_label} must be a number.") from exc
+                if not exact.is_finite():
+                    raise ValueError(f"{self.display_label} must be finite.")
+                if exact != exact.to_integral_value():
+                    raise ValueError(f"{self.display_label} must be a whole number.")
+                number = int(exact)
+            else:
+                number = float(value)
+                if not math.isfinite(number):
+                    raise ValueError(f"{self.display_label} must be finite.")
             if self.minimum is not None and number < self.minimum or self.maximum is not None and number > self.maximum:
                 raise ValueError(f"{self.display_label} ({self.key.replace(chr(95), chr(45))}) is outside its permitted range.")
             return int(number) if self.kind == "int" else number

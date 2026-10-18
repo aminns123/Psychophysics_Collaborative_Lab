@@ -63,6 +63,7 @@ FIELDS = (
         minimum=0,
         maximum=1,
         units='digital intensity, 0 to 1',
+        help_text="The inducing grating adds +/-0.009. Background must be at least 0.009 so its dark bands stay at or above digital zero. Probe and flanker share the upper headroom shown in Review.",
     ),
     ConfigField(
         "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1,
@@ -404,6 +405,8 @@ def validate_settings(values):
     difference = values["starting_probe_intensity"] - values["background_intensity"]
     if 0 < difference < sys.float_info.min:
         yield "Starting probe intensity is closer to background than the positive log-staircase numeric floor; use exact background or a representable larger difference."
+    if values["background_intensity"] < 0.009:
+        yield "Background intensity must be at least 0.009 for this flanker procedure: its dark grating bands subtract 0.009."
     if values["background_intensity"] == 1:
         yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
     if values["threshold_reversals"] > values["reversal_termination"]:

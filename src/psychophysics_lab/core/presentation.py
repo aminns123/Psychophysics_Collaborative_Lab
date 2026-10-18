@@ -124,36 +124,52 @@ class Presentation:
     def prepare(self, timeline, parameters_by_slot):
         """Prepare all images before the first timed phase; no disk IO."""
         import pyglet
-        for pictures in getattr(self,"_rendered",{}).values():
-            for _,_,picture in pictures:
-                if isinstance(picture,FloatingTexture):picture.delete()
-        rendered = {}
-        phase_geometry = {}
-        for phase in timeline.phases:
-            if not hasattr(phase, "placements"):
-                continue
-            pictures = []
-            geometries = []
-            for placement in phase.placements:
-                stimulus_id, params = parameters_by_slot[placement.slot]
-                stimulus = get_stimulus(stimulus_id)
-                pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
-                x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
-                coordinates = display_degree_coordinates(self.profile, self.resolution, pixels, (x,y), placement)
-                geometries.append({"slot": placement.slot, "origin_px": [x,y], "raster_px": list(pixels),
-                    "requested_centre_deg": [placement.x_deg, placement.y_deg],
-                    "geometry_basis": "per-pixel flat-screen angular coordinates"})
-                if stimulus.floating_raster:
-                    array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates),dtype=np.float32)
-                    picture = FloatingTexture(array)
-                else:
-                    array = render_pixels(stimulus,params,pixels=pixels,coordinates=coordinates)
-                    picture = pyglet.image.ImageData(*pixels,"L",array.tobytes(),pitch=pixels[0])
-                pictures.append((x,y,picture))
-            rendered[phase.name] = pictures
-            phase_geometry[phase.name] = geometries
-        self._rendered = rendered
-        self._phase_geometry = phase_geometry
+        previous = getattr(self, "_rendered", {})
+        # A failed preparation must not leave stale/deleted textures available
+        # for drawing or a later retry, even if an intermediate patch fails.
+        self._rendered, self._phase_geometry = {}, {}
+        for pictures in previous.values():
+            for _, _, picture in pictures:
+                if isinstance(picture, FloatingTexture):
+                    picture.delete()
+        allocated = []
+        try:
+            rendered = {}
+            phase_geometry = {}
+            for phase in timeline.phases:
+                if not hasattr(phase, "placements"):
+                    continue
+                pictures = []
+                geometries = []
+                for placement in phase.placements:
+                    stimulus_id, params = parameters_by_slot[placement.slot]
+                    stimulus = get_stimulus(stimulus_id)
+                    pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
+                    x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
+                    coordinates = display_degree_coordinates(self.profile, self.resolution, pixels, (x,y), placement)
+                    geometries.append({"slot": placement.slot, "origin_px": [x,y], "raster_px": list(pixels),
+                        "requested_centre_deg": [placement.x_deg, placement.y_deg],
+                        "geometry_basis": "per-pixel flat-screen angular coordinates"})
+                    if stimulus.floating_raster:
+                        array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates),dtype=np.float32)
+                        picture = FloatingTexture(array)
+                    else:
+                        array = render_pixels(stimulus,params,pixels=pixels,coordinates=coordinates)
+                        picture = pyglet.image.ImageData(*pixels,"L",array.tobytes(),pitch=pixels[0])
+                    if isinstance(picture, FloatingTexture):
+                        allocated.append(picture)
+                    pictures.append((x,y,picture))
+                rendered[phase.name] = pictures
+                phase_geometry[phase.name] = geometries
+            self._rendered = rendered
+            self._phase_geometry = phase_geometry
+        except BaseException as error:
+            for picture in reversed(allocated):
+                try:
+                    picture.delete()
+                except Exception as cleanup_error:
+                    error.add_note(f"Partial texture cleanup also failed: {cleanup_error!r}")
+            raise
 
     def play_phase(self, phase, event, *, instructions=""):
         """Observe one visual phase; append partial timing even on Escape/timeout."""

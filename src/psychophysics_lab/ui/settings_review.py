@@ -101,6 +101,13 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             distinct = list(dict.fromkeys(str(c[key]) for c in description["conditions"] if key in c))
             rows.append(("Conditions",key,", ".join(distinct),"All configured values; repeats shown above"))
     for phase in description["phases"]:
+        if phase["kind"] not in {"show", "response"}:
+            labels = {"record_state": "Record state", "update_state": "Update state",
+                      "update_adaptive": "Update staircase"}
+            detail = ", ".join(phase.get("fields", ())) or phase.get("function", "")
+            rows.append(("Trial action", phase["name"], labels.get(phase["kind"], phase["kind"]),
+                         "Nonvisual action" + (": " + detail if detail else "")))
+            continue
         rows.append(("Trial",phase["name"]+" duration",str(phase["duration_ms"]),
                      "ms; self-paced response" if phase["kind"]=="response" and phase["duration_ms"]==0 else "ms"))
         if phase["kind"] == "show" and refresh_hz is not None:
