@@ -787,7 +787,8 @@ class DisplayCheckScreen(HubPage):
         from ..core.precision_session import precision_status
         self.query_one("#precision-summary", Static).update(precision_status(self.app.local_config_root, profile))
         from ..core.precision_session import latest_precision
-        _, saved_precision = latest_precision(self.app.local_config_root, profile)
+        # Display the last real photometer data even after a newer inspect-only run.
+        _, saved_precision = latest_precision(self.app.local_config_root, profile, measurement_only=True)
         table = self.query_one("#precision-readings", DataTable)
         if not table.columns:
             table.add_columns("Digital command", "Mean cd/m²", "SD cd/m²", "Readings", "ΔL from previous measured level", "SE of ΔL")
