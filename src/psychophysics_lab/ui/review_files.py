@@ -79,7 +79,7 @@ def actual_json_sources(app,request):
 
 def targets_for_rows(spec,snapshots,description,rows,sources,root):
     source=experiment_source(spec,root)
-    def python(path=source,*,key=None,owner=None,function=None,note="Defined in Python; restart PsyCoLab after changing code"):
+    def python(path=source,*,key=None,owner=None,function=None,note="Defined in Python; save changes, then Refresh (F5)"):
         if path is None:
             return dict(kind="unavailable",path=None,line=1,note="This component records no inspectable source file; file navigation is unavailable for this row")
         return dict(kind="python",path=Path(path),line=definition_line(path,key=key,owner=owner,function=function),note=note)
@@ -110,7 +110,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
                   and snapshots[slot]["document"]["parameters"]=={field.key:field.default for field in stimulus.parameters}):
                 owner=stimulus.render.__qualname__.split(".")[0] if stimulus.render else None
                 targets.append(python(Path(root)/stimulus.source_path,key=field.key if field else None,owner=owner,
-                    note="Stimulus class defaults; a Python edit changes defaults for new setups after restart"))
+                    note="Stimulus class defaults; save Python changes, then Refresh (F5) to apply updated defaults"))
             else:
                 targets.append(dict(kind="stimulus_json",path=None,slot=slot,key=field.key if field else None,line=1,
                     note="Saved snapshot without its original file; Enter saves an ordinary JSON copy"))

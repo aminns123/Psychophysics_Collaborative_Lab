@@ -7,6 +7,7 @@ from pathlib import Path
 import traceback
 from typing import Any
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
@@ -193,6 +194,11 @@ def _source_inventory(repo_root, experiment):
 
 
 class HubNavigation(Horizontal):
+    def on_button_pressed(self, event):
+        if event.button.id == "refresh-psycolab":
+            event.stop()
+            self.app.action_refresh_files()
+
     def on_mount(self):
         page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
                 "DisplayCheckScreen": "display", "ProfileScreen": "display",
@@ -206,6 +212,7 @@ class HubNavigation(Horizontal):
 def _nav_bar() -> Horizontal:
     return HubNavigation(
         *[Button(label, id=f"nav-{key}") for key, label in NAV_PAGES],
+        Button("Refresh", id="refresh-psycolab", tooltip="Reload saved Python and JSON files (F5)"),
         id="hub-nav",
     )
 
@@ -2011,7 +2018,7 @@ class ExperimentConfigScreen(Screen):
                     self._save_calibration_draft()
                     path = self.app.repo_root / self.experiment.source_paths[0]
                     self.app.inspect_source(path)
-                    self.query_one("#config-status", Static).update("Python edits require restarting PsyCoLab. Your experiment draft is saved. JSON/TUI values can be reloaded without restarting.")
+                    self.query_one("#config-status", Static).update("Save Python edits, then use Refresh (F5). Your experiment draft will be retained. JSON alone can use Reload saved JSON.")
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 self.query_one("#config-status",Static).update(str(exc))
             return
@@ -2505,7 +2512,7 @@ class ReviewScreen(Screen):
                         panel.load(sources["stimuli"][panel.slot])
         self._refresh_readiness()
         self._apply_run_intent()
-        self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. Python edits require restart.")
+        self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. For Python edits, use Refresh (F5).")
 
     def on_mount(self):
         self._refresh_parameter_table()
@@ -2842,8 +2849,10 @@ class PsyCoLabSetupApp(App):
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
-                 geometry_summary: str | None = None, include_historical: bool = False) -> None:
+                 geometry_summary: str | None = None, include_historical: bool = False,
+                 refresh_state: dict | None = None) -> None:
         super().__init__()
+        self.refresh_state = refresh_state
         self.include_historical = include_historical
         self.simulation_summary = simulation_summary
         self.geometry_summary = geometry_summary
@@ -2890,7 +2899,7 @@ class PsyCoLabSetupApp(App):
             path = (self.repo_root/relative).resolve()
             expected = self.loaded_source_hashes.get(str(path))
             if expected is not None and (not path.is_file() or file_hash(path) != expected):
-                raise ValueError(f"{path.name} changed after PsyCoLab loaded it. Restart PsyCoLab to apply Python edits before Review or running.")
+                raise ValueError(f"{path.name} changed after PsyCoLab loaded it. Use Refresh (F5) to apply Python edits before Review or running. Restart PsyCoLab is also supported.")
 
     def verify_settings_current(self, request):
         from .parameter_files import ensure_unchanged
@@ -3086,8 +3095,51 @@ class PsyCoLabSetupApp(App):
     def on_mount(self) -> None:
         self._refresh_experiment_context()
         self._refresh_run_intent()
-        if self.geometry_summary:
+        if self.refresh_state is not None:
+            self.call_after_refresh(self._restore_refreshed_setup)
+        elif self.geometry_summary:
             self.call_after_refresh(self._restore_diagnostic_review)
+
+    BINDINGS = [("f5", "refresh_files", "Refresh files")]
+
+    @work(exclusive=True, group="refresh-files")
+    async def action_refresh_files(self):
+        import asyncio
+        from .refresh import capture_state, check_refresh, RefreshRequest
+        # Never replace the interface during an active validation operation.
+        if any(worker.group != "refresh-files" and worker.is_running for worker in self.workers):
+            self.notify("Wait for the current operation to finish, then Refresh.", severity="warning")
+            return
+        buttons = list(self.query("#refresh-psycolab"))
+        for button in buttons:
+            button.disabled = True
+        try:
+            state = capture_state(self)
+            self.notify("Checking saved files… Your setup will reopen after refresh.", timeout=8)
+            await asyncio.to_thread(check_refresh, state, self.repo_root)
+            if capture_state(self) != state:
+                raise ValueError("Your setup changed while the files were being checked; use Refresh again")
+        except Exception as exc:
+            self.notify(f"Refresh could not load the saved files: {exc}. Your current setup is retained.",
+                        severity="error", timeout=20)
+            for button in buttons:
+                button.disabled = False
+        else:
+            self.exit(RefreshRequest(state))
+
+    async def _restore_refreshed_setup(self):
+        from .refresh import restore_state
+        state, self.refresh_state = self.refresh_state, None
+        try:
+            await restore_state(self, state)
+            self.notify("Refreshed saved Python and JSON. Review the values before running.", timeout=10)
+        except Exception as exc:
+            # No acquisition can start from a partial or invalid restoration.
+            while len(self.screen_stack) > 1:
+                await self.pop_screen()
+            self.screen_stack[0].query_one("#setup-status", Static).update(
+                f"Files refreshed, but this setup could not be restored: {exc}. "
+                "Select the experiment and review its settings again.")
 
     async def _restore_diagnostic_review(self):
         local = preferences(self.local_config_root)
@@ -3345,8 +3397,10 @@ class PsyCoLabSetupApp(App):
 
 def run_setup_tui(*, repo_root: Path, data_root: Path,
                   simulation_summary: str | None = None,
-                  geometry_summary: str | None = None) -> SetupRequest | GeometryCheckRequest | None:
+                  geometry_summary: str | None = None,
+                  refresh_state: dict | None = None) -> SetupRequest | GeometryCheckRequest | None:
     app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
                            simulation_summary=simulation_summary,
-                           geometry_summary=geometry_summary)
+                           geometry_summary=geometry_summary, refresh_state=refresh_state,
+                           include_historical=bool(refresh_state and refresh_state.get("include_historical")))
     return app.run()

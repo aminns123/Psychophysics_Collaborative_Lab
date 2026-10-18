@@ -197,7 +197,10 @@ def test_crop_and_blank_target_choices_remain_available(tmp_path):
     from psychophysics_lab.stimuli.registry import get_stimulus
     from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
     stimulus = get_stimulus("detection_scene")
-    parameters = document_for(stimulus)["parameters"] | {"size_deg": .1, "probe_y_deg": .5}
+    # This fixture intentionally puts the complete reference probe outside
+    # the aperture; researcher-edited class defaults must not change the case.
+    parameters = document_for(stimulus)["parameters"] | {
+        "size_deg": .1, "probe_y_deg": .5, "probe_length_deg": .133}
     np.testing.assert_array_equal(render_values(stimulus, parameters), render_values(stimulus, parameters | {"probe_present": False}))
     spec = get_experiment("line_position_baseline")
     profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"], expected_resolution_px=(1920, 1080))
