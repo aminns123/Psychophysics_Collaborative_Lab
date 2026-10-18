@@ -102,8 +102,8 @@ FIELDS = (
 FIELDS += (
     ConfigField("auditory_cues", "Beep at probe onset and accepted response", "choice", False,
                 choices=(False, True), help_text="Optional Windows sound; does not indicate correctness. Speaker onset is uncalibrated."),
-    ConfigField("cue_hz", "Beep frequency", "int", 550, minimum=37, maximum=32767, units="Hz"),
-    ConfigField("cue_ms", "Beep duration", "int", 35, minimum=1, maximum=1000, units="ms"),
+    ConfigField("cue_hz", "Beep frequency", "int", 550, minimum=37, maximum=32767, units="Hz", help_text="Used only when auditory cues are enabled."),
+    ConfigField("cue_ms", "Beep duration", "int", 35, minimum=1, maximum=1000, units="ms", help_text="Used only when auditory cues are enabled."),
     ConfigField(
         "probe_vertical_offset_deg",
         "Probe centre above/below fixation (required)",
@@ -112,7 +112,7 @@ FIELDS += (
         minimum=0.001,
         maximum=5,
         units="degrees",
-        help_text="Distance from fixation to probe centre, not pixels or total separation. At x=0, 0.01 degrees puts the .133-degree-high line across fixation. For an appearance check, try 0.2 degrees; choose the study value yourself.",
+        help_text="Distance from fixation to probe centre, not pixels or total separation. At x=0, a displacement smaller than half the selected probe length puts the line across fixation. For an appearance check, try 0.2 degrees; choose the study value yourself.",
     ),
 )
 FIELDS += (
@@ -135,7 +135,7 @@ STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_alternative_forced_choice"
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "line_position_flanker-2",
+    "version": "line_position_flanker-3",
     "response": "Is the line above or below fixation?",
     "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
     "conditions": "TUI-selected horizontal probe positions; independently interleaved repeat staircases and equiprobable above/below targets.",
@@ -143,7 +143,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Line .013 degrees wide x .133 high; vertical displacement selected in TUI. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected from prior CSF.",
+    "geometry": "Probe width/length come from the selected DetectionScene parameters (defaults .013/.133 degrees); displacement is an experiment setting. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected from prior CSF.",
 }
 
 
