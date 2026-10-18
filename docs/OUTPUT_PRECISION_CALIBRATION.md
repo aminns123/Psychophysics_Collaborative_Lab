@@ -5,7 +5,7 @@ This stage is adjacent to **Luminance** in Calibrate. It investigates whether di
 ## Keep three answers separate
 
 1. **Windows reports:** current active signal depth per colour channel for the *selected display*. This is a software/driver report, not a photometer measurement and not necessarily the panel's intrinsic depth.
-2. **Application obtained:** the actual OpenGL framebuffer storage inspected after context creation. PsyCoLab first requests a suitable format; when unavailable it visibly reports a fallback. A 16-bit floating-point channel does *not* contain 16 uniformly spaced bits in [0, 1].
+2. **Application obtained:** the actual OpenGL framebuffer storage inspected after context creation. PsyCoLab requests at least 10-bit internal precision (or the higher reported signal depth) by default; when unavailable it visibly reports a fallback. An 8-bit Windows signal report does not cap the application's internal buffer request, but the outgoing signal can still be 8-bit. A 16-bit floating-point channel does *not* contain 16 uniformly spaced bits in [0, 1].
 3. **Measurements demonstrate:** your saved photometer readings at specified normalized commands, with means, standard deviations, differences and your explicit assessment. Even distinguishable time-averaged luminances cannot by themselves distinguish native 10-bit hardware from temporal/spatial dithering or FRC.
 
 The manufacturer's advertised specification is a **fourth, optional note**; keep it independent of the three observations above. A claimed or reported “10-bit” signal is not an automatic experimental pass.
