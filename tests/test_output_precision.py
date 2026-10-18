@@ -265,7 +265,8 @@ def test_photometer_uses_scientific_float_texture_upload(monkeypatch, tmp_path):
     session = PrecisionSession(tmp_path, p, PrecisionSessionRequest(p.id, 'fine', 10, (.5,)))
     windows, captured = [], []
     class Window:
-        width, height = p.expected_resolution_px
+        # Historical reference profile deliberately has no bound resolution.
+        width, height = 1920, 1080
         def __init__(self):
             self.events = {}
             self.closed = False
