@@ -87,7 +87,7 @@ def test_inspection_is_not_measurement_and_cannot_be_reviewed_as_resolved(tmp_pa
     assert 'Windows reports: 10-bit' in precision_status(tmp_path,p)
     assert 'Application obtained: RGB 16/16/16, floating_point' in precision_status(tmp_path,p)
     assert '0 measured command levels' in precision_status(tmp_path,p)
-    with pytest.raises(ValueError,match='repeated'):
+    with pytest.raises(ValueError,match='fine-step'):
         record_precision_review(tmp_path,p,assessment='resolved_increments',notes='Reported 10-bit')
     record_precision_review(tmp_path,p,assessment='inconclusive',notes='No meter available yet.')
     assert 'inconclusive' in precision_status(tmp_path,p)
@@ -295,7 +295,9 @@ def test_photometer_uses_scientific_float_texture_upload(monkeypatch, tmp_path):
         return window, evidence()
     monkeypatch.setattr('psychophysics_lab.core.output_precision.create_output_window',
                         create_window)
-    monkeypatch.setattr(geometry_check, 'select_screen', lambda p: (object(), {}))
+    # The fullscreen code imports select_screen from core.display lazily.
+    monkeypatch.setattr('psychophysics_lab.core.display.select_screen',
+                        lambda p: (object(), {}))
     label = lambda *args, **kwargs: SimpleNamespace(text='', draw=lambda: None)
     fake = SimpleNamespace(
         gl=SimpleNamespace(glClearColor=lambda *args: None),
@@ -309,3 +311,121 @@ def test_photometer_uses_scientific_float_texture_upload(monkeypatch, tmp_path):
     assert captured[1][2] > 1 and captured[1][3] > 1
     assert windows[-1].closed
     assert 'floating texture' in session.session['output_precision']['photometer_patch_path']
+
+
+
+def test_invalid_enum_framebuffer_queries_are_unverified_not_fatal():
+    """Reproduce the Windows driver error reported on 2026-10-18."""
+    def unsupported(enum, pointer):
+        raise RuntimeError("b'invalid enumerant'")
+    gl = SimpleNamespace(
+        GLint=ct.c_int, GL_RED_BITS=1, GL_GREEN_BITS=2,
+        GL_BLUE_BITS=3, GL_ALPHA_BITS=4,
+        glGetIntegerv=unsupported,
+        gl_info=SimpleNamespace(
+            have_extension=lambda name: True,
+            get_renderer=lambda: 'MOCK', get_version=lambda: 'MOCK'))
+    obtained = output.framebuffer_info(gl)
+    assert obtained['channel_bits'] == dict.fromkeys(('red', 'green', 'blue', 'alpha'))
+    assert obtained['numeric_format'] == 'unknown'
+    assert obtained['buffer_precision_bits_in_0_1'] is None
+    assert obtained['inspection_status'] == 'partial'
+    assert obtained['query_errors']
+
+
+def test_rejected_float_format_query_never_becomes_false_high_precision():
+    def mock_query(enum, pointer):
+        if enum == 0x8820:
+            raise RuntimeError("b'invalid enumerant'")
+        pointer._obj.value = 16
+    gl = SimpleNamespace(
+        GLint=ct.c_int, GL_RED_BITS=1, GL_GREEN_BITS=2,
+        GL_BLUE_BITS=3, GL_ALPHA_BITS=4,
+        glGetIntegerv=mock_query,
+        gl_info=SimpleNamespace(
+            have_extension=lambda name: True,
+            get_renderer=lambda: 'MOCK', get_version=lambda: 'MOCK'))
+    obtained = output.framebuffer_info(gl)
+    assert obtained['channel_bits']['red'] == 16
+    assert obtained['numeric_format'] == 'unknown'
+    assert obtained['buffer_precision_bits_in_0_1'] is None
+
+
+def test_rejected_queries_keep_default_presentation_window_available(monkeypatch):
+    """The old bug rejected every candidate, including the default window."""
+    windows = []
+    class Window:
+        def __init__(self, **kwargs):
+            self.options = kwargs
+            self.closed = False
+            windows.append(self)
+        def switch_to(self):
+            pass
+        def close(self):
+            self.closed = True
+        def set_caption(self, value):
+            self.caption = value
+        def set_visible(self, value):
+            self.visible = value
+    def unsupported(enum, pointer):
+        raise RuntimeError("b'invalid enumerant'")
+    gl = SimpleNamespace(
+        Config=lambda **kwargs: kwargs, ConfigException=RuntimeError,
+        GLint=ct.c_int, GL_RED_BITS=1, GL_GREEN_BITS=2,
+        GL_BLUE_BITS=3, GL_ALPHA_BITS=4,
+        glGetIntegerv=unsupported,
+        gl_info=SimpleNamespace(have_extension=lambda name: True,
+                                get_renderer=lambda: 'MOCK',
+                                get_version=lambda: 'MOCK'))
+    monkeypatch.setitem(sys.modules, 'pyglet', SimpleNamespace(
+        gl=gl, window=SimpleNamespace(Window=Window, NoSuchConfigException=RuntimeError)))
+    monkeypatch.setattr('psychophysics_lab.core.display.screen_info',
+                        lambda screen, index: SimpleNamespace(device_id='DISPLAY1'))
+    monkeypatch.setattr(output, 'windows_output',
+                        lambda name: {'status':'reported','device_id':name,
+                                      'bits_per_color_channel':10})
+    candidate = SimpleNamespace(red_size=10, green_size=10, blue_size=10, _pf=1)
+    screen = SimpleNamespace(get_matching_configs=lambda template: [candidate])
+    with pytest.warns(RuntimeWarning, match='UNKNOWN'):
+        window, report = output.create_output_window(screen, fullscreen=True)
+    assert window is windows[-1]
+    assert window.options.get('config') is None
+    assert not window.closed
+    assert 'UNKNOWN' in window.caption
+    assert report['inspection_status'] == 'unknown'
+    assert report['application_obtained']['buffer_precision_bits_in_0_1'] is None
+    assert report['physical_precision_verified'] is False
+    assert windows[0].closed
+
+
+def test_invalid_enum_during_format_enumeration_uses_default(monkeypatch):
+    windows = []
+    class Window:
+        def __init__(self, **kwargs):
+            self.options = kwargs
+            windows.append(self)
+        def switch_to(self):
+            pass
+        def set_caption(self, caption):
+            self.caption = caption
+        def set_visible(self, value):
+            self.visible = value
+        def close(self):
+            pass
+    def no_formats(template):
+        raise RuntimeError("b'invalid enumerant'")
+    monkeypatch.setitem(sys.modules, 'pyglet', SimpleNamespace(
+        gl=SimpleNamespace(Config=lambda **kw: kw, ConfigException=RuntimeError),
+        window=SimpleNamespace(Window=Window, NoSuchConfigException=RuntimeError)))
+    monkeypatch.setattr('psychophysics_lab.core.display.screen_info',
+                        lambda screen, index: SimpleNamespace(device_id='DISPLAY1'))
+    monkeypatch.setattr(output, 'windows_output',lambda identity: {'bits_per_color_channel':10})
+    monkeypatch.setattr(output, 'inspect_output',
+                        lambda window, identity, **kwargs: {
+                            'fallback':False, 'inspection_status':'buffer_sufficient',
+                            'message':'inspected'})
+    window, report = output.create_output_window(
+        SimpleNamespace(get_matching_configs=no_formats), fullscreen=True)
+    assert len(windows) == 1
+    assert 'config' not in window.options
+    assert report['fallback'] is False
