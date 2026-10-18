@@ -116,7 +116,9 @@ def inspect_output(window, device_id, *, requested_bits=None, selection="existin
     window.switch_to()
     signal = windows_output(device_id)
     actual = framebuffer_info()
-    target = requested_bits or signal.get("bits_per_color_channel") or 10
+    # Do not let an 8-bit OS signal report silently impose an 8-bit
+    # application framebuffer. Preserve the distinction in saved evidence.
+    target = requested_bits if requested_bits is not None else max(10, signal.get("bits_per_color_channel") or 0)
     fallback = actual["buffer_precision_bits_in_0_1"] < target
     return {"schema_version": 1, "selection": selection, "requested_minimum_bits": target,
             "windows_report": signal, "application_obtained": actual,
@@ -139,7 +141,10 @@ def create_output_window(screen, *, requested_bits=None, window_factory=None, **
     from .display import screen_info
     device_id = screen_info(screen, 0).device_id
     reported = windows_output(device_id)
-    target = requested_bits or reported.get("bits_per_color_channel") or 10
+    # Prefer at least 10-bit *internal* precision where available, even when
+    # Windows currently reports an 8-bit output signal. This cannot upgrade
+    # the physical link or panel, and fallback remains visible.
+    target = requested_bits if requested_bits is not None else max(10, reported.get("bits_per_color_channel") or 0)
     if type(target) is not int or not 1 <= target <= 32:
         raise ValueError("Requested output precision must be an integer from 1 to 32.")
     factory = window_factory or pyglet.window.Window
