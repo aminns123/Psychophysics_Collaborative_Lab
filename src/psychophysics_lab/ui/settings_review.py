@@ -61,9 +61,11 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     stimuli = module.prepare_stimuli(run, condition, state)
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
+    timeline=module.make_trial(values, condition)
     result.update(stimuli={slot: dict(p) for slot,p in stimuli.items()}, overrides=run.overrides,
                   parameter_reads=reads, conditions=conditions,
-                  phases=module.make_trial(values, condition).resolve(values).to_dict()["phases"],
+                  phases=timeline.resolve(values).to_dict()["phases"],
+                  phase_inputs={phase.name:phase.duration_ms for phase in timeline.phases if phase.kind in {"show","response"}},
                   note="Trial-controlled values show one representative trial. Random choices and adaptive strengths vary during a run.")
     return result
 
