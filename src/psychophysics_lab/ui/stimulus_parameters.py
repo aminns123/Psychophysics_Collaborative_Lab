@@ -55,11 +55,13 @@ class StimulusParametersPanel(Vertical):
                      allow_blank=False, id="stimulus-select-" + self.slot)
         yield Select([], id="stimulus-preset-" + self.slot, prompt="Choose default or named preset")
         with Horizontal(classes="buttons"):
-            yield Button("Edit parameters", id="stimulus-values-" + self.slot)
+            yield Button("Edit in TUI", id="stimulus-values-" + self.slot)
+            yield Button("Edit JSON in editor", id="stimulus-file-" + self.slot)
+            yield Button("Reload saved JSON", id="stimulus-file-reload-" + self.slot)
             yield Button("Preview", id="stimulus-preview-" + self.slot)
         with Collapsible(title="Advanced presets / JSON", collapsed=True):
             yield Input(placeholder="Preset JSON path", id="stimulus-path-" + self.slot)
-            yield Button("Open / edit JSON", id="stimulus-edit-" + self.slot)
+            yield Button("Edit JSON inside terminal (legacy)", id="stimulus-edit-" + self.slot)
             yield Button("Reload and validate", id="stimulus-reload-" + self.slot)
         yield Static("", id="stimulus-summary-" + self.slot, markup=False)
 
@@ -99,6 +101,8 @@ class StimulusParametersPanel(Vertical):
                 "library_defaults" if self.loaded and self.loaded["file_identity"] == "library_defaults" else Select.BLANK)
 
     def current(self):
+        if getattr(self, "external_json_pending", False):
+            raise ValueError(f"{self.slot}: Reload saved JSON after editing, before Review.")
         if self.error:
             raise ValueError(self.error)
         if self.loaded is not None:
@@ -146,7 +150,17 @@ class StimulusParametersPanel(Vertical):
         try:
             current = self.current()
             units = {item.key: item.units for item in self.stimulus.parameters}
-            summary = "\n".join(f"{key}: {value} {units[key]}" for key, value in current["document"]["parameters"].items())
+            values = current["document"]["parameters"]
+            controlled = set()
+            try:
+                from .settings_review import parameter_sources
+                description = self.configuration.describe_current_settings()
+                values = description["stimuli"].get(self.slot, values)
+                controlled = parameter_sources(description, self.slot)
+            except (ValueError, KeyError, TypeError):
+                pass  # Required experiment inputs may still be blank while editing.
+            summary = "\n".join(f"{key}: {value} {units[key]}" +
+                (" — set by experiment (sample)" if key in controlled else "") for key, value in values.items())
             self.query_one("#stimulus-summary-" + self.slot, Static).update(
                 f"{self.stimulus.id} · {current['file_identity']}\n{summary}\nSnapshot: {current['resolved_sha256'][:12]}")
         except (ValueError, KeyError, TypeError) as exc:
@@ -175,10 +189,46 @@ class StimulusParametersPanel(Vertical):
             else:
                 self.load(Path(str(event.value)))
 
+    def _external_json(self):
+        from .parameter_files import working_path, ensure_json, parameter_info
+        from .editor import open_parameter_file
+        from ..config.local import preferences
+        from .settings_review import parameter_sources
+        try:
+            description = self.configuration.describe_current_settings()
+            controlled = parameter_sources(description, self.slot)
+        except (ValueError, KeyError, TypeError):
+            controlled = set()
+        if getattr(self,"external_json_pending",False):
+            open_parameter_file(self.app.repo_root,self.external_json_path,self.app.local_config_root,
+                executable=preferences(self.app.local_config_root).get("editor_executable"))
+            return
+        document = dict(self.current()["document"])
+        document["parameter_info"] = parameter_info(self.stimulus.parameters, controlled)
+        path = self.path if self.path and self.path.resolve().is_relative_to(self.app.local_config_root.resolve()) else working_path(
+            self.app.local_config_root, self.configuration.experiment.id, self.slot)
+        ensure_json(path, document)
+        self.external_json_path = path
+        self.external_json_pending = True
+        open_parameter_file(self.app.repo_root, path, self.app.local_config_root,
+            executable=preferences(self.app.local_config_root).get("editor_executable"))
+        self.query_one("#stimulus-summary-"+self.slot, Static).update(
+            f"Editing {self.stimulus.id}: {path}\nSave in the editor, then Reload saved JSON. Experiment-controlled parameters are identified in parameter_info.")
+
     def on_button_pressed(self, event):
         event.stop()
         try:
-            if event.button.id == "stimulus-values-" + self.slot:
+            if event.button.id == "stimulus-file-" + self.slot:
+                self._external_json()
+            elif event.button.id == "stimulus-file-reload-" + self.slot:
+                path = getattr(self, "external_json_path", None) or self.path
+                if not path:
+                    raise ValueError("Open a parameter JSON first.")
+                self.load(path)
+                if not self.error:
+                    self.external_json_pending = False
+                    self.refresh_summary()
+            elif event.button.id == "stimulus-values-" + self.slot:
                 from .stimulus_editor import StimulusValueEditor
                 self.app.push_screen(StimulusValueEditor(self))
             elif event.button.id == "stimulus-reload-" + self.slot:
@@ -187,8 +237,15 @@ class StimulusParametersPanel(Vertical):
                 self.app.push_screen(JsonPresetEditor(self))
             elif event.button.id == "stimulus-preview-" + self.slot:
                 from .preview import show_stimulus_preview
-                show_stimulus_preview(self.stimulus.id, self.current()["document"]["parameters"],
-                    self.app.local_config_root / "previews")
-                self.app.notify("Preview opened. Appearance only; physical contrast and timing are unverified.", timeout=8)
+                values = self.current()["document"]["parameters"]
+                message = "Preset appearance only; complete required experiment settings for a trial preview."
+                try:
+                    description = self.configuration.describe_current_settings()
+                    values = description["stimuli"].get(self.slot, values)
+                    message = "Representative experiment appearance. Random/adaptive values vary; physical size, contrast and timing are unverified."
+                except (ValueError, KeyError, TypeError):
+                    pass
+                show_stimulus_preview(self.stimulus.id, values, self.app.local_config_root / "previews")
+                self.app.notify(message, timeout=8)
         except (ValueError, OSError, KeyError) as exc:
             self.query_one("#stimulus-summary-" + self.slot, Static).update(str(exc))

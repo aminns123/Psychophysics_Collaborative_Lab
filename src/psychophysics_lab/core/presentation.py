@@ -18,23 +18,25 @@ class Response:
     reaction_time_s: float
 
 
-def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None):
+def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, coordinates=None):
     """Scientific floating-point command image, before any display encoding."""
     parameters = stimulus.validate_parameters(parameters)
     extent = extent_deg or parameters[stimulus.extent_parameter]
     width, height = pixels
     x = (np.arange(width) + .5 - width / 2) * extent / width
     y = (np.arange(height) + .5 - height / 2) * extent / height
-    xx, yy = np.meshgrid(x, y)
+    xx, yy = np.meshgrid(x, y) if coordinates is None else coordinates
+    if xx.shape != (height, width) or yy.shape != (height, width):
+        raise ValueError("Degree coordinates must match the supplied raster shape.")
     result = np.asarray(stimulus.render(parameters, xx, yy), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
         raise ValueError("Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape.")
     return result
 
 
-def render_pixels(stimulus, parameters, *, pixels=(256,256), extent_deg=None):
+def render_pixels(stimulus, parameters, *, pixels=(256,256), extent_deg=None, coordinates=None):
     """Explicit 8-bit teaching/PNG preview; not a precision-qualified stimulus."""
-    return np.rint(render_values(stimulus,parameters,pixels=pixels,extent_deg=extent_deg)*255).astype(np.uint8)
+    return np.rint(render_values(stimulus,parameters,pixels=pixels,extent_deg=extent_deg,coordinates=coordinates)*255).astype(np.uint8)
 
 
 def preview_stimulus(identity, parameters, output):
@@ -65,6 +67,30 @@ def validate_geometry(profile, resolution, stimulus, parameters):
     return pixels
 
 
+def display_degree_coordinates(profile, resolution, pixels, origin, placement):
+    """Local visual-angle coordinates of actual fullscreen pixel centres.
+
+    Eye position is assumed centred on, and normal to, a flat screen. Each axis
+    uses its own measured pitch. Subtract the requested patch-centre angle so
+    renderers still receive local x_deg/y_deg. A cycles/degree carrier therefore
+    advances in actual angle rather than an arbitrary linear texture coordinate.
+    """
+    geometry = resolve_spatial_geometry(profile, resolution)
+    x_m = (origin[0] + np.arange(pixels[0]) + .5 - resolution[0]/2) * geometry.pixel_pitch_m[0]
+    y_m = (origin[1] + np.arange(pixels[1]) + .5 - resolution[1]/2) * geometry.pixel_pitch_m[1]
+    x_deg = np.degrees(np.arctan(x_m / geometry.viewing_distance_m)) - placement.x_deg
+    y_deg = np.degrees(np.arctan(y_m / geometry.viewing_distance_m)) - placement.y_deg
+    return np.meshgrid(x_deg, y_deg)
+
+
+def presentation_frames(duration_ms, refresh_hz):
+    """The same requested-ms to refresh-frame rule used by Review and display."""
+    import math
+    if not math.isfinite(refresh_hz) or refresh_hz <= 0 or duration_ms <= 0:
+        raise ValueError("Presentation duration and refresh rate must be positive.")
+    return max(1,round(duration_ms*refresh_hz/1000))
+
+
 class Presentation:
     synthetic = False
     background_intensity = .5
@@ -85,7 +111,7 @@ class Presentation:
         if profile.expected_resolution_px != self.resolution:
             self.window.close()
             raise ValueError("Actual fullscreen size differs from calibration; rebind the display.")
-        self.metadata = {"monitor_profile_id": profile.id, "physical_display_used": True,
+        self.metadata = {"geometry_basis": "flat-screen atan(pixel-centre position / viewing distance), independent x/y pitch; local angles relative to requested patch centre","monitor_profile_id": profile.id, "physical_display_used": True,
                          "resolution_px": self.resolution, "display_identity": identity,
                          "photon_timing_verified": False, "input_latency_verified": False,
                          "timing_basis": "vsync frame-counted show stages; self-paced response",
@@ -102,30 +128,39 @@ class Presentation:
             for _,_,picture in pictures:
                 if isinstance(picture,FloatingTexture):picture.delete()
         rendered = {}
+        phase_geometry = {}
         for phase in timeline.phases:
             if not hasattr(phase, "placements"):
                 continue
             pictures = []
+            geometries = []
             for placement in phase.placements:
                 stimulus_id, params = parameters_by_slot[placement.slot]
                 stimulus = get_stimulus(stimulus_id)
                 pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
                 x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
+                coordinates = display_degree_coordinates(self.profile, self.resolution, pixels, (x,y), placement)
+                geometries.append({"slot": placement.slot, "origin_px": [x,y], "raster_px": list(pixels),
+                    "requested_centre_deg": [placement.x_deg, placement.y_deg],
+                    "geometry_basis": "per-pixel flat-screen angular coordinates"})
                 if stimulus.floating_raster:
-                    array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels),dtype=np.float32)
+                    array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates),dtype=np.float32)
                     picture = FloatingTexture(array)
                 else:
-                    array = render_pixels(stimulus,params,pixels=pixels)
+                    array = render_pixels(stimulus,params,pixels=pixels,coordinates=coordinates)
                     picture = pyglet.image.ImageData(*pixels,"L",array.tobytes(),pitch=pixels[0])
                 pictures.append((x,y,picture))
             rendered[phase.name] = pictures
+            phase_geometry[phase.name] = geometries
         self._rendered = rendered
+        self._phase_geometry = phase_geometry
 
     def play_phase(self, phase, event, *, instructions=""):
         """Observe one visual phase; append partial timing even on Escape/timeout."""
         import pyglet
         from pyglet import gl
         from ..researcher import ParticipantAbort
+        event["display_geometry"] = getattr(self, "_phase_geometry", {}).get(phase.name, [])
         answer = None
         aborted = False
         onset = None
@@ -184,7 +219,7 @@ class Presentation:
             accepting = phase.kind == "response"
             hz = getattr(self,"refresh_rate_hz",None)
             if phase.kind == "show" and hz is not None:
-                frames = max(1,round(phase.duration_ms*hz/1000))
+                frames = presentation_frames(phase.duration_ms,hz)
                 event.update(requested_duration_ms=phase.duration_ms,requested_frames=frames,
                              quantized_duration_ms=frames*1000/hz,frame_intervals_s=[],dropped_frame_intervals=0)
                 for _ in range(1,frames):
@@ -253,7 +288,9 @@ def placement_pixels(profile, resolution, pixels, placement):
     y = (resolution[1] - pixels[1]) / 2 + y_offset
     if x < 0 or y < 0 or x + pixels[0] > resolution[0] or y + pixels[1] > resolution[1]:
         raise ValueError("Positioned stimulus does not fit the calibrated display.")
-    return x, y
+    # Align texture texels with framebuffer pixels; the angular grid accounts
+    # for the resulting sub-pixel angular rounding rather than shifting a texture.
+    return round(x), round(y)
 
 
 class FloatingTexture:

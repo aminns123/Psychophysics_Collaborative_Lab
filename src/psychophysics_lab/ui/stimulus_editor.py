@@ -10,6 +10,13 @@ class StimulusValueEditor(Screen):
         super().__init__()
         self.panel = panel
         self.document = panel.current()["document"]
+        from .settings_review import parameter_sources
+        try:
+            description = panel.configuration.describe_current_settings()
+            self.controlled = parameter_sources(description, panel.slot)
+            self.effective = description["stimuli"].get(panel.slot, {})
+        except (ValueError, KeyError, TypeError):
+            self.controlled, self.effective = set(), {}
 
     def compose(self):
         with Vertical(id="fixed-shell"):
@@ -28,20 +35,23 @@ class StimulusValueEditor(Screen):
             )
             for index, field in enumerate(self.panel.stimulus.parameters):
                 yield Label(field.display_label)
-                value = self.document["parameters"][field.key]
+                value = (self.effective.get(field.key, self.document["parameters"][field.key])
+                         if field.key in self.controlled else self.document["parameters"][field.key])
+                if field.key in self.controlled:
+                    yield Static("Set by the experiment each trial. Change its settings or Python; this is a sample value.")
                 if field.kind == "choice":
                     yield Select(
                         [(str(v), v) for v in field.choices],
                         value=value,
                         allow_blank=False,
                         id=f"stimulus-value-{index}",
-                        disabled=not field.editable,
+                        disabled=not field.editable or field.key in self.controlled,
                     )
                 else:
                     yield Input(
                         value=str(value),
                         id=f"stimulus-value-{index}",
-                        disabled=not field.editable,
+                        disabled=not field.editable or field.key in self.controlled,
                     )
                 if field.help_text:
                     yield Static(field.help_text)
@@ -52,6 +62,9 @@ class StimulusValueEditor(Screen):
     def values(self):
         values = {}
         for index, field in enumerate(self.panel.stimulus.parameters):
+            if field.key in self.controlled:
+                values[field.key] = self.document["parameters"][field.key]
+                continue
             widget = self.query_one(f"#stimulus-value-{index}")
             values[field.key] = field.coerce(widget.value)
         return self.panel.stimulus.validate_parameters(values)

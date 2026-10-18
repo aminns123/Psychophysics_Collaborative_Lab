@@ -11,7 +11,7 @@ def digest(value):
 
 
 def validate_document(document, stimulus):
-    if not isinstance(document, dict) or set(document) != {"schema_version", "stimulus_id", "parameters"}:
+    if not isinstance(document, dict) or (set(document) - {"parameter_info"}) != {"schema_version", "stimulus_id", "parameters"}:
         raise ValueError("Stimulus JSON needs exactly schema_version, stimulus_id and parameters.")
     if type(document["schema_version"]) is not int or document["schema_version"] != 1:
         raise ValueError("Unsupported stimulus JSON schema_version; use 1.")
@@ -67,9 +67,16 @@ def resolve_stimuli(spec, values, snapshots=None, *, repo_root=None):
         if stimulus.family != family:
             raise ValueError(f"{slot}: stimulus {identity} is incompatible with {family}.")
         if selected:
-            document = validate_document(selected["document"], stimulus)
-            if digest(document) != selected.get("resolved_sha256"):
+            if digest(selected["document"]) != selected.get("resolved_sha256"):
                 raise ValueError(f"{slot}: stimulus snapshot changed; reload and validate its JSON.")
+            document = validate_document(selected["document"], stimulus)
+            if document != selected["document"]:
+                # Preserve the original source identity/hash while making formerly
+                # hard-coded defaults explicit in the NEW run's resolved snapshot.
+                selected = dict(selected) | {
+                    "document": document, "resolved_sha256": digest(document),
+                    "source_resolved_sha256": selected["resolved_sha256"],
+                }
             # File identity is portable metadata, never an absolute source path.
             if Path(selected["file_identity"]).name != selected["file_identity"] or "/" in selected["file_identity"] or "\\" in selected["file_identity"]:
                 raise ValueError("Stimulus file identity must be a filename, not a path.")

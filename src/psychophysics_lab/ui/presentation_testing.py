@@ -64,6 +64,7 @@ class PresentationTestScreen(ModalScreen):
                 validate_presentation(
                     self.request, get_experiment(self.request.experiment_id), profile
                 )
+                self.app.verify_settings_current(self.request)
                 self.app.exit(action)
             except (ValueError, OSError) as exc:
                 self.query_one("#presentation-feedback", Static).update(str(exc))

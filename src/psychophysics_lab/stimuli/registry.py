@@ -20,11 +20,18 @@ class StimulusSpec:
     source_dependencies: tuple[str, ...] = ()
     floating_raster: bool = False
     spatial_frequencies: Callable | None = None
+    legacy_parameter_defaults: dict | None = None
 
     def validate_parameters(self, values):
         if not isinstance(values, dict):
             raise ValueError(f"{self.id}: parameters must be a JSON object.")
         fields = {item.key: item for item in self.parameters}
+        # Only explicitly declared additions can be filled for an older preset.
+        # Unknown/missing original parameters still fail; never guess units.
+        values = dict(values)
+        for key, old_default in (self.legacy_parameter_defaults or {}).items():
+            if key not in values:
+                values[key] = old_default
         if values.keys() != fields.keys():
             raise ValueError(f"{self.id}: missing parameters {sorted(fields.keys()-values.keys())}; unknown parameters {sorted(values.keys()-fields.keys())}.")
         result = {}

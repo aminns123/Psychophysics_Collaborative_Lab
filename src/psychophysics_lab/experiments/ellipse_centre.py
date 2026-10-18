@@ -131,7 +131,7 @@ STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_interval_forced_choice"
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "ellipse_centre-2",
+    "version": "ellipse_centre-3",
     "response": "Which temporal interval contains the line; first/second.",
     "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
     "conditions": "TUI-selected aspect ratios; line fixed at ellipse centre x=0,y=.6 degrees; independently interleaved repeat staircases and equiprobable first/second targets.",
@@ -139,7 +139,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Median final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Degrees; line .013 wide x .133 high; ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
+    "geometry": "Degrees; probe dimensions are selected stimulus parameters (defaults .013 wide x .133 high); ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
 }
 
 

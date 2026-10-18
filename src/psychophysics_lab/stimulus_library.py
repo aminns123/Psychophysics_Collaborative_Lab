@@ -624,13 +624,17 @@ class DetectionScene(LibraryStimulus):
     Ring = outer ellipse minus ellipse with both axes inset by ring_width_deg.
     This defines axial thickness, not a claim of constant normal stroke width.
     Fixation peak is limited to 1; other additive layers must fit in [0,1].
-    Probe pixels use exact rectangular pixel-area coverage (subpixel lines do not
+    Probe length/width are editable angular dimensions, independent of raster size.
+    Old documents missing these two keys retain the former .133/.013-degree defaults.
+    Probe pixels use rectangular pixel-area coverage (subpixel lines do not
     disappear). Layer order: background/flanker, ring, probe, Gaussian fixation.
     """
     PARAMETERS = (
         ConfigField("size_deg","Scene extent","float",14.,minimum=.1,maximum=40, units='degrees'),
         ConfigField("background","Digital background","float",.5,minimum=0,maximum=1, units='digital intensity, 0 to 1'),
         ConfigField("contrast","Probe digital increment","float",.02,minimum=0,maximum=1, units='digital increment'),
+        ConfigField("probe_length_deg", "Probe length", "float", .133, minimum=0, units="degrees"),
+        ConfigField("probe_width_deg", "Probe width", "float", .013, minimum=0, units="degrees"),
         ConfigField("probe_present","Show probe","choice",True,choices=(True,False)),
         ConfigField("probe_x_deg","Probe x","float",0.,minimum=-6,maximum=6, units='degrees'),
         ConfigField("probe_y_deg","Probe y","float",0.,minimum=-6,maximum=6, units='degrees'),
@@ -661,10 +665,10 @@ class DetectionScene(LibraryStimulus):
             inner=(x/(a-.16))**2+((y-p["ring_y_deg"])/(b-.16))**2<1
             image=np.where(outer & ~inner,p["background"]+p["ring_increment"],image)
         if p["probe_present"]:
-            dx=abs(float(x[0,1]-x[0,0])) if x.shape[1]>1 else .0001
-            dy=abs(float(y[1,0]-y[0,0])) if y.shape[0]>1 else .0001
-            cx=np.maximum(0,np.minimum(x+dx/2,p["probe_x_deg"]+.013/2)-np.maximum(x-dx/2,p["probe_x_deg"]-.013/2))/dx
-            cy=np.maximum(0,np.minimum(y+dy/2,p["probe_y_deg"]+.133/2)-np.maximum(y-dy/2,p["probe_y_deg"]-.133/2))/dy
+            dx=np.abs(np.gradient(x, axis=1)) if x.shape[1]>1 else .0001
+            dy=np.abs(np.gradient(y, axis=0)) if y.shape[0]>1 else .0001
+            cx=np.maximum(0,np.minimum(x+dx/2,p["probe_x_deg"]+p["probe_width_deg"]/2)-np.maximum(x-dx/2,p["probe_x_deg"]-p["probe_width_deg"]/2))/dx
+            cy=np.maximum(0,np.minimum(y+dy/2,p["probe_y_deg"]+p["probe_length_deg"]/2)-np.maximum(y-dy/2,p["probe_y_deg"]-p["probe_length_deg"]/2))/dy
             image += p["contrast"]*cx*cy
         envelope=np.exp(-(x*x+y*y)/(2*.035**2))
         image = image*(1-envelope)+min(1.,p["background"]+.09)*envelope
@@ -672,7 +676,8 @@ class DetectionScene(LibraryStimulus):
 
     SPEC=StimulusSpec("detection_scene","Degree-based detection scene","Explicit line, ring, flanker and fixation in degrees.",
         "src/psychophysics_lab/stimulus_library.py",parameters=PARAMETERS,family="detection_scene",render=render,
-        validator=validate, floating_raster=True, spatial_frequencies=lambda p:(p["flanker_cpd"],) if p["flanker_present"] else (),
+        validator=validate, floating_raster=True,
+        legacy_parameter_defaults={"probe_length_deg": .133, "probe_width_deg": .013}, spatial_frequencies=lambda p:(p["flanker_cpd"],) if p["flanker_present"] else (),
         calibration_requirements=("geometry","luminance"))
 
 

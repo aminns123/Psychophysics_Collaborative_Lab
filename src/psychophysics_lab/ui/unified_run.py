@@ -159,6 +159,7 @@ class VirtualObserverOptionsScreen(Screen):
             self._show_current()
 
     def _launch_request(self):
+        self.app.verify_settings_current(self.request)
         i, scenario = self._current()
         model = get_simulation(self.request.experiment_id)
         observer = {
