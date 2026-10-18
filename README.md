@@ -52,7 +52,11 @@ separate `psycolab_presentation_tests` folder beside local configuration;
 simulations use reserved `synthetic_` identities in the chosen external data folder.
 The end-of-run message gives the exact location.
 
-**Calibrate** manages monitor binding, geometry, luminance and timing evidence.
+**Calibrate** manages monitor binding, geometry, spatial consistency,
+luminance, output precision and timing evidence. Output precision records
+Windows-reported signal depth, obtained graphics-buffer format and optional
+photometer measurements as separate evidence (see the
+[output precision laboratory guide](docs/OUTPUT_PRECISION_CALIBRATION.md)).
 Physical tests still require a usable monitor configuration and supported renderer.
 They do not establish calibration. Current scientific protocols retain their blocks
 on participant acquisition until qualified.
