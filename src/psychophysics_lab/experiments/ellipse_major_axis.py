@@ -150,15 +150,15 @@ STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_interval_forced_choice"
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "ellipse_major_axis-4",
+    "version": "ellipse_major_axis-5",
     "response": "Which temporal interval contains the line; first/second.",
     "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
     "conditions": "TUI-selected positions/ratios, independent interleaved staircases; independent random alternatives.",
-    "adaptive": "TUI n-down/n-up and log10 steps; standard counter semantics, no inherited pixel/reversal quirks.",
+    "adaptive": "TUI n-down/n-up and log10 steps; reversal direction starts at the actual initial presentation, holds ignored.",
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Median final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Degrees; probe dimensions are selected stimulus parameters (defaults .013 wide x .133 high); ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
+    "geometry": "Degrees; probe dimensions are selected stimulus parameters; ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
 }
 
 
@@ -333,11 +333,18 @@ def initialise_experiment(run, conditions):
             for c in conditions
         },
         settings["max_trials"],
+        starting_values={c["id"]: settings["starting_probe_intensity"] - settings["background_intensity"]
+                         for c in conditions},
     )
     # Fixed n-down/one-up steps have this asymptotic accuracy target. Finite
     # reversal estimates (especially with lapses) still require recovery checks.
+    # Normalise first: two individually finite large steps can overflow
+    # when added directly. This is algebraically the same step-size ratio.
+    step_scale = max(settings["logUNIT_UP"], settings["logUNIT_DW"])
+    relative_up = settings["logUNIT_UP"] / step_scale
+    relative_down = settings["logUNIT_DW"] / step_scale
     accuracy_target = (
-        (settings["logUNIT_UP"] / (settings["logUNIT_UP"] + settings["logUNIT_DW"]))
+        (relative_up / (relative_up + relative_down))
         ** (1 / settings["n_down"])
         if settings["n_up"] == 1
         else None

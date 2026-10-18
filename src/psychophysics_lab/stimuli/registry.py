@@ -18,7 +18,9 @@ class StimulusSpec:
     frequency_parameter: str = "spatial_frequency_cpd"
     validator: Callable | None = None
     source_dependencies: tuple[str, ...] = ()
-    floating_raster: bool = False
+    # Scientific presentation preserves requested commands by default.
+    # Eight-bit encoding remains an explicit preview/compatibility choice.
+    floating_raster: bool = True
     spatial_frequencies: Callable | None = None
     legacy_parameter_defaults: dict | None = None
 

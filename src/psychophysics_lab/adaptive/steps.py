@@ -38,6 +38,8 @@ def bounded_log_step(value, exponent, *, maximum):
     a subsequent upward step can still recover. This is numerical protection,
     not a perceptual threshold or a restriction to 8-bit display commands.
     Zero is retained by a hold/down command; an up command leaves it at the floor.
+    A positive subnormal input keeps its smaller representable floor, so a
+    down command never increases it to the normal-number floor.
     No intermediate power can overflow, even for very large valid step sizes.
     """
     import math
@@ -49,6 +51,9 @@ def bounded_log_step(value, exponent, *, maximum):
         return value
     if value == 0:
         return floor if exponent > 0 else 0.0
+    # A supplied positive subnormal is valid within [0, maximum]. A down
+    # step must never jump UP to the larger normal-number floor.
+    floor = min(floor, value)
     proposed_log = math.log10(value) + exponent
     if proposed_log >= math.log10(maximum):
         return maximum

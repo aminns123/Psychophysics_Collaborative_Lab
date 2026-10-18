@@ -53,7 +53,7 @@ class PsychometricObserver:
         fraction = (self.threshold_probability - self.chance) / (
             1 - self.chance - self.lapse
         )
-        z = self.slope * math.log10(contrast / self.threshold) + math.log(
+        z = self.slope * (math.log10(contrast) - math.log10(self.threshold)) + math.log(
             fraction / (1 - fraction)
         )
         logistic = 1 / (1 + math.exp(-z)) if z >= 0 else math.exp(z) / (1 + math.exp(z))
