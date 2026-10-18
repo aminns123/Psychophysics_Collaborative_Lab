@@ -73,7 +73,15 @@ def latest_precision(root, profile, *, measurement_only=False):
     A subsequent format-only inspection must not hide an earlier photometer
     session and its human review. Both remain immutable on disk.
     """
-    for path in sorted(precision_directory(root, profile.id).glob('*/session.json'), reverse=True):
+    candidates = precision_directory(root, profile.id).glob('*/session.json')
+    # Folder names end in random UUIDs; lexicographic order is NOT time order
+    # when two sessions start during the same second.
+    def modified(path):
+        try:
+            return path.stat().st_mtime_ns
+        except OSError:
+            return -1
+    for path in sorted(candidates, key=modified, reverse=True):
         try:
             payload = json.loads(path.read_text(encoding='utf-8'))
             if (payload.get('kind') == 'output_precision_session' and
