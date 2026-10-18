@@ -1,0 +1,1071 @@
+%PDF-1.4
+%PsyCoLab international checklist
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R 22 0 R 24 0 R 26 0 R 28 0 R 30 0 R 32 0 R 34 0 R 36 0 R 38 0 R 40 0 R 42 0 R 44 0 R] /Count 20 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 5032 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     01) Tj ET
+BT /F2 20 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 761.0 Tm (PsyCoLab: International Manual Validation Handbook) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 720.0 Tm (Version: 1.0 | GitHub baseline: `ceda463b5cd5b6a6bf47c711ba3da8c22b888f04` | 83 manual) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 708.0 Tm (acceptance cases | Date: 18 October 2026) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 690.0 Tm (This is a printable and GitHub-readable acceptance plan for laboratory operators,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 678.0 Tm (scientific protocol owners, developers and independent sites.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 660.0 Tm (Safety and scientific scope: Passing software tests does not establish physical luminance,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 648.0 Tm (effective contrast precision, native panel depth, photon onset/offset, acoustic latency,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 636.0 Tm (experiment equivalence or scientific hypothesis validity. Green calibration pages reflect) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 624.0 Tm (saved setup progress, not automatic physical verification. Do not use test photometry to) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 612.0 Tm (qualify human acquisition.) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 594.0 Tm (How to use this plan) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 558.0 Tm (1. Record the exact commit, monitor-profile revision/hash, operating system, driver,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 546.0 Tm (instruments and responsible people.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 528.0 Tm (2. Protect real participant data. Use only fresh disposable test folders for corruption) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 516.0 Tm (and abort cases.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 498.0 Tm (3. Carry out routine software checks, then laboratory equipment checks and cross-site) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 486.0 Tm (comparisons when possible.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 468.0 Tm (4. For each case record PASS, FAIL, BLOCKED, NOT RUN or N/A, including evidence and the) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 456.0 Tm (reviewer.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 438.0 Tm (5. Do not infer human-study readiness from passing CI or uncalibrated presentation mode.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 420.0 Tm (Tiers: R = routine software/digital checks; L = laboratory instrumental checks; X =) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 408.0 Tm (cross-site deployment or equivalence checks. Laboratory tolerances must be preapproved and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 396.0 Tm (based on measurement uncertainty.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 378.0 Tm (Seven-stage calibration: Display -> Geometry -> Spatial -> Luminance -> Output precision) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 366.0 Tm (-> Timing -> Review.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 348.0 Tm (Critical Windows repeat-run check: Execute E01, E02, E03 and T06 on actual GPU/monitor) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 336.0 Tm (following the OpenGL invalid-enumerant failure. Confirm three launches in one process,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 324.0 Tm (A-B-A settings, abort-and-reopen and independent saved runs.) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 306.0 Tm (01 | Release identity and data protection) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 270.0 Tm (R01 | Identify exact checkout and revision) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 249.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 231.0 Tm (Procedure: Run git status, git rev-parse HEAD; record Python, NumPy, Pyglet, Textual, OS,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 219.0 Tm (GPU and driver.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 201.0 Tm (Pass if: Commit and local environment are unambiguous.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 183.0 Tm (Evidence to save: Terminal transcript and version sheet.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 165.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 153.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 135.0 Tm (R02 | Safeguard configuration and participants) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 114.0 Tm (Tier: R - ROUTINE) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4625 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     02) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Procedure: Identify external data root and local profile/history. Create a disposable test) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 749.0 Tm (workspace; never modify genuine participant data.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 731.0 Tm (Pass if: Source, profiles and acquisition data remain intact.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (Evidence to save: Before/after path inventory.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 695.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 683.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 665.0 Tm (R03 | Dependency health) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Procedure: Run project python -m pip check and python scripts/portability_check.py without) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 614.0 Tm (changing pinned graphics packages.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 596.0 Tm (Pass if: No unresolved dependency or portability errors.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 578.0 Tm (Evidence to save: Interpreter path and complete logs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 560.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 548.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 530.0 Tm (R04 | Full local regression suite) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 509.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 491.0 Tm (Procedure: Use a fresh pytest basetemp outside repo; run python -m pytest -q and save all) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 479.0 Tm (warnings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 461.0 Tm (Pass if: Suite passes; each skip/warning explained.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 443.0 Tm (Evidence to save: Log, counts and duration.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 425.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 413.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 395.0 Tm (R05 | Cross-platform CI) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 356.0 Tm (Procedure: Inspect exact commit's Windows and Ubuntu CI and portability checks.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 338.0 Tm (Pass if: Both platforms have traceable results; physical validation is not inferred.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 320.0 Tm (Evidence to save: Run URL, timestamp, job results.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 302.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 290.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 272.0 Tm (R06 | Test statuses and owners) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 251.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 233.0 Tm (Procedure: Agree PASS/FAIL/BLOCKED/NOT RUN/N/A; allocate study owner, hardware tester and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 221.0 Tm (maintainer.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 203.0 Tm (Pass if: No unowned cases or unreasoned N/A; evidence required for PASS.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 185.0 Tm (Evidence to save: Master test register.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 167.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 155.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 137.0 Tm (02 | Installation, launch and portability) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 101.0 Tm (I01 | Clean Windows installation) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4769 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     03) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Procedure: Clone to a fresh path; double-click run_psycolab.bat; quit and relaunch.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 725.0 Tm (Pass if: Environment and TUI start with documented steps.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 707.0 Tm (Evidence to save: Launcher log and interpreter version.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 689.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 677.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 659.0 Tm (I02 | CLI forwarding) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 620.0 Tm (Procedure: Try python -m psychophysics_lab --help, --list-experiments and launcher CLI) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (arguments.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 590.0 Tm (Pass if: Arguments reach CLI; no unsolicited TUI startup.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 572.0 Tm (Evidence to save: Command exit codes and output.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 554.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 542.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 524.0 Tm (I03 | Startup after exits) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 503.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 485.0 Tm (Procedure: Reopen after normal exit, Escape and window close on disposable tests.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 467.0 Tm (Pass if: No stale processes, locked windows or persistent crash.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 449.0 Tm (Evidence to save: Process inventory and session notes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 431.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 419.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 401.0 Tm (I04 | Missing or invalid user settings) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 380.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 362.0 Tm (Procedure: In disposable copied configuration, test missing profile, malformed preferences) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 350.0 Tm (and restored valid file.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 332.0 Tm (Pass if: Actionable error; existing calibration untouched; recovery possible.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 314.0 Tm (Evidence to save: Messages and config diffs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 296.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 284.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 266.0 Tm (I05 | Linux and other systems) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 245.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 227.0 Tm (Procedure: Try catalogue, TUI and synthetic mode on a supported alternate system.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 209.0 Tm (Pass if: Software-only tasks run or explicit platform limits are shown.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 191.0 Tm (Evidence to save: OS versions and logs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 173.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 161.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 143.0 Tm (I06 | Multiple screens/GPU/remote) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 122.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 104.0 Tm (Procedure: Test laptop dock, discrete GPU and remote environment when available.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 86.0 Tm (Pass if: Correct physical display bound; no silent primary-monitor substitution.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4555 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     04) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Evidence to save: Monitor identity and GPU report.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 731.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 713.0 Tm (03 | TUI, experiment configuration and authoring) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 677.0 Tm (U01 | TUI navigation and dimensions) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Procedure: Navigate pages at 80x24, 100x30 and full screen using keyboard; inspect scroll) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (and errors.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (Pass if: Required controls remain accessible; no overlap or broken focus.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 590.0 Tm (Evidence to save: Screenshots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 572.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 560.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 542.0 Tm (U02 | Participant/session and task setup) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 503.0 Tm (Procedure: Select disposable identity, experiment, starting settings, run intent and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 491.0 Tm (monitor.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 473.0 Tm (Pass if: Selected IDs remain consistent; human/test/synthetic identities separated.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 455.0 Tm (Evidence to save: Review snapshot.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 437.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 425.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 407.0 Tm (U03 | Input and units validation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 368.0 Tm (Procedure: Try negative/zero/out-of-range and nonnumeric values, incompatible units and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 356.0 Tm (correction.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 338.0 Tm (Pass if: Invalid entry rejected clearly without erasing valid draft.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 320.0 Tm (Evidence to save: Fields and error text.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 302.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 290.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 272.0 Tm (U04 | Review equals execution) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 251.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 233.0 Tm (Procedure: Edit parameters/conditions/stimulus then compare Review with actual run config) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 221.0 Tm (and normalized settings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 203.0 Tm (Pass if: Every material configured value and unit matches saved run.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 185.0 Tm (Evidence to save: Review screenshot; experiment_config.json.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 167.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 155.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 137.0 Tm (U05 | Presets round-trip) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 116.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 98.0 Tm (Procedure: Save, reopen, update and attempt duplicate or malformed preset.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 4577 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     05) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Pass if: Preset values persist; monitor geometry and unrelated settings unaffected.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Evidence to save: Preset file and history.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 725.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 695.0 Tm (U06 | Change monitor cancel/apply) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Procedure: Open calibration from config; cancel; repeat with applied local profile) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (revision.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Pass if: Cancel preserves choice; Apply uses exact reviewed profile hash.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (Evidence to save: Before/after profile IDs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 590.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 578.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 560.0 Tm (U07 | Refresh and page recovery) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 539.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (Procedure: Modify disposable source or a safe setting; use Refresh files then inspect) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 509.0 Tm (resumed drafts.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 491.0 Tm (Pass if: Fresh interpreter picks up changes and reports conflicts.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 473.0 Tm (Evidence to save: Screenshots and logs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 455.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 443.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 425.0 Tm (U08 | Single stimulus and experiment file) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 404.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (Procedure: Read one class in stimulus_library.py and one public experiment file; preview) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (disposable parameter change.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 356.0 Tm (Pass if: Appearance and scientific timeline intelligible without auto-generation.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 338.0 Tm (Evidence to save: Files and preview.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 320.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 308.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 290.0 Tm (U09 | Draft/Test/Ready gate) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 269.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 251.0 Tm (Procedure: Alter a previously tested managed component in disposable USER_env; attempt) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 239.0 Tm (Ready before retest.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 221.0 Tm (Pass if: Changed fingerprint blocks publication; explicit retest needed.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 203.0 Tm (Evidence to save: Status and source hashes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 185.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 173.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 155.0 Tm (04 | Seven-stage calibration and monitor binding) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 119.0 Tm (C01 | Seven-stage chronological navigation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 98.0 Tm (Tier: R - ROUTINE) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 4722 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     06) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Procedure: Visit Display, Geometry, Spatial, Luminance, Output precision, Timing, Review;) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 749.0 Tm (backtrack and resume.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 731.0 Tm (Pass if: Saved data persists; UI never skips required evidence silently.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (Evidence to save: Stage screenshots and local history.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 695.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 683.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 665.0 Tm (C02 | Bind intended physical display) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Procedure: Record connected physical device, illuminated width/height, distance, actual) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 614.0 Tm (pixels, refresh and Windows scaling.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 596.0 Tm (Pass if: Bound ID, OS mode and fullscreen dimensions agree.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 578.0 Tm (Evidence to save: Monitor revision/hash and OS settings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 560.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 548.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 530.0 Tm (C03 | Ruler size horizontal/vertical) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 509.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 491.0 Tm (Procedure: Display centered 1,2,5,10 degree bars as fit permits, measure length physically) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 479.0 Tm (both axes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 461.0 Tm (Pass if: Error within laboratory-approved tolerance accounting for pixel rounding and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 449.0 Tm (uncertainty.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 431.0 Tm (Evidence to save: Expected vs observed mm.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 413.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 401.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 383.0 Tm (C04 | Off-axis placement) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 362.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 344.0 Tm (Procedure: Measure bars at positive and negative eccentricity relative to fixation.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 326.0 Tm (Pass if: Position and realized angle agree with flat-screen geometry.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 308.0 Tm (Evidence to save: Offsets, ruler readings and photos.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 290.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 278.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 260.0 Tm (C05 | Spatial frequency observation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 239.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 221.0 Tm (Procedure: Show 2,4,8 cpd or feasible values in both orientations; count cycles, mark) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 209.0 Tm (Yes/No/Uncertain.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 191.0 Tm (Pass if: Reported cycle counts and units consistent; Nyquist respected.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 173.0 Tm (Evidence to save: Observed spatial log.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 155.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 143.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 125.0 Tm (C06 | Luminance dataset provenance) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 104.0 Tm (Tier: R - ROUTINE) Tj ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 4701 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     07) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Procedure: Distinguish pilot/test vs photometer rows; accept unchanged, alter profile then) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 749.0 Tm (confirm replacement on a copy.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 731.0 Tm (Pass if: Old history retained; stale physical data not falsely verified.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (Evidence to save: Version and provenance record.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 695.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 683.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 665.0 Tm (C07 | Output precision inspection) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Procedure: Inspect reported signal and GL framebuffer; optionally compare near-black and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 614.0 Tm (fine photometer sweeps.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 596.0 Tm (Pass if: Unknown explicitly UNKNOWN; neither buffer depth nor readings assert native bit) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 584.0 Tm (depth.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 566.0 Tm (Evidence to save: Inspection JSON, meter readings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 548.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 536.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 518.0 Tm (C08 | Timing diagnostic and final Review) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 497.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 479.0 Tm (Procedure: Run timing/flicker diagnostic, inspect flip report, finish seven-stage Review) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 467.0 Tm (and return to experiment.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 449.0 Tm (Pass if: Completion distinct from physical Verified and human-ready qualification.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 431.0 Tm (Evidence to save: Review/status screenshots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 413.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 401.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 383.0 Tm (05 | Stimulus rendering and scientific visual correctness) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 347.0 Tm (V01 | Preview and fullscreen agreement) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 326.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 308.0 Tm (Procedure: Compare scientific preview vs actual fullscreen presentation at same settings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 290.0 Tm (Pass if: Intended geometry, polarity and appearance match; PNG quantization distinguished.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 272.0 Tm (Evidence to save: Images and snapshots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 254.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 242.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 224.0 Tm (V02 | Single-parameter changes) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 203.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 185.0 Tm (Procedure: Change one size, location, contrast, orientation, frequency and background) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 173.0 Tm (parameter per run.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 155.0 Tm (Pass if: Only intended feature changes; saved values agree.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 137.0 Tm (Evidence to save: A/B matrix and photos.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 119.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 107.0 Tm (__________________) Tj ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 4659 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     08) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (V03 | Response mapping and orientation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Check left/right, above/below, first/second and horizontal/vertical) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 710.0 Tm (alternatives.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 692.0 Tm (Pass if: Visible alternative, displayed instructions and recorded correctness agree.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Evidence to save: Response trial logs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 626.0 Tm (V04 | Layering and scene composition) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 605.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 587.0 Tm (Procedure: Show probe/flanker, fixation and annulus or ellipse combinations; observe) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 575.0 Tm (overlap.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 557.0 Tm (Pass if: Correct placement, layer ordering and no accidental occlusion.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 539.0 Tm (Evidence to save: Screen captures and stimulus params.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 509.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 491.0 Tm (V05 | Digital bounds and clipping) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 470.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 452.0 Tm (Procedure: Use valid near-bound and intentionally out-of-range commands in disposable) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 440.0 Tm (testing.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 422.0 Tm (Pass if: Out-of-range rejected without silent clipping; partial data preserved.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 404.0 Tm (Evidence to save: Guard diagnostic and numeric bounds.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 356.0 Tm (V06 | Spatial units and eccentricity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 335.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 317.0 Tm (Procedure: Vary cpd, degrees/cycle, orientation, screen axis and near-Nyquist value.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 299.0 Tm (Pass if: Frequency and eccentricity correct on selected measured geometry.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 281.0 Tm (Evidence to save: Resolved frequency and geometry.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 263.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 251.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 233.0 Tm (V07 | Very low contrast behavior) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 212.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 194.0 Tm (Procedure: Inspect tiny positive command differences through float stimulus preparation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 182.0 Tm (and fullscreen tests.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (Pass if: Digital float values remain distinct; photometric resolution not falsely claimed.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 146.0 Tm (Evidence to save: Command evidence and precision status.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 128.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 116.0 Tm (__________________) Tj ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 19 0 R >>
+endobj
+21 0 obj
+<< /Length 4614 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     09) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 761.0 Tm (06 | Physical luminance and contrast qualification) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 725.0 Tm (L01 | Photometer traceability) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Procedure: Record calibrated meter, integration time, room illumination, warm-up; repeat) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (black readings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Pass if: Stability, noise and instrument uncertainty documented.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Evidence to save: Instrument certificate and readings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 620.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 590.0 Tm (L02 | Background and transfer curve) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 569.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 551.0 Tm (Procedure: Measure background and several real screen commands repeatedly.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (Pass if: Expected monotonic transfer and uncertainty quantified for used range.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 515.0 Tm (Evidence to save: Raw cd/m2 curve.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 497.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 485.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 467.0 Tm (L03 | Halving near-black sweep) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 446.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (Procedure: Use 1, 1/2, 1/4 to 1/65536 and zero; collect repeated readings.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (Pass if: Near-black floor characterized; no native bit-depth inference.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 392.0 Tm (Evidence to save: Session JSON and black drift.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 362.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 344.0 Tm (L04 | Fine adjacent command sweep) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 323.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 305.0 Tm (Procedure: Test neighboring nominal 8/10-bit steps around background and other anchors,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 293.0 Tm (with repeats.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 275.0 Tm (Pass if: Resolvable difference or INCONCLUSIVE justified by uncertainty.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 257.0 Tm (Evidence to save: Fine-step readings and assessment.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 239.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 227.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 209.0 Tm (L05 | Driver/HDR/LUT/display changes) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 188.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 170.0 Tm (Procedure: Change only a documented disposable video mode, re-inspect and remeasure key) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 158.0 Tm (values.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 140.0 Tm (Pass if: Old verification declared stale as appropriate.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 122.0 Tm (Evidence to save: Paired setting/reading matrix.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 104.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (__________________) Tj ET
+endstream
+endobj
+22 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 21 0 R >>
+endobj
+23 0 obj
+<< /Length 4646 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     10) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (L06 | Actual grating modulation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Measure production grating peak/trough and background, not only uniform square.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Pass if: Weber/Michelson luminance contrast distinguished from digital command.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Evidence to save: Lmax, Lmin, Lbackground.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 668.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 638.0 Tm (L07 | Reference CSF physical parity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 617.0 Tm (Tier: L - LABORATORY) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Procedure: Compare reference shader and any new intended shared renderer for envelope,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 587.0 Tm (gamma, cpd, eccentricity and phase timing.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 569.0 Tm (Pass if: No interchangeability assumed without optical and temporal parity measurements.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 551.0 Tm (Evidence to save: Paired display traces.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 503.0 Tm (07 | Timing, input and acoustic cues) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 467.0 Tm (T01 | Frame duration quantization) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 446.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (Procedure: Use exact and inexact requested flicker rates at measured refresh) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 416.0 Tm (\(59/60/120/144 where possible\).) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 398.0 Tm (Pass if: Frame-count plan and realized nominal timing documented.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 380.0 Tm (Evidence to save: Hz and frame table.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 362.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 350.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 332.0 Tm (T02 | Flip intervals and dropped frames) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 311.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 293.0 Tm (Procedure: Execute many repeat trials, inspect recorded software flip intervals.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 275.0 Tm (Pass if: No unexplained missing frames by study tolerance.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 257.0 Tm (Evidence to save: Time-series and event logs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 239.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 227.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 209.0 Tm (T03 | Photodiode photon timing) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 188.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 170.0 Tm (Procedure: Record visible phase onsets/offsets/ISI with calibrated detector over many) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 158.0 Tm (trials.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 140.0 Tm (Pass if: Measured distributions meet study-approved jitter and duration tolerances.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 122.0 Tm (Evidence to save: Photodiode traces.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 104.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (__________________) Tj ET
+endstream
+endobj
+24 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 23 0 R >>
+endobj
+25 0 obj
+<< /Length 4531 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     11) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (T04 | Response key and debouncing) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Test accepted keys, held keys, rapid repeats and unrelated keys.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Pass if: Exactly one accepted response per trial; no invalid adaptive update.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Evidence to save: Trials.tsv and key trace.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 668.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 638.0 Tm (T05 | Late answers and timeout) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 617.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Procedure: Respond before and after response deadline; include self-paced case.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 581.0 Tm (Pass if: Late input excluded; timeout does not fabricate a row.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 563.0 Tm (Evidence to save: Timed phase journal.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 545.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 515.0 Tm (T06 | Escape/close safety) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 494.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 476.0 Tm (Procedure: Escape before, during and after stimulus onset and immediately launch another) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 464.0 Tm (disposable run.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 446.0 Tm (Pass if: Abort status correct; partial data kept; window closes and reopens cleanly.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (Evidence to save: Manifest, journal, process state.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 398.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 380.0 Tm (T07 | Windows beep playback) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 359.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 341.0 Tm (Procedure: Enable optional audio and verify audible signal; test no-speaker failure when) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 329.0 Tm (safe.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 311.0 Tm (Pass if: Request is not mistaken for confirmed sound; failure noted.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 293.0 Tm (Evidence to save: Audio observation/microphone.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 275.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 263.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 245.0 Tm (T08 | Sound-onset and photon-onset relation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 224.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 206.0 Tm (Procedure: Measure relevant audio-visual onset delays with instruments.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 188.0 Tm (Pass if: Study owner reviews asynchrony and latency; no unsupported sync claim.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 170.0 Tm (Evidence to save: Microphone + photodiode traces.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 152.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 140.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 122.0 Tm (08 | Adaptive experiments, repeat runs, lifecycle) Tj ET
+endstream
+endobj
+26 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 25 0 R >>
+endobj
+27 0 obj
+<< /Length 4710 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     12) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (E01 | Three identical fullscreen launches) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Run same settings three times from one TUI process without restart.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Pass if: Each window opens/closes; no GL invalid-enumerant or stale handlers.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Evidence to save: Run UUIDs, manifests and window log.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 668.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 638.0 Tm (E02 | Changed parameter A-B-A sequence) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 617.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Procedure: Run baseline, altered settings, restored baseline without restarting.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 581.0 Tm (Pass if: All three launch; correct visual changes; independent snapshots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 563.0 Tm (Evidence to save: A-B-A screenshots and IDs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 545.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 515.0 Tm (E03 | Switch experiments repeatedly) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 494.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 476.0 Tm (Procedure: Run two different built-in tasks then the first again in one session.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 458.0 Tm (Pass if: Stimulus, responses and timing do not leak between tasks.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 440.0 Tm (Evidence to save: Run and phase traces.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 422.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 392.0 Tm (E04 | Condition and staircase ownership) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 371.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 353.0 Tm (Procedure: Use multiple conditions, repeats and staircase selection.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 335.0 Tm (Pass if: Saved IDs and response counts agree with declared schedule.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 317.0 Tm (Evidence to save: Trial table and adaptive history.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 299.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 287.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 269.0 Tm (E05 | Initial one-down and reversals) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 248.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 230.0 Tm (Procedure: With deterministic synthetic observer manually compute response streak,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 218.0 Tm (reversal and adaptation.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 200.0 Tm (Pass if: Step signs, first reversal and value basis agree with independent oracle.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 182.0 Tm (Evidence to save: Annotated per-trial table.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 152.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 134.0 Tm (E06 | Completed/ceiling/censored outcomes) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 113.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 95.0 Tm (Procedure: Create completed, very short, incomplete and boundary-affected synthetic runs.) Tj ET
+endstream
+endobj
+28 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 27 0 R >>
+endobj
+29 0 obj
+<< /Length 4702 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     13) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Pass if: Official thresholds only for fully eligible conditions; censoring visible.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Evidence to save: Primary results and manifest.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 725.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 695.0 Tm (E07 | Experiment scientific narrative review) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Procedure: Read one experiment file and its stimulus class; explain conditions, scoring,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (timing, stopping, exclusions and estimator.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Pass if: Scientist can explain what is actually drawn and inferred.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (Evidence to save: Signed comprehension sheet.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 590.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 578.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 560.0 Tm (E08 | Human-readiness gates) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 539.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (Procedure: Attempt unqualified profile/test photometry in human mode, then select) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 509.0 Tm (test/simulation.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 491.0 Tm (Pass if: Human acquisition safely blocked; no green setup stage upgrades test evidence.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 473.0 Tm (Evidence to save: Readiness blockers.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 455.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 443.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 425.0 Tm (E09 | Long and repeated session stability) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 404.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (Procedure: Run long disposable sequences; vary session/participant and inspect) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (disk/memory/process usage.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 356.0 Tm (Pass if: No overwrites, stale state or unclosed graphics resources.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 338.0 Tm (Evidence to save: Resource metrics and run IDs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 320.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 308.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 290.0 Tm (09 | Simulations, data products and scientific analysis) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 254.0 Tm (D01 | Fixed-seed simulation reproducibility) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 233.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 215.0 Tm (Procedure: Rerun a specified synthetic scenario with identical seed; compare to new seed.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 197.0 Tm (Pass if: Identical seed reproducible; different seed traceable.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 179.0 Tm (Evidence to save: Scenario metadata, hashes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 161.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 149.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 131.0 Tm (D02 | Observer probability and units) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 110.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (Procedure: Vary threshold, slope, lapse, preference and start strength individually.) Tj ET
+endstream
+endobj
+30 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 29 0 R >>
+endobj
+31 0 obj
+<< /Length 4767 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     14) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Pass if: Expected qualitative/statistical effect and consistent units.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Evidence to save: Observer config and estimates.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 725.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 695.0 Tm (D03 | Per-run artifact completeness) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Procedure: Check manifest, trials.tsv, monitor_profile.json, experiment_config.json,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 644.0 Tm (runtime_display and scientific source hashes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (Pass if: Applicable files exist; real/test/synthetic labels consistent.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 608.0 Tm (Evidence to save: Directory inventory.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 590.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 578.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 560.0 Tm (D04 | Canonical run validator) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 539.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (Procedure: Run python scripts/validate_run.py on disposable complete run.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 503.0 Tm (Pass if: Validation succeeds and does not modify run files.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 485.0 Tm (Evidence to save: Validator output and SHA256.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 467.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 455.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 437.0 Tm (D05 | Official estimator parity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 416.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 398.0 Tm (Procedure: Recompute a condition from retained presented reversals, compare saved primary) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (and post-hoc outputs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 368.0 Tm (Pass if: Declared geometric mean or median as applicable, across-staircase mean matches.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 350.0 Tm (Evidence to save: Manual arithmetic vs JSON.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 332.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 320.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 302.0 Tm (D06 | Exploratory analysis isolation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 281.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 263.0 Tm (Procedure: Create last N, 80 percent and presented/next derived analyses.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 245.0 Tm (Pass if: Versions and labels distinct; raw canonical trials byte-identical.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 227.0 Tm (Evidence to save: Before/after SHA256 and plots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 209.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 197.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 179.0 Tm (D07 | No reversal and censored plots) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 158.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 140.0 Tm (Procedure: Inspect no-reversal or insufficient-reversal runs and boundary-affected) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 128.0 Tm (scenario.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 110.0 Tm (Pass if: Missing estimates stay missing; exported plots warn clearly.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (Evidence to save: Scenario report and PNG.) Tj ET
+endstream
+endobj
+32 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 31 0 R >>
+endobj
+33 0 obj
+<< /Length 4656 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     15) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 749.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 731.0 Tm (D08 | Multi-condition and seed isolation) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 710.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 692.0 Tm (Procedure: Run multiple conditions, staircase repeats and random seeds.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Pass if: No merging or overwrites; each run indexed correctly.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Evidence to save: Folders and index CSV.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 626.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 608.0 Tm (10 | Crash recovery, persistence and file integrity) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 572.0 Tm (F01 | Abort and restart persistence) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 551.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (Procedure: Escape during disposable experiment; restart and review prior run.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 515.0 Tm (Pass if: Prior error/abort record persists; new run is separate.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 497.0 Tm (Evidence to save: Manifest, trials, new UUID.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 479.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 467.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 449.0 Tm (F02 | Snapshot independence across changes) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (Procedure: Save A run, modify setting/profile, save B, then compare A and B saved values.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 392.0 Tm (Pass if: A retains original scientific configuration.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (Evidence to save: Per-run resolved snapshots.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 356.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 344.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 326.0 Tm (F03 | Validator corruption detection) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 305.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 287.0 Tm (Procedure: Copy a run and corrupt one value in COPY; run validator only on copy.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 269.0 Tm (Pass if: Corruption flagged; original untouched.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 251.0 Tm (Evidence to save: Validation error and original hash.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 233.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 221.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 203.0 Tm (F04 | Missing or stale runs index) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 182.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (Procedure: In disposable data root simulate absent or stale runs_index.csv while) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 152.0 Tm (preserving run folder.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 134.0 Tm (Pass if: Canonical acquisition remains; Data page limitations documented.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 116.0 Tm (Evidence to save: Disk folders, UI result and index.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 98.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 86.0 Tm (__________________) Tj ET
+endstream
+endobj
+34 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 33 0 R >>
+endobj
+35 0 obj
+<< /Length 4654 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     16) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (F05 | Profile revision conflicts) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Try competing/stale revision saves and unsaved calibration drafts.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Pass if: Conflict explicit; prior physical readings protected.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Evidence to save: Revision before/after.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 668.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 638.0 Tm (F06 | Export and inspection integrity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 617.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Procedure: Open saved TSV/JSON/PNG and derived plots with standard tools, incl. regional) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 587.0 Tm (locale.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 569.0 Tm (Pass if: Readability and units survive, viewing does not edit raw bytes.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 551.0 Tm (Evidence to save: Open check and checksums.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 521.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 503.0 Tm (F07 | Partial cross-file write caveat) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 482.0 Tm (Tier: R - ROUTINE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 464.0 Tm (Procedure: Read documented exception handling and existing fault injection tests; never) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 452.0 Tm (corrupt real participant workspace.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 434.0 Tm (Pass if: Nontransactional failure identified as error; recovery policy documented.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 416.0 Tm (Evidence to save: Failure manifest and test issue.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 398.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 386.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 368.0 Tm (11 | International deployment and cross-site comparability) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 332.0 Tm (G01 | Site operator and protocol roles) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 311.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 293.0 Tm (Procedure: Record site ID, workstation, technician, study owner and software reviewer.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 275.0 Tm (Pass if: Every claim is attributable; approval scope defined.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 257.0 Tm (Evidence to save: Signed site sheet.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 239.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 227.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 209.0 Tm (G02 | Locale, path and number formatting) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 188.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 170.0 Tm (Procedure: On controlled systems try comma decimal, unicode/long paths, restricted) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 158.0 Tm (filename and alternate locale.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 140.0 Tm (Pass if: Parser behavior reproducible and errors actionable.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 122.0 Tm (Evidence to save: OS settings and filenames.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 104.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (__________________) Tj ET
+endstream
+endobj
+36 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 35 0 R >>
+endobj
+37 0 obj
+<< /Length 4692 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     17) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 761.0 Tm (G03 | Timezone and DST) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 740.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 722.0 Tm (Procedure: Inspect UTC trial timestamps and local date folder rollover near midnight/DST.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Pass if: Run UUID/time interpretation unambiguous across timezones.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 686.0 Tm (Evidence to save: Manifest timestamps.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 668.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 638.0 Tm (G04 | Screen aspect, resolution, DPI) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 617.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Procedure: Repeat physical geometry at different sizes and DPI scaling where available.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 581.0 Tm (Pass if: Bound actual framebuffer/physical dimensions correct; no assumed square pixels.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 563.0 Tm (Evidence to save: Ruler/OS data.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 545.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 515.0 Tm (G05 | Refresh and graphics vendor diversity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 494.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 476.0 Tm (Procedure: Repeat graphics and timing tests across at least two refresh modes and GPUs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 458.0 Tm (Pass if: Differences documented; no unjustified equivalence.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 440.0 Tm (Evidence to save: GPU and Hz matrix.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 422.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 392.0 Tm (G06 | Platform-dependent audio) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 371.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 353.0 Tm (Procedure: Compare Windows cue output with non-Windows restriction.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 335.0 Tm (Pass if: Unsupported acoustic presentation not silently called qualified.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 317.0 Tm (Evidence to save: Audio/OS results.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 299.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 287.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 269.0 Tm (G07 | Restricted network/permissions) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 248.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 230.0 Tm (Procedure: Launch offline; exercise read-only or permission-limited disposable folders.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 212.0 Tm (Pass if: Normal offline function works; write failure clear; no genuine data loss.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 194.0 Tm (Evidence to save: Permission and log.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 176.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (__________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 146.0 Tm (G08 | Cross-site frozen equivalence bundle) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 125.0 Tm (Tier: X - CROSS-SITE) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 107.0 Tm (Procedure: Exchange exact source commit, spec, settings, stimuli, units, seeds and) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 95.0 Tm (independent site calibration reports.) Tj ET
+endstream
+endobj
+38 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 37 0 R >>
+endobj
+39 0 obj
+<< /Length 5169 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     18) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Pass if: Digital protocol reproducible; optical/timing equivalence independently approved.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Evidence to save: Cross-site sign-off.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 725.0 Tm (Outcome: [ ] PASS [ ] FAIL [ ] BLOCKED [ ] NOT RUN [ ] N/A. Owner/date/evidence ref:) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 713.0 Tm (__________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 695.0 Tm (Printable evidence worksheets) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 659.0 Tm (Annex A - Master case register) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Case ID | tier | status | tester | date | evidence link | defect ID | retest status.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 620.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 602.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 584.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 566.0 Tm (Annex B - Graphic repeat-run matrix) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 545.0 Tm (Run sequence A / A / A / B / A | selected monitor ID | experiment | changed parameter |) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (launch/close outcome | run UUID | screen photo | traceback.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 515.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 497.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 479.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 461.0 Tm (Annex C - Geometry/spatial) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 440.0 Tm (Profile UUID/revision/hash | active width/height | viewing distance | resolution | refresh) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (| axis/eccentricity | requested degrees/cpd | realized | measured +/- uncertainty.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 410.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 392.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 374.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 356.0 Tm (Annex D - Photometry/precision) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 335.0 Tm (Meter serial/calibration | integration | ambient | display mode/LUT/HDR | normalized) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 323.0 Tm (commands | replicate cd/m2 | mean/SD | black drift | physical uncertainty.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 305.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 287.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 269.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 251.0 Tm (Annex E - Timing/input/sound) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 230.0 Tm (Requested vs quantized frame count | software flips | photodiode onset/offset |) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 218.0 Tm (latency/jitter | dropped intervals | key and accepted response | microphone cue onset.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 200.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 182.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 146.0 Tm (Annex F - Scientific/adaptive trace) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 125.0 Tm (Condition | staircase | target | response | correct | n-down/up | presented strength |) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 113.0 Tm (post-update value | reversal | completion | primary estimator.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 95.0 Tm (Record / measurement: _________________________________________________) Tj ET
+endstream
+endobj
+40 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 39 0 R >>
+endobj
+41 0 obj
+<< /Length 5173 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     19) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 725.0 Tm (Annex G - Artifact integrity) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 704.0 Tm (Run UUID | kind human/test/synthetic | manifest status | accepted count | saved snapshots) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 692.0 Tm (| validator output | trials SHA256 | derived outputs.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 674.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 656.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 638.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 620.0 Tm (Annex H - Defect and regression record) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 599.0 Tm (Issue ID | severity | reproducible steps | expected/observed | commit, GPU, profile, OS |) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 587.0 Tm (logs/screenshots | PR | regression | field retest.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 569.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 551.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 533.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 515.0 Tm (Annex I - Cross-site comparison) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 494.0 Tm (Site A / B | source + protocol hashes | measured monitor geometry | gamma, contrast,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 482.0 Tm (precision | photon timing | scientific equivalence decision.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 464.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 446.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 428.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 410.0 Tm (Annex J - Qualification decision) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 389.0 Tm (Protocol study owner must sign: measured physical requirements met? Any blockers? Exact) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 377.0 Tm (selected experiment and monitored profile hashes? Test data never promoted.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 359.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 341.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 323.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 11 Tf 0.05 0.28 0.43 rg 1 0 0 1 43 305.0 Tm (Annex K - Final sign-off) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 284.0 Tm (Site | tested commit | date | scope: demos / virtual / uncalibrated fullscreen / pilot /) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 272.0 Tm (qualified human | PASS/FAIL/BLOCKED/N/A totals | restrictions | approvals.) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 254.0 Tm (Record / measurement: _________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 236.0 Tm (Evidence location: _____________________________________________________) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 218.0 Tm (Date / person / reviewer: ______________________________________________) Tj ET
+BT /F2 14 Tf 0.07 0.24 0.38 rg 1 0 0 1 43 200.0 Tm (Additional repository references) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 164.0 Tm (- Chronological calibration workflow \(CHRONOLOGICAL_CALIBRATION_WORKFLOW.md\)) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 146.0 Tm (- Output precision laboratory guide \(OUTPUT_PRECISION_CALIBRATION.md\)) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 128.0 Tm (- Windows hardware acceptance \(WINDOWS_HARDWARE_ACCEPTANCE.md\)) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 110.0 Tm (- Human readiness \(HUMAN_EXPERIMENT_READINESS.md\)) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 92.0 Tm (- Scientific redesign \(SCIENTIFIC_REDESIGN.md\)) Tj ET
+endstream
+endobj
+42 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 41 0 R >>
+endobj
+43 0 obj
+<< /Length 909 >>
+stream
+0.075 0.225 0.365 rg 0 810 595 32 re f
+BT /F2 9 Tf 1 1 1 rg 1 0 0 1 42 821.0 Tm (PSYCOLAB  |  MANUAL LABORATORY VALIDATION) Tj ET
+BT /F1 8 Tf 0.37 0.40 0.43 rg 1 0 0 1 42 792.0 Tm (International handbook  |  83 cases  |  baseline ceda463b  |  18 Oct 2026) Tj ET
+0.70 0.74 0.79 RG 42 49 m 554 49 l S
+BT /F1 8 Tf 0.34 0.39 0.42 rg 1 0 0 1 44 33.0 Tm (PSYCOLAB  /  READ-ONLY VALIDATION     20) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 761.0 Tm (- Experiment consistency \(EXPERIMENT_CONSISTENCY_PLAN.md\)) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 743.0 Tm (Version guidance: The commit above identifies the original audit baseline; record the) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 731.0 Tm (*actual* later git SHA for every run and retest. This checklist is a site validation plan,) Tj ET
+BT /F1 8.8 Tf 0.12 0.17 0.21 rg 1 0 0 1 48 719.0 Tm (not proof of hardware calibration.) Tj ET
+endstream
+endobj
+44 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 43 0 R >>
+endobj
+xref
+0 45
+0000000000 65535 f 
+0000000043 00000 n 
+0000000092 00000 n 
+0000000282 00000 n 
+0000000352 00000 n 
+0000000427 00000 n 
+0000005510 00000 n 
+0000005646 00000 n 
+0000010322 00000 n 
+0000010458 00000 n 
+0000015278 00000 n 
+0000015415 00000 n 
+0000020022 00000 n 
+0000020160 00000 n 
+0000024789 00000 n 
+0000024927 00000 n 
+0000029701 00000 n 
+0000029839 00000 n 
+0000034592 00000 n 
+0000034730 00000 n 
+0000039441 00000 n 
+0000039579 00000 n 
+0000044245 00000 n 
+0000044383 00000 n 
+0000049081 00000 n 
+0000049219 00000 n 
+0000053802 00000 n 
+0000053940 00000 n 
+0000058702 00000 n 
+0000058840 00000 n 
+0000063594 00000 n 
+0000063732 00000 n 
+0000068551 00000 n 
+0000068689 00000 n 
+0000073397 00000 n 
+0000073535 00000 n 
+0000078241 00000 n 
+0000078379 00000 n 
+0000083123 00000 n 
+0000083261 00000 n 
+0000088482 00000 n 
+0000088620 00000 n 
+0000093845 00000 n 
+0000093983 00000 n 
+0000094943 00000 n 
+trailer
+<< /Size 45 /Root 1 0 R >>
+startxref
+95081
+%%EOF
