@@ -67,36 +67,76 @@ def precision_directory(root, profile_id):
     return Path(root)/'diagnostics'/'output_precision'/validate_path_component(profile_id, label='monitor profile')
 
 
-def latest_precision(root, profile):
-    for path in sorted(precision_directory(root, profile.id).glob('*/session.json'), reverse=True):
+def latest_precision(root, profile, *, measurement_only=False):
+    """Latest compatible inspection, or last session with actual meter readings.
+
+    A subsequent format-only inspection must not hide an earlier photometer
+    session and its human review. Both remain immutable on disk.
+    """
+    candidates = precision_directory(root, profile.id).glob('*/session.json')
+    # Folder names end in random UUIDs; lexicographic order is NOT time order
+    # when two sessions start during the same second.
+    def modified(path):
+        try:
+            return path.stat().st_mtime_ns
+        except OSError:
+            return -1
+    for path in sorted(candidates, key=modified, reverse=True):
         try:
             payload = json.loads(path.read_text(encoding='utf-8'))
             if (payload.get('kind') == 'output_precision_session' and
                 payload.get('physical_snapshot') == physical_snapshot(profile) and
                 payload.get('output_precision') and payload.get('status') in {'inspected', 'measurements_saved', 'incomplete'}):
+                if measurement_only and (
+                    payload.get('request', {}).get('mode') not in {'halving', 'fine'} or
+                    not payload.get('readings')):
+                    continue
                 return path, payload
         except (OSError, ValueError, TypeError):
             continue
     return None, None
 
 
+def _output_signature(evidence):
+    """Stable comparison fields; ignore timestamps, explanations and GL wording."""
+    signal = evidence.get('windows_report', {})
+    buffer = evidence.get('application_obtained', {})
+    return (signal.get('device_id'), signal.get('bits_per_color_channel'),
+            signal.get('color_encoding'), buffer.get('numeric_format'),
+            tuple(buffer.get('channel_bits', {}).get(c) for c in ('red', 'green', 'blue')))
+
+
 def precision_status(root, profile):
     path, payload = latest_precision(root, profile)
     if not payload:
         return "Not checked. Inspect output, then measure fine increments with a photometer."
-    summary = payload.get('measurement_summary', {})
-    reviews = sorted(path.parent.glob('review_*.json'))
+    measurement_path, measurement = latest_precision(root, profile, measurement_only=True)
+    source = measurement or payload
+    source_path = measurement_path or path
+    summary = source.get('measurement_summary', {})
+    reviews = sorted(source_path.parent.glob('review_*.json'))
     assessment = 'not assessed'
     if reviews:
         try:
             review = json.loads(reviews[-1].read_text(encoding='utf-8'))
-            assessment = (review['assessment'].replace('_', ' ') if review.get('session_sha256_at_review') == content_hash(payload)
+            assessment = (review['assessment'].replace('_', ' ') if
+                          review.get('session_sha256_at_review') == content_hash(source)
                           else 'previous assessment is stale because the evidence changed')
-        except (OSError, ValueError, KeyError, TypeError): pass
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    output_changed = (measurement is not None and measurement_path != path and
+                      _output_signature(payload['output_precision']) !=
+                      _output_signature(measurement['output_precision']))
+    if output_changed:
+        assessment += ' — output configuration changed since measurement; remeasure before relying on it'
+    measurement_note = (f" Last photometer session: {measurement_path};"
+                        if measurement_path and measurement_path != path else "")
     return (format_summary(payload['output_precision']) +
-        f"\nMeasurements demonstrate: {len(summary.get('levels', []))} measured command levels; researcher assessment: {assessment}."
-        f"\nManufacturer specification (user recorded): {payload['request'].get('manufacturer_specification') or 'not recorded'}."
-        f"\nSaved {payload['started_utc']}; recheck after output/driver/display changes.\nRaw evidence: {path}")
+        f"\nMeasurements demonstrate: {len(summary.get('levels', []))} measured command levels; researcher assessment: {assessment}." +
+        f"\nManufacturer specification (user recorded): {source['request'].get('manufacturer_specification') or 'not recorded'}." +
+        f"\nMost recent output inspection: {path}.{measurement_note}" +
+        f"\nSaved {source['started_utc']}; recheck after output/driver/display changes." +
+        f"\nRaw evidence: {source_path}")
 
 
 class PrecisionSession:
@@ -155,9 +195,13 @@ class PrecisionSession:
 def record_precision_review(root, profile, *, assessment, notes):
     if assessment not in {'resolved_increments', 'no_resolved_difference', 'inconclusive', 'not_assessed'}:
         raise ValueError('Choose a measurement assessment.')
-    path, payload = latest_precision(root, profile)
+    path, payload = latest_precision(root, profile, measurement_only=True)
+    if not payload:
+        path, payload = latest_precision(root, profile)
     if not payload: raise ValueError('Inspect the selected output first.')
     if assessment in {'resolved_increments', 'no_resolved_difference'}:
+        if payload.get('request', {}).get('mode') != 'fine':
+            raise ValueError('A fine-step photometer sweep is required for an increment-resolution assessment. Halving only examines the near-black floor; choose inconclusive or not assessed.')
         levels = payload.get('measurement_summary', {}).get('levels', [])
         if len(levels) < 2 or any(row['n'] < 2 for row in levels):
             raise ValueError('This assessment needs repeated readings at at least two commands; choose inconclusive otherwise.')

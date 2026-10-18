@@ -144,8 +144,9 @@ def test_buffer_storage_and_usable_spacing_are_not_confused(floating,bits,expect
     assert actual['buffer_precision_bits_in_0_1']==expected
 
 
+@pytest.mark.parametrize('reported_bits',[8,10])
 @pytest.mark.parametrize('obtained_bits',[8,11])
-def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,obtained_bits):
+def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,obtained_bits,reported_bits):
     windows=[]
     config=SimpleNamespace(red_size=10,green_size=10,blue_size=10,_pf=1)
     screen=SimpleNamespace(get_matching_configs=lambda template:[config])
@@ -159,9 +160,10 @@ def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,ob
         window=SimpleNamespace(Window=Window,NoSuchConfigException=Error),
         gl=SimpleNamespace(Config=lambda **kwargs:kwargs,ConfigException=Error)))
     monkeypatch.setattr('psychophysics_lab.core.display.screen_info',lambda screen,index:SimpleNamespace(device_id='SELECTED'))
-    monkeypatch.setattr(output,'windows_output',lambda identity:{'bits_per_color_channel':10})
+    monkeypatch.setattr(output,'windows_output',lambda identity:{'bits_per_color_channel':reported_bits})
     def inspect(window,identity,**kwargs):
         assert identity=='SELECTED'
+        assert kwargs['requested_bits']==10  # even when Windows says 8-bit
         return {'fallback':obtained_bits<10,'message':'OUTPUT FALLBACK','application_obtained':{'buffer_precision_bits_in_0_1':obtained_bits}}
     monkeypatch.setattr(output,'inspect_output',inspect)
     if obtained_bits<10:
@@ -196,3 +198,114 @@ def test_precision_stage_launches_request_and_remains_navigable_without_measurem
         assert isinstance(request,PrecisionSessionRequest)
         assert request.mode=='fine' and request.reference_bits==12 and request.anchors==(.4,.6)
     asyncio.run(scenario())
+
+
+def test_inspection_after_photometry_preserves_measurement_review(tmp_path):
+    import os
+    p = profile()
+    measured = PrecisionSession(tmp_path, p, PrecisionSessionRequest(p.id, 'fine', 10, (.5,)))
+    measured.set_output(evidence(10))
+    for command in sorted(measured.plan['commands'])[:2]:
+        measured.record(command, '15.0')
+        measured.record(command, '15.1')
+    measured.finish()
+    record_precision_review(tmp_path, p, assessment='resolved_increments',
+                            notes='Tested adjacent fine commands with repeated meter readings.')
+    # A later inspection must show CURRENT format while retaining older raw data.
+    checked = PrecisionSession(tmp_path, p, PrecisionSessionRequest(p.id))
+    checked.set_output(evidence(8))
+    checked.finish()
+    os.utime(measured.session_file, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(checked.session_file, ns=(2_000_000_000, 2_000_000_000))
+    assert latest_precision(tmp_path, p)[0] == checked.session_file
+    assert latest_precision(tmp_path, p, measurement_only=True)[0] == measured.session_file
+    report = precision_status(tmp_path, p)
+    assert 'Windows reports: 8-bit' in report
+    assert '2 measured command levels' in report
+    assert 'resolved increments' in report
+    assert 'output configuration changed since measurement' in report
+
+
+def test_halving_diagnostic_does_not_certify_fine_increments(tmp_path):
+    p = profile()
+    session = PrecisionSession(tmp_path, p, PrecisionSessionRequest(p.id, 'halving'))
+    session.set_output(evidence())
+    for command in (1., .5):
+        session.record(command, '10')
+        session.record(command, '10.1')
+    session.finish()
+    with pytest.raises(ValueError, match='fine-step'):
+        record_precision_review(tmp_path, p, assessment='resolved_increments',
+                                notes='Only a halving sequence has been run.')
+    record_precision_review(tmp_path, p, assessment='inconclusive',
+                            notes='Near-black examination only; no fine code spacing measured.')
+
+
+def test_float_texture_supports_scaled_photometer_square(monkeypatch):
+    from psychophysics_lab.core.presentation import FloatingTexture
+    vertices = []
+    gl = SimpleNamespace(
+        GL_TEXTURE_2D=1, GL_QUADS=7,
+        glEnable=lambda *args: None, glDisable=lambda *args: None,
+        glBindTexture=lambda *args: None, glColor4f=lambda *args: None,
+        glBegin=lambda *args: None, glEnd=lambda *args: None,
+        glTexCoord2f=lambda *args: None,
+        glVertex2f=lambda x, y: vertices.append((x, y)))
+    monkeypatch.setitem(sys.modules, 'pyglet', SimpleNamespace(gl=gl))
+    texture = object.__new__(FloatingTexture)
+    texture.identifier = 123
+    texture.width, texture.height = 1, 1
+    texture.blit(10, 20, width=64, height=48)
+    assert vertices == [(10, 20), (74, 20), (74, 68), (10, 68)]
+
+
+def test_photometer_uses_scientific_float_texture_upload(monkeypatch, tmp_path):
+    import numpy as np
+    from psychophysics_lab.core import geometry_check
+    from psychophysics_lab.core import presentation
+    p = profile()
+    session = PrecisionSession(tmp_path, p, PrecisionSessionRequest(p.id, 'fine', 10, (.5,)))
+    windows, captured = [], []
+    class Window:
+        # Historical reference profile deliberately has no bound resolution.
+        width, height = 1920, 1080
+        def __init__(self):
+            self.events = {}
+            self.closed = False
+        def event(self, fn):
+            self.events[fn.__name__] = fn
+            return fn
+        def clear(self):
+            pass
+        def close(self):
+            self.closed = True
+    class Texture:
+        def __init__(self, array):
+            assert array.dtype == np.float32 and array.shape == (1, 1)
+            self.value = float(array[0, 0])
+            captured.append(['created', self.value])
+        def blit(self, x, y, *, width=None, height=None):
+            captured.append(['drawn', self.value, width, height])
+        def delete(self):
+            captured.append(['deleted', self.value])
+    monkeypatch.setattr(presentation, 'FloatingTexture', Texture)
+    def create_window(*args, **kwargs):
+        window = Window()
+        windows.append(window)
+        return window, evidence()
+    monkeypatch.setattr('psychophysics_lab.core.output_precision.create_output_window',
+                        create_window)
+    monkeypatch.setattr(geometry_check, 'select_screen', lambda p: (object(), {}))
+    label = lambda *args, **kwargs: SimpleNamespace(text='', draw=lambda: None)
+    fake = SimpleNamespace(
+        gl=SimpleNamespace(glClearColor=lambda *args: None),
+        text=SimpleNamespace(Label=label),
+        app=SimpleNamespace(run=lambda: windows[-1].events['on_draw']()),
+        window=SimpleNamespace(key=SimpleNamespace()))
+    monkeypatch.setitem(sys.modules, 'pyglet', fake)
+    geometry_check._draw_luminance_session(p, session.request, session)
+    assert [kind for kind, *rest in captured] == ['created', 'drawn', 'deleted']
+    assert captured[0][1] == pytest.approx(float(np.float32(session.plan['starting_command'])))
+    assert captured[1][2] > 1 and captured[1][3] > 1
+    assert windows[-1].closed
+    assert 'floating texture' in session.session['output_precision']['photometer_patch_path']

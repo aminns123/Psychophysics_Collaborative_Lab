@@ -366,13 +366,20 @@ class FloatingTexture:
         gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_LUMINANCE32F_ARB,self.width,self.height,0,
             gl.GL_LUMINANCE,gl.GL_FLOAT,array.ctypes.data_as(ctypes.POINTER(ctypes.c_float)))
 
-    def blit(self,x,y):
+    def blit(self,x,y,*,width=None,height=None):
+        """Draw a floating texture at native size or scale one texel for photometry.
+
+        Calibration uses the same 32-bit floating-point texture upload and
+        nearest-neighbour sampling as ordinary scientific stimulus presentation.
+        """
         from pyglet import gl
+        width = self.width if width is None else width
+        height = self.height if height is None else height
         gl.glEnable(gl.GL_TEXTURE_2D)
         gl.glBindTexture(gl.GL_TEXTURE_2D,self.identifier)
         gl.glColor4f(1,1,1,1)
         gl.glBegin(gl.GL_QUADS)
-        for u,v,px,py in ((0,0,x,y),(1,0,x+self.width,y),(1,1,x+self.width,y+self.height),(0,1,x,y+self.height)):
+        for u,v,px,py in ((0,0,x,y),(1,0,x+width,y),(1,1,x+width,y+height),(0,1,x,y+height)):
             gl.glTexCoord2f(u,v);gl.glVertex2f(px,py)
         gl.glEnd()
         gl.glDisable(gl.GL_TEXTURE_2D)

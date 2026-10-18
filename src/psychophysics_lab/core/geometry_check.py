@@ -197,6 +197,8 @@ def _draw_luminance_session(profile, request, session) -> None:
     from pyglet import gl
     from .display import select_screen
     from .luminance_session import stepped_command, summarise_readings
+    from .presentation import FloatingTexture
+    import numpy as np
 
     screen, _ = select_screen(profile)
     from .output_precision import create_output_window, format_summary
@@ -211,8 +213,11 @@ def _draw_luminance_session(profile, request, session) -> None:
     current = session.plan.get("starting_command", 1.0)
     entry = ""
     feedback = "Type measured cd/m²; Enter saves. Left dimmer / Right brighter. Esc finishes."
+    patch_texture = None
+    patch_texture_command = None
     try:
         precision["window_scope"] = "fullscreen photometer measurement"
+        precision["photometer_patch_path"] = "GL_LUMINANCE32F_ARB floating texture, nearest sampling; same upload/sampling path as scientific stimuli"
         if hasattr(session, "set_output"):
             session.set_output(precision)
         else:
@@ -251,16 +256,24 @@ def _draw_luminance_session(profile, request, session) -> None:
                 format_summary(precision)
             )
 
+        def draw_patch():
+            nonlocal patch_texture, patch_texture_command
+            if patch_texture is None or patch_texture_command != current:
+                # A single float texel is constant across the 6° aperture.
+                # Reuse the scientific FloatingTexture upload path; do not
+                # silently convert photometer commands to 8-bit glColor values.
+                next_texture = FloatingTexture(np.array([[current]], dtype=np.float32))
+                previous_texture = patch_texture
+                patch_texture = next_texture
+                patch_texture_command = current
+                if previous_texture is not None:
+                    previous_texture.delete()
+            patch_texture.blit(x1, y1, width=px_w, height=px_h)
+
         @window.event
         def on_draw():
             window.clear()
-            gl.glColor3f(current, current, current)
-            gl.glBegin(gl.GL_QUADS)
-            gl.glVertex2f(x1, y1)
-            gl.glVertex2f(x2, y1)
-            gl.glVertex2f(x2, y2)
-            gl.glVertex2f(x1, y2)
-            gl.glEnd()
+            draw_patch()
             update_label()
             label.draw()
 
@@ -318,7 +331,11 @@ def _draw_luminance_session(profile, request, session) -> None:
 
         pyglet.app.run()
     finally:
-        window.close()
+        try:
+            if patch_texture is not None:
+                patch_texture.delete()
+        finally:
+            window.close()
 
 
 def run_geometry_check(
