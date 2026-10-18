@@ -144,8 +144,9 @@ def test_buffer_storage_and_usable_spacing_are_not_confused(floating,bits,expect
     assert actual['buffer_precision_bits_in_0_1']==expected
 
 
+@pytest.mark.parametrize('reported_bits',[8,10])
 @pytest.mark.parametrize('obtained_bits',[8,11])
-def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,obtained_bits):
+def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,obtained_bits,reported_bits):
     windows=[]
     config=SimpleNamespace(red_size=10,green_size=10,blue_size=10,_pf=1)
     screen=SimpleNamespace(get_matching_configs=lambda template:[config])
@@ -159,9 +160,10 @@ def test_negotiation_inspects_actual_format_and_warns_on_fallback(monkeypatch,ob
         window=SimpleNamespace(Window=Window,NoSuchConfigException=Error),
         gl=SimpleNamespace(Config=lambda **kwargs:kwargs,ConfigException=Error)))
     monkeypatch.setattr('psychophysics_lab.core.display.screen_info',lambda screen,index:SimpleNamespace(device_id='SELECTED'))
-    monkeypatch.setattr(output,'windows_output',lambda identity:{'bits_per_color_channel':10})
+    monkeypatch.setattr(output,'windows_output',lambda identity:{'bits_per_color_channel':reported_bits})
     def inspect(window,identity,**kwargs):
         assert identity=='SELECTED'
+        assert kwargs['requested_bits']==10  # even when Windows says 8-bit
         return {'fallback':obtained_bits<10,'message':'OUTPUT FALLBACK','application_obtained':{'buffer_precision_bits_in_0_1':obtained_bits}}
     monkeypatch.setattr(output,'inspect_output',inspect)
     if obtained_bits<10:
