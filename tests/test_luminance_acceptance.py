@@ -59,7 +59,7 @@ def test_researcher_accepts_existing_mapping_once_without_rewriting_readings(tmp
             assert await pilot.click('#dataset-accept')
             await pilot.pause()
             assert app.screen is calibration
-            assert calibration.active_calibration_stage == 'timing'
+            assert calibration.active_calibration_stage == 'precision'  # new stage after luminance
             assert app.run_intent == 'human'
             assert calibration._profile().has_accepted_luminance_mapping
             assert not calibration._profile().has_verified_luminance_mapping
