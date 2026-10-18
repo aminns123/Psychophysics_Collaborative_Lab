@@ -278,6 +278,9 @@ def test_diagnostic_closes_window_if_resolution_plan_fails(monkeypatch):
     fake = SimpleNamespace(window=SimpleNamespace(Window=FakeWindow),gl=SimpleNamespace(),clock=SimpleNamespace(unschedule=unscheduled.append))
     monkeypatch.setitem(sys.modules,"pyglet",fake)
     monkeypatch.setattr(geometry,"select_screen",lambda p:(object(),{}))
+    monkeypatch.setattr('psychophysics_lab.core.output_precision.create_output_window',
+                        lambda screen, window_factory=None, **kw:
+                            ((window_factory or FakeWindow)(**kw), {}))
     request = GeometryCheckRequest("bench","physical_mm",1000)
     with pytest.raises(ValueError): geometry._draw_fullscreen(profile(),request)
     assert windows[0].closed and len(unscheduled)==1
