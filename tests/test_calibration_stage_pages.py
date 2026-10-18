@@ -92,7 +92,8 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
                    request=asdict(request), resolved_test=plan, resolved_bar=bar.to_dict())
     report.write_text(json.dumps(payload))
     record_observation(tmp_path,report,profile,assessment='consistent',abnormality='none')
-    assert all(stage_states(profile, tmp_path)[key][0] for key, _ in STAGES)
+    assert all(stage_states(profile, tmp_path)[key][0] for key, _ in STAGES if key != "precision")
+    assert not stage_states(profile, tmp_path)["precision"][0]  # physical/report evidence is independent
     # A verification-only save changes the profile revision/hash, not physical setup.
     marked = replace(profile, revision=4, calibration_notes="Reviewed in the laboratory")
     assert stage_states(marked, tmp_path)["geometry"][0]
@@ -111,7 +112,7 @@ def test_calibration_six_pages_are_navigable_and_keep_shared_inputs(tmp_path, mo
             await pilot.pause()
             screen = app.screen
             assert isinstance(screen, DisplayCheckScreen)
-            assert len(screen.query("#calibration-stage-nav Button")) == 6
+            assert len(screen.query("#calibration-stage-nav Button")) == 7
             switcher = screen.query_one("#calibration-pages", ContentSwitcher)
             assert switcher.current == "cal-panel-bind"
             selected = screen.query_one("#geometry-monitor", Select).value

@@ -117,6 +117,13 @@ def calibration_progress(profile, root: Path):
                            "Saved photometer mapping explicitly verified" if ready else
                            "Entered intensity / cd/m² values SAVED (not independently certified). Measurement stage finished; physical certification remains unverified (optional method/date/notes do not block saving)." if measured else
                            session_message or "Enter at least two real intensity / cd/m² pairs, import and save. Instrument details are optional."}
+    from ..core.precision_session import latest_precision
+    precision_path, precision = latest_precision(root, profile)
+    result['precision'] = {'completed': bool(precision), 'ready': False, 'verified': False,
+        'state': 'evidence_saved' if precision else 'not_checked',
+        'message': 'Output format evidence saved; physical increments need explicit measurement review.' if precision else
+                   'Output precision not checked. Reported depth is separate from measured distinguishable increments.',
+        'reports': [str(precision_path)] if precision_path else []}
     setup_completed = all(result[key]["completed"] for key in ("bind", "geometry", "spatial", "luminance", "timing"))
     ready = setup_completed
     result["review"] = {"ready": ready, "completed": ready, "verified": False,

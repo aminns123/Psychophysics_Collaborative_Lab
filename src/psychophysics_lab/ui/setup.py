@@ -86,7 +86,7 @@ def _restorable_calibration_field(widget_id: str | None) -> bool:
     raises InvalidSelectValueError and used to terminate PsyCoLab.
     """
     return bool(widget_id and (
-        widget_id.startswith("geometry-") or widget_id == "cal-temporal-mode"
+        widget_id.startswith(("geometry-", "precision-")) or widget_id == "cal-temporal-mode"
     ))
 
 
@@ -498,14 +498,14 @@ class DisplayCheckScreen(HubPage):
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
             with VerticalScroll(id="cal-panel-bind", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]1 / 6 — DISPLAY[/b]\n"
+                    "[b]1 / 7 — DISPLAY[/b]\n"
                     "1. Bind the correct monitor and copy its detected pixel resolution.\n"
                     "2. Measure the illuminated image width/height and eye distance.\n"
                     "3. Save the profile, then choose Next stage. "
                     "Windows scaling and bezel size are not physical measurements.",
                     classes="info-card",
                 )
-                yield Label("Monitor profile (shared across all six stages)")
+                yield Label("Monitor profile (shared across all seven stages)")
                 yield Select(options, value=selected, allow_blank=False, id="geometry-monitor")
                 yield Button("Bind / edit monitor profile", id="edit-profile", variant="primary")
                 yield Static("", id="calibration-bind-detail", classes="info-card")
@@ -523,7 +523,7 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-geometry", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]2 / 6 — GEOMETRY[/b]\n"
+                    "[b]2 / 7 — GEOMETRY[/b]\n"
                     "1. Choose a bar length, then Launch ruler.\n"
                     "2. Measure the displayed bar with a physical ruler (mm).\n"
                     "3. Enter the measured length, click Record, and inspect the percent error. "
@@ -576,7 +576,7 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-spatial", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]3 / 6 — SPATIAL FREQUENCY[/b]\n"
+                    "[b]3 / 7 — SPATIAL FREQUENCY[/b]\n"
                     "1. Enter cycles/degree and Launch grating.\n"
                     "2. Return here, choose its report and compare the observed cycles.\n"
                     "3. Select Yes / No / Uncertain and any abnormality, then Record observation. "
@@ -617,10 +617,10 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-luminance", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]4 / 6 — LUMINANCE MAPPING[/b]\n"
+                    "[b]4 / 7 — LUMINANCE MAPPING[/b]\n"
                     "1. Open the selected display's intensity / luminance table.\n"
                     "2. Keep the saved mapping or add/correct readings with their original source.\n"
-                    "3. Choose Accept luminance values → Timing. Acceptance records your "
+                    "3. Choose Accept luminance values → Output precision. Acceptance records your "
                     "selection, not physical verification. Human acquisition still needs real instrument evidence.",
                     classes="info-card",
                 )
@@ -666,9 +666,46 @@ class DisplayCheckScreen(HubPage):
                         "physical photometry."
                     )
 
+            with VerticalScroll(id="cal-panel-precision", classes="page-body calibration-panel"):
+                yield Static(
+                    "[b]5 / 7 — OUTPUT PRECISION[/b]\n"
+                    "Windows reports → Application obtained → Measurements demonstrate.\n"
+                    "A reported depth is a claim to check. Inspect the format, then use a photometer and record repeated readings. "
+                    "Halving explores the low-intensity floor; fine sweeps test adjacent commands. Neither automatically certifies native panel bit depth.",
+                    classes="info-card")
+                yield Static("", id="precision-summary", markup=False, classes="info-card")
+                yield Button("Inspect selected output format (no photometer)", id="precision-inspect", variant="primary")
+                yield Label("Manufacturer specification (optional; separate from Windows report)")
+                yield Input(placeholder="e.g. advertised 10-bit / 8-bit + FRC; source", id="precision-manufacturer")
+                yield Label("Measurement sequence")
+                yield Select([("Halving: 1, 1/2, 1/4 … then black", "halving"),
+                              ("Fine increments around selected centres (random order)", "fine")],
+                             value="fine", allow_blank=False, id="precision-mode")
+                yield Label("Fine-sweep reference bits (test spacing, not a verified result; blank uses last reported depth or 10)")
+                yield Input(value="", placeholder="automatic", id="precision-bits")
+                yield Label("Fine-sweep centres (digital commands 0–1, comma separated)")
+                yield Input(value="0.1,0.5,0.9", id="precision-centres")
+                yield Label("Photometer / integration time / warm-up / room and display settings (notes)")
+                yield Input(placeholder="Record instrument and measurement conditions", id="precision-instrument")
+                yield Button("Measure fullscreen square — enter photometer readings", id="precision-measure", variant="primary")
+                yield Static("Left/Right moves through commands. Enter saves one real cd/m² reading; repeat five times per command. "
+                             "Keep the patch and surround stable; allow settling. Near-black null results may reflect instrument noise. "
+                             "Use experiment-relevant centres and assess drift/uncertainty. Time-averaged readings can include dithering.", classes="info-card")
+                yield Label("Your assessment of the latest saved measurement session")
+                yield Select([("Not assessed", "not_assessed"), ("Tested increments resolved", "resolved_increments"),
+                              ("No resolved difference in tested increments", "no_resolved_difference"),
+                              ("Inconclusive / instrument limit", "inconclusive")],
+                             value="not_assessed", allow_blank=False, id="precision-assessment")
+                yield Input(placeholder="Which increments? Instrument uncertainty, drift and your conclusion", id="precision-notes")
+                yield Button("Save my measurement assessment", id="precision-review")
+                yield Button("Open latest raw evidence JSON", id="precision-open")
+                readings = DataTable(id="precision-readings", cursor_type="row")
+                readings.styles.height = 12
+                yield readings
+
             with VerticalScroll(id="cal-panel-timing", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]5 / 6 — TIMING[/b]\n"
+                    "[b]6 / 7 — TIMING[/b]\n"
                     "1. Choose binary or sine flicker and a frequency in Hz.\n"
                     "2. Launch the fullscreen diagnostic and review its frame-cycle report.\n"
                     "3. Choose Next stage. Only independent photodiode/equivalent "
@@ -698,7 +735,7 @@ class DisplayCheckScreen(HubPage):
 
             with VerticalScroll(id="cal-panel-review", classes="page-body calibration-panel"):
                 yield Static(
-                    "[b]6 / 6 — REVIEW[/b]\n"
+                    "[b]7 / 7 — REVIEW[/b]\n"
                     "1. Review the saved results. Green means saved evidence, NOT physical certification.\n"
                     "2. For Human acquisition, review real Geometry, Photometry and Timing "
                     "evidence individually, then qualify the experiment.\n"
@@ -747,6 +784,23 @@ class DisplayCheckScreen(HubPage):
         if _is_blank_select_value(selected) or str(selected) not in self.app.monitor_profiles:
             return
         profile = self._profile()
+        from ..core.precision_session import precision_status
+        self.query_one("#precision-summary", Static).update(precision_status(self.app.local_config_root, profile))
+        from ..core.precision_session import latest_precision
+        _, saved_precision = latest_precision(self.app.local_config_root, profile)
+        table = self.query_one("#precision-readings", DataTable)
+        if not table.columns:
+            table.add_columns("Digital command", "Mean cd/m²", "SD cd/m²", "Readings", "ΔL from previous measured level", "SE of ΔL")
+        table.clear()
+        measurements = (saved_precision or {}).get('measurement_summary', {})
+        differences = {row['upper_command']: row for row in measurements.get('adjacent_measured_differences', [])}
+        def number(value): return f"{value:.8g}" if value is not None else "—"
+        for row in measurements.get('levels', []):
+            difference = differences.get(row['screen_intensity'], {})
+            table.add_row(number(row['screen_intensity']), number(row['luminance_cdm2']),
+                number(row['sample_sd_cdm2']), str(row['n']),
+                number(difference.get('mean_luminance_difference_cdm2')),
+                number(difference.get('difference_standard_error_cdm2')))
         states = stage_states(profile, self.app.local_config_root)
         from ..config.calibration_progress import calibration_progress
         from ..config.preflight import qualification_checks
@@ -754,7 +808,7 @@ class DisplayCheckScreen(HubPage):
         # These physical indicators use the same declarations as acquisition.
         from .._reference_csf.experiment_definition import CSF_SPEC
         physical = {row['key']: row['passed'] for row in qualification_checks(CSF_SPEC, profile)}
-        colours = {key: ('green' if physical.get(key, item['completed']) else
+        colours = {key: ('green' if key != 'precision' and physical.get(key, item['completed']) else
                          'yellow' if item['completed'] else 'red') for key, item in progress.items()}
         for stage, title in STAGES:
             ready, _ = states[stage]
@@ -1013,6 +1067,40 @@ class DisplayCheckScreen(HubPage):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
+            return
+        if event.button.id in {"precision-inspect", "precision-measure", "precision-review", "precision-open"}:
+            event.stop()
+            try:
+                from ..core.precision_session import (PrecisionSessionRequest, precision_commands,
+                    latest_precision, record_precision_review)
+                profile = self._profile()
+                if event.button.id == "precision-review":
+                    record_precision_review(self.app.local_config_root, profile,
+                        assessment=str(self.query_one("#precision-assessment", Select).value),
+                        notes=self.query_one("#precision-notes", Input).value)
+                    self._refresh_stage_status()
+                elif event.button.id == "precision-open":
+                    path, _ = latest_precision(self.app.local_config_root, profile)
+                    if path is None: raise ValueError("Inspect or measure the selected display first.")
+                    from .editor import open_parameter_file
+                    open_parameter_file(self.app.repo_root, path, self.app.local_config_root)
+                else:
+                    from ..core.display import preflight_fullscreen_display
+                    preflight_fullscreen_display(profile)
+                    _, prior = latest_precision(self.app.local_config_root, profile)
+                    detected = ((prior or {}).get('output_precision', {}).get('windows_report', {}).get('bits_per_color_channel'))
+                    bits = int(self.query_one("#precision-bits", Input).value.strip() or detected or 10)
+                    anchors = tuple(float(v.strip()) for v in self.query_one("#precision-centres", Input).value.split(','))
+                    mode = 'inspect' if event.button.id == 'precision-inspect' else str(self.query_one("#precision-mode", Select).value)
+                    precision_commands(mode, bits, anchors)
+                    request = PrecisionSessionRequest(profile.id, mode, bits, anchors,
+                        self.query_one("#precision-manufacturer", Input).value,
+                        self.query_one("#precision-instrument", Input).value, str(self.app.data_root))
+                    self._save_fullscreen_navigation("output_precision")
+                    self.app.exit(request)
+            except (ValueError, TypeError, OSError, RuntimeError) as exc:
+                self.query_one("#geometry-status", Static).update(f"Output precision: {exc}")
+                self.app.notify(str(exc), title="Output precision", severity="error", timeout=12)
             return
         if event.button.id == "record-spatial-observation":
             event.stop()

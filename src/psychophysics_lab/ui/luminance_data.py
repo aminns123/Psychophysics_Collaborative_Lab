@@ -44,7 +44,7 @@ class LuminanceDataScreen(Screen):
             with Horizontal(classes='buttons'):
                 yield Button('Discard draft / Back',id='dataset-back')
                 yield Button('Save active dataset',id='dataset-save',variant='primary')
-            yield Button('Accept luminance values → Timing',id='dataset-accept',variant='success')
+            yield Button('Accept luminance values → Output precision',id='dataset-accept',variant='success')
             yield Static('',id='dataset-feedback',markup=False)
         with VerticalScroll(classes='page-body'):
             yield Static('[b]LUMINANCE[/b]   1. Enter intensity and luminance. 2. Add readings to draft. '
@@ -308,7 +308,7 @@ class LuminanceDataScreen(Screen):
         parent=self.app.screen_stack[-2]
         if not experiment and not isinstance(parent,ReviewScreen):
             save_preferences(self.app.local_config_root,active_monitor_profile_id=self.profile.id,
-                             calibration_active_stage='timing')
+                             calibration_active_stage='precision')
         home=self.app.screen_stack[0]
         home.query_one('#monitor-profile',Select).value=self.profile.id
         if experiment:
