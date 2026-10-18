@@ -102,6 +102,7 @@ class ExperimentSpec:
     default_config: str = ""
     acquisition_block_reason: str = ""
     historical: bool = False
+    migrate_values: Callable | None = None
     scientific_spec: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -142,7 +143,12 @@ class ExperimentSpec:
         saved = self.settings_snapshot()
         return saved["values"] if saved else {item.key: item.default for item in self.fields}
 
+    def normalise_input_keys(self, values: Mapping[str, Any]) -> dict[str, Any]:
+        """Apply only the experiment's declared compatibility migration."""
+        return self.migrate_values(values) if self.migrate_values else dict(values)
+
     def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
+        values = self.normalise_input_keys(values)
         if self.id == "contrast_sensitivity":
             from psychophysics_lab._reference_csf.experiment_definition import _legacy_condition_defaults
             values = _legacy_condition_defaults(values)

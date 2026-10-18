@@ -18,7 +18,7 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     spec = get_simulation(experiment_id)
     experiment = get_experiment(experiment_id)
     observer = observer or spec.observer_factory()
-    selected_values = experiment.normalise_values(dict(spec.defaults) | (values or {}))
+    selected_values = experiment.normalise_values(experiment.normalise_input_keys(spec.defaults) | experiment.normalise_input_keys(values or {}))
     if is_dataclass(observer) and not isinstance(observer, type):
         observer_parameters = asdict(observer)
     elif callable(getattr(observer, "simulation_parameters", None)):

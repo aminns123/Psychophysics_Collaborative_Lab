@@ -1566,7 +1566,7 @@ class ExperimentConfigScreen(Screen):
         self.session_mode = session_mode
         self.experiment = experiment
         self.monitor_profile_id = monitor_profile_id
-        self.defaults = dict(defaults)
+        self.defaults = experiment.normalise_input_keys(defaults)
         self.review_return = review_return
         self.focus_field = focus_field
         # Preserve historical pre-cpd workspaces explicitly when reusing.
@@ -1578,7 +1578,7 @@ class ExperimentConfigScreen(Screen):
     def compose(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         self.draft_key = (self.participant_id, self.experiment.id, self.monitor_profile_id)
-        self.defaults.update(self.app.config_drafts.get(self.draft_key, {}))
+        self.defaults.update(self.experiment.normalise_input_keys(self.app.config_drafts.get(self.draft_key, {})))
         mapping = self.app.mapping_drafts.get(self.draft_key, {})
         self._mapping_requires_confirmation = bool(mapping.get("pending", False))
         self._mapping_manual = bool(mapping.get("manual", False))
@@ -1634,7 +1634,7 @@ class ExperimentConfigScreen(Screen):
                             yield Button("Review / repair saved luminance measurements", id="edit-background-calibration")
                         yield from self._compose_field(field)
                         yield Static("", id="domain-"+field.key.replace('_','-'), markup=False, classes="field-help")
-                        if self.experiment.id == "contrast_sensitivity" and field.key == "starting_probe_intensity":
+                        if field.key == "starting_probe_intensity":
                             yield Static("", id="contrast-live-validation", markup=False, classes="field-help")
                     if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
                         from ..adaptive.steps import NOTICE
@@ -1762,7 +1762,19 @@ class ExperimentConfigScreen(Screen):
         # Invalid values cannot be committed by _collect/validate_setup.
 
     def _refresh_contrast_help(self):
-        if not self.is_mounted or self.experiment.id != "contrast_sensitivity":
+        if not self.is_mounted:
+            return
+        if {"starting_probe_intensity", "background_intensity"} <= {field.key for field in self.experiment.fields}:
+            from .settings_review import probe_intensity_rows
+            try:
+                rows = probe_intensity_rows(self.experiment, self._field_values(allow_incomplete=True))
+                message = "\n".join(f"{label}: {value}" for _, label, value, _ in rows)
+                message += "\nDigital values, not measured luminance contrast. Decrease counts are updates, not trials."
+            except (ValueError, TypeError, OverflowError) as exc:
+                message = f"Intensity/step summary needs valid numeric inputs: {exc}"
+            self.query_one("#contrast-live-validation", Static).update(message)
+            return
+        if self.experiment.id != "contrast_sensitivity":
             return
         try:
             from ..stimuli.contrast_validation import contrast_limit_text

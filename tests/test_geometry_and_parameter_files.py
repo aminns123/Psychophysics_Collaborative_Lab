@@ -144,7 +144,7 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
             path = opened[-1]
             document = json.loads(path.read_text())
             document['values'].update(probe_vertical_offset_deg=.2,positions_deg='0.0',
-                max_trials=3,staircases_per_condition=1,fixation_ms=750,starting_contrast=.04)
+                max_trials=3,staircases_per_condition=1,fixation_ms=750,starting_probe_intensity=.54)
             path.write_text(json.dumps(document),encoding='utf-8')
             with pytest.raises(ValueError,match='Reload'):
                 screen._collect()
@@ -187,6 +187,19 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
     artifacts,_ = simulate(repo_root=ROOT,data_root=tmp_path/'simulation',experiment_id=request.experiment_id,
         values=request.experiment_values,stimulus_snapshots=request.stimulus_snapshots,analyse=False)
     assert len(seen)==3 and all(p['probe_length_deg']==1.2 for p in seen)
+    # JSON sets the first strength; subsequent trials follow accepted adaptive
+    # updates. Verify every rendered value and every transition, not a constant.
+    import csv
+    with artifacts.trial_log_file.open(encoding='utf-8', newline='') as stream:
+        rows = list(csv.DictReader(stream, delimiter='\t'))
+    assert len(rows) == len(seen)
+    expected_by_staircase = {}
+    for parameters, row in zip(seen, rows):
+        identity = row['staircase_id']
+        expected = expected_by_staircase.get(identity, .04)
+        assert parameters['contrast'] == pytest.approx(expected)
+        assert float(row['presented_display_contrast']) == pytest.approx(expected)
+        expected_by_staircase[identity] = float(row['next_display_contrast'])
     traces=json.loads((artifacts.run_directory/'trial_actions.json').read_text())['trials']
     for trace in traces:
         phases=trace['plan']['phases']
