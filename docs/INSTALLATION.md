@@ -1,5 +1,10 @@
 # Installing PsyCoLab on a Windows laboratory computer
 
+Windows is the supported laboratory platform. Existing headless checks on other
+operating systems are useful regression checks, not a promise of physical-display
+or audio support there. The installation and qualification workflow below targets
+Windows and Python 3.11.
+
 Git contains the shared software. Each computer creates its own Python environment
 and physical-display configuration. Scientific records live in an external data
 workspace. Never copy another computer's `.venv` or treat its calibration as valid
@@ -30,10 +35,12 @@ requirements and imports. A valid environment is reused; a changed
 `pyproject.toml` triggers installation again. Errors leave the launcher terminal
 open for inspection. No global package environment is modified.
 
-Keep the checkout: the current acquisition renderer still uses `Events/`,
-`Experiments/`, `Functions/`, `Interface/`, `libC.py` and `packages.zip`.
-Installing an isolated wheel without those checkout resources is not the
-supported acquisition deployment.
+Keep the complete checkout: runtime resources include root `configs/`,
+`simulations/`, `scripts/` and the retained renderer under
+`src/psychophysics_lab/_reference_csf/`, including its `packages.zip`.
+The supported deployment is the launcher's editable source installation.
+An isolated wheel is not a standalone PsyCoLab application; building a wheel
+successfully does not verify that the runtime resources are present.
 
 ## Source, local configuration and scientific records
 
@@ -92,6 +99,12 @@ retained byte-for-byte to avoid altering renderer behavior. Removing its caches,
 replacing it, or eliminating it requires a separate dependency/provenance and
 renderer-equivalence review. Header notices exist in source files; this audit
 does not establish complete licensing or upstream equivalence.
+
+New run manifests record `software.pyglet_runtime`: the version and portable
+source identity of the Pyglet module actually loaded by the end of the run,
+separately from installed distribution metadata. A headless run can correctly
+report `loaded: false`. The archive hash remains in source provenance. These
+records expose the dependency route; they do not qualify either graphics path.
 
 For a future release, use a reviewed **Windows x64 / CPython 3.11 constraints or
 lock file** containing exact runtime and transitive versions, with hashes where

@@ -20,9 +20,9 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from psychophysics_lab.data.trials import (  # noqa: E402
-    TRIAL_COLUMNS, TRIAL_COLUMN_DEFINITIONS, TRIAL_SCHEMA_VERSION, trial_dictionary_overrides,
+    TRIAL_COLUMNS, TRIAL_COLUMN_DEFINITIONS, TRIAL_SCHEMA_VERSION,
 )
-from psychophysics_lab.experiments._internal.registry import get_experiment  # noqa: E402
+from psychophysics_lab.data.session import read_json_records  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -308,6 +308,24 @@ def validate_run(run_directory: Path) -> list[Check]:
                     "action/canonical response associations differ")
     check("Trial action plans, partial events and accepted responses", trial_actions_check)
 
+    def journal_check():
+        if "trial_events" not in manifest.get("files", {}):
+            return  # Older runs have no journal; their original files remain valid.
+        records = list(read_json_records(owned_path(root, manifest["files"]["trial_events"])))
+        require(all(record.get("schema_version") == 1 and isinstance(record.get("trial"), dict)
+                    and isinstance(record.get("adaptive_updates"), list) for record in records),
+                "invalid trial journal record")
+        projections = {
+            "trial_actions": ("trials", [record["trial"] for record in records]),
+            "trial_presentations": ("trials", [record["presentation"] for record in records if record.get("presentation") is not None]),
+        }
+        for name, (field, expected) in projections.items():
+            if name in manifest["files"]:
+                actual = read_json(root, manifest["files"][name])[field]
+                require(actual == expected, f"{name} differs from durable journal")
+
+    check("Durable trial journal and final summaries", journal_check)
+
     def continuity_check():
         previous = {}
         for row in rows:
@@ -387,19 +405,28 @@ def validate_run(run_directory: Path) -> list[Check]:
         require(header == ["trial_schema_version", "experiment_id", "column_order", "column_name",
                            "logical_type", "units_or_encoding", "meaning", "notes"], "dictionary header differs")
         require([item["column_name"] for item in definitions] == list(TRIAL_COLUMNS), "dictionary columns differ")
-        spec = get_experiment(manifest["experiment_id"])
-        expected_overrides = trial_dictionary_overrides(
-            spec.trial_column_overrides, synthetic=manifest.get("data_kind") == "synthetic"
-        )
+        # Definitions belong to this saved run, not today's experiment source.
+        # Older runs predate saved declarations: validate their structure without
+        # claiming that comparison against a changed protocol proves their units.
+        expected_overrides = manifest.get("trial_dictionary_overrides")
+        if expected_overrides is not None:
+            require(isinstance(expected_overrides, dict), "invalid saved dictionary declarations")
+            require(set(expected_overrides) <= set(TRIAL_COLUMNS), "unknown dictionary column declaration")
         for index, item in enumerate(definitions, 1):
             require(item["column_order"] == str(index) and item["trial_schema_version"] == str(TRIAL_SCHEMA_VERSION)
                     and item["experiment_id"] == manifest["experiment_id"], "dictionary identity/order/version differs")
-            expected = asdict(TRIAL_COLUMN_DEFINITIONS[item["column_name"]])
-            expected.update(expected_overrides.get(item["column_name"], {}))
-            require(all(item[key] == value for key, value in expected.items()),
-                    f"dictionary definition differs: {item['column_name']}")
+            require(bool(item["meaning"]) and bool(item["units_or_encoding"]), "missing dictionary meaning/encoding")
+            if expected_overrides is not None:
+                expected = asdict(TRIAL_COLUMN_DEFINITIONS[item["column_name"]])
+                overrides = expected_overrides.get(item["column_name"], {})
+                require(isinstance(overrides, dict) and set(overrides) <= set(expected), "invalid dictionary fields")
+                expected.update(overrides)
+                require(all(item[key] == value for key, value in expected.items()),
+                        f"dictionary definition differs: {item['column_name']}")
 
     check("Trial dictionary matches schema and experiment definitions", dictionary_check)
+    if checks[-1].passed and "trial_dictionary_overrides" not in manifest:
+        checks[-1] = Check(checks[-1].name, True, "Older run: structure checked; no saved declaration for independent units comparison.")
 
     def readable_check():
         widths = {column: max([len(column)] + [len(row[column]) for row in rows]) for column in TRIAL_COLUMNS}

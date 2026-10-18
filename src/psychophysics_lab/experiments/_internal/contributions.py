@@ -1,6 +1,7 @@
 """Load the public contribution list atomically into both registries."""
 import importlib
 import ast
+import warnings
 from pathlib import Path
 
 _loaded = False
@@ -22,7 +23,11 @@ def discover_experiment_modules():
     for path in sorted(Path(__file__).parent.parent.glob("*.py")):
         if path.stem.startswith("_") or path.stem in managed:
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        except (SyntaxError, OSError, UnicodeError) as exc:
+            warnings.warn(f"Experiment {path.name} was not loaded: {exc}. Correct the file and restart PsyCoLab.", RuntimeWarning)
+            continue
         declares_spec = any(
             isinstance(node, (ast.Assign, ast.AnnAssign)) and any(
                 isinstance(target, ast.Name) and target.id == "SPEC"
@@ -52,10 +57,19 @@ def load_contributions():
                 adaptive.register_algorithm(spec)
         modules = discover_experiment_modules() if EXPERIMENT_MODULES is None else EXPERIMENT_MODULES
         for name in modules:
-            spec = importlib.import_module(name).SPEC
-            if EXPERIMENT_MODULES is None and spec.id != SOURCE_IDS.get(name.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1]):
-                raise ValueError(f"{name}: SPEC.id must match its Python filename")
-            experiments.register_experiment(spec)
+            previous = (dict(experiments._REGISTRY), dict(stimuli._REGISTRY), dict(adaptive._REGISTRY))
+            try:
+                spec = importlib.import_module(name).SPEC
+                if EXPERIMENT_MODULES is None and spec.id != SOURCE_IDS.get(name.rsplit(".", 1)[-1], name.rsplit(".", 1)[-1]):
+                    raise ValueError(f"{name}: SPEC.id must match its Python filename")
+                experiments.register_experiment(spec)
+            except Exception as exc:
+                if EXPERIMENT_MODULES is not None:
+                    raise  # Explicit embedded contribution sets remain atomic.
+                for registry, before in zip((experiments._REGISTRY, stimuli._REGISTRY, adaptive._REGISTRY), previous):
+                    registry.clear()
+                    registry.update(before)
+                warnings.warn(f"Experiment {name.rsplit('.', 1)[-1]}.py was not loaded: {exc}. Correct the file and restart PsyCoLab.", RuntimeWarning)
         # Historical IDs remain resolvable explicitly, outside the normal catalogue.
         for name in ("base_flanker", "indirect_flanker", "ellipse_2d"):
             spec = importlib.import_module("psychophysics_lab.experiments._internal.historical."+name).SPEC
@@ -74,7 +88,6 @@ def load_contributions():
         # built-in experiments or silently launch an untested revision.
         problems = load_authored(find_repo_root(), include_drafts=False, tolerate_errors=True)
         if problems:
-            import warnings
             warnings.warn("Invalid or untested published components were NOT loaded: "
                           + "; ".join(f"{name}: {reason}" for name, reason in problems.items()),
                           RuntimeWarning)
@@ -83,7 +96,6 @@ def load_contributions():
         from psychophysics_lab.experiments._internal.library_builder import load_library
         library_problems = load_library(tolerate_errors=True)
         if library_problems:
-            import warnings
             warnings.warn("Invalid/stale JSON library experiments were NOT loaded: "
                           + "; ".join(f"{name}: {reason}" for name, reason in library_problems.items()),
                           RuntimeWarning)

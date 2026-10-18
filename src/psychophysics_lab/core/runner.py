@@ -26,6 +26,7 @@ from ..data.session import atomic_write_json, copy_snapshot
 from ..data.trials import (
     READABLE_TRIALS_FILENAME,
     TRIAL_DATA_DICTIONARY_FILENAME,
+    TRIAL_COLUMN_DEFINITIONS,
     TRIAL_SCHEMA_VERSION,
     TrialLog,
     write_readable_trial_table,
@@ -192,6 +193,28 @@ def _software_provenance(repo_root: Path) -> dict:
         "git": _git_provenance(repo_root),
         "runtime_source_sha256": _runtime_source_fingerprints(repo_root),
     }
+
+
+def _loaded_graphics_provenance(repo_root: Path) -> dict:
+    """Describe the actual loaded module without importing/changing a renderer.
+
+    Distribution metadata can differ from the retained archive's Pyglet. Paths
+    are portable source identities, not the laboratory computer's home path.
+    """
+    module = sys.modules.get("pyglet")
+    if module is None:
+        return {"loaded": False, "installed_distribution_version": _safe_version("pyglet")}
+    source = str(getattr(module, "__file__", "")).replace("\\", "/")
+    root = repo_root.resolve().as_posix().rstrip("/") + "/"
+    if source.lower().startswith(root.lower()):
+        origin = source[len(root):]
+    elif "/site-packages/" in source:
+        origin = "site-packages/" + source.split("/site-packages/", 1)[1]
+    else:
+        origin = "external/" + Path(source).name
+    return {"loaded": True, "version": getattr(module, "version", None), "origin": origin,
+            "installed_distribution_version": _safe_version("pyglet"),
+            "module_file_sha256": _sha256(Path(source)) if Path(source).is_file() else None}
 
 
 def _relative(run_dir: Path, path: Path) -> str:
@@ -436,6 +459,10 @@ def run_request(
         dictionary_overrides = trial_dictionary_overrides(
             spec.trial_column_overrides, synthetic=simulation is not None
         )
+        payload["trial_dictionary_overrides"] = {
+            column: asdict(definition) | dictionary_overrides.get(column, {})
+            for column, definition in TRIAL_COLUMN_DEFINITIONS.items()
+        }
         write_trial_data_dictionary(run_dir / TRIAL_DATA_DICTIONARY_FILENAME, experiment_id=spec.id, overrides=dictionary_overrides)
         if simulation is None and presentation is None:
             convenience("workspace", workspace)
@@ -487,26 +514,34 @@ def run_request(
             payload["test_stop_reason"] = str(exc)
             procedure_context.status = "test_finished"
             procedure_context._save_lifecycle(str(exc))
-        elif isinstance(exc, ParticipantAbort):
+        elif isinstance(exc, ParticipantAbort) and not getattr(procedure_context, "_persistence_errors", ()):
             payload["status"] = "aborted_by_user"
             payload["abort_reason"] = str(exc)
             if procedure_context is not None:
                 procedure_context.status = "aborted_by_user"
-                procedure_context._save_lifecycle(str(exc))
+                convenience("procedure_lifecycle", lambda: procedure_context._save_lifecycle(str(exc)))
         else:
             primary_error = exc
             payload["status"] = "error"
             payload["error"] = repr(exc)
             if procedure_context is not None:
                 procedure_context.status = "error"
-                procedure_context._save_lifecycle(str(exc))
+                convenience("procedure_lifecycle", lambda: procedure_context._save_lifecycle(str(exc)))
     finally:
         if procedure_context is not None:
             try:
                 procedure_context.close()
             except Exception as exc:
                 payload["status"] = "error"
-                payload["error"] = "Display cleanup failed: " + repr(exc)
+                payload.setdefault("error", "Run finalisation failed: " + repr(exc))
+                payload.setdefault("finalisation_errors", []).append({"operation": "trial summaries/display cleanup", "error": repr(exc)})
+                if primary_error is not None:
+                    primary_error.add_note(f"Run finalisation also failed: {exc!r}")
+            if getattr(procedure_context, "_persistence_errors", ()):
+                payload["persistence_errors"] = procedure_context._persistence_errors
+                payload["status"] = "error"
+            if (run_dir / "trial_events.jsonl").exists():
+                payload["files"]["trial_events"] = "trial_events.jsonl"
             for name in ("trial_presentations", "adaptive_history", "trial_actions", "primary_thresholds"):
                 if (run_dir / (name + ".json")).exists():
                     payload["files"][name] = name + ".json"
@@ -541,6 +576,9 @@ def run_request(
                 payload["runtime_display_error"] = repr(exc)
                 payload["status"] = "error"
         payload["finished_utc"] = datetime.now(timezone.utc).isoformat()
+        if "software" in payload:
+            convenience("runtime_dependency_provenance", lambda: payload["software"].update(
+                pyglet_runtime=_loaded_graphics_provenance(root)))
         try: payload["accepted_trials"] = _trial_count(trial_log_file)
         except Exception as exc:
             payload["trial_count_error"] = repr(exc)

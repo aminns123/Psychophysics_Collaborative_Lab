@@ -395,6 +395,19 @@ def definition(identity="line_position_baseline"):
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason="Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition.",
+        trial_column_overrides={
+            "presented_display_contrast": {
+                "units_or_encoding": "digital_probe_increment",
+                "meaning": "Presented digital line increment above background.",
+                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+            },
+            "next_display_contrast": {
+                "units_or_encoding": "digital_probe_increment",
+                "meaning": "Post-response digital line increment above background.",
+                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+            },
+            "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
+        },
         source_paths=("src/psychophysics_lab/experiments/line_position_baseline.py",),
     )
 

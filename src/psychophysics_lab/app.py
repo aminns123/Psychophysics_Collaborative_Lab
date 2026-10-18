@@ -4,6 +4,7 @@ import argparse
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 import traceback
+import sys
 from typing import Any, Sequence
 
 from .data.workspace import preferred_data_root, remember_data_root
@@ -130,6 +131,12 @@ def _main(
     *,
     diagnostic_context: dict[str, Any] | None = None,
 ) -> int:
+    # Windows redirected stdout can use cp1252 instead of the console's Unicode
+    # writer. Preserve that encoding, replacing only unrepresentable characters.
+    # StringIO/captured streams may not implement reconfigure.
+    for stream in (sys.stdout, sys.stderr):
+        if callable(getattr(stream, "reconfigure", None)):
+            stream.reconfigure(errors="backslashreplace")
     args = build_parser().parse_args(argv)
     repo_root = find_repo_root()
     if diagnostic_context is not None:

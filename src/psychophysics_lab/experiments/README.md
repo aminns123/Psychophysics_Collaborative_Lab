@@ -96,3 +96,32 @@ the real display and is intentionally distinct from participant acquisition.
 Shared recording helpers shorten repeated projections; the scientific strength,
 steps, gamut and measurements remain explicit at the experiment's call site.
 See `docs/RESEARCHER_TEST_WORKFLOW.md` for these narrowly shared responsibilities.
+
+## Reading and recording without more framework code
+
+To understand a task quickly, start with `make_trial()` and `prepare_stimuli()`,
+then its response/update functions and finish rule. Settings and framework
+declarations can stay folded in your editor until you need them. Keep equations,
+conditions, optional cues and the primary estimate in this file. A fixed-trial
+task needs no dummy adaptation function. The NumPy grids supplied to a stimulus
+renderer support named masks and equations; see the short learning guide.
+
+`trial_column_overrides` documents protocol-specific meanings in the existing
+saved-data dictionary. For example, `digital_probe_increment` and
+`digital_peak_to_peak` must not inherit the historical C_disp definition. New
+runs save the declarations with the run, so later source edits cannot silently
+change their data definitions. Existing data files are never rewritten.
+
+At each trial boundary, canonical responses and `trial_events.jsonl` are saved
+independently. Each journal line contains the actual trial, response/partial
+events, presentation record and adaptive updates. Compatible aggregate JSON
+histories are produced once during finalisation, including ordinary aborts and
+errors. This avoids repeatedly rewriting all earlier trials. If the process is
+killed, the durable journal remains even when aggregate files are absent. The
+reader `data.session.read_json_records` yields complete lines and explicitly
+reports an incomplete final line; it does not conceal a truncated write.
+
+Cropping, blank/control trials and off-centre stimuli are intentional design
+choices, not automatically corrected or prohibited. Inspect all relevant
+conditions. Display sampling limitations are shown at Review without blocking
+design or simulation; physical presentation still checks the actual display.
