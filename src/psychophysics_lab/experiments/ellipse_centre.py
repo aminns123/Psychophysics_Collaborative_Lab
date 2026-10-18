@@ -7,6 +7,8 @@ physical contrast or timing is made by this software implementation.
 """
 
 import random
+import sys
+from psychophysics_lab.adaptive.steps import bounded_log_step
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -33,29 +35,33 @@ FIELDS = (
         "int",
         4,
         minimum=1,
+        units='staircases',
     ),
     ConfigField(
         "starting_contrast",
-        "Starting digital probe increment",
+        "Starting probe increment above background",
         "float",
         0.02,
-        minimum=0.000001,
-        maximum=0.49,
+        minimum=sys.float_info.min,
+        maximum=1,
+        units='digital increment',
     ),
     ConfigField(
         "background_intensity",
         "Digital background; measured luminance must be qualified",
         "float",
         0.5,
-        minimum=0.01,
-        maximum=0.9,
+        minimum=0,
+        maximum=1,
+        units='digital intensity, 0 to 1',
     ),
     ConfigField(
-        "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1
+        "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1,
+        units='consecutive correct responses',
     ),
-    ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1),
-    ConfigField("logUNIT_UP", "Log10 increase", "float", 0.36, minimum=0.000001),
-    ConfigField("logUNIT_DW", "Log10 decrease", "float", 0.30294, minimum=0.000001),
+    ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1, units='consecutive incorrect responses'),
+    ConfigField("logUNIT_UP", "Log10 increase", "float", 0.36, minimum=0.000001, units='log10 units'),
+    ConfigField("logUNIT_DW", "Log10 decrease", "float", 0.30294, minimum=0.000001, units='log10 units'),
     ConfigField(
         "initial_one_down_limit",
         "Initial one-down responses (0 disables)",
@@ -63,9 +69,11 @@ FIELDS = (
         0,
         minimum=0,
         maximum=1000,
+        units='responses',
     ),
     ConfigField(
-        "reversal_termination", "Reversals per staircase", "int", 10, minimum=1
+        "reversal_termination", "Reversals per staircase", "int", 10, minimum=1,
+        units='reversals',
     ),
     ConfigField(
         "threshold_reversals",
@@ -73,6 +81,7 @@ FIELDS = (
         "int",
         8,
         minimum=1,
+        units='reversals',
     ),
     ConfigField(
         "max_trials",
@@ -80,6 +89,7 @@ FIELDS = (
         "int",
         10000,
         minimum=1,
+        units='responses',
     ),
 )
 FIELDS += (
@@ -90,14 +100,16 @@ FIELDS += (
         "float",
         None,
         minimum=0.00001,
-        maximum=0.49,
+        maximum=1,
+        units='digital increment',
     ),
-    ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1"),
+    ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1", units='b/a, unitless'),
     ConfigField(
         "auditory_cues", "Interval onset cues", "choice", True, choices=(True, False)
     ),
     ConfigField(
-        "cue_hz", "Cue frequency (study choice)", "int", 550, minimum=37, maximum=32767
+        "cue_hz", "Cue frequency (study choice)", "int", 550, minimum=37, maximum=32767,
+        units='Hz',
     ),
     ConfigField(
         "cue_ms",
@@ -118,13 +130,14 @@ STIMULUS_SLOTS = {
 STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_interval_forced_choice"
 SCIENTIFIC_SPEC = {
-    "version": "ellipse_centre-1",
+    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
+    "version": "ellipse_centre-2",
     "response": "Which temporal interval contains the line; first/second.",
     "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
     "conditions": "TUI-selected aspect ratios; line fixed at ellipse centre x=0,y=.6 degrees; independently interleaved repeat staircases and equiprobable first/second targets.",
     "adaptive": "TUI n-down/n-up and log10 steps; standard counter semantics, no inherited pixel/reversal quirks.",
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
-    "exclusions": "No post-hoc deletion; abort/timeout/errors preserved; no gamut clipping.",
+    "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Median final retained presented reversals; mean across all complete repeats.",
     "geometry": "Degrees; line .013 wide x .133 high; ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
 }
@@ -229,18 +242,22 @@ def interpret_response(condition, response):
     return dict(response) | {"correct": correct}
 
 
+def maximum_contrast(settings, condition):
+    """Digital headroom for the additive scene (or symmetric grating)."""
+    return (1
+        - settings["background_intensity"]
+        - (settings["ring_increment"] if condition["ring"] else 0))
+
+
 def change_contrast(state, response, step):
     exponent = (
         -state["log_down"]
         if step == Step.DOWN
         else state["log_up"] if step == Step.UP else 0
     )
-    contrast = state["contrast"] * 10**exponent
-    if not 0 < contrast <= state["maximum_contrast"]:
-        raise ValueError(
-            "Next contrast exceeds the display range; stop and review starting contrast/background, without clipping."
-        )
-    return contrast
+    # Saturate the adaptive value; an outward step at the bound is a flat hold.
+    # Flat holds do not count as reversals. The requested step remains in events.
+    return bounded_log_step(state["contrast"], exponent, maximum=state["maximum_contrast"])
 
 
 def update_experiment(run, condition, state, response, trial):
@@ -262,9 +279,7 @@ def trial_record(run, condition, state):
         state["adaptive"],
         condition["id"],
         contrast=condition["contrast"],
-        maximum=1
-        - settings["background_intensity"]
-        - (settings["ring_increment"] if condition["ring"] else 0),
+        maximum=maximum_contrast(settings, condition),
         log_up=settings["logUNIT_UP"],
         log_down=settings["logUNIT_DW"],
         measurements={
@@ -347,6 +362,10 @@ def finish_experiment(run, conditions, state):
             "across_staircases": "arithmetic_mean",
             "retained_reversals": run.values["threshold_reversals"],
             "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
+                for c in conditions
+            },
             "units": "digital_probe_increment",
         },
         conditions,

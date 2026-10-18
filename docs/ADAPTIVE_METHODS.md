@@ -57,3 +57,27 @@ and `logUNIT_DW = 0.5488 * 0.35`; calculator use is explicit and optional.
 Never silently change stored thresholds, reversal basis or response encoding
 when introducing additional algorithms. Prefer unit-tested, registered
 algorithms with documented stopping criteria and empirical convergence checks.
+
+
+## Modern detection protocols: explicit bounded strength
+
+The modern CSF, line baseline/flanker and ellipse protocols default to four-down,
+one-up, with log10 steps up .36 and down .30294, matching thesis Table 4.4.
+These are multipliers of about 2.291 and .498 respectively. The down/up log-step
+ratio is .8415, corresponding to nominal 85.84% performance under the cited
+fixed-step model. These are historical study choices, not a universal optimum;
+step size relative to the observer's psychometric slope, lapses and boundaries
+still affects finite-run bias and precision. The TUI retains the researcher's
+chosen counts and step sizes, including manual alternatives.
+
+Here C means the experiment's declared strength: a digital increment above
+background for the line/ellipse tasks, and peak-to-peak modulation for modern
+CSF. It does not mean total pixel intensity or calibrated optical contrast.
+
+An adaptive overshoot now saturates at the declared bound and continues; flat
+holds do not count as reversals. The upper-bound equation is local to each
+experiment. The shared bounded_log_step function only performs numerical stepping
+and protects against floating-point overflow/underflow. Its tiny positive floor
+lets a log staircase increase again rather than becoming stuck at exact zero.
+Canonical presented/next strengths, requested step events and saved bounds allow
+analysis to flag boundary-affected staircases. Historical replay is unchanged.

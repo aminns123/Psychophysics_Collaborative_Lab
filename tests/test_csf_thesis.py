@@ -53,8 +53,8 @@ def test_table_4_4_has_no_hidden_introductory_one_down_phase():
         state["contrast"] = value
     assert steps == [Step.HOLD, Step.HOLD, Step.HOLD, Step.DOWN, Step.UP]
     assert state["contrast"] == pytest.approx(.1*10**(-.30294+.36))
-    with pytest.raises(ValueError, match="without clipping"):
-        change_contrast({"contrast":.9, "maximum_contrast":1., "log_up":.36, "log_down":.30294}, {"correct":False}, Step.UP)
+    # Bounded updates supersede the former abort-on-overshoot policy.
+    assert change_contrast({"contrast":.9, "maximum_contrast":1., "log_up":.36, "log_down":.30294}, {"correct":False}, Step.UP) == 1.0
 
 
 def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_estimator(tmp_path, monkeypatch):

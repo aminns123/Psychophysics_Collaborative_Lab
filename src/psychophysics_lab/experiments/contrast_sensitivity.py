@@ -8,6 +8,8 @@ The software protocol is implemented; raster/photometric equivalence is unverifi
 """
 
 import random
+import sys
+from psychophysics_lab.adaptive.steps import bounded_log_step
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -39,6 +41,7 @@ FIELDS = (
         "Spatial frequencies (cpd; select at least 8 for a full CSF)",
         "text",
         "2,8",
+        units='cycles/degree',
     ),
     ConfigField(
         "fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"
@@ -52,14 +55,16 @@ FIELDS = (
         "int",
         STAIRCASES_PER_FREQUENCY,
         minimum=1,
+        units='staircases',
     ),
     ConfigField(
         "starting_contrast",
         "Starting digital modulation",
         "float",
         0.1,
-        minimum=0.000001,
+        minimum=sys.float_info.min,
         maximum=1,
+        units='digital peak-to-peak modulation',
     ),
     ConfigField(
         "background_intensity",
@@ -68,6 +73,7 @@ FIELDS = (
         0.5,
         minimum=0.001,
         maximum=0.999,
+        units='digital intensity, 0 to 1',
     ),
     ConfigField(
         "n_down",
@@ -75,6 +81,7 @@ FIELDS = (
         "int",
         CORRECT_BEFORE_DECREASE,
         minimum=1,
+        units='consecutive correct responses',
     ),
     ConfigField(
         "n_up",
@@ -82,6 +89,7 @@ FIELDS = (
         "int",
         1,
         minimum=1,
+        units='consecutive incorrect responses',
     ),
     ConfigField(
         "logUNIT_UP",
@@ -89,6 +97,7 @@ FIELDS = (
         "float",
         LOG_INCREASE,
         minimum=0.000001,
+        units='log10 units',
     ),
     ConfigField(
         "logUNIT_DW",
@@ -96,6 +105,7 @@ FIELDS = (
         "float",
         LOG_DECREASE,
         minimum=0.000001,
+        units='log10 units',
     ),
     ConfigField(
         "initial_one_down_limit",
@@ -104,6 +114,7 @@ FIELDS = (
         0,
         minimum=0,
         maximum=1000,
+        units='responses',
     ),
     ConfigField(
         "reversal_termination",
@@ -111,6 +122,7 @@ FIELDS = (
         "int",
         REVERSALS_TO_FINISH,
         minimum=1,
+        units='reversals',
     ),
     ConfigField(
         "threshold_reversals",
@@ -118,6 +130,7 @@ FIELDS = (
         "int",
         8,
         minimum=1,
+        units='reversals',
     ),
     ConfigField(
         "max_trials",
@@ -125,6 +138,7 @@ FIELDS = (
         "int",
         10000,
         minimum=1,
+        units='responses',
     ),
 )
 
@@ -142,7 +156,8 @@ PARADIGM = "two_alternative_forced_choice"
 
 
 SCIENTIFIC_SPEC = {
-    "version": "csf-spatial-1",
+    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
+    "version": "csf-spatial-2",
     "response": "Left or right grating location; target/response alternative equality.",
     "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
     "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
@@ -228,18 +243,21 @@ def interpret_response(condition, response):
 # adjustments; holds are ignored, and the first recorded next value seeds tracking.
 # These tested counters stay in adaptive/staircase.py. The selected parameters,
 # contrast equation, gamut policy, scheduling and threshold estimator are here.
+def maximum_contrast(settings, condition):
+    """Digital headroom for the additive scene (or symmetric grating)."""
+    return (2
+        * min(settings["background_intensity"], 1 - settings["background_intensity"]))
+
+
 def change_contrast(state, response, step):
     exponent = (
         -state["log_down"]
         if step == Step.DOWN
         else state["log_up"] if step == Step.UP else 0
     )
-    contrast = state["contrast"] * 10**exponent
-    if not 0 < contrast <= state["maximum_contrast"]:
-        raise ValueError(
-            "Next contrast exceeds the display range; stop and review starting contrast/background, without clipping."
-        )
-    return contrast
+    # Saturate the adaptive value; an outward step at the bound is a flat hold.
+    # Flat holds do not count as reversals. The requested step remains in events.
+    return bounded_log_step(state["contrast"], exponent, maximum=state["maximum_contrast"])
 
 
 def update_experiment(run, condition, state, response, trial):
@@ -261,8 +279,7 @@ def trial_record(run, condition, state):
         state["adaptive"],
         condition["id"],
         contrast=condition["contrast"],
-        maximum=2
-        * min(settings["background_intensity"], 1 - settings["background_intensity"]),
+        maximum=maximum_contrast(settings, condition),
         log_up=settings["logUNIT_UP"],
         log_down=settings["logUNIT_DW"],
         measurements={
@@ -374,6 +391,10 @@ def finish_experiment(run, conditions, state):
             "across_staircases": "arithmetic_mean",
             "retained_reversals": run.values["threshold_reversals"],
             "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
+                for c in conditions
+            },
             "units": "digital_peak_to_peak",
         },
         conditions,

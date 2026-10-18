@@ -50,7 +50,7 @@ class SimulationsScreen(HubPage):
 
     def _compose_experiment_field(self, index: int, number: int, field, value) -> ComposeResult:
         """Render the exact same registered field for human and synthetic runs."""
-        yield Label(field.label)
+        yield Label(field.display_label)
         widget_id = f"sim-experiment-value-{index}-{number}"
         if field.kind == "choice":
             yield Select(
@@ -450,7 +450,7 @@ class AdaptiveAlgorithmScreen(Screen):
                 source_widget = self.source.query_one(
                     f"#sim-experiment-value-{self.scenario_index}-{number}"
                 )
-                yield Label(field.label)
+                yield Label(field.display_label)
                 if field.kind == "choice":
                     yield Select(
                         [(str(choice), choice) for choice in field.choices],
