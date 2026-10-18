@@ -107,9 +107,9 @@ def test_line_cues_are_optional_explicit_and_do_not_encode_answer(name):
 
 def test_baseline_uses_full_physical_intensity_headroom_and_does_not_restrict_overlap():
     from psychophysics_lab.experiments.line_position_baseline import SPEC, prepare_stimuli
-    values = SPEC.field_defaults() | {'starting_contrast': .75, 'background_intensity': .25,
+    values = SPEC.field_defaults() | {'starting_probe_intensity': 1., 'background_intensity': .25,
                                     'positions_deg': '0.0', 'probe_vertical_offset_deg': .01}
-    assert SPEC.normalise_values(values)['starting_contrast'] == .75
+    assert SPEC.normalise_values(values)['starting_probe_intensity'] == 1.
     stimulus = get_stimulus('detection_scene')
     defaults = {f.key: f.default for f in stimulus.parameters}
     class Run:
@@ -138,6 +138,6 @@ def test_experiment_form_displays_declared_units(tmp_path):
                 session_mode='new', experiment=SPEC, monitor_profile_id='legacy_reference_display', defaults=SPEC.field_defaults()))
             await pilot.pause()
             labels = '\n'.join(str(label.render()) for label in app.screen.query(Label))
-            assert 'ms' in labels and 'degrees' in labels and 'digital increment' in labels
+            assert 'ms' in labels and 'degrees' in labels and 'digital intensity' in labels
             assert 'log10 units' in labels
     asyncio.run(scenario())

@@ -9,6 +9,7 @@ physical contrast or timing is made by this software implementation.
 import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
+from psychophysics_lab.experiments._internal.parameter_compatibility import migrate_probe_intensity
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -45,17 +46,18 @@ FIELDS = (
         units='staircases',
     ),
     ConfigField(
-        "starting_contrast",
-        "Starting probe increment above background",
+        "starting_probe_intensity",
+        "Starting probe intensity",
         "float",
-        0.02,
-        minimum=sys.float_info.min,
+        0.52,
+        minimum=0,
         maximum=1,
-        units='digital increment',
+        units='digital intensity, 0 to 1',
+        help_text="0 = black; 1 = white. This bright-probe task uses intensity at or above background. The staircase changes the difference from background, not absolute intensity. Ring/flanker overlap uses the scene's additive headroom; see the resolved range below.",
     ),
     ConfigField(
         "background_intensity",
-        "Digital background; measured luminance must be qualified",
+        "Background intensity",
         "float",
         0.5,
         minimum=0,
@@ -67,8 +69,8 @@ FIELDS = (
         units='consecutive correct responses',
     ),
     ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1, units='consecutive incorrect responses'),
-    ConfigField("logUNIT_UP", "Log10 increase", "float", 0.36, minimum=0.000001, units='log10 units'),
-    ConfigField("logUNIT_DW", "Log10 decrease", "float", 0.30294, minimum=0.000001, units='log10 units'),
+    ConfigField("logUNIT_UP", "Increase in probe difference from background", "float", 0.36, minimum=0.000001, units='log10 units', help_text="Multiply the probe-background difference by 10**step; hold at the upper bound."),
+    ConfigField("logUNIT_DW", "Decrease in probe difference from background", "float", 0.30294, minimum=0.000001, units='log10 units', help_text="Multiply the probe-background difference by 10**(-step); this approaches background, rather than subtracting the step from intensity."),
     ConfigField(
         "initial_one_down_limit",
         "Initial one-down responses (0 disables)",
@@ -135,7 +137,7 @@ STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_alternative_forced_choice"
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "line_position_flanker-3",
+    "version": "line_position_flanker-4",
     "response": "Is the line above or below fixation?",
     "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
     "conditions": "TUI-selected horizontal probe positions; independently interleaved repeat staircases and equiprobable above/below targets.",
@@ -324,7 +326,9 @@ def initialise_experiment(run, conditions):
     return {
         "adaptive": algorithm,
         "rng": random.Random(f"{run.seed}:conditions"),
-        "contrasts": {c["id"]: settings["starting_contrast"] for c in conditions},
+        # The user selects an absolute intensity. Adapt the digital difference
+        # from background, so all existing log-step and threshold units persist.
+        "contrasts": {c["id"]: settings["starting_probe_intensity"] - settings["background_intensity"] for c in conditions},
         "reversals": {c["id"]: [] for c in conditions},
         "description": description,
     }
@@ -395,10 +399,17 @@ def validate_settings(values):
             yield "Choose distinct finite positions within +/-5 degrees."
     except ValueError:
         yield "Enter finite comma-separated numeric condition values."
+    if values["starting_probe_intensity"] < values["background_intensity"]:
+        yield "Starting probe intensity must be at or above background for this bright-probe procedure."
+    difference = values["starting_probe_intensity"] - values["background_intensity"]
+    if 0 < difference < sys.float_info.min:
+        yield "Starting probe intensity is closer to background than the positive log-staircase numeric floor; use exact background or a representable larger difference."
+    if values["background_intensity"] == 1:
+        yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
     if values["threshold_reversals"] > values["reversal_termination"]:
         yield "Threshold reversal count exceeds reversal termination."
-    if values["starting_contrast"] + 0.009 > 1 - values["background_intensity"]:
-        yield "Starting digital increment exceeds display gamut."
+    if (values["starting_probe_intensity"] - values["background_intensity"]) + 0.009 > 1 - values["background_intensity"]:
+        yield "Starting probe intensity plus any additive ring/flanker layer exceeds 1. Review the scene headroom; no intensity was clipped."
 
 
 def validate_monitor(settings, profile):
@@ -436,6 +447,7 @@ def definition(identity="line_position_flanker"):
             step_parameterization="log10_display_contrast",
         ),
         validator=validate_settings,
+        migrate_values=migrate_probe_intensity,
         monitor_validator=validate_monitor,
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,

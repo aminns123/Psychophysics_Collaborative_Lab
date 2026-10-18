@@ -60,9 +60,10 @@ def load_experiment_json(path, spec):
         raise ValueError("Unknown experiment JSON section; edit the values object.")
     # Omitted fields are not silently replaced by Python defaults in a working
     # file: make the complete set of values visible before a run.
-    if set(document["values"]) != {f.key for f in spec.fields}:
+    values = spec.normalise_input_keys(document["values"])
+    if set(values) != {f.key for f in spec.fields}:
         raise ValueError("Experiment JSON must list every declared experiment parameter, with no unknown keys.")
-    return spec.normalise_values(document["values"])
+    return spec.normalise_values(values)
 
 
 def ensure_unchanged(files):

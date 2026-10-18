@@ -21,7 +21,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
                acquisition_block_reason="", historical=False, scientific_spec=None,
-               trial_column_overrides=None):
+               trial_column_overrides=None, migrate_values=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
@@ -37,7 +37,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         fields=tuple(fields), procedure=procedure, adaptive=adaptive,
         response_paradigm=responses, source_paths=tuple(source_paths),
         configure_module="psychophysics_lab.researcher", configure_function="configure",
-        validator=validator, monitor_validator=monitor_validator,
+        validator=validator, monitor_validator=monitor_validator, migrate_values=migrate_values,
         calibration_requirements=tuple(calibration_requirements),
         calibration_not_applicable=calibration_not_applicable,
         monitor_capabilities=monitor_capabilities,

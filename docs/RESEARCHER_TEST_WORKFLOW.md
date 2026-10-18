@@ -123,3 +123,29 @@ frequency in Hz and duration in ms. Enabling them requests a Windows beep at pro
 onset and at any accepted response, independent of correctness. Restart PsyCoLab
 after Python changes; the new controls appear on the experiment form. A sound
 request does not establish actual speaker onset or acoustic timing.
+
+
+## Probe intensity and adaptive scale
+
+The modern line and ellipse tasks ask for **Starting probe intensity**, a digital
+command: 0 is black and 1 is white. With background 0.5, starting intensity 1
+means a probe-background difference of 0.5. The staircase still adapts and saves
+that difference; the official estimator and data units have not changed.
+Ring/flanker scenes retain their declared additive overlap/headroom policy.
+
+Configuration and Review show the resulting difference, relative digital
+contrast `(probe-background)/background`, one up/down update, and the numbers of
+decrease updates needed to reach 10%, 1% and 0.1% of the starting difference.
+Log steps multiply the difference: they approach background rather than reaching
+it after a finite number of ideal steps. Updates are not trials; correct/error
+counts and the initial one-down phase remain the selected adaptive rule.
+Digital relative contrast is not measured luminance Weber contrast. Luminance
+measurements retain cd/m²; grating peak-to-peak modulation is a distinct quantity.
+
+Use **Edit experiment JSON** to open a real local file in the configured editor,
+save, then **Reload saved JSON**. The TUI edits the same declared fields. Review
+shows actual resolved parameters, including experiment-controlled overrides.
+Older modern-task JSON with `starting_contrast` is explicitly converted from its
+original increment meaning; conflicting old/new fields are rejected. Opening an
+old file never rewrites it; saving reviewed TUI changes retains its original bytes
+in `.history`. Previously recorded sessions and historical protocols are untouched.

@@ -18,7 +18,7 @@ def settings_snapshot(spec):
             or document["schema_version"] != 1 or document["experiment_id"] != spec.id
             or not isinstance(document["values"], dict)):
         raise ValueError("Experiment JSON requires schema_version=1, matching experiment_id and values.")
-    unknown = set(document["values"]) - {f.key for f in spec.fields}
+    unknown = set(spec.normalise_input_keys(document["values"])) - {f.key for f in spec.fields}
     if unknown:
         raise ValueError(f"Unknown experiment settings: {sorted(unknown)}")
     # Same public declarations validate the JSON, TUI and CLI.
