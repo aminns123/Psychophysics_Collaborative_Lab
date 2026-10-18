@@ -2154,6 +2154,7 @@ class ReviewScreen(Screen):
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
+            yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             with Vertical(id="human-review-checks"):
                 yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
                 yield Static("", id="human-readiness-summary", markup=False, classes="info-card")
@@ -2344,6 +2345,12 @@ class ReviewScreen(Screen):
             return
         self.readiness_report = experiment_readiness(self.request, get_experiment(self.request.experiment_id), profile, repo_root=self.app.repo_root)
         report = self.readiness_report
+        from ..config.preflight import display_configuration_notes
+        notes = display_configuration_notes(get_experiment(self.request.experiment_id), profile, self.request.experiment_values)
+        panel = self.query_one("#display-configuration-notes", Static)
+        panel.display = bool(notes)
+        panel.update("Physical display limitations: " + "; ".join(notes) +
+                     " Editing, previews and simulation remain available. Physical presentation must fit the display.")
         count = len(report["blockers"])
         self.query_one("#review-text", Static).update(self._summary_text(get_experiment(self.request.experiment_id), profile))
         self.query_one("#human-readiness-summary", Static).update(

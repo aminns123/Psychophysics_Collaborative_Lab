@@ -44,7 +44,9 @@ def preview_stimulus(identity, parameters, output):
     if stimulus.render is None:
         raise ValueError("This legacy/diagnostic stimulus uses its existing preview page.")
     pixels = render_pixels(stimulus, parameters)
-    imsave(output, pixels, cmap="gray", vmin=0, vmax=255)
+    # Supplied grids and OpenGL use positive y upwards. PNG row zero is at
+    # the top, so export with a lower origin rather than invert the stimulus.
+    imsave(output, pixels, cmap="gray", vmin=0, vmax=255, origin="lower")
     return output
 
 

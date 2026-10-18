@@ -376,6 +376,16 @@ def validate_settings(values):
         yield "Starting digital increment exceeds display gamut."
 
 
+def validate_monitor(settings, profile):
+    """Check the selected inducing frequency on the physical display, not a preset default."""
+    if profile.expected_resolution_px:
+        import math
+        from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
+        geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
+        validate_requested_cpd([settings["flanker_cpd"]], geometry)
+        validate_requested_cpd([settings["flanker_cpd"]], geometry, orientation_rad=math.pi / 2)
+
+
 def definition(identity="line_position_flanker"):
     return experiment(
         id=identity,
@@ -401,12 +411,26 @@ def definition(identity="line_position_flanker"):
             step_parameterization="log10_display_contrast",
         ),
         validator=validate_settings,
+        monitor_validator=validate_monitor,
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason="Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition.",
+        trial_column_overrides={
+            "presented_display_contrast": {
+                "units_or_encoding": "digital_probe_increment",
+                "meaning": "Presented digital line increment above background.",
+                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+            },
+            "next_display_contrast": {
+                "units_or_encoding": "digital_probe_increment",
+                "meaning": "Post-response digital line increment above background.",
+                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+            },
+            "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
+        },
         source_paths=("src/psychophysics_lab/experiments/line_position_flanker.py",),
     )
 

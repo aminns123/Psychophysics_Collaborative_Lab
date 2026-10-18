@@ -420,6 +420,21 @@ def validate_settings(values):
         yield "Starting contrast exceeds the available digital range."
 
 
+def validate_monitor(settings, profile):
+    """Check actual condition frequencies before physical presentation.
+
+    Editing and simulation remain available with display feedback at Review.
+    """
+    if profile.expected_resolution_px:
+        import math
+        from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
+        frequencies = [condition["frequency_cpd"] for condition in make_conditions(settings)]
+        geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
+        # Match the raster backend's conservative limit on both pixel axes.
+        validate_requested_cpd(frequencies, geometry)
+        validate_requested_cpd(frequencies, geometry, orientation_rad=math.pi / 2)
+
+
 def definition(identity="csf_thesis"):
     return experiment(
         id=identity,
@@ -445,12 +460,26 @@ def definition(identity="csf_thesis"):
             step_parameterization="log10_display_contrast",
         ),
         validator=validate_settings,
+        monitor_validator=validate_monitor,
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason="Contrast sensitivity implemented for software tests; raster aperture, grayscale precision, calibrated contrast/luminance and physical timing must be qualified before human acquisition. The 2,8 cpd defaults are a short software example, choose the full study frequency list.",
+        trial_column_overrides={
+            "presented_display_contrast": {
+                "units_or_encoding": "digital_peak_to_peak",
+                "meaning": "Presented digital peak-to-peak sinusoidal modulation.",
+                "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+            },
+            "next_display_contrast": {
+                "units_or_encoding": "digital_peak_to_peak",
+                "meaning": "Post-response digital peak-to-peak sinusoidal modulation.",
+                "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+            },
+            "stimulus_condition": {"units_or_encoding": "cycles/degree"},
+        },
         source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py",),
     )
 

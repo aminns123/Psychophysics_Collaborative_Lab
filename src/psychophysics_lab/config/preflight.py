@@ -68,8 +68,13 @@ def human_requirements(spec, profile, values=None):
     add("qualification","Experiment qualification",compatible(spec,profile),
         "This experiment/profile combination has not been qualified. Explicitly review the registered experiment requirements; calibration completion does not qualify human acquisition.","qualification")
     if spec.acquisition_block_reason:
-        add("protocol", "Protocol migration incomplete", False,
-            spec.acquisition_block_reason, "qualification")
+        add("protocol", "Protocol not qualified for acquisition", False,
+            spec.acquisition_block_reason + " This is a protocol-level qualification limit; marking a monitor Verified does not remove it.", "qualification")
+    if spec.procedure is not None and spec.monitor_validator is not None and values:
+        notes = display_configuration_notes(spec, profile, values)
+        add("sampling", "Configured conditions on this physical display", not notes,
+            "\n".join(notes) if notes else "Configured condition frequencies fit the saved display sampling.", "settings")
+        rows[-1]["action"] = "Review condition settings"
     from .models import photometry_is_test_data
     if profile.origin=="local" or spec.procedure is not None:
         for check in qualification_checks(spec,profile):
@@ -100,6 +105,21 @@ def human_requirements(spec, profile, values=None):
 
 def human_blockers(spec, profile, values=None):
     return tuple(row['detail'] for row in human_requirements(spec,profile,values) if row['required'] and not row['passed'])
+
+
+def display_configuration_notes(spec, profile, values):
+    """Nonblocking feedback while designing/simulating; physical launch checks it.
+
+    The experiment owns which configured quantities must be checked. Cropping,
+    blank/control stimuli and target visibility are researcher choices.
+    """
+    if spec.monitor_validator is None:
+        return ()
+    try:
+        spec.monitor_validator(values, profile)
+    except (ValueError, TypeError, KeyError) as exc:
+        return (str(exc),)
+    return ()
 
 
 def effective_requirements(spec, snapshots=None):
@@ -144,7 +164,7 @@ def validate_setup(request, spec, profile, *, mode="human"):
         for selected in snapshots.values():
             document = selected['document']
             validate_geometry(profile, profile.expected_resolution_px, get_stimulus(document['stimulus_id']), document['parameters'])
-    if spec.monitor_validator:
+    if spec.monitor_validator and (mode == "human" or spec.historical):
         spec.monitor_validator(values,profile)
     if spec.id == "contrast_sensitivity" and values.get("condition_unit") != "legacy_shader_radians":
         from .._reference_csf.experiment_definition import resolved_condition_frequencies

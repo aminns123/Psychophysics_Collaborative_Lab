@@ -13,17 +13,25 @@ from psychophysics_lab.experiments._internal.spec import ConfigField, Experiment
 from psychophysics_lab.experiments._internal.responses import ResponseParadigm, LEFT_RIGHT, TWO_INTERVAL
 from .stimuli.registry import StimulusSpec
 from .data.trials import TrialLog
-from .data.session import atomic_write_json
+from .data.session import atomic_write_json, append_json_record
 
 
 def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                responses=None, source_paths=(), validator=None, monitor_validator=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
-               acquisition_block_reason="", historical=False, scientific_spec=None):
+               acquisition_block_reason="", historical=False, scientific_spec=None,
+               trial_column_overrides=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
+    dictionary = {}
+    if responses is not None:
+        encoding = "; ".join(f"{i} = {meaning}" for i, meaning in enumerate(responses.alternatives))
+        dictionary = {column: {"units_or_encoding": encoding}
+                      for column in ("target_alternative", "participant_response")}
+    for column, overrides in (trial_column_overrides or {}).items():
+        dictionary.setdefault(column, {}).update(overrides)
     return ExperimentSpec(id=id, display_name=name, description=description,
         legacy_module=procedure.__module__, legacy_experiment_type=id,
         fields=tuple(fields), procedure=procedure, adaptive=adaptive,
@@ -34,7 +42,8 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         calibration_not_applicable=calibration_not_applicable,
         monitor_capabilities=monitor_capabilities,
         stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config,
-        acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {})
+        acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {},
+        trial_column_overrides=dictionary)
 
 
 class ParticipantAbort(Exception):
@@ -305,6 +314,8 @@ class RunContext:
                              step=int(step), state=scientific_snapshot(current))
 
         session = None
+        trial_error = None
+        first_update = len(getattr(self, "_adaptive_history", ()))
         def append_actions(actions):
             if response_data is None:
                 raise ValueError("Scientific updates require an accepted response.")
@@ -346,6 +357,7 @@ class RunContext:
                 raise ValueError("Adaptive recording requires this trial's completed adaptive update.")
             trace["status"] = "completed"
         except BaseException as exc:
+            trial_error = exc
             trace["status"] = "aborted" if isinstance(exc, ParticipantAbort) else "error"
             trace["error"] = str(exc)
             raise
@@ -355,35 +367,58 @@ class RunContext:
             self._in_trial = False
             self._trial_state = scientific_snapshot(current)
             trace["final_state"] = scientific_snapshot(current)
-            # No file access above, from first phase through last action. Flush
-            # even on abort/error, before the runner finalizes status and hashes.
+            # No IO during presentation/update. The canonical answer and journal
+            # are independent writes: failure of either must not suppress the other.
             if not hasattr(self, "_action_trials"):
                 self._action_trials = []
             self._action_trials.append(trace)
-            atomic_write_json(self.run_directory / "trial_actions.json",
-                              {"schema_version": 1, "trials": self._action_trials})
+            operations = []
+            presentation = None
             if accepted_response is not None:
                 # Preserve an accepted response even if later scientific state
                 # is incomplete: missing/non-scalar values remain unknown.
                 projected = {column: current.get(key) if current.get(key) is None or
                              type(current.get(key)) in (str, int, float, bool) else None
                              for column, key in projection.items()}
-                self.record(stimulus_condition=condition, target_alternative=target,
+                operations.append(("canonical response", lambda: self.record(stimulus_condition=condition, target_alternative=target,
                             participant_response=accepted_response.alternative,
-                            response_key=accepted_response.key, correct=int(correct), adaptive=adaptive_record, **projected)
+                            response_key=accepted_response.key, correct=int(correct), adaptive=adaptive_record, **projected)))
                 if not hasattr(self, "_presentations"):
                     self._presentations = []
-                self._presentations.append({"trial_index": trial_index, "slot": response_slot,
+                presentation = {"trial_index": trial_index, "slot": response_slot,
                     "stimulus_id": resolved[response_slot][0], "parameters": resolved[response_slot][1],
                     "reaction_time_s": accepted_response.reaction_time_s,
                     "phase_events": [e for e in events if e["kind"] in {"show", "response"}],
                     "measurements": observations,
-                    "timing_basis": response_data["timing_basis"]})
-                atomic_write_json(self.run_directory / "trial_presentations.json",
-                                  {"schema_version": 1, "trials": self._presentations})
-            self._flush_adaptive_history()
+                    "timing_basis": response_data["timing_basis"]}
+                self._presentations.append(presentation)
+            operations.append(("trial journal", lambda: append_json_record(
+                self.run_directory / "trial_events.jsonl",
+                {"schema_version": 1, "trial": trace, "presentation": presentation,
+                 "adaptive_updates": getattr(self, "_adaptive_history", [])[first_update:]})))
             if _staged and adaptive_record is not None:
-                self.save_adaptive(adaptive_record, value_column=adaptive_value_column)
+                operations.append(("adaptive snapshot", lambda: self.save_adaptive(
+                    adaptive_record, value_column=adaptive_value_column)))
+            self._persist_independently(operations, original_error=trial_error)
+
+    def _persist_independently(self, operations, *, original_error=None):
+        """Attempt every essential write and retain the first scientific error."""
+        errors = []
+        for name, operation in operations:
+            try:
+                operation()
+            except BaseException as exc:
+                errors.append((name, exc))
+        if not errors:
+            return
+        if not hasattr(self, "_persistence_errors"):
+            self._persistence_errors = []
+        self._persistence_errors.extend({"operation": name, "error": repr(exc)} for name, exc in errors)
+        primary = original_error if original_error is not None else errors[0][1]
+        for name, exc in errors:
+            primary.add_note(f"Persistence failed ({name}): {exc!r}")
+        if original_error is None:
+            raise primary
 
     def _flush_adaptive_history(self):
         if hasattr(self, "_adaptive_history"):
@@ -404,8 +439,21 @@ class RunContext:
         return result
 
     def close(self):
+        # Per-trial journals are already durable. Write each compatible aggregate
+        # once at finalisation, including on abort/error; never rewrite N trials
+        # after every response. Always attempt display cleanup after save errors.
+        operations = []
+        if hasattr(self, "_action_trials"):
+            operations.append(("action summary", lambda: atomic_write_json(
+                self.run_directory / "trial_actions.json", {"schema_version": 1, "trials": self._action_trials})))
+        if hasattr(self, "_presentations"):
+            operations.append(("presentation summary", lambda: atomic_write_json(
+                self.run_directory / "trial_presentations.json", {"schema_version": 1, "trials": self._presentations})))
+        if hasattr(self, "_adaptive_history"):
+            operations.append(("adaptive history", self._flush_adaptive_history))
         if hasattr(self, "_presentation"):
-            self._presentation.close()
+            operations.append(("display cleanup", self._presentation.close))
+        self._persist_independently(operations)
 
     def adaptive(self, *args, **kwargs):
         if self.spec.adaptive is None:

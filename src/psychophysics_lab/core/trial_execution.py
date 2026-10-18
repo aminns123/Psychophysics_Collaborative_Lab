@@ -62,7 +62,7 @@ class VirtualPresentation:
                               "virtual_request_ms": self.elapsed_ms}
         if phase.kind == "response":
             elapsed = self.response.reaction_time_s * 1000
-            if phase.duration_ms and elapsed > phase.duration_ms:
+            if phase.duration_ms and elapsed >= phase.duration_ms:
                 self.elapsed_ms += phase.duration_ms
                 event["virtual_offset_ms"] = self.elapsed_ms
                 raise TimeoutError("No valid virtual response before the configured response timeout")
