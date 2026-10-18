@@ -80,24 +80,67 @@ def windows_output(device_id):
 
 
 def framebuffer_info(gl=None):
-    """Inspect actual storage, not merely the format requested from a driver."""
+    """Best-effort description of the *obtained* draw buffer.
+
+    Drivers (including some Windows OpenGL implementations) may reject a
+    glGetIntegerv pname with GL_INVALID_ENUM. A rejected introspection query is
+    NOT evidence that the graphics window or presentation cannot be used.
+    Never substitute requested/assumed channel depths for unreadable values.
+    """
     if gl is None:
         from pyglet import gl
-    def integer(enum):
-        value = gl.GLint()
-        gl.glGetIntegerv(enum, ct.byref(value))
-        return value.value
-    bits = {name: integer(enum) for name, enum in (
+    errors = []
+
+    def query(label, enum):
+        try:
+            value = gl.GLint()
+            gl.glGetIntegerv(enum, ct.byref(value))
+            return value.value
+        except Exception as exc:
+            errors.append(f"{label}: {type(exc).__name__}: {exc}")
+            return None
+
+    bits = {name: query(f"{name}_bits", enum) for name, enum in (
         ("red", gl.GL_RED_BITS), ("green", gl.GL_GREEN_BITS),
         ("blue", gl.GL_BLUE_BITS), ("alpha", gl.GL_ALPHA_BITS))}
-    floating = bool(integer(0x8820)) if gl.gl_info.have_extension("GL_ARB_color_buffer_float") else False
-    # Binary16/32 mantissas, not storage width, determine worst-case spacing
-    # within [0,1]. This is a buffer property, never a physical output claim.
-    effective = min(({16: 11, 32: 24}.get(bits[c], 0) if floating else bits[c])
-                    for c in ("red", "green", "blue"))
-    return {"channel_bits": bits, "numeric_format": "floating_point" if floating else "normalized_integer",
-            "buffer_precision_bits_in_0_1": effective,
-            "renderer": gl.gl_info.get_renderer(), "gl_version": gl.gl_info.get_version()}
+    try:
+        supports_float_query = gl.gl_info.have_extension("GL_ARB_color_buffer_float")
+    except Exception as exc:
+        supports_float_query = False
+        errors.append(f"color_buffer_float_extension: {type(exc).__name__}: {exc}")
+
+    # The extension absent means the default buffer is not an ARB floating
+    # format. If the extension is present but the query fails, its format is
+    # UNKNOWN: treating its 16/32 storage bits as normalized integer would
+    # overstate usable precision.
+    floating = query("rgba_float_mode", 0x8820) if supports_float_query else 0
+    numeric_format = ("unknown" if floating is None else
+                      "floating_point" if floating else "normalized_integer")
+    channels = [bits[c] for c in ("red", "green", "blue")]
+    precision = None
+    if floating is not None and all(type(v) is int and v > 0 for v in channels):
+        if floating:
+            # IEEE half has 11 significant bits; single has 24. Other
+            # storage sizes are not assumed to have equivalent spacing.
+            values = [{16: 11, 32: 24}.get(v) for v in channels]
+            if all(v is not None for v in values):
+                precision = min(values)
+        else:
+            precision = min(channels)
+
+    def gl_string(label, fn):
+        try:
+            return fn()
+        except Exception as exc:
+            errors.append(f"{label}: {type(exc).__name__}: {exc}")
+            return None
+
+    return {"channel_bits": bits, "numeric_format": numeric_format,
+            "buffer_precision_bits_in_0_1": precision,
+            "inspection_status": "partial" if errors or precision is None else "measured_by_gl",
+            "query_errors": errors,
+            "renderer": gl_string("renderer", gl.gl_info.get_renderer),
+            "gl_version": gl_string("gl_version", gl.gl_info.get_version)}
 
 
 def format_summary(evidence):
@@ -119,13 +162,24 @@ def inspect_output(window, device_id, *, requested_bits=None, selection="existin
     # Do not let an 8-bit OS signal report silently impose an 8-bit
     # application framebuffer. Preserve the distinction in saved evidence.
     target = requested_bits if requested_bits is not None else max(10, signal.get("bits_per_color_channel") or 0)
-    fallback = actual["buffer_precision_bits_in_0_1"] < target
+    precision = actual.get("buffer_precision_bits_in_0_1")
+    unknown = precision is None
+    fallback = unknown or precision < target
+    status = "unknown" if unknown else "fallback" if fallback else "buffer_sufficient"
+    if unknown:
+        message = ("OUTPUT PRECISION UNKNOWN: graphics driver rejected or could not "
+                   "complete framebuffer inspection. Test presentation remains "
+                   "available; do not treat the reported output as verified.")
+    elif fallback:
+        message = (f"OUTPUT FALLBACK: requested {target}-bit precision; obtained "
+                   "lower buffer precision. Test presentation remains available.")
+    else:
+        message = ("Buffer format inspected; physical distinguishable increments "
+                   "still require photometer measurements.")
     return {"schema_version": 1, "selection": selection, "requested_minimum_bits": target,
             "windows_report": signal, "application_obtained": actual,
-            "fallback": fallback, "attempts": list(attempts),
-            "physical_precision_verified": False,
-            "message": (f"OUTPUT FALLBACK: requested {target}-bit precision; obtained lower buffer precision. Test presentation remains available."
-                        if fallback else "Buffer format inspected; physical distinguishable increments still require photometer measurements.")}
+            "fallback": fallback, "inspection_status": status, "attempts": list(attempts),
+            "physical_precision_verified": False, "message": message}
 
 
 def create_output_window(screen, *, requested_bits=None, window_factory=None, **kwargs):
@@ -156,37 +210,74 @@ def create_output_window(screen, *, requested_bits=None, window_factory=None, **
                 red_size=width, green_size=width, blue_size=width,
                 alpha_size=0, double_buffer=True))
             candidates.extend(configs)
-        except (pyglet.window.NoSuchConfigException, gl.ConfigException) as exc:
-            attempts.append(str(exc))
+        except Exception as exc:
+            # A driver may not expose high-bit-depth formats through Pyglet.
+            # A failed format query must not prohibit an ordinary window.
+            attempts.append(f"enumerate {width}-bit formats: {type(exc).__name__}: {exc}")
     candidates.sort(key=lambda c: (0 if (c.red_size, c.green_size, c.blue_size) == (target,)*3 else
                                    1 if min(c.red_size, c.green_size, c.blue_size) >= 32 else 2))
-    # Keep normal test presentation available if no higher format can be used.
+    # An ordinary graphics window remains available for test presentation.
     candidates.append(None)
     seen = set()
     saved = None
     for config in candidates:
         key = getattr(config, "_pf", id(config)) if config is not None else "default"
-        if key in seen: continue
+        if key in seen:
+            continue
         seen.add(key)
+        label = ("default window" if config is None else
+                 f"requested RGB {getattr(config, 'red_size', '?')}/"
+                 f"{getattr(config, 'green_size', '?')}/"
+                 f"{getattr(config, 'blue_size', '?')}")
         window = None
         try:
-            window = factory(screen=screen, visible=False, **kwargs, **({"config": config} if config is not None else {}))
+            window = factory(screen=screen, visible=False, **kwargs,
+                             **({"config": config} if config is not None else {}))
+        except Exception as exc:
+            attempts.append(f"create {label}: {type(exc).__name__}: {exc}")
+            if window is not None:
+                window.close()
+            continue
+        try:
             evidence = inspect_output(window, device_id, requested_bits=target,
                                       selection="automatic", attempts=attempts)
-            if not evidence["fallback"] or config is None:
-                saved = (window, evidence)
-                break
-            attempts.append(f"Obtained {evidence['application_obtained']}; below requested precision")
-            window.close()
         except Exception as exc:
-            attempts.append(str(exc))
-            if window is not None: window.close()
+            # A functioning window must not be discarded because diagnostic
+            # OpenGL queries fail. This is UNKNOWN, never a verified 8/10-bit.
+            detail = f"inspect {label}: {type(exc).__name__}: {exc}"
+            attempts.append(detail)
+            evidence = {
+                "schema_version": 1, "selection": "automatic",
+                "requested_minimum_bits": target,
+                "windows_report": reported,
+                "application_obtained": {
+                    "channel_bits": {}, "numeric_format": "unknown",
+                    "buffer_precision_bits_in_0_1": None,
+                    "inspection_status": "unavailable",
+                    "query_errors": [detail],
+                },
+                "inspection_status": "unknown", "fallback": True,
+                "attempts": list(attempts), "physical_precision_verified": False,
+                "message": ("OUTPUT PRECISION UNKNOWN: OpenGL inspection failed; "
+                            "test presentation remains available. Do not "
+                            "interpret the unknown format as verified."),
+            }
+        if not evidence["fallback"] or config is None:
+            saved = (window, evidence)
+            break
+        attempts.append(
+            f"{label}: lower or unknown buffer precision "
+            f"({evidence['application_obtained'].get('buffer_precision_bits_in_0_1')}); "
+            "trying another format")
+        window.close()
     if saved is None:
         raise RuntimeError("Unable to create a presentation window: " + "; ".join(attempts))
     window, evidence = saved
     if evidence["fallback"]:
         warnings.warn(evidence["message"], RuntimeWarning, stacklevel=2)
-        window.set_caption("PsyCoLab — OUTPUT PRECISION FALLBACK (see Calibration → Output precision)")
+        qualifier = ("UNKNOWN" if evidence.get("inspection_status") == "unknown"
+                     else "FALLBACK")
+        window.set_caption(f"PsyCoLab — OUTPUT PRECISION {qualifier} (see Calibration → Output precision)")
     if visible:
         window.set_visible(True)
     return window, evidence
