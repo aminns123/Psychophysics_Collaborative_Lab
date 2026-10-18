@@ -92,11 +92,13 @@ The operating-point calculation supports fixed n-down/one-up steps only. Arbitra
 TUI n-up/down values are still collected and executed, but this benchmark does not
 claim their threshold interpretation is validated.
 
-The benchmark reports successes, boundary exits, incomplete runs, conditional
+The benchmark reports successes, boundary-affected runs, incomplete runs, conditional
 bias and repeated-estimate spread. It starts at the known threshold, a favourable
 diagnostic assumption. Its spread is not a human confidence interval. Results in
 `docs/audit_evidence/scientific_recovery.json` include severe boundary censoring
-at high strengths/lapses. Bias among successful runs is not evidence that censored
+at high strengths/lapses under the former abort-on-overshoot policy. The current
+bounded policy continues after an overshoot and reports runs that touch a bound
+separately from uncensored recovery estimates. Bias among successful runs is not evidence that censored
 runs recovered a threshold. These are limits to study before choosing acquisition
 parameters, not a reason to silently tune a participant's TUI settings.
 

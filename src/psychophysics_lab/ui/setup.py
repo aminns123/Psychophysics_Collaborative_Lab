@@ -322,7 +322,7 @@ class ExperimentsScreen(HubPage):
     def _refresh(self) -> None:
         spec = self._selected()
         profiles = ", ".join(spec.compatible_monitor_profiles) or "Any registered profile"
-        fields = "\n".join(f"  • {field.label} ({field.kind})" for field in spec.fields)
+        fields = "\n".join(f"  • {field.display_label} ({field.kind})" for field in spec.fields)
         sources = _source_candidates(self.app.repo_root, spec)
         inventory = _source_inventory(self.app.repo_root, spec)
         self.query_one("#inspect-source-file", Select).set_options([(f"{role} — {path.relative_to(self.app.repo_root)}", str(path)) for role, path in inventory])
@@ -1819,7 +1819,7 @@ class ExperimentConfigScreen(Screen):
         self.query_one("#config-status", Static).update("Display changed. Draft experiment values retained; Review revalidates against this profile.")
 
     def _compose_field(self, field):
-        yield Label(field.label)
+        yield Label(field.display_label)
         value = self.defaults.get(field.key, field.default)
         widget_id = _field_widget_id(field)
         if field.kind == "choice":
@@ -2201,7 +2201,7 @@ class ReviewScreen(Screen):
             "[b]Experiment parameters[/b]",
         ]
         for field in experiment.fields:
-            lines.append(f"{field.label}: {self.request.experiment_values[field.key]}")
+            lines.append(f"{field.display_label}: {self.request.experiment_values[field.key]}")
 
         if self.request.experiment_id == "contrast_sensitivity":
             values = self.request.experiment_values

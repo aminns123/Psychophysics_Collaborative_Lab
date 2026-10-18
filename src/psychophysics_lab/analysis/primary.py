@@ -82,7 +82,19 @@ def estimate(rows, rule, expected, status):
                 "threshold": threshold,
                 "sensitivity": 1 / threshold,
             }
+    boundary_affected = []
+    for identity, bounds in rule.get("strength_bounds", {}).items():
+        lower, upper = bounds
+        if any(
+            row.get(column) not in (None, "") and
+            (float(row[column]) <= lower or float(row[column]) >= upper)
+            for row in grouped.get(str(identity), [])
+            for column in ("presented_display_contrast", "next_display_contrast")
+        ):
+            boundary_affected.append(str(identity))
     return {
+        "boundary_affected_staircases": boundary_affected,
+        "boundary_warning": ("Adaptive strength reached a bound; estimates may be boundary-biased and require review." if boundary_affected else ""),
         "primary_estimator": dict(rule),
         "expected_staircases": expected,
         "run_status": status,

@@ -28,34 +28,38 @@ class ConfigField:
     section: str = "Experiment"
 
     @property
+    def display_label(self) -> str:
+        return f"{self.label} ({self.units})" if self.units else self.label
+
+    @property
     def target_key(self) -> str:
         return self.legacy_key or self.key
 
     def coerce(self, value: Any) -> Any:
         if not self.editable and value not in (None, "", self.default):
-            raise ValueError(f"{self.label} is a fixed specification field.")
+            raise ValueError(f"{self.display_label} is a fixed specification field.")
         if value is None or value == "":
             if self.default is None:
-                raise ValueError(f"{self.label} must be selected.")
+                raise ValueError(f"{self.display_label} must be selected.")
             value = self.default
 
         if self.kind in {"int", "float"}:
             if isinstance(value, bool):
-                raise ValueError(f"{self.label} must be a number, not a boolean.")
+                raise ValueError(f"{self.display_label} must be a number, not a boolean.")
             number = float(value)
             if not math.isfinite(number):
-                raise ValueError(f"{self.label} must be finite.")
+                raise ValueError(f"{self.display_label} must be finite.")
             if self.kind == "int" and not number.is_integer():
-                raise ValueError(f"{self.label} must be a whole number.")
+                raise ValueError(f"{self.display_label} must be a whole number.")
             if self.minimum is not None and number < self.minimum or self.maximum is not None and number > self.maximum:
-                raise ValueError(f"{self.label} ({self.key.replace(chr(95), chr(45))}) is outside its permitted range.")
+                raise ValueError(f"{self.display_label} ({self.key.replace(chr(95), chr(45))}) is outside its permitted range.")
             return int(number) if self.kind == "int" else number
         if self.kind == "choice":
             if value not in self.choices:
                 for choice in self.choices:
                     if str(choice) == str(value):
                         return choice
-                raise ValueError(f"{self.label}: {value!r} is not an allowed choice.")
+                raise ValueError(f"{self.display_label}: {value!r} is not an allowed choice.")
             return value
         if self.kind == "text":
             return str(value)

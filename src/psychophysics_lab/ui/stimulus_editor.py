@@ -27,7 +27,7 @@ class StimulusValueEditor(Screen):
                 "Edit appearance here. The experiment may set position, strength or other values for each trial; use Try the experiment to see those changes."
             )
             for index, field in enumerate(self.panel.stimulus.parameters):
-                yield Label(field.label + (f" ({field.units})" if field.units else ""))
+                yield Label(field.display_label)
                 value = self.document["parameters"][field.key]
                 if field.kind == "choice":
                     yield Select(

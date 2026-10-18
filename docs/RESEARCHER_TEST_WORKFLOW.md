@@ -90,3 +90,36 @@ software tests do not certify a physical monitor or measure researcher usability
 - Physical window/input boundaries and image-viewer launching were injected in automated tests. The actual laboratory display, viewer integration and photon timing still need a hands-on check.
 
 Changes are uncommitted on refactor/researcher-test-workflow. Nothing was pushed.
+
+
+## Intensity bounds, probe position and sound
+
+Modern CSF and line/ellipse staircases saturate at their declared digital bound;
+an outward step then holds, without creating a reversal. They continue until the
+configured stopping rule or test limit. Bounds and requested/applied updates are
+saved; primary results flag staircases that contacted a bound. Such estimates can
+be biased. Historical replay retains its historical contract.
+
+Intensity means a digital command from 0 (black) to 1 (white), not cd/m². In the
+line/ellipse tasks, the staircase controls an **increment above background**:
+with background .25, increment .75 gives nominal probe intensity 1. Thin-line
+pixel coverage blends this with its surrounding pixels. Overlapping additive
+ring/flanker layers also need headroom. For a grating, modulation is peak-to-peak:
+the maximum is 2 × min(background, 1 − background), preserving both excursions.
+No asymmetric grating clipping is introduced.
+
+Logarithmic stepping needs a positive numeric value: its computational lower
+bound is the smallest normal Python float, not an 8-bit/perceptual minimum.
+This prevents an absorbing zero and allows subsequent upward movement.
+
+Probe displacement is the **centre-to-fixation distance in visual degrees**.
+At x=0, a .01-degree displacement places the .133-degree-high line across fixation;
+it is allowed. For an obvious appearance check, try .2 degrees, then select the
+geometry required by the study. Cropping and intentional blank conditions remain
+researcher choices. Neither PNG appearance nor a software test qualifies hardware.
+
+Line baseline/flanker settings include optional auditory cues (off by default),
+frequency in Hz and duration in ms. Enabling them requests a Windows beep at probe
+onset and at any accepted response, independent of correctness. Restart PsyCoLab
+after Python changes; the new controls appear on the experiment form. A sound
+request does not establish actual speaker onset or acoustic timing.

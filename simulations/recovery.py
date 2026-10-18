@@ -69,20 +69,11 @@ def recover(
             contrast = contrasts[identity]
             correct = rng.random() < observer.probability(contrast)
             step = algorithm.expected_step(identity, correct)
-            try:
-                candidate = change_contrast(
-                    {
-                        "contrast": contrast,
-                        "log_up": log_up,
-                        "log_down": log_down,
-                        "maximum_contrast": maximum,
-                    },
-                    {"correct": correct},
-                    step,
-                )
-            except ValueError:
-                boundary = True
-                break
+            candidate = change_contrast(
+                {"contrast": contrast, "log_up": log_up, "log_down": log_down,
+                 "maximum_contrast": maximum}, {"correct": correct}, step)
+            import sys
+            boundary = boundary or candidate >= maximum or candidate <= sys.float_info.min
             previous = algorithm.states[identity].reversal_count
             algorithm.respond(identity, correct, lambda step: candidate)
             records.append(
@@ -125,7 +116,7 @@ def recover(
         "successful_runs": len(estimates),
         "boundary_runs": boundary_runs,
         "incomplete_runs": incomplete,
-        "bias_population": "completed runs only; boundary/incomplete runs are separately reported",
+        "bias_population": "completed runs without bound contact only; boundary-affected/incomplete runs are separately reported",
         "starting_strength": "known model threshold (favourable recovery diagnostic, not an unknown-threshold study)",
         "median_estimate": float(np.median(values)) if len(values) else None,
         "median_log10_bias": (
