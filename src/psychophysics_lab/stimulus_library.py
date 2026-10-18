@@ -633,7 +633,7 @@ class DetectionScene(LibraryStimulus):
         ConfigField("size_deg","Scene extent","float",14.,minimum=.1,maximum=40, units='degrees'),
         ConfigField("background","Digital background","float",.5,minimum=0,maximum=1, units='digital intensity, 0 to 1'),
         ConfigField("contrast","Probe digital increment","float",.02,minimum=0,maximum=1, units='digital increment'),
-        ConfigField("probe_length_deg", "Probe length", "float", .133, minimum=0, units="degrees"),
+        ConfigField("probe_length_deg", "Probe length", "float", 1.0, minimum=0, units="degrees"),
         ConfigField("probe_width_deg", "Probe width", "float", .013, minimum=0, units="degrees"),
         ConfigField("probe_present","Show probe","choice",True,choices=(True,False)),
         ConfigField("probe_x_deg","Probe x","float",0.,minimum=-6,maximum=6, units='degrees'),

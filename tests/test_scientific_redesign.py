@@ -136,6 +136,9 @@ def test_thin_probe_preserves_integrated_area_and_ring_never_silently_clips():
     defaults = {f.key: f.default for f in stimulus.parameters} | {
         "probe_x_deg": 1.0,
         "probe_y_deg": 1.0,
+        # Reference area below is fixed, independently of editable defaults.
+        "probe_length_deg": 0.133,
+        "probe_width_deg": 0.013,
         "contrast": 0.02,
     }
     difference = render_values(stimulus, defaults) - render_values(

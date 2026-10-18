@@ -24,7 +24,7 @@ class AuthoringPanel(Vertical):
             yield Button("Optional JSON preset", id="author-json")
             yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
             yield Button("Mark Ready", id="author-ready")
-            yield Button("Refresh", id="author-refresh")
+            yield Button("Refresh list", id="author-refresh")
         yield Static("", id="author-result", markup=False)
 
     def on_mount(self):
@@ -92,12 +92,12 @@ class AuthoringPanel(Vertical):
                 # modules require a restart to avoid stale cross-module references.
                 module_name = f"psychophysics_lab.{'stimuli' if self.kind == 'stimulus' else 'experiments'}.{name}"
                 if module_name in sys.modules:
-                    message += "\nRestart PsyCoLab before running the newly tested revision."
+                    message += "\nUse Refresh (F5) to load the newly tested revision."
                 else:
                     from ..authoring import load_authored
                     problems = load_authored(self.app.repo_root, tolerate_errors=True)
                     if problems:
-                        message += "\nRestart PsyCoLab to refresh changed loaded modules: " + str(problems)
+                        message += "\nUse Refresh (F5) to load changed modules: " + str(problems)
             self.app.call_from_thread(update, message)
             self.app.call_from_thread(self.refresh_inventory)
         except Exception as exc:

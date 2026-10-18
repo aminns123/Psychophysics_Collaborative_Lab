@@ -173,4 +173,21 @@ After editing JSON, save in the editor and choose **Reload files and review**.
 All loaded files validate before the draft changes. The table and next run use
 the reloaded values, and Back retains them in the configuration form. Python
 edits need a fresh PsyCoLab process because the running process has already
-imported that code; the file remains independently editable at any time.
+imported that code; **Refresh (F5)** now handles this automatically. The file
+remains independently editable at any time.
+
+
+### Refresh saved files
+
+After saving Python or JSON in your editor, click **Refresh** in the top bar
+(or press **F5**). PsyCoLab checks the saved files first, then reopens the TUI
+in a fresh interpreter and returns to your configuration or Review. You do not
+need to close the terminal or use the launcher again. An error keeps the current
+setup open so you can correct the file and retry.
+
+Selected JSON files are reloaded. Stimuli using class defaults receive the new
+Python defaults; custom parameter snapshots and experiment overrides are retained.
+The updated Review table shows the values that will be used. Refresh never starts
+an experiment or marks a changed component scientifically qualified. Save or close
+any separate in-TUI editor before refreshing. **Reload files and review** remains
+available for JSON-only edits without reopening the interface.

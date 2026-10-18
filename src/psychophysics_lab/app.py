@@ -250,6 +250,11 @@ def _main(
         initial_data_root = resolve_data_root(initial_data_root, repo_root)
     except ValueError:
         initial_data_root = resolve_data_root(fallback_data_root, repo_root)
+    # Refresh resumes in a clean interpreter; scientific modules are never hot-reloaded.
+    from .ui.refresh import read_refresh_state, RefreshRequest, launch_refreshed
+    refresh_state = read_refresh_state(repo_root)
+    if refresh_state is not None:
+        initial_data_root = resolve_data_root(refresh_state["data_root"], repo_root)
     initial_data_root.mkdir(parents=True, exist_ok=True)
 
     # The hub may close for fullscreen display checks or headless scenarios.
@@ -266,12 +271,17 @@ def _main(
         from .ui.setup import run_setup_tui
 
         launch_options = {"simulation_summary": simulation_summary}
+        if refresh_state is not None:
+            launch_options["refresh_state"] = refresh_state
+            refresh_state = None
         if geometry_summary is not None:
             launch_options["geometry_summary"] = geometry_summary
         action = run_setup_tui(repo_root=repo_root, data_root=initial_data_root,
                                **launch_options)
         simulation_summary = None
         geometry_summary = None
+        if isinstance(action, RefreshRequest):
+            return launch_refreshed(action, repo_root)
         if action is None:
             if recoverable_failures:
                 print(f"PsyCoLab exited after recovery from {recoverable_failures} failed operation(s); those attempts did not complete successfully.")
@@ -521,4 +531,4 @@ def main(argv: Sequence[str] | None = None) -> int:
         return exit_code
     finally:
         if fatal_capture is not None:
-            fatal_capture.close(clean_exit=exit_code in {0, 130})
+            fatal_capture.close(clean_exit=exit_code in {0, 75, 130})  # 75: internal refresh handoff
