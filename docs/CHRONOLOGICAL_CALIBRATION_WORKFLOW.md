@@ -1,6 +1,6 @@
 # Calibration in order — researcher quick guide
 
-**Aim:** make every page say *what to do*, *what PsyCoLab saves*, and *what to do next*. The six pages are a **setup path**, not six automatic claims of physical verification.
+**Aim:** make every page say *what to do*, *what PsyCoLab saves*, and *what to do next*. The seven pages are a **setup path**, not seven automatic claims of physical verification.
 
 ## Start by choosing your purpose
 
@@ -12,14 +12,16 @@
 
 Select the purpose under **Experiment**. You may enter Calibration and return without making new measurements.
 
-## Six pages — do them in this order
+## Seven pages — do them in this order
 
-1. **Display:** Bind your physical screen; use the OS resolution and refresh; measure the illuminated active width/height and eye-to-screen distance. Save the monitor profile. *Next: Geometry.*
-2. **Geometry:** Present a ruler bar. Measure the displayed length with a physical ruler; enter it in mm and **Record measurement**. Inspect the percent error. A saved measurement is **not** by itself physical verification. *Next: Spatial.*
-3. **Spatial:** Enter grating cycles/degree and launch. Return to the same page, select its presentation report, and record **Yes / No / Uncertain** and any abnormality. A complete light–dark period is one cycle; bright maxima depend on phase and edges. *Next: Luminance.*
-4. **Luminance:** Open the saved readings and choose **Accept saved values for TEST → Timing** to use them as-is for software testing. No Save or new measurement is needed. To change values, enter digital command (0–1), cd/m² readings and their source, then **Add readings to draft → Save active dataset**. Multiple readings at the same command produce a mean/SD. Only actual laboratory photometry should be marked as real meter readings. *Next: Timing.*
-5. **Timing:** Choose frame flicker/sine, select a frequency, and launch the test. Review software frame timing. It cannot alone verify emitted photon onset (use a separate sensor for physical verification). *Next: Review.*
-6. **Review:** Examine saved setup. Choose **Finish calibration setup → Return to Experiment** for test/simulation. For real human acquisition, review the physically measured Geometry, Photometry and Timing categories separately and then **Check / qualify experiment**. The final human-run preflight still decides whether acquisition is allowed.
+1. **Display:** Bind the physical screen, confirm resolution and refresh rate, enter measured active width/height and viewing distance, and save the profile. *Next: Geometry.*
+2. **Geometry:** Present a ruler bar. Measure its length with a real ruler; enter the result in mm and **Record measurement**. Inspect the percentage error; saving is not certification. *Next: Spatial.*
+3. **Spatial:** Present a grating, then record **Yes / No / Uncertain** for the visible spatial pattern. *Next: Luminance.*
+4. **Luminance:** Open the saved command/luminance table. Keep and accept appropriate values or enter/import new readings with their real/test provenance. **Accept luminance values → Output precision** approves the mapping but does not physically verify it. *Next: Output precision.*
+5. **Output precision:** Use **Inspect selected output format** to record the selected display's Windows-reported depth and actual framebuffer. Optionally conduct photometer measurements using **Halving** (near-black diagnostic) or **Fine** (adjacent command steps). Record repeated cd/m² readings and your assessment, which may be *inconclusive*. See [Output precision laboratory guide](OUTPUT_PRECISION_CALIBRATION.md). This stage never automatically certifies native panel bit depth or blocks ordinary software testing. *Next: Timing.*
+6. **Timing:** Present flicker/sine diagnostics and review software frame timing. Physical photon timing needs an independent instrument. *Next: Review.*
+7. **Review:** Examine saved evidence and choose **Finish calibration setup → Return to Experiment**. Human acquisition separately requires applicable measurements, laboratory verification, explicit experiment qualification, and successful preflight.
+
 
 The top of each page shows a single **NEXT** instruction. Use **Next stage** when *you* are ready; merely saving a diagnostic should not unexpectedly leave the page.
 
@@ -27,14 +29,14 @@ The top of each page shows a single **NEXT** instruction. Use **Next stage** whe
 
 All reading, editing and acceptance controls are in **Calibrate → Luminance → Step 1 — Review or add saved luminance readings**. Geometry and timing remain on their respective pages; Review summarises the saved evidence.
 
-- **Accept saved values for TEST → Timing** acknowledges the saved dataset for test use and opens Timing. When opened from Experiment Review, the button returns to **Review** with Test selected instead.
-- **Keep saved TEST values → Experiment Test mode** returns directly to configuring a test presentation. Both actions are available whether or not display settings changed.
+- **Accept luminance values → Output precision** acknowledges the saved dataset for test use and opens Output precision. When opened from Experiment Review, the button returns to **Review** with Test selected instead.
+- **Continue without acceptance → Experiment Test mode** returns directly to configuring a test presentation. Both actions are available whether or not display settings changed.
 - If there are unsaved rows, metadata edits or typed readings, first save the changes or choose **Discard draft; keep saved values** on the Luminance page. Acceptance never silently discards them.
 - **Saved values — no unsaved dataset changes** means no Save is needed. Acceptance does not rewrite the dataset, create a revision, change its provenance, physically verify it or qualify human acquisition.
 
 Two or more saved intensity points already complete the green Luminance stage. **TEST DATA — NOT PHYSICALLY VERIFIED** remains correct after acceptance; green records setup completion, not physical certification.
 
-On versions without the acceptance button, **Discard draft / Back → 5 · Timing** (or **6 · Review**) keeps saved values and discards only unsaved edits. The older “Saved + unsaved draft” heading appears even when the draft is unchanged.
+On versions without the acceptance button, **Discard draft / Back → 5 · Output precision** (or **7 · Review**) keeps saved values and discards only unsaved edits. The older “Saved + unsaved draft” heading appears even when the draft is unchanged.
 
 ## Display settings changed? (especially resolution)
 
@@ -42,7 +44,7 @@ If Luminance shows **Saved data belong to an earlier display configuration**, th
 
 ### A. Continue software testing with old test values
 
-Choose **Keep saved TEST values → Experiment Test mode**. PsyCoLab returns directly to Experiment with Test mode selected.
+Choose **Continue without acceptance → Experiment Test mode**. PsyCoLab returns directly to Experiment with Test mode selected.
 
 Old readings are preserved and marked as test-only for your present physical configuration. Choose **Test an experiment** when configuring a run. This does **not** re-verify the old measurements and does **not** qualify human data acquisition.
 
