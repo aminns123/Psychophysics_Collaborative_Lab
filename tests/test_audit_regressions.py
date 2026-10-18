@@ -133,6 +133,11 @@ def test_diagnostic_checks_actual_fullscreen_resolution(monkeypatch):
                            clock=SimpleNamespace(unschedule=lambda callback: None))
     monkeypatch.setitem(sys.modules, 'pyglet', fake)
     monkeypatch.setattr(geometry, 'select_screen', lambda p: (object(), {}))
+    # Only the fullscreen geometry behaviour is under test. Mock the centrally
+    # negotiated graphics window; format negotiation has dedicated tests.
+    monkeypatch.setattr('psychophysics_lab.core.output_precision.create_output_window',
+                        lambda screen, window_factory=None, **kw:
+                            ((window_factory or Window)(**kw), {}))
     with pytest.raises(ValueError, match='resolution'):
         geometry._draw_fullscreen(profile(expected_resolution_px=(1920,1080)),
                                   GeometryCheckRequest('legacy_reference_display','physical_mm',100))
