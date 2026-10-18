@@ -12,7 +12,7 @@ from .calibration_progress import calibration_progress
 from .local import save_preferences
 
 
-ORDER = ("bind", "geometry", "spatial", "luminance", "timing", "review")
+ORDER = ("bind", "geometry", "spatial", "luminance", "precision", "timing", "review")
 
 
 def next_stage(stage: str) -> str | None:

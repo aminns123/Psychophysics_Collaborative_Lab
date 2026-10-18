@@ -84,7 +84,8 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             super().flip()
             timestamps.append(time.perf_counter())
             self.frame_index += 1
-    window = DiagnosticWindow(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab Display Test")
+    from .output_precision import create_output_window
+    window, precision = create_output_window(screen, window_factory=DiagnosticWindow, fullscreen=True, vsync=True, caption="PsyCoLab Display Test")
     termination = "window_closed"
     def invalidate(dt):
         nonlocal termination
@@ -157,6 +158,7 @@ def _draw_fullscreen(profile, request: GeometryCheckRequest):
             raise ValueError("Display test ended before any software flip was observed; rerun the diagnostic.")
         plan["termination_reason"] = termination
         plan["display_identity"] = identity
+        plan["output_precision"] = precision
         plan["frame_timing"] = interval_summary(timestamps,profile.refresh_rate_hz)
         plan["frame_timing"]["total_flips"] = window.frame_index
         plan["frame_timing"]["sampled_recent_flips"] = len(timestamps)
@@ -197,16 +199,25 @@ def _draw_luminance_session(profile, request, session) -> None:
     from .luminance_session import stepped_command, summarise_readings
 
     screen, _ = select_screen(profile)
-    window = pyglet.window.Window(
-        fullscreen=True, screen=screen, vsync=True,
-        caption="PsyCoLab — Luminance Measurement (Esc to finish)"
+    from .output_precision import create_output_window, format_summary
+    window, precision = create_output_window(
+        screen, fullscreen=True, vsync=True,
+        caption="PsyCoLab — Photometer Measurement (Esc to finish)"
     )
     # Force an explicitly black surround; OpenGL's default clear colour
     # is not a laboratory brightness calibration or a reliable UI setting.
-    current = 1.0
+    sequence = session.plan.get("commands")
+    sequence_index = 0
+    current = session.plan.get("starting_command", 1.0)
     entry = ""
     feedback = "Type measured cd/m²; Enter saves. Left dimmer / Right brighter. Esc finishes."
     try:
+        precision["window_scope"] = "fullscreen photometer measurement"
+        if hasattr(session, "set_output"):
+            session.set_output(precision)
+        else:
+            session.session["output_precision"] = precision
+            session._persist()
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         resolution = (int(window.width), int(window.height))
         if profile.expected_resolution_px and resolution != profile.expected_resolution_px:
@@ -227,15 +238,17 @@ def _draw_luminance_session(profile, request, session) -> None:
         )
         def update_label():
             rows = summarise_readings(session.session["readings"])
-            selected = next((row for row in rows if abs(row["screen_intensity"]-current)<1e-6), None)
+            selected = next((row for row in rows if row["screen_intensity"] == current), None)
             sample_status = (
                 f"n={selected['n']}, mean={selected['luminance_cdm2']:.5g} cd/m²"
                 if selected else "n=0, no measurements"
             )
             label.text = (
-                f"Command: {current:.4f}  |  Photometer cd/m²: {entry or '_'}\n"
-                f"{sample_status}  |  {feedback}\n"
-                "Left/Right: intensity  |  Enter: save reading  |  Esc: end"
+                f"Command: {current:.10g}  |  Photometer cd/m²: {entry or '_'}\n"
+                f"{sample_status}  |  {feedback}\n" +
+                (f"Level {sequence_index+1}/{len(sequence)}; aim for 5 readings per command. " if sequence else "") +
+                "Left/Right: command  |  Enter: save reading  |  Esc: end\n" +
+                format_summary(precision)
             )
 
         @window.event
@@ -262,7 +275,7 @@ def _draw_luminance_session(profile, request, session) -> None:
 
         @window.event
         def on_key_press(symbol, modifiers):
-            nonlocal current, entry, feedback
+            nonlocal current, entry, feedback, sequence_index
             k = pyglet.window.key
             if symbol == k.ESCAPE:
                 if entry:
@@ -278,10 +291,14 @@ def _draw_luminance_session(profile, request, session) -> None:
                 if entry:
                     feedback = "Unsaved reading: Enter to save or Backspace to clear before changing command."
                 else:
-                    current = stepped_command(
-                        current, -1 if symbol == k.LEFT else 1,
-                        session.plan["minimum_command"], session.plan["step"]
-                    )
+                    if sequence:
+                        sequence_index = max(0, min(len(sequence)-1, sequence_index + (-1 if symbol == k.LEFT else 1)))
+                        current = sequence[sequence_index]
+                    else:
+                        current = stepped_command(
+                            current, -1 if symbol == k.LEFT else 1,
+                            session.plan["minimum_command"], session.plan["step"]
+                        )
                     feedback = "Intensity changed; measure and type a reading in cd/m²."
             elif symbol in (k.ENTER, getattr(k, "NUM_ENTER", k.ENTER)):
                 if not entry:

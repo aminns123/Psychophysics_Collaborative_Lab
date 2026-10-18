@@ -31,8 +31,8 @@ def test_saved_real_luminance_pairs_finish_stage_but_not_physical_certification(
     assert stage_states(p, tmp_path)["luminance"][0] is True
     assert "VERIFICATION PENDING" in stage_states(p, tmp_path)["luminance"][1]
     assert not p.has_verified_luminance_mapping
-    assert advance_if_completed(p, tmp_path, "luminance") == "timing"
-    assert preferences(tmp_path)["calibration_active_stage"] == "timing"
+    assert advance_if_completed(p, tmp_path, "luminance") == "precision"
+    assert preferences(tmp_path)["calibration_active_stage"] == "precision"
 
 
 def test_incomplete_stages_do_not_advance_without_user_direction(tmp_path):
@@ -42,7 +42,8 @@ def test_incomplete_stages_do_not_advance_without_user_direction(tmp_path):
     assert next_stage("bind") == "geometry"
     assert next_stage("geometry") == "spatial"
     assert next_stage("spatial") == "luminance"
-    assert next_stage("luminance") == "timing"
+    assert next_stage("luminance") == "precision"
+    assert next_stage("precision") == "timing"
     assert next_stage("timing") == "review"
     assert next_stage("review") is None
 
@@ -83,7 +84,7 @@ def test_profile_save_stays_on_luminance_until_explicit_next(tmp_path, monkeypat
             assert preferences(app.local_config_root)["calibration_active_stage"] == "luminance"
             screen.query_one("#calibration-next", Button).press()
             await pilot.pause()
-            assert screen.active_calibration_stage == "timing"
+            assert screen.active_calibration_stage == "precision"
             screen.query_one("#calibration-previous", Button).press()
             await pilot.pause()
             assert screen.active_calibration_stage == "luminance"
@@ -119,7 +120,7 @@ def test_direct_json_import_one_click_saves_local_revision_and_advances(tmp_path
             assert screen.active_calibration_stage == "luminance"
             screen.query_one("#calibration-next", Button).press()
             await pilot.pause()
-            assert screen.active_calibration_stage == "timing"
+            assert screen.active_calibration_stage == "precision"
             saved = app.monitor_profiles["legacy_reference_display_local"]
             assert len(saved.luminance_calibration) == 2
             assert saved.calibration_status == "manual_unverified"

@@ -139,6 +139,9 @@ def run_experiment(filename_Conditions, file_params_Stimulus, file_response_reco
             "pyglet_wakeup_rate_check": pyglet_wakeup_rate_check,
         }
 
+        from psychophysics_lab.core.output_precision import inspect_output
+        monitor_screen_params['output_precision'] = inspect_output(
+            win, display_identity.get('device_id'), selection='historical_default_preserved')
         if presentation_test: monitor_screen_params['data_kind']='uncalibrated_presentation_test'
         runtime_display_path = run_directory / "runtime_display.json"
         temporary_display = runtime_display_path.with_name(runtime_display_path.name + ".tmp")

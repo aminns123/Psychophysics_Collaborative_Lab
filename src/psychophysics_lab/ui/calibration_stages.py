@@ -15,8 +15,9 @@ STAGES = (
     ("geometry", "2 · Geometry"),
     ("spatial", "3 · Spatial"),
     ("luminance", "4 · Luminance"),
-    ("timing", "5 · Timing"),
-    ("review", "6 · Review"),
+    ("precision", "5 · Output precision"),
+    ("timing", "6 · Timing"),
+    ("review", "7 · Review"),
 )
 
 
@@ -24,6 +25,8 @@ def stage_states(profile, local_config_root: Path) -> dict[str, tuple[bool, str]
     from ..config.calibration_progress import calibration_progress
     progress = calibration_progress(profile, local_config_root)
     def description(key, item):
+        if key == "precision":
+            return item["message"]
         if key == "review":
             return ("SETUP COMPLETE; " if item["completed"] else "SETUP INCOMPLETE; ") + item["message"]
         if key == "spatial" and item["completed"]:
@@ -59,10 +62,12 @@ def stage_next_action(stage: str, progress: dict) -> str:
             return 'NEXT: Select the report, record Yes / No / Uncertain and any abnormality.'
         return 'Observation saved. NEXT: Choose Luminance when ready.'
     if stage == 'luminance':
-        return ('Mapping accepted. NEXT: Choose Timing. Physical verification remains separate.'
+        return ('Mapping accepted. NEXT: Choose Output precision. Physical verification remains separate.'
                 if item.get('accepted') else
                 'NEXT: Open saved luminance readings; review or add intensity / cd/m² pairs, '
                 'then choose Accept luminance values. A photometer is needed for physical verification, not test presentation.')
+    if stage == 'precision':
+        return 'NEXT: Inspect the reported signal / obtained buffer, measure repeated fine increments, then record resolved / unresolved / inconclusive. You can continue to Timing at any point.'
     if stage == 'timing':
         return ('Saved. NEXT: Review; independent photon timing is a separate check.'
                 if item['completed'] else

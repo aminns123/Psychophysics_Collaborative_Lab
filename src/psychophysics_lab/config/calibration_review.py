@@ -10,7 +10,7 @@ def review_summary(profile, root):
     progress = calibration_progress(profile, root)
     lines = []
     names = {'bind': 'Display', 'geometry': 'Geometry', 'spatial': 'Spatial',
-             'luminance': 'Luminance', 'timing': 'Timing'}
+             'luminance': 'Luminance', 'precision': 'Output precision', 'timing': 'Timing'}
     outstanding = []
     for key, name in names.items():
         item = progress[key]

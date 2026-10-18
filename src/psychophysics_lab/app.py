@@ -369,6 +369,23 @@ def _main(
         from .core.geometry_check import GeometryCheckRequest
         from .core.luminance_session import LuminanceSessionRequest
 
+        from .core.precision_session import PrecisionSessionRequest
+        if isinstance(action, PrecisionSessionRequest):
+            selected_data_root = resolve_data_root(
+                Path(action.data_root).expanduser().resolve() if action.data_root else initial_data_root, repo_root)
+            from .core.precision_session import run_precision_session
+            try:
+                report_path = run_precision_session(action, repo_root=repo_root, data_root=selected_data_root)
+            except (Exception, KeyboardInterrupt) as exc:
+                recoverable_failures += 1
+                report = write_crash_report(exc, repo_root=repo_root, data_root=selected_data_root, phase="output_precision")
+                geometry_summary = f"Output precision test interrupted: {exc}. Saved readings remain local. Diagnostic: {report}"
+            else:
+                geometry_summary = f"Output precision evidence saved: {report_path}. Return to Output precision to review the readings and record your assessment. No automatic physical verification."
+            print(geometry_summary)
+            initial_data_root = selected_data_root
+            continue
+
         if isinstance(action, LuminanceSessionRequest):
             selected_data_root = resolve_data_root(
                 Path(action.data_root).expanduser().resolve()

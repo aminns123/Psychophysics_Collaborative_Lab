@@ -128,7 +128,8 @@ class Presentation:
         import pyglet
         from .display import select_screen
         screen, identity = select_screen(profile)
-        self.window = pyglet.window.Window(fullscreen=True, screen=screen, vsync=True, caption="PsyCoLab — Escape aborts")
+        from .output_precision import create_output_window
+        self.window, precision = create_output_window(screen, fullscreen=True, vsync=True, caption="PsyCoLab — Escape aborts")
         self.profile, self.responses = profile, responses
         self.background_intensity = background_intensity
         self.held = set()
@@ -142,7 +143,8 @@ class Presentation:
                          "resolution_px": self.resolution, "display_identity": identity,
                          "photon_timing_verified": False, "input_latency_verified": False,
                          "timing_basis": "vsync frame-counted show stages; self-paced response",
-                         "output_precision_verified":False, "display_encoding":"unqualified framebuffer; float texture where requested"}
+                         "output_precision_verified":False, "display_encoding":"float textures; inspected framebuffer; physical precision unverified",
+                         "output_precision": precision}
 
     def close(self):
         self.window.close()

@@ -88,6 +88,11 @@ def fake_pyglet(monkeypatch, *, key="ENTER", draw_error=False, no_flips=False):
         clock=SimpleNamespace(schedule_interval=lambda f,dt:scheduled.append(f),unschedule=lambda f:cleaned.append(f)),
         app=SimpleNamespace(run=run))
     monkeypatch.setitem(sys.modules,'pyglet',module)
+    def output_window(screen, window_factory=None, **kwargs):
+        return (window_factory or Window)(screen=screen, **kwargs), {
+            'windows_report': {'status': 'unknown'}, 'application_obtained': {},
+            'physical_precision_verified': False, 'message': 'Mock graphics only'}
+    monkeypatch.setattr('psychophysics_lab.core.output_precision.create_output_window', output_window)
     monkeypatch.setattr(geometry,'select_screen',lambda p:('SELECTED_SCREEN',{'device_id':'TEST_DISPLAY'}))
     return windows,scheduled,cleaned
 
