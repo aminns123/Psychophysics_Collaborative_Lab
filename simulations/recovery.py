@@ -17,7 +17,9 @@ def operating_point(n_down, n_up, log_up, log_down):
         raise ValueError(
             "Recovery operating point currently supports positive fixed steps, n-down/one-up only."
         )
-    return (log_up / (log_up + log_down)) ** (1 / n_down)
+    scale = max(log_up, log_down)
+    up, down = log_up / scale, log_down / scale
+    return (up / (up + down)) ** (1 / n_down)
 
 
 def recover(
@@ -60,6 +62,7 @@ def recover(
         algorithm = AdaptiveRun(
             {i: StaircaseConfig(n_down, n_up, reversal_limit) for i in range(repeats)},
             ceiling,
+            starting_values={i: threshold for i in range(repeats)},
         )
         contrasts = {i: threshold for i in range(repeats)}
         records = []

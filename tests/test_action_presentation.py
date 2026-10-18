@@ -30,6 +30,7 @@ def fake_presentation(monkeypatch, key_time=.005, key="LEFT"):
     class Image:
         def __init__(self, *args, **kwargs): pass
         def blit(self, x, y): blits.append((x, y))
+        def delete(self): pass
     fake = SimpleNamespace(
         gl=SimpleNamespace(glClearColor=lambda *a: None),
         image=SimpleNamespace(ImageData=Image),
@@ -37,6 +38,7 @@ def fake_presentation(monkeypatch, key_time=.005, key="LEFT"):
         window=SimpleNamespace(key=SimpleNamespace(ESCAPE="ESCAPE", symbol_string=lambda key: key)),
     )
     monkeypatch.setitem(sys.modules, "pyglet", fake)
+    monkeypatch.setattr("psychophysics_lab.core.presentation.FloatingTexture", Image)
     monkeypatch.setattr("psychophysics_lab.core.presentation.time.perf_counter", lambda: clock["now"])
     monkeypatch.setattr("psychophysics_lab.core.presentation.time.sleep", lambda *a: None)
     display = object.__new__(Presentation)

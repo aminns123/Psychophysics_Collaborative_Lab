@@ -81,3 +81,18 @@ and protects against floating-point overflow/underflow. Its tiny positive floor
 lets a log staircase increase again rather than becoming stuck at exact zero.
 Canonical presented/next strengths, requested step events and saved bounds allow
 analysis to flag boundary-affected staircases. Historical replay is unchanged.
+
+
+## Reversal reference for new and historical procedures
+
+Modern CSF, line/ellipse and orientation-adaptive procedures supply
+`starting_values` to `AdaptiveRun`: the initial displayed strength establishes
+the reference, its first movement establishes direction, and the first change
+of nonzero direction is a reversal. Holds at a bound are not reversals. The
+saved snapshot records `reversal_convention: starting_presentation` and corrected
+protocol versions distinguish newly acquired data. This can change stopping and
+which early reversal enters a threshold; old records are not recalculated.
+
+Historical replay omits `starting_values` and retains first-recorded-update
+seeding. Custom procedures can deliberately choose either convention. Consecutive
+response counts, selected step sizes and initial one-down rules are unchanged.

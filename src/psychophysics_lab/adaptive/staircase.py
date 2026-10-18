@@ -74,8 +74,9 @@ class StaircaseState:
     def observe_recorded_value(self, value):
         """Count sign changes in recorded values, ignoring flat steps.
 
-        The first recorded response value seeds the sequence, as in the legacy
-        history detector. The starting presentation is not an extra observation.
+        Without an explicit starting value, the first recorded update seeds
+        the legacy history detector. Modern callers provide the actual starting
+        presentation; its first movement then supplies the initial direction.
         """
         if not math.isfinite(value):
             raise ValueError("Updated staircase value must be finite")
@@ -96,7 +97,7 @@ class AdaptiveRun:
     procedures need not use this class or a boolean-correctness interface.
     """
 
-    def __init__(self, configurations, max_trials):
+    def __init__(self, configurations, max_trials, *, starting_values=None):
         if not configurations:
             raise ValueError("At least one staircase is required")
         positive_integer("max_trials", max_trials)
@@ -105,6 +106,18 @@ class AdaptiveRun:
             raise TypeError("Each staircase requires a StaircaseConfig")
         self.states = {identity: StaircaseState(ResponseStreak())
                        for identity in configurations}
+        # Modern protocols seed the actual starting presentation so the
+        # first change supplies a direction. Omission retains historical
+        # recorded-update seeding for saved-protocol replay.
+        self.reversal_convention = "recorded_updates"
+        if starting_values is not None:
+            if set(starting_values) != set(self.states):
+                raise ValueError("Starting values must identify every configured staircase.")
+            for identity, value in starting_values.items():
+                if isinstance(value, bool) or not math.isfinite(value):
+                    raise ValueError("Starting staircase values must be finite numbers.")
+                self.states[identity].last_value = float(value)
+            self.reversal_convention = "starting_presentation"
         self.max_trials = max_trials
         self.total_trials = 0
 
@@ -184,6 +197,8 @@ class AdaptiveRun:
 
     def snapshot(self):
         return {
+            **({"reversal_convention": self.reversal_convention}
+               if self.reversal_convention == "starting_presentation" else {}),
             "status": self.status,
             "max_trials": self.max_trials,
             "total_trials": self.total_trials,

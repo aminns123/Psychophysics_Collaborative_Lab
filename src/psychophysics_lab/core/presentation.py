@@ -52,11 +52,38 @@ def preview_stimulus(identity, parameters, output):
     return output
 
 
-def validate_geometry(profile, resolution, stimulus, parameters):
+def angular_patch_bounds(profile, resolution, extent_deg, placement):
+    """Pixel corners for a square ANGULAR aperture around the requested centre.
+
+    Flat-screen metres per degree increase with eccentricity. Translating a
+    centre-sized rectangle silently shrinks/skews an off-axis aperture.
+    Round the independently transformed edges, rather than its centre width.
+    """
+    import math
+    geometry = resolve_spatial_geometry(profile, resolution)
+    extent = float(extent_deg)
+    centres = (float(placement.x_deg), float(placement.y_deg))
+    if not math.isfinite(extent) or not 0 < extent < 180 or any(
+            not math.isfinite(c) or abs(c) + extent/2 >= 90 for c in centres):
+        raise ValueError("Angular patch edges must be finite and within the forward display field.")
+    origin, pixels = [], []
+    for centre, pitch, limit in zip(centres, geometry.pixel_pitch_m, resolution):
+        lower, upper = (round(limit/2 + geometry.viewing_distance_m * math.tan(math.radians(edge)) / pitch)
+                        for edge in (centre-extent/2, centre+extent/2))
+        if upper-lower < 2 or lower < 0 or upper > limit:
+            raise ValueError("Positioned stimulus does not fit the calibrated display.")
+        origin.append(lower)
+        pixels.append(upper-lower)
+    return tuple(origin), tuple(pixels)
+
+
+def validate_geometry(profile, resolution, stimulus, parameters, *, placement=None):
     extent = parameters[stimulus.extent_parameter]
     metres = physical_length_for_visual_angle(extent, profile.viewing_distance_m)
     pixels = (round(metres / profile.physical_width_m * resolution[0]),
               round(metres / profile.physical_height_m * resolution[1]))
+    if placement is not None:
+        _, pixels = angular_patch_bounds(profile, resolution, extent, placement)
     if min(pixels) < 2 or any(p > limit for p, limit in zip(pixels, resolution)):
         raise ValueError("Stimulus size does not fit the calibrated display.")
     geometry = resolve_spatial_geometry(profile, resolution)
@@ -144,11 +171,13 @@ class Presentation:
                 for placement in phase.placements:
                     stimulus_id, params = parameters_by_slot[placement.slot]
                     stimulus = get_stimulus(stimulus_id)
-                    pixels = validate_geometry(self.profile, self.resolution, stimulus, params)
-                    x, y = placement_pixels(self.profile, self.resolution, pixels, placement)
+                    pixels = validate_geometry(self.profile, self.resolution, stimulus, params, placement=placement)
+                    x, y = placement_pixels(self.profile, self.resolution, pixels, placement,
+                                            extent_deg=params[stimulus.extent_parameter])
                     coordinates = display_degree_coordinates(self.profile, self.resolution, pixels, (x,y), placement)
                     geometries.append({"slot": placement.slot, "origin_px": [x,y], "raster_px": list(pixels),
                         "requested_centre_deg": [placement.x_deg, placement.y_deg],
+                        "requested_extent_deg": params[stimulus.extent_parameter],
                         "geometry_basis": "per-pixel flat-screen angular coordinates"})
                     if stimulus.floating_raster:
                         array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates),dtype=np.float32)
@@ -291,8 +320,13 @@ class Presentation:
         return response
 
 
-def placement_pixels(profile, resolution, pixels, placement):
-    """Position a patch in calibrated screen coordinates; reject clipped patches."""
+def placement_pixels(profile, resolution, pixels, placement, *, extent_deg=None):
+    """Resolve angular aperture edges; retain pixel-sized compatibility calls."""
+    if extent_deg is not None:
+        origin, actual_pixels = angular_patch_bounds(profile, resolution, extent_deg, placement)
+        if actual_pixels != tuple(pixels):
+            raise ValueError("Angular aperture and raster dimensions disagree.")
+        return origin
     import math
     if abs(placement.x_deg) >= 90 or abs(placement.y_deg) >= 90:
         raise ValueError("Stimulus position must be within the forward display field.")

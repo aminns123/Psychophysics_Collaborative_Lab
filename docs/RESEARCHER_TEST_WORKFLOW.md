@@ -191,3 +191,25 @@ The updated Review table shows the values that will be used. Refresh never start
 an experiment or marks a changed component scientifically qualified. Save or close
 any separate in-TUI editor before refreshing. **Reload files and review** remains
 available for JSON-only edits without reopening the interface.
+
+
+### Scientific execution corrections (18 October 2026)
+
+Modern adaptive tasks now seed reversal direction from the actual starting
+presentation. The first down-then-up (or up-then-down) is a reversal; flat boundary
+holds are ignored. Historical replay retains its original first-update convention.
+Modern protocol versions and saved adaptive metadata distinguish the corrected
+behaviour. Previously saved runs and their estimators are not rewritten.
+
+Scientific raster stimuli now select floating-point texture upload by default.
+PNG previews remain 8-bit; they cannot confirm small contrast differences.
+An explicit `floating_raster=False` in a stimulus SPEC retains intentional 8-bit
+compatibility. Floating upload requires the existing ARB texture support and
+does not prove framebuffer precision, monitor linearity or physical luminance.
+
+Off-axis raster apertures are resolved from their angular edges using the saved
+width, height, resolution and viewing distance. Pixel rounding remains visible in
+the saved raster origin/size; no arbitrary pixels-per-degree factor is used.
+The orientation example's down/hold steps preserve direction at small contrasts,
+with a numerical rather than .001 scientific floor. Composition, deliberate
+cropping and overlap choices have not been automatically changed.

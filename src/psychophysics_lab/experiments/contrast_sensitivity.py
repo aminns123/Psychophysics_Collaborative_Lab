@@ -157,7 +157,7 @@ PARADIGM = "two_alternative_forced_choice"
 
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "csf-spatial-2",
+    "version": "csf-spatial-3",
     "response": "Left or right grating location; target/response alternative equality.",
     "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
     "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
@@ -240,7 +240,7 @@ def interpret_response(condition, response):
 # Shared staircase counters reset the opposite response streak and reset a streak
 # after its step. Optional initial one-down ends at the first error or selected
 # response count (0 disables it). Reversals are changes between nonzero numeric
-# adjustments; holds are ignored, and the first recorded next value seeds tracking.
+# adjustments; holds are ignored, with direction seeded by the starting presentation.
 # These tested counters stay in adaptive/staircase.py. The selected parameters,
 # contrast equation, gamut policy, scheduling and threshold estimator are here.
 def maximum_contrast(settings, condition):
@@ -308,6 +308,7 @@ def initialise_experiment(run, conditions):
             for i in range(1, len(conditions) + 1)
         },
         settings["max_trials"],
+        starting_values={c["id"]: settings["starting_contrast"] for c in conditions},
     )
     contrasts = {i: settings["starting_contrast"] for i in staircase.states}
     reversals = {i: [] for i in staircase.states}
@@ -315,8 +316,13 @@ def initialise_experiment(run, conditions):
     background = settings["background_intensity"]
     # Fixed n-down/one-up steps have this asymptotic accuracy target. Finite
     # reversal estimates (especially with lapses) still require recovery checks.
+    # Normalise first: two individually finite large steps can overflow
+    # when added directly. This is algebraically the same step-size ratio.
+    step_scale = max(settings["logUNIT_UP"], settings["logUNIT_DW"])
+    relative_up = settings["logUNIT_UP"] / step_scale
+    relative_down = settings["logUNIT_DW"] / step_scale
     accuracy_target = (
-        (settings["logUNIT_UP"] / (settings["logUNIT_UP"] + settings["logUNIT_DW"]))
+        (relative_up / (relative_up + relative_down))
         ** (1 / settings["n_down"])
         if settings["n_up"] == 1
         else None

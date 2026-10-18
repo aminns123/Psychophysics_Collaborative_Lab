@@ -94,7 +94,7 @@ STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
 PARADIGM = "two_alternative_forced_choice"
 
 
-SCIENTIFIC_SPEC = {'version': 'orientation_adaptive-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'TUI consecutive up/down factors; demonstration only.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
+SCIENTIFIC_SPEC = {'version': 'orientation_adaptive-2', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'TUI consecutive up/down factors; demonstration only.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
 
 
 # 2. CONDITIONS AND TRIAL ORDER
@@ -150,13 +150,21 @@ def interpret_response(condition, response):
 
 # Consecutive correct/incorrect counts and multipliers come from the TUI. A step
 # resets its streak; each response resets the opposite streak. No initial phase.
-# This teaching experiment clips digital contrast to [.001, 1] and stops after
+# This teaching experiment saturates digital contrast at [0, 1] and stops after
 # trial_count responses; count+1 reversals is intentionally unreachable in that run.
 def next_contrast(state, response, step):
     factor = (
         state["down_factor"] if step == Step.DOWN else state["up_factor"] if step == Step.UP else 1
     )
-    return max(0.001, min(1.0, state["contrast"] * factor))
+    import sys
+    value = state["contrast"]
+    if step == Step.HOLD or factor == 1:
+        return value
+    if value == 0:
+        return sys.float_info.min if step == Step.UP else 0.0
+    # Only a representable positive numeric floor; never raise a valid small
+    # contrast to a scientific floor such as .001 after a down/hold decision.
+    return max(min(sys.float_info.min, value), min(1.0, value * factor))
 
 
 def update_experiment(run, condition, state, response, trial):
@@ -197,15 +205,15 @@ def initialise_experiment(run, conditions):
             "trial_order_seed": run.values["random_seed"],
         },
     )
+    contrast = run.stimulus_parameters()["contrast"]
     adaptive = (
         run.adaptive(
-            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count
+            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count,
+            starting_values={0: contrast}
         )
         if run.spec.adaptive
         else None
     )
-    contrast = run.stimulus_parameters()["contrast"]
-
     return {"contrast": contrast, "adaptive": adaptive}
 
 
