@@ -149,3 +149,28 @@ Older modern-task JSON with `starting_contrast` is explicitly converted from its
 original increment meaning; conflicting old/new fields are rejected. Opening an
 old file never rewrites it; saving reviewed TUI changes retains its original bytes
 in `.history`. Previously recorded sessions and historical protocols are untouched.
+
+
+## Review as file navigation
+
+Review now has a fifth **File / saved location** column. Select a cell and press
+Enter or double-click to open its supplying JSON or Python definition in your
+editor. A file address also opens with one click. The highlighted row's complete
+path and explanation appear below the table.
+
+Class-default probe dimensions link to their `ConfigField` in
+`stimulus_library.py`; selected presets link to the actual JSON file. Values set
+by the trial procedure link to that experiment's Python file. Derived values are
+labelled and link to their calculation. The table is a navigator, not another
+parameter-definition system: ordinary files remain editable without the TUI.
+
+Values entered only in the TUI are labelled **Unsaved values** until you choose
+to open them. That explicit action saves ordinary parameter JSON and opens it;
+an existing different file is preserved. Viewing Review creates no compulsory
+companion JSON for a stimulus or experiment.
+
+After editing JSON, save in the editor and choose **Reload files and review**.
+All loaded files validate before the draft changes. The table and next run use
+the reloaded values, and Back retains them in the configuration form. Python
+edits need a fresh PsyCoLab process because the running process has already
+imported that code; the file remains independently editable at any time.

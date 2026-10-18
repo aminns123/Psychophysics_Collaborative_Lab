@@ -2252,7 +2252,13 @@ class ReviewScreen(Screen):
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             yield Label("Parameters used by this experiment")
-            yield DataTable(id="resolved-settings-table")
+            from .review_table import ReviewSettingsTable
+            yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
+            with Horizontal(classes="buttons"):
+                yield Button("Open selected file",id="review-open-file")
+                yield Button("Reload files and review",id="review-reload-files")
+            yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell")
+            yield Static("",id="review-file-location",markup=False)
             yield Static("",id="resolved-settings-note",markup=False)
             with Vertical(id="human-review-checks"):
                 yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
@@ -2366,18 +2372,146 @@ class ReviewScreen(Screen):
         snapshots = resolve_stimuli(spec,self.request.experiment_values,self.request.stimulus_snapshots,repo_root=self.app.repo_root)
         description = describe_settings(spec,self.request.experiment_values,snapshots,
             profile=self.app.monitor_profiles[self.request.monitor_profile_id])
+        from .review_files import actual_json_sources,targets_for_rows
+        from .parameter_files import file_hash
+        from rich.text import Text
+        key=self.app.settings_key(self.request)
+        if getattr(self,"_file_request_key",None)!=key:
+            self._file_sources=actual_json_sources(self.app,self.request)
+            self._file_request_key=key
+        rows=review_rows(spec,self.request.experiment_values,snapshots,description,
+            refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz)
+        self._file_targets=targets_for_rows(spec,snapshots,description,rows,self._file_sources,self.app.repo_root)
+        tracked=self.app.review_parameter_files.setdefault(key,{})
+        for path in [self._file_sources["experiment"],*self._file_sources["stimuli"].values()]:
+            if path is not None and str(path) not in tracked:
+                tracked[str(path)]=file_hash(path)
         table = self.query_one("#resolved-settings-table",DataTable)
+        cursor=table.cursor_coordinate
         table.clear(columns=True)
-        for label,width in (("Group",12),("Parameter / units",48),("Value",30),("Source",48)):
+        for label,width in (("Group",12),("Parameter / units",45),("Value",28),("Source",34),("File / saved location",80)):
             table.add_column(label,width=width)
-        table.add_rows(review_rows(spec,self.request.experiment_values,snapshots,description,
-            refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz))
+        for row,target in zip(rows,self._file_targets):
+            address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
+                     else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
+            table.add_row(*row,Text(address,style="underline bright_cyan"))
+        table.move_cursor(row=min(cursor.row,max(0,len(rows)-1)),column=min(cursor.column,4))
         self.query_one("#resolved-settings-note",Static).update(description["note"])
+        self._show_file_location(table.cursor_row)
+
+    def _show_file_location(self,row):
+        if not getattr(self,"_file_targets",None) or row>=len(self._file_targets):
+            return
+        target=self._file_targets[row]
+        self.query_one("#review-file-location",Static).update(
+            str(target["path"] or "Unsaved TUI values")+"\n"+target["note"])
+
+    def on_data_table_cell_highlighted(self,event):
+        if event.data_table.id=="resolved-settings-table":
+            self._show_file_location(event.coordinate.row)
+
+    def on_data_table_cell_selected(self,event):
+        if event.data_table.id=="resolved-settings-table":
+            event.stop()
+            self._open_review_file(event.coordinate.row)
+
+    def _open_review_file(self,row=None):
+        from .parameter_files import parameter_info,file_hash
+        from .review_files import export_current_json
+        from .editor import open_parameter_file
+        spec=get_experiment(self.request.experiment_id)
+        row=self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
+        target=self._file_targets[row]
+        try:
+            if target["kind"]=="unavailable":
+                self.query_one("#review-status",Static).update(target["note"])
+                return
+            if target["path"] is None:
+                slot=target.get("slot")
+                if slot is None:
+                    document={"schema_version":1,"experiment_id":spec.id,"values":dict(self.request.experiment_values),
+                              "parameter_info":parameter_info(spec.fields)}
+                else:
+                    from ..stimuli.registry import get_stimulus
+                    document=dict(self.request.stimulus_snapshots[slot]["document"])
+                    document["parameter_info"]=parameter_info(get_stimulus(document["stimulus_id"]).parameters)
+                path=export_current_json(self.app.local_config_root,spec,document,slot)
+                if slot is None:
+                    self._file_sources["experiment"]=path
+                else:
+                    self._file_sources["stimuli"][slot]=path
+                self.app.review_parameter_files.setdefault(self.app.settings_key(self.request),{})[str(path)]=file_hash(path)
+                self._refresh_parameter_table()
+                target=self._file_targets[row]
+            path=Path(target["path"])
+            executable=preferences(self.app.local_config_root).get("editor_executable")
+            if path.resolve().is_relative_to(self.app.repo_root.resolve()):
+                open_source(self.app.repo_root,path,line=target["line"],executable=executable)
+            else:
+                open_parameter_file(self.app.repo_root,path,self.app.local_config_root,
+                    executable=executable,allow_external_existing=True)
+            self.query_one("#review-status",Static).update(f"Opened {path}. "+target["note"])
+        except (ValueError,OSError,TypeError) as exc:
+            self.query_one("#review-status",Static).update(str(exc))
+
+    def _reload_review_files(self):
+        from dataclasses import replace
+        from .parameter_files import load_experiment_json,file_hash
+        from ..config.stimulus_parameters import load_parameters,snapshot
+        from ..stimuli.registry import get_stimulus
+        spec=get_experiment(self.request.experiment_id)
+        self.app.verify_loaded_sources(spec,self.request.stimulus_snapshots)
+        sources=self._file_sources
+        from .parameter_files import ensure_unchanged
+        files={str(path):file_hash(path) for path in [sources["experiment"],*sources["stimuli"].values()] if path is not None}
+        values=load_experiment_json(sources["experiment"],spec) if sources["experiment"] else dict(self.request.experiment_values)
+        snapshots=dict(self.request.stimulus_snapshots)
+        for slot,path in sources["stimuli"].items():
+            document=json.loads(Path(path).read_text(encoding="utf-8-sig"))
+            snapshots[slot]=load_parameters(path,get_stimulus(document["stimulus_id"]))
+        for slot,bindings in spec.stimulus_field_bindings.items():
+            selected=snapshots[slot]
+            document=dict(selected["document"])
+            document["parameters"]=dict(document["parameters"])|{key:values[field] for key,field in bindings.items()}
+            snapshots[slot]=snapshot(document,file_identity=selected["file_identity"],file_sha256=selected.get("file_sha256"))
+        candidate=validate_setup(replace(self.request,experiment_values=values,stimulus_snapshots=snapshots,monitor_profile_hash=None),
+            spec,self.app.monitor_profiles[self.request.monitor_profile_id],mode="configuration")
+        ensure_unchanged(files)
+        # Commit the UI draft only after every loaded document has validated.
+        self.request=candidate
+        self.reviewed_profile_snapshot=self.app.monitor_profiles[candidate.monitor_profile_id].to_dict()
+        self.app.review_parameter_files[self.app.settings_key(candidate)]=files
+        self._file_request_key=self.app.settings_key(candidate)
+        draft_key=(candidate.participant_id,candidate.experiment_id,candidate.monitor_profile_id)
+        self.app.config_drafts[draft_key]=dict(values)
+        for slot,path in sources["stimuli"].items():
+            self.app.stimulus_drafts[(*draft_key,slot)]=(candidate.stimulus_snapshots[slot],path)
+        for screen in self.app.screen_stack:
+            if isinstance(screen,ExperimentConfigScreen) and getattr(screen,"draft_key",None)==draft_key:
+                screen.applied_review_values=dict(values)
+                with screen.prevent(Input.Changed,Select.Changed):
+                    for field in spec.fields:
+                        screen.query_one("#"+_field_widget_id(field)).value=values[field.key] if field.kind=="choice" else str(values[field.key])
+                if sources["experiment"]:
+                    screen.parameter_json_path=sources["experiment"]
+                    screen.parameter_json_hash=files[str(sources["experiment"])]
+                    screen.parameter_json_pending=False
+                from .stimulus_parameters import StimulusParametersPanel
+                for panel in screen.query(StimulusParametersPanel):
+                    if panel.slot in sources["stimuli"]:
+                        panel.stimulus=get_stimulus(candidate.stimulus_snapshots[panel.slot]["document"]["stimulus_id"])
+                        with panel.prevent(Select.Changed):
+                            panel.query_one("#stimulus-select-"+panel.slot,Select).value=panel.stimulus.id
+                        panel.load(sources["stimuli"][panel.slot])
+        self._refresh_readiness()
+        self._apply_run_intent()
+        self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. Python edits require restart.")
 
     def on_mount(self):
         self._refresh_parameter_table()
         self._refresh_readiness()
         self._apply_run_intent()
+        self.query_one("#resolved-settings-table",DataTable).focus()
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "review-run-intent" and self.is_mounted:
@@ -2570,6 +2704,16 @@ class ReviewScreen(Screen):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
             return
+        if button_id in {"review-open-file","review-reload-files"}:
+            event.stop()
+            try:
+                if button_id=="review-open-file":
+                    self._open_review_file()
+                else:
+                    self._reload_review_files()
+            except (ValueError,OSError,KeyError,TypeError) as exc:
+                self.query_one("#review-status",Static).update(str(exc))
+            return
         if button_id == "review-next-action":
             event.stop()
             if getattr(self, "next_requirement_key", None):
@@ -2756,7 +2900,7 @@ class PsyCoLabSetupApp(App):
     def inspect_source(self, path: Path) -> None:
         try:
             open_source(self.repo_root, path, executable=preferences(self.local_config_root).get("editor_executable"))
-            self.notify(f"Opened {path.name} in the PsyCoLab VS Code project.")
+            self.notify(f"Opened {path.name} in your text editor.")
         except (ValueError, OSError) as exc:
             if path.resolve().is_relative_to(self.repo_root) and path.is_file():
                 from .source_view import SourceView

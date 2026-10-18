@@ -16,7 +16,8 @@ def editor_command(repo_root: Path, source: Path, line: int = 1, executable: str
     if not code and os.name=='nt':
         candidate=Path(os.environ.get('LOCALAPPDATA',''))/'Programs'/'Microsoft VS Code'/'Code.exe'
         code=str(candidate) if candidate.is_file() else None
-    if not code: raise FileNotFoundError('VS Code was not found. Install its command-line launcher or configure a Code executable.')
+    if not code and os.name=='nt': code=shutil.which('notepad')
+    if not code: raise FileNotFoundError('No external text editor was found. Configure an editor executable or open the displayed file path manually.')
     # Folder identity lets VS Code match the project. --reuse-window alone can
     # repurpose an unrelated last-active window, so deliberately omit that flag.
     if Path(code).stem.lower() not in {"code", "code-insiders"}:
@@ -27,14 +28,14 @@ def open_source(repo_root: Path, source: Path, line: int = 1, executable: str | 
     return subprocess.Popen(editor_command(repo_root,source,line,executable),cwd=repo_root,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 
-def open_parameter_file(repo_root: Path, path: Path, config_root: Path, executable=None):
+def open_parameter_file(repo_root: Path, path: Path, config_root: Path, executable=None, *, allow_external_existing=False):
     """Open an actual local JSON file in Code or the configured text editor.
 
     These are working configuration files, outside source and participant data.
     Paths are arguments, never shell command text. No editor is embedded here.
     """
     path, allowed = Path(path).resolve(), Path(config_root).resolve()
-    if not path.is_relative_to(allowed) or not path.is_file() or path.suffix.lower() != ".json":
+    if (not path.is_relative_to(allowed) and not allow_external_existing) or not path.is_file() or path.suffix.lower() != ".json":
         raise ValueError("Open an existing parameter JSON inside local configuration.")
     editor = executable or shutil.which("code")
     if editor and Path(editor).suffix.lower() in {".cmd", ".bat"}:
