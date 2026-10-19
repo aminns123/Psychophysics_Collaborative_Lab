@@ -23,7 +23,7 @@ def test_retired_experiment_ids_are_not_launchable(retired):
 def test_supported_flanker_trial_phase_order_and_response_mapping():
     values = flanker.SPEC.normalise_values(flanker.SPEC.field_defaults() | {
         "fixation_ms": 340, "stimulus_ms": 180,
-        "flanker_cpd": 3.4, "auditory_cues": False,
+        "flanker_cpd": 3.4, "probe_vertical_offset_deg":.5, "auditory_cues": False,
     })
     phases = flanker.make_trial(values, {}).resolve(values).phases
     assert [(p.name, p.duration_ms) for p in phases] == [
@@ -38,7 +38,7 @@ def test_supported_flanker_trial_phase_order_and_response_mapping():
 @pytest.mark.parametrize("cpd", [0.25, 1., 3.75, 12.])
 def test_flanker_frequency_is_an_independent_researcher_setting(cpd):
     values = flanker.SPEC.normalise_values(
-        flanker.SPEC.field_defaults() | {"flanker_cpd":cpd}
+        flanker.SPEC.field_defaults() | {"flanker_cpd":cpd,"probe_vertical_offset_deg":.5}
     )
     assert values["flanker_cpd"] == cpd
     condition = dict(flanker.make_conditions(values)[0], target=0, contrast=0.01)
