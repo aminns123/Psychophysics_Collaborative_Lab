@@ -48,7 +48,7 @@ def test_presentation_does_not_complete_and_observation_is_immutable(monkeypatch
     assert state['software_completed'] and not state['completed']
     assert state['state']=='awaiting_observation'
     from psychophysics_lab.config.readiness import profile_readiness
-    from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+    from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
     from psychophysics_lab.ui.calibration_guide import guide_statuses
     assert guide_statuses(profile_readiness(CSF_SPEC,display,repo_root=ROOT),display,{})[2][0]=='partial'
     record=assess(display,report,observed_count=5)
@@ -200,11 +200,10 @@ def test_real_launch_handler_records_context_before_exiting(tmp_path,monkeypatch
 def test_review_destination_survives_fullscreen_until_explicit_return(tmp_path,display,button):
     from dataclasses import asdict
     from psychophysics_lab.config.models import SetupRequest
-    from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+    from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
     from psychophysics_lab.ui.setup import ReviewScreen
     request=SetupRequest('H001','new',CSF_SPEC.id,display.id,CSF_SPEC.field_defaults() | {
-        'Max_monitor_Luminance':500., 'Background_Luminance':49.,
-        'Background_Screen_intensity':.25, 'starting_probe_intensity':.55},str(tmp_path/'data'))
+        'background_intensity':.25, 'starting_contrast':.1},str(tmp_path/'data'))
     snapshot=display.to_dict()
     save_preferences(config_root(ROOT),calibration_review_return={'request':asdict(request),'snapshot':snapshot},
         calibration_navigation={'section':'calibrate','profile':display.id,'stage':'spatial',
