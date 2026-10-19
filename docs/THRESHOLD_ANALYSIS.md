@@ -1,36 +1,63 @@
-# Derived staircase threshold analysis
+# Staircase quick-look and threshold analysis
 
-Threshold summaries are **post-hoc derived analysis**. They do not modify
-`trials.tsv`, `adaptive_session.json`, staircase rules, termination criteria or
-any other acquisition record.
+PsyCoLab stores participant and synthetic responses as canonical, append-only
+`trials.tsv` files. Derived analysis never changes the recorded trials,
+the original staircase states, or the configuration used for acquisition.
 
-Outputs are written outside run folders:
+## Automatic figures after a run
 
-```text
-<external data workspace>/analysis/thresholds/
-    <participant>/<experiment>/<run_uuid>/<timestamp>/
-        staircase_thresholds.tsv
-        threshold_by_condition.tsv
-        threshold_analysis.json
-        threshold_vs_condition.png
-```
+For a completed, partially completed, aborted or errored **adaptive** run with
+accepted trials, finalisation calls `analysis.previews.create_run_figures`.
+Eligibility is determined by the saved staircase columns, not a special
+experiment ID or whether the run came from a human or virtual observer.
 
-## Default convention
+Figures and status are stored in the **same run** under `run_NNN/analysis/`:
 
-The current default is:
+- `staircases.png`: overall multi-condition diagnostic.
+- `staircases_condition_<condition>.png`: all independently labelled
+  staircases for one observed condition, with correct/incorrect and
+  reversal markers.
+- `staircase_preview.json`: provenance, canonical TSV hash and plot counts.
+- `primary_thresholds.json`: derived primary estimator result, if an
+  experiment declares a primary rule.
+- `threshold_vs_condition.png` and `sensitivity_vs_condition.png`:
+  produced only when at least one condition has a justified primary estimate.
+- `analysis_status.json`: why results are missing or partial, and any
+  plotting failure. Plotting problems do not invalidate acquisition.
 
-1. select accepted-response rows marked as reversals;
-2. within each staircase, retain the final 80% of reversal observations;
-3. use `ceil(N * 0.80)` for non-integer retained counts;
-4. average those retained values to obtain one threshold per staircase;
-5. average staircase thresholds sharing the same condition;
-6. plot threshold contrast versus condition.
+These are QC plots. Software flip times, display contrast and screen intensity
+are **not** measured photon timing or calibrated optical contrast.
 
-The default reversal value is `next_display_contrast`, because the current CSF
-compatibility layer describes its legacy reversal basis as post-update. The TUI
-also exposes `presented_display_contrast` so that alternative analyses are
-explicit rather than silently redefining the acquisition.
+## Primary versus exploratory estimators
 
-The 80% fraction is configurable and is not an acquisition rule. Any scientific
-decision to change the preferred threshold estimator should be discussed and
-versioned independently of the staircase implementation.
+Each experiment declares its **own primary estimator** in
+`resolved_experiment.json`. For example, some procedures use the median of
+the last N *presented* reversal contrasts per staircase, whereas another
+may use their geometric mean. Eligible completed staircases then contribute
+to the explicitly selected across-staircase aggregation. Incomplete or
+censored staircases must not generate fabricated thresholds.
+
+The primary estimator is used consistently online and by
+`analysis.primary`. Sensitivity is `1 / threshold` only for positive, valid
+estimates; scientific interpretation of that unit belongs to the experiment.
+
+The TUI can also request exploratory threshold calculations with final-N or
+retained-fraction reversal selection and a choice of presented/next-step
+strength. Those outputs are **derived alternatives**, not replacements for
+the primary estimator, and are stored under versioned
+`run_NNN/analysis/thresholds/<timestamp>/` directories.
+
+An incomplete run with no eligible threshold should still retain its
+observed staircase plots and an explicit unavailable-threshold explanation.
+
+## Recompute from raw data
+
+Load `trials.tsv` and group rows by `stimulus_condition` and `staircase_id`.
+The `reversal` column marks eligible turnaround observations. Read
+`trial_data_dictionary.tsv`, `resolved_experiment.json` and the saved
+configuration before deciding whether to use `presented_display_contrast`,
+`presented_screen_intensity` or another declared strength.
+
+Always keep original files read-only. Run
+`python scripts/validate_run.py <run_directory>` to check internal
+consistency; this is not an optical or scientific validation.
