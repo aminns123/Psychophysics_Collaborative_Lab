@@ -187,7 +187,7 @@ nonfinal diagnostic figures and versioned derived estimates. Never modify
 `trials.tsv`, the original staircase/session state, or configuration when
 recomputing threshold contrast from a different reversal subset.
 
-\`\`\`text
+```text
 run_NNN/
 ├── manifest.json
 ├── experiment_config.json
