@@ -460,6 +460,8 @@ def validate_settings(values):
                 or any(not 0.5 <= x <= 1 for x in ratios)
             ):
                 yield "Choose distinct ellipse aspect ratios within 0.5–1."
+            elif any(values["ring_radius_deg"] * ratio <= 0.16 for ratio in ratios):
+                yield "Ellipse ring radius times b/a must exceed the 0.16-degree inner-axis inset."
     except ValueError:
         yield "Enter finite comma-separated numeric condition values."
     if values["starting_probe_intensity"] < values["background_intensity"]:
