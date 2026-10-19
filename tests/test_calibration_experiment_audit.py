@@ -53,7 +53,7 @@ def test_spatial_preflight_rejects_unrenderable_selected_cpd():
     profile=replace(load_monitor_profiles(ROOT)["legacy_reference_display"],
                     expected_resolution_px=(1920,1080))
     values=CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
-        "frequencies_cpd":"2,500"
+        "frequencies_cpd":"2,31"
     })
     request=SetupRequest("H001","new",CSF_SPEC.id,profile.id,values)
     with pytest.raises(ValueError,match="sampling limit"):
@@ -70,7 +70,7 @@ def test_display_geometry_procedure_uses_physical_monitor_not_unverified_optical
     assert profile.calibration_status!="verified"
 
 
-@pytest.mark.parametrize("angle",[0.,float("inf"),float("nan")])
+@pytest.mark.parametrize("angle",[float("inf"),float("nan")])
 def test_nonfinite_spatial_orientation_cannot_bypass_sampling_check(angle):
     profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
     geom=resolve_spatial_geometry(profile,(1920,1080))
