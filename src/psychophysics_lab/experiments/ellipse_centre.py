@@ -346,6 +346,8 @@ def initialise_experiment(run, conditions):
         "protocol": dict(SCIENTIFIC_SPEC),
         "staircases_per_condition": settings["staircases_per_condition"],
         "condition_definitions": conditions,
+        "ellipse_centre_y_deg": settings["ellipse_centre_y_deg"],
+        "ring_radius_deg": settings["ring_radius_deg"],
         "hardware_equivalence": False,
     }
     run.initialise(
