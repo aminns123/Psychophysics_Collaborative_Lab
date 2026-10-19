@@ -294,13 +294,13 @@ def test_current_stimulus_parameter_overrides_leave_shared_defaults_unchanged():
     from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
     base={f.key:f.default for f in ContrastSensitivityGrating.PARAMETERS}
     original=dict(base)
-    selected=ContrastSensitivityGrating.validate_parameters(base | {
+    selected=ContrastSensitivityGrating.SPEC.validate_parameters(base | {
         "spatial_frequency_cpd":6.5, "sigma_deg":1.3
     })
     assert selected["spatial_frequency_cpd"]==6.5
     assert selected["sigma_deg"]==1.3
     assert base==original
-    assert ContrastSensitivityGrating.validate_parameters(base)["sigma_deg"]==original["sigma_deg"]
+    assert ContrastSensitivityGrating.SPEC.validate_parameters(base)["sigma_deg"]==original["sigma_deg"]
 
 
 def test_launch_state_nonobject_is_treated_as_missing(tmp_path, monkeypatch):
