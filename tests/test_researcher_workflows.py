@@ -126,6 +126,11 @@ def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"human")
         async with app.run_test(size=size) as pilot:
             app.query_one("#participant",Input).value="S001"
+            # Beginner demonstration is the new default. This case concerns
+            # adaptive CSF, so select it explicitly before configuring.
+            from textual.widgets import Select
+            app.query_one("#experiment",Select).value="contrast_sensitivity"
+            await pilot.pause()
             app.query_one("#configure",Button).press()
             await pilot.pause(.2)
             screen=app.screen
