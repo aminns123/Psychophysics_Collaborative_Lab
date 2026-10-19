@@ -47,7 +47,11 @@ def test_flanker_reports_its_dark_band_limit_before_preparing_stimuli():
 def test_failed_second_patch_releases_partial_allocations_and_allows_retry(monkeypatch):
     live=set()
     class Texture:
+        allocations = 0
         def __init__(self,array):
+            type(self).allocations += 1
+            if type(self).allocations == 4:
+                raise ValueError("injected second-phase texture creation failure")
             live.add(self)
         def delete(self):
             assert self in live,'Texture deleted twice after failed prepare'
@@ -65,8 +69,10 @@ def test_failed_second_patch_releases_partial_allocations_and_allows_retry(monke
     valid={'one':(stimulus.id,params),'two':(stimulus.id,params)}
     display.prepare(plan,valid)
     assert len(live)==2
-    with pytest.raises(ValueError,match='gamut'):
-        display.prepare(plan,{'one':valid['one'],'two':(stimulus.id,params|{'contrast':1.})})
+    # Inject an allocation failure after the first replacement texture was
+    # created. Legal researcher-chosen contrasts must not be used as a fake error.
+    with pytest.raises(ValueError,match='injected second-phase'):
+        display.prepare(plan,valid)
     assert not live
     assert display._rendered=={} and display._phase_geometry=={}
     display.prepare(plan,valid)
