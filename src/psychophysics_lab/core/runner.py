@@ -122,13 +122,13 @@ def _sha256(path: Path) -> str:
 def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
     """Hash the acquisition source inventory, independent of Git availability.
 
-    All Python sources under the package and legacy runtime roots are included,
-    along with the legacy dependency archive. Profiles are saved separately in
-    each run; data, tooling, tests and local environment files are not sources.
+    Python sources in the supported package and simulation roots are fingerprinted.
+    Deleted historical experiment engines are not revived by copied files;
+    profiles are saved separately in each run.
     """
     repo_root = repo_root.resolve()
     roots = ("src/psychophysics_lab", "simulations")
-    excluded = {"tests", "test", "__pycache__", "tmp", "temp", "node_modules"}
+    excluded = {"tests", "test", "__pycache__", "tmp", "temp", "node_modules", "_reference_csf"}
     paths = []
     for relative_root in roots:
         source_root = repo_root / relative_root
