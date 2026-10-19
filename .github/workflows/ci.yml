@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# Only the latest commit on a repair PR needs an expensive full Windows run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
