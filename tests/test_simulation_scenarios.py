@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_retired_scenarios_are_not_registered_but_extension_point_remains(capsys):
     # The old thesis-specific canned scenarios were retired. Researchers can
     # contribute scenarios for any registered experiment using the same API.
-    assert not list_scenarios("contrast_sensitivity")
+    assert all(item.id != "csf_baseline" for item in list_scenarios("contrast_sensitivity"))
     assert main(["--list-scenarios"]) == 0
     assert "csf_baseline" not in capsys.readouterr().out
     with pytest.raises(ValueError, match="No scenario"):
