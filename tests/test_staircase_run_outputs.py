@@ -64,10 +64,13 @@ def test_staircase_instance_count_is_a_selected_public_experiment_field():
     assert "staircases_per_condition" in spec.adaptive.controls
     assert spec.normalise_values(spec.field_defaults() | {
         "staircases_per_condition":4})["staircases_per_condition"]==4
-    for number in (0,25):
+    for invalid in (0,-1):
         with pytest.raises(ValueError):
             spec.normalise_values(spec.field_defaults() | {
-                "staircases_per_condition":number})
+                "staircases_per_condition":invalid})
+    # Researcher-selected repetition counts are not capped at an old thesis default.
+    assert spec.normalise_values(spec.field_defaults() | {
+        "staircases_per_condition":25})["staircases_per_condition"] == 25
 
 
 @pytest.mark.parametrize("status",["completed","max_trials_reached","aborted_by_user","error"])
