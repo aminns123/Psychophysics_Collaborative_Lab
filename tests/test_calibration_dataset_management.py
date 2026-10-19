@@ -161,7 +161,7 @@ def test_current_background_is_an_editable_digital_command_not_a_locked_pair(tmp
             editor.query_one('#field-background-intensity',Input).value='.25'
             collected=editor._collect()
             assert collected['background_intensity']==pytest.approx(.25)
-    asyncio.run(scenario)
+    asyncio.run(scenario())
 
 
 def test_virtual_run_stays_separate_from_existing_human_files(tmp_path):
