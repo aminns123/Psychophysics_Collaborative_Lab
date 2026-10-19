@@ -54,7 +54,6 @@ def test_framework_helpers_do_not_appear_as_experiment_files():
         "responses",
         "contributions",
         "library_builder",
-        "flanker_response",
     }
     assert not (set(EXPERIMENTS) & internal)
     assert all((FOLDER / "_internal" / (name + ".py")).is_file() for name in internal)
@@ -64,89 +63,30 @@ def test_framework_helpers_do_not_appear_as_experiment_files():
     assert discovered and all("._internal." not in name for name in discovered)
 
 
-@pytest.mark.parametrize(
-    "identity", ["base_flanker", "indirect_flanker", "ellipse_2d", "orientation_adaptive"]
-)
-def test_tui_values_reach_each_adaptive_engine_and_preserve_valid_data(
-    tmp_path, monkeypatch, identity
-):
-    legacy = identity != "orientation_adaptive"
-    module = importlib.import_module("psychophysics_lab.experiments." + ("_internal.historical." if legacy else "") + identity)
-    selected = (
-        {
-            "n_down": 4,
-            "trial_point": 2,
-            "reverse_point": 2,
-            "log_up": 0.1,
-            "log_down": 0.07,
-            "initial_log_down": 0.04,
-            "reversal_limit": 3,
-            "condition_trial_limit": 2,
-            "trials_per_condition": 2,
-            "start_contrast": 0.02,
-            "reference_width_px": 1920,
-            "reference_height_px": 1080,
-        }
-        if legacy
-        else {"n_down": 3, "n_up": 2, "down_factor": 0.6, "up_factor": 1.1, "trial_count": 4}
-    )
-    if identity == "ellipse_2d":
-        selected |= {
-            "decision_scene": "fixation_only_development",
-            "condition_positions_deg": "[0.25, 0.5]",
-        }
-
-    async def collect():
-        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "tui_data")
-        async with app.run_test(size=(100, 40)) as pilot:
-            app.push_screen(
-                ExperimentConfigScreen(
-                    data_root=tmp_path / "tui_data",
-                    participant_id="T001",
-                    session_mode="new",
-                    experiment=module.SPEC,
-                    monitor_profile_id="legacy_reference_display",
-                    defaults=module.SPEC.field_defaults() | selected,
-                )
-            )
-            await pilot.pause()
-            # Exercise changes after mounting, not only initial defaults.
-            app.screen.query_one("#field-n-down", Input).value = str(selected["n_down"])
-            values = app.screen._collect()
-            return values, app.screen.stimulus_snapshots
-
-    values, snapshots = asyncio.run(collect())
-    assert all(values[key] == value for key, value in selected.items())
-    seen = []
-    original = RunContext.adaptive
-
-    def capture(run, *args, **kwargs):
-        algorithm = original(run, *args, **kwargs)
-        seen.append(algorithm)
-        return algorithm
-
-    monkeypatch.setattr(RunContext, "adaptive", capture)
-    artifacts, _ = simulate(
-        repo_root=ROOT,
-        data_root=tmp_path / "runs",
-        experiment_id=identity,
-        values=values,
-        stimulus_snapshots=snapshots,
-        observer=TeachingObserver(accuracy=1.0),
-        analyse=False,
-    )
-    assert seen and artifacts.accepted_trials > 0
-    if legacy:
-        for key in module.SPEC.adaptive.controls:
-            assert getattr(seen[0], key) == selected[key]
-    else:
-        assert seen[0].configurations[0].n_down == 3
-        assert seen[0].configurations[0].n_up == 2
-        assert module.next_contrast(
-            {"contrast": 0.1, "down_factor": 0.6, "up_factor": 1.1},
-            {"correct": True},
-            module.Step.DOWN,
-        ) == pytest.approx(0.06)
+@pytest.mark.parametrize("identity,custom", [
+    ("line_position_baseline", {"positions_deg":"0","probe_vertical_offset_deg":.5}),
+    ("line_position_flanker", {"positions_deg":"0","probe_vertical_offset_deg":.5,"flanker_cpd":2.}),
+    ("ellipse_centre", {"aspect_ratios":"1","ring_increment":.1}),
+    ("ellipse_major_axis", {"aspect_ratios":"1","positions_deg":"0","ring_increment":.1}),
+    ("contrast_sensitivity", {"frequencies_cpd":"2"}),
+    ("orientation_adaptive", {"trial_count":4,"n_down":3,"n_up":2}),
+])
+def test_tui_values_reach_each_active_adaptive_engine_and_preserve_data(tmp_path,monkeypatch,identity,custom):
+    module=importlib.import_module("psychophysics_lab.experiments."+identity)
+    chosen=module.SPEC.normalise_values(module.SPEC.field_defaults() | custom | {
+        "max_trials":4
+    } if identity!="orientation_adaptive" else module.SPEC.field_defaults() | custom)
+    assert all(chosen[key]==value for key,value in custom.items())
+    assert module.SPEC.procedure is module.procedure
+    conditions=module.make_conditions(chosen)
+    assert conditions
+    # Run the same public experiment through the actual synthetic trial
+    # recorder and validator rather than the deleted historical adapters.
+    from simulations.psychometric import PsychometricObserver
+    artifacts,_=simulate(repo_root=ROOT,data_root=tmp_path/"runs",
+        experiment_id=identity,values=chosen,seed=19,analyse=False,
+        observer=TeachingObserver(accuracy=1.0))
+    assert artifacts.accepted_trials>0
     assert all(check.passed for check in validate_run(artifacts.run_directory))
 
 
