@@ -188,7 +188,7 @@ def test_calibration_researcher_workflow_persistence_and_revision_policy(tmp_pat
     p=save_profile(root,replace(p,notes='Metadata only',geometry_status='verified'),expected_revision=p.revision)
     assert diagnostic_matches_profile(json.loads(ruler.report_file.read_text()),p)
     assert calibration_progress(p,root)['geometry']['ready']
-    spec=get_experiment('contrast_sensitivity')
+    spec=get_experiment('legacy_contrast_sensitivity')
     request=SetupRequest('test_subject','new',spec.id,p.id,spec.field_defaults() | {'Max_monitor_Luminance':200.,'Background_Luminance':50.,'Background_Screen_intensity':.5})
     with pytest.raises(ValueError,match='qualified'): validate_setup(request,spec,p,mode='human')
     # Headless validation requires no instrument verification.
@@ -265,7 +265,7 @@ def test_interrupted_photometry_marks_error_and_preserves_observations(tmp_path,
 
 @pytest.mark.parametrize('field,value',[('physical_width_m',.62),('physical_height_m',.36),('viewing_distance_m',1.1),('expected_resolution_px',(1600,900)),('refresh_rate_hz',75.),('display_binding',{'device_id':'OTHER','index':1,'x':1920,'y':0,'width':1920,'height':1080})])
 def test_physical_changes_reject_evidence_and_clear_qualification(field,value):
-    p=replace(profile(),profile_uuid='profile-a',revision=2,geometry_status='verified',timing_status='verified',qualified_experiments=('contrast_sensitivity',))
+    p=replace(profile(),profile_uuid='profile-a',revision=2,geometry_status='verified',timing_status='verified',qualified_experiments=('legacy_contrast_sensitivity',))
     payload={'status':'completed','monitor_profile':p.to_dict(),'monitor_profile_sha256':content_hash(p.to_dict())}
     assert diagnostic_matches_profile(payload,replace(p,revision=3,notes='Only metadata'))
     assert not diagnostic_matches_profile(payload,replace(p,**{field:value}))

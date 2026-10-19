@@ -9,7 +9,7 @@ def _row(status="configuring", trials=""):
     return {
         "run_uuid": "abc-123",
         "participant_id": "S001",
-        "experiment_id": "contrast_sensitivity",
+        "experiment_id": "legacy_contrast_sensitivity",
         "monitor_profile_id": "legacy_reference_display",
         "condition_path": "max_500cdm2/background_49cdm2_unverified",
         "date": "2026-09-15",

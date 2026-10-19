@@ -10,7 +10,7 @@ from psychophysics_lab.data.trials import (
     TRIAL_SCHEMA_VERSION,
     write_trial_data_dictionary,
 )
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 
 
 def test_every_trial_column_has_exactly_one_definition():
@@ -32,7 +32,7 @@ def test_per_run_dictionary_preserves_order_and_csf_specific_encodings():
 
         assert [row["column_name"] for row in rows] == list(TRIAL_COLUMNS)
         assert all(int(row["trial_schema_version"]) == TRIAL_SCHEMA_VERSION for row in rows)
-        assert all(row["experiment_id"] == "contrast_sensitivity" for row in rows)
+        assert all(row["experiment_id"] == "legacy_contrast_sensitivity" for row in rows)
 
         by_name = {row["column_name"]: row for row in rows}
         assert by_name["participant_response"]["units_or_encoding"] == "0 = left; 1 = right"

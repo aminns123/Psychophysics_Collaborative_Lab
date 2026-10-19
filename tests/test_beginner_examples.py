@@ -88,7 +88,7 @@ def test_new_advanced_experiment_reuses_builtin_line_stimulus(tmp_path):
 def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     from psychophysics_lab.core.timeline import load_timeline
     beginner = get_experiment("example_experiment")
-    csf = get_experiment("contrast_sensitivity")
+    csf = get_experiment("legacy_contrast_sensitivity")
     from psychophysics_lab.experiments.example_experiment import make_trial
     ex = make_trial(beginner.field_defaults(), {"target":0}).resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
     cs = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",

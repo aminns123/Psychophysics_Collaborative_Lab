@@ -1,6 +1,6 @@
 import unittest
 
-from psychophysics_lab._reference_csf.staircase import AdaptiveRun, ResponseStreak, StaircaseConfig, Step
+from psychophysics_lab.adaptive.staircase import AdaptiveRun, ResponseStreak, StaircaseConfig, Step
 
 
 class ResponseRuleTests(unittest.TestCase):

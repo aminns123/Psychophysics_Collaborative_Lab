@@ -807,7 +807,7 @@ class DisplayCheckScreen(HubPage):
         from ..config.preflight import qualification_checks
         progress = calibration_progress(profile, self.app.local_config_root)
         # These physical indicators use the same declarations as acquisition.
-        from .._reference_csf.experiment_definition import CSF_SPEC
+        from ..experiments.contrast_sensitivity import SPEC as CSF_SPEC
         physical = {row['key']: row['passed'] for row in qualification_checks(CSF_SPEC, profile)}
         colours = {key: ('green' if key != 'precision' and physical.get(key, item['completed']) else
                          'yellow' if item['completed'] else 'red') for key, item in progress.items()}
@@ -1666,10 +1666,7 @@ class ExperimentConfigScreen(Screen):
         self.review_return = review_return
         self.focus_field = focus_field
         # Preserve historical pre-cpd workspaces explicitly when reusing.
-        if (self.experiment.id == "contrast_sensitivity"
-                and "condition_values" in self.defaults
-                and "condition_unit" not in self.defaults):
-            self.defaults["condition_unit"] = "legacy_shader_radians"
+        pass  # Retired protocol branch removed.
 
     def compose(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
@@ -1720,14 +1717,7 @@ class ExperimentConfigScreen(Screen):
                             id="condition-unit-help", classes="field-help",
                         )
                     for field in fields:
-                        if self.experiment.id == "contrast_sensitivity" and field.key == "Background_Luminance":
-                            yield Label("Select background luminance and digital intensity from this monitor")
-                            yield Select(
-                                [("Manual entry (only when deliberately selected)", "manual")],
-                                value="manual", allow_blank=False, id="background-mapping",
-                            )
-                            yield Static("", id="mapping-provenance", markup=False, classes="field-help")
-                            yield Button("Review / repair saved luminance measurements", id="edit-background-calibration")
+                        pass  # Retired protocol branch removed.
                         yield from self._compose_field(field)
                         yield Static("", id="domain-"+field.key.replace('_','-'), markup=False, classes="field-help")
                         if field.key == "starting_probe_intensity":
@@ -1764,8 +1754,7 @@ class ExperimentConfigScreen(Screen):
             self.call_after_refresh(widget.focus)
 
     def _refresh_mapping_choices(self):
-        if not self.is_mounted or self.experiment.id != 'contrast_sensitivity':
-            return
+        return
         from ..config.background_mapping import configuration_mapping_choices, background_provenance
         from ..config.calibration_dataset import dataset_hash, physical_snapshot
         profile = self.app.monitor_profiles[self.monitor_profile_id]
@@ -1870,8 +1859,7 @@ class ExperimentConfigScreen(Screen):
                 message = f"Intensity/step summary needs valid numeric inputs: {exc}"
             self.query_one("#contrast-live-validation", Static).update(message)
             return
-        if self.experiment.id != "contrast_sensitivity":
-            return
+        return
         try:
             from ..stimuli.contrast_validation import contrast_limit_text
             fields = {field.key:field for field in self.experiment.fields}
@@ -1883,8 +1871,7 @@ class ExperimentConfigScreen(Screen):
         self.query_one("#contrast-live-validation", Static).update(message)
 
     def _refresh_unit_help(self):
-        if self.experiment.id != "contrast_sensitivity" or not self.is_mounted:
-            return
+        return
         unit = self.query_one("#field-condition-unit", Select).value
         messages = {"cycles_per_degree": "Conditions are spatial frequencies in cycles/degree (cpd), e.g. 2,4,8. Derived from measured display geometry; not photometrically verified.",
             "degrees_per_cycle": "Conditions are periods in degrees/cycle, e.g. 0.5,0.25,0.125. Stored trial frequencies are their reciprocals in cycles/degree.",
@@ -2405,52 +2392,7 @@ class ReviewScreen(Screen):
         for field in experiment.fields:
             lines.append(f"{field.display_label}: {self.request.experiment_values[field.key]}")
 
-        if self.request.experiment_id == "contrast_sensitivity":
-            values = self.request.experiment_values
-            down, up, reversals = values["n_down"], values["n_up"], values["reversal_termination"]
-            count = values["number_conditions"] * values["staircases_per_condition"]
-            from .._reference_csf.experiment_definition import resolved_condition_frequencies
-            frequencies = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
-            lines.append(
-                f"Entered conditions: {values['condition_values']} "
-                f"({values['condition_unit']}); {count} independent staircases in total."
-            )
-            if values["condition_unit"] != "legacy_shader_radians":
-                lines.append(f"Resolved spatial frequencies: {', '.join(f'{x:g}' for x in frequencies)} cycles/degree.")
-                from ..stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
-                if profile.expected_resolution_px:
-                    calibration = resolve_spatial_geometry(profile, profile.expected_resolution_px)
-                    lines.extend([
-                        f"Local pixels/degree at gaze: X={calibration.pixels_per_degree_at_centre[0]:.3f}, Y={calibration.pixels_per_degree_at_centre[1]:.3f}",
-                        f"Nyquist limit: X={calibration.nyquist_cpd_at_centre[0]:.3f}, Y={calibration.nyquist_cpd_at_centre[1]:.3f} cpd",
-                        f"Display geometric verification: {profile.geometry_status}",
-                    ])
-                else:
-                    lines.append("[yellow]The profile has no saved expected pixel resolution. "
-                                 "Set it in Calibrate → Edit profile before relying on physical units. "
-                                 "The renderer will check actual fullscreen resolution at launch.[/yellow]")
-            lines.append(
-                f"Introductory rule: 1-down until first incorrect response or "
-                f"{values['initial_one_down_limit']} accepted responses per staircase "
-                f"(0 disables)."
-            )
-            # A rough warning, NOT a mathematical lower bound once an
-            # introductory 1-down phase is enabled. The response ceiling is
-            # global; every staircase needs at least one response.
-            if values["max_trials"] < count:
-                lines.append(
-                    f"[yellow]The shared maximum of {values['max_trials']} responses "
-                    f"is below the {count} independent staircase count. At least "
-                    f"one staircase cannot receive any response.[/yellow]"
-                )
-            elif values["initial_one_down_limit"] == 0:
-                estimate = count * (min(down, up) + ((reversals+1)//2)*max(down, up) + (reversals//2)*min(down, up))
-                if values["max_trials"] < estimate:
-                    lines.append(
-                        f"[yellow]The global response ceiling {values['max_trials']} "
-                        f"is below an indicative {estimate}-response alternating-step "
-                        f"budget for {count} staircases. Some may end unfinished.[/yellow]"
-                    )
+        pass  # Retired protocol branch removed.
         lines.extend(
             [
                 "",
@@ -2864,16 +2806,6 @@ class ReviewScreen(Screen):
                             "Open Calibrate → Edit / copy display profile, Detect connected displays, "
                             "select the physical monitor, save a new revision and verify its geometry "
                             "before launching a human experiment."
-                        )
-                    if (spec.id == "contrast_sensitivity"
-                            and self.request.experiment_values.get("condition_unit") != "legacy_shader_radians"
-                            and current.expected_resolution_px is None):
-                        raise ValueError(
-                            "Cannot run physically specified cpd gratings without an expected "
-                            "fullscreen pixel resolution. In Calibrate, bind your display, "
-                            "save a measured local profile with its pixel dimensions and "
-                            "confirm the fullscreen geometry. The virtual simulation mode "
-                            "remains available without hardware calibration."
                         )
                     from ..core.display import preflight_fullscreen_display
                     preflight_fullscreen_display(current)

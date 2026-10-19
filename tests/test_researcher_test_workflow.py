@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize(
     "identity",
     [
-        "csf_thesis",
+        "contrast_sensitivity",
         "line_position_baseline",
         "line_position_flanker",
         "ellipse_major_axis",
@@ -38,7 +38,7 @@ def test_real_presentation_mode_isolated_and_bounded_without_qualifying_acquisit
     tmp_path, monkeypatch, identity
 ):
     abort = identity == "csf_escape"
-    identity = "csf_thesis" if abort else identity
+    identity = "contrast_sensitivity" if abort else identity
     from psychophysics_lab.core.presentation import Response
     from psychophysics_lab.core.trial_execution import VirtualPresentation
 
@@ -258,7 +258,7 @@ def test_normal_review_and_test_confirmation_have_one_selected_action(
     )
 
     async def check():
-        spec = get_experiment("csf_thesis")
+        spec = get_experiment("contrast_sensitivity")
         request = SetupRequest(
             "synthetic_preview",
             "new",

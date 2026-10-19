@@ -59,11 +59,6 @@ def register_algorithm(algorithm: AdaptiveAlgorithm) -> None:
 
 
 def get_algorithm(identity: str) -> AdaptiveAlgorithm:
-    # A researcher can import one experiment directly, before catalogue loading.
-    # Load this built-in mechanism lazily without importing other experiments.
-    if identity == "legacy_flanker_log" and identity not in _REGISTRY:
-        from .legacy_flanker import SPEC
-        register_algorithm(SPEC)
     try:
         return _REGISTRY[identity]
     except KeyError as exc:
@@ -75,7 +70,7 @@ def list_algorithms() -> tuple[AdaptiveAlgorithm, ...]:
 
 
 register_algorithm(AdaptiveAlgorithm(
-    "consecutive_up_down", "Legacy consecutive correct/incorrect response staircase",
+    "consecutive_up_down", "Consecutive correct/incorrect response staircase",
     AdaptiveRun, ("down_factor", "up_factor", "n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit", "staircases_per_condition", "reversal_termination", "max_trials"),
     ("legacy_staircase",),
 ))

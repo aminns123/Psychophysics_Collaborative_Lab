@@ -44,10 +44,10 @@ def test_typed_virtual_launch_rejects_invalid_or_ambiguous_values(tmp_path):
         with pytest.raises(ValueError):
             parse_parameter(actual, example)
     with pytest.raises(ValueError, match="unique"):
-        SimulationLaunchRequest("contrast_sensitivity", "csf_baseline",
+        SimulationLaunchRequest("legacy_contrast_sensitivity", "csf_baseline",
                                 tmp_path, (1, 1))
     with pytest.raises(ValueError, match="1–128"):
-        SimulationLaunchRequest("contrast_sensitivity", "csf_baseline",
+        SimulationLaunchRequest("legacy_contrast_sensitivity", "csf_baseline",
                                 tmp_path, tuple(range(129)))
 
 
@@ -63,7 +63,7 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             screen = app.screen
-            assert screen.query_one("#sim-experiment", Select).value == "contrast_sensitivity"
+            assert screen.query_one("#sim-experiment", Select).value == "legacy_contrast_sensitivity"
             assert screen.query_one("#sim-scenario", Select).value == "csf_baseline"
             nav = screen.query_one("#hub-nav")
             for button in nav.query(Button):
@@ -82,7 +82,7 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
             assert len(captured) == 1
             request = captured[0]
             assert isinstance(request, SimulationLaunchRequest)
-            assert request.experiment_id == "contrast_sensitivity"
+            assert request.experiment_id == "legacy_contrast_sensitivity"
             assert request.scenario_id == "csf_baseline"
             assert request.seeds == (7, 8)
             assert request.observer_parameters["threshold"] == pytest.approx(.08)
@@ -153,7 +153,7 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
 
     data_root = tmp_path / "local_psychophysics_data"
     request = SimulationLaunchRequest(
-        "contrast_sensitivity", "csf_short_censored", data_root,
+        "legacy_contrast_sensitivity", "csf_short_censored", data_root,
         (11,), observer_parameters={"threshold": 0.1, "preferred_condition": 63.0},
         experiment_values={"max_trials": 1},
     )

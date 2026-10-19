@@ -30,7 +30,9 @@ def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, c
         raise ValueError("Degree coordinates must match the supplied raster shape.")
     result = np.asarray(stimulus.render(parameters, xx, yy), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
-        raise ValueError("Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape.")
+        raise ValueError(f"Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape; "
+                         f"actual shape {result.shape}, min={result.min():g}, max={result.max():g}. "
+                         f"Peak pixel index {np.unravel_index(np.argmax(result), result.shape)}; no clipping.")
     return result
 
 

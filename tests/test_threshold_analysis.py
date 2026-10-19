@@ -9,14 +9,14 @@ from psychophysics_lab.data.trials import TRIAL_COLUMNS
 
 
 def _write_run(data_root: Path) -> Path:
-    run = data_root / "S001" / "contrast_sensitivity" / "display" / "2026-10-07" / "run_001"
+    run = data_root / "S001" / "legacy_contrast_sensitivity" / "display" / "2026-10-07" / "run_001"
     run.mkdir(parents=True)
     (run / "manifest.json").write_text(
         json.dumps(
             {
                 "run_uuid": "run-test-001",
                 "participant_id": "S001",
-                "experiment_id": "contrast_sensitivity",
+                "experiment_id": "legacy_contrast_sensitivity",
             }
         ),
         encoding="utf-8",

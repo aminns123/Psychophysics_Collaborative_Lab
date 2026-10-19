@@ -87,6 +87,7 @@ def create_run_directory(
     experiment_id: str,
     monitor_profile_id: str,
     grouping_parts: Iterable[str] = (),
+    experiment_directory_name: str | None = None,
     now: datetime | None = None,
 ) -> Path:
     """Create one run directory using the stable PsyCoLab human-facing hierarchy.
@@ -109,7 +110,7 @@ def create_run_directory(
 
     components = [
         validate_participant_id(participant_id),
-        _safe_component(experiment_id, label="experiment"),
+        _safe_component(experiment_directory_name or experiment_id, label="experiment"),
         _safe_component(monitor_profile_id, label="monitor profile"),
         *[
             _safe_component(part, label="experiment grouping")

@@ -16,7 +16,7 @@ from psychophysics_lab.config.calibration_templates import example_luminance_doc
 from psychophysics_lab.config.calibration_review import save_verification
 from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.input_constraints import experiment_constraints
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen,ReviewScreen
 from psychophysics_lab.ui.luminance_data import LuminanceDataScreen
 from psychophysics_lab.core.presentation_testing import PresentationTestRequest,run_presentation_test,MARKER

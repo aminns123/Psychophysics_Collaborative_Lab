@@ -65,7 +65,7 @@ def test_simulation_tui_exposes_ordered_conditions_and_introductory_rule(tmp_pat
 
 def test_human_config_same_fields_and_validates_conditions(tmp_path):
     from simulations.csf import DEFAULT_VALUES
-    experiment = get_experiment("contrast_sensitivity")
+    experiment = get_experiment("legacy_contrast_sensitivity")
     defaults = experiment.normalise_values(dict(DEFAULT_VALUES))
 
     async def test():

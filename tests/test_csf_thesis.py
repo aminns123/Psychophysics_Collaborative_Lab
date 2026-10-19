@@ -81,7 +81,7 @@ def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_esti
     original = RunContext.trial
     seen = {}
     def scripted(run, *args, **kwargs):
-        if run.spec.id == "csf_thesis":
+        if run.spec.id == "contrast_sensitivity":
             identity = kwargs["state"]["staircase_id"]
             count = seen.get(identity, 0)
             seen[identity] = count+1
@@ -89,7 +89,7 @@ def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_esti
             run.observer_parameters = {"accuracy": 0. if count % 5 == 4 else 1.}
         return original(run, *args, **kwargs)
     monkeypatch.setattr(RunContext, "trial", scripted)
-    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id="csf_thesis",
+    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id="contrast_sensitivity",
         values={"frequencies_cpd":"2", "staircases_per_condition":2, "max_trials":500, "starting_contrast":.02}, analyse=False)
     assert artifacts.status == "completed"
     assert all(c.passed for c in validate_run(artifacts.run_directory))
@@ -108,7 +108,7 @@ def test_mixed_virtual_responses_finish_staircases_and_use_the_thesis_point_esti
 
 
 def test_response_safety_ceiling_does_not_fabricate_a_completed_csf(tmp_path):
-    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id="csf_thesis",
+    artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/"data", experiment_id="contrast_sensitivity",
         values={"max_trials":4}, analyse=False)
     assert artifacts.status == "max_trials_reached"
     resolved = json.loads((artifacts.run_directory/"resolved_experiment.json").read_text())

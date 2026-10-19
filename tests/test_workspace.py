@@ -16,7 +16,7 @@ def _request(root: Path) -> SetupRequest:
     return SetupRequest(
         participant_id="S001",
         session_mode="new",
-        experiment_id="contrast_sensitivity",
+        experiment_id="legacy_contrast_sensitivity",
         monitor_profile_id="legacy_reference_display",
         experiment_values={"n_down": 2, "n_up": 1},
         data_root=str(root),
@@ -29,7 +29,7 @@ def test_workspace_uses_human_readable_scientific_hierarchy_and_run_numbers():
         when = datetime(2026, 9, 15, 10, 30)
         kwargs = dict(
             participant_id="S001",
-            experiment_id="contrast_sensitivity",
+            experiment_id="legacy_contrast_sensitivity",
             monitor_profile_id="legacy_reference_display",
             grouping_parts=("max_500cdm2", "background_49cdm2_unverified"),
             now=when,
@@ -40,7 +40,7 @@ def test_workspace_uses_human_readable_scientific_hierarchy_and_run_numbers():
         expected_parent = (
             root
             / "S001"
-            / "contrast_sensitivity"
+            / "legacy_contrast_sensitivity"
             / "legacy_reference_display"
             / "max_500cdm2"
             / "background_49cdm2_unverified"
@@ -80,7 +80,7 @@ def test_workspace_remembers_last_setup_and_relative_run_path():
         restored = request_from_workspace_state(state)
         assert restored is not None
         assert restored.participant_id == "S001"
-        assert restored.experiment_id == "contrast_sensitivity"
+        assert restored.experiment_id == "legacy_contrast_sensitivity"
         assert restored.experiment_values == {"n_down": 2, "n_up": 1}
         assert restored.data_root is None
         assert state["last_status"] == "completed"
@@ -100,7 +100,7 @@ def test_run_layout_rejects_path_traversal_components():
             create_run_directory(
                 root,
                 participant_id="S001",
-                experiment_id="contrast_sensitivity",
+                experiment_id="legacy_contrast_sensitivity",
                 monitor_profile_id="display",
                 grouping_parts=("../escape",),
             )

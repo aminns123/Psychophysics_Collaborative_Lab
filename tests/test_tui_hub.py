@@ -42,7 +42,7 @@ def test_monitor_selector_contains_only_experiment_compatible_profiles(tmp_path)
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "external_data")
         async with app.run_test(size=(140, 48)):
             experiment = app.query_one("#experiment", Select).value
-            assert experiment == "contrast_sensitivity"
+            assert experiment == "legacy_contrast_sensitivity"
             assert app.query_one("#monitor-profile", Select).value == "legacy_reference_display"
 
     asyncio.run(scenario())

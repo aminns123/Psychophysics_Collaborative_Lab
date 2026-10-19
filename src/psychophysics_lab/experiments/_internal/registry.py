@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
 from psychophysics_lab.experiments._internal.spec import ExperimentSpec
 
-_REGISTRY: dict[str, ExperimentSpec] = {
-    CSF_SPEC.id: CSF_SPEC,
-}
+_REGISTRY: dict[str, ExperimentSpec] = {}
 
 
 def list_experiments(*, include_historical=False) -> tuple[ExperimentSpec, ...]:
@@ -14,7 +11,7 @@ def list_experiments(*, include_historical=False) -> tuple[ExperimentSpec, ...]:
     # Adding a development protocol must not change the established launch
     # default. Keep the reference first, then normal and blocked experiments.
     return tuple(_REGISTRY[key] for key in sorted((key for key, spec in _REGISTRY.items() if include_historical or not spec.historical), key=lambda key:
-        (key != CSF_SPEC.id, bool(_REGISTRY[key].acquisition_block_reason), key)))
+        (bool(_REGISTRY[key].acquisition_block_reason), key)))
 
 
 def get_experiment(experiment_id: str) -> ExperimentSpec:

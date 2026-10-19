@@ -51,21 +51,7 @@ class VirtualObserverOptionsScreen(Screen):
         experiment_values = self.request.experiment_values
         # New unified cpd studies must not inherit the old 63/252 legacy
         # reference observer's uncalibrated preferred-condition default.
-        if (
-            "preferred_condition" in values
-            and self.request.experiment_id == "contrast_sensitivity"
-            and experiment_values.get("condition_unit")
-            in {"cycles_per_degree", "degrees_per_cycle"}
-        ):
-            from .._reference_csf.experiment_definition import (
-                resolved_condition_frequencies,
-            )
-
-            conditions = resolved_condition_frequencies(
-                experiment_values["condition_values"],
-                experiment_values["condition_unit"],
-            )
-            values["preferred_condition"] = conditions[0]
+        pass  # Retired protocol branch removed.
         return values
 
     def compose(self) -> ComposeResult:

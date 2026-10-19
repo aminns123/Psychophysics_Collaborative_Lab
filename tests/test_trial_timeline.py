@@ -56,7 +56,7 @@ def test_unknown_json_fields_and_non_integer_durations_are_rejected(tmp_path):
 
 
 def test_csf_reference_matches_existing_five_phase_queue():
-    spec = get_experiment("contrast_sensitivity")
+    spec = get_experiment("legacy_contrast_sensitivity")
     timeline = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                              timings=spec.field_defaults(), slots=spec.stimulus_slots)
     assert [(p.name, p.kind, p.duration_ms) for p in timeline.phases] == [
@@ -125,7 +125,7 @@ def test_authoring_screen_shows_create_buttons_and_timeline_file():
     spec = get_experiment("orientation_task")
     roles = dict(_source_inventory(ROOT, spec))
     assert roles["Legacy timeline example (not executed)"].name == "orientation_task.json"
-    assert dict(_source_inventory(ROOT, get_experiment("contrast_sensitivity")))["Trial timeline JSON"].name == "contrast_sensitivity.json"
+    assert dict(_source_inventory(ROOT, get_experiment("legacy_contrast_sensitivity")))["Trial timeline JSON"].name == "contrast_sensitivity.json"
 
 
 def test_one_file_stimulus_ui_no_generators(tmp_path, monkeypatch):

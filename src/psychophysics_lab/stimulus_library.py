@@ -6,7 +6,7 @@ New classes register automatically. They need no generator, separate
 stimulus module, JSON defaults file, or edits in another class/table.
 
 Experiments are separate .py files; they control trial timing, locations,
-responses, adaptation and optional beep sounds. All grayscale values 0–1
+responses, adaptation and optional beep sounds. All grayscale values 0â€“1
 are digital commands, not calibrated luminance.
 
 Scene() and convenience constructors below are optional pre-existing LEGO
@@ -32,18 +32,18 @@ class LibraryStimulus:
 
 
 # ----------------------------------------------------------------------------
-# SIMPLE COMPLETE STIMULI — copy one class; no other code needs changing.
+# SIMPLE COMPLETE STIMULI â€” copy one class; no other code needs changing.
 # The Scene convenience functions remain available above via an import.
 # ----------------------------------------------------------------------------
 
 class LinePatch(LibraryStimulus):
-    """A line at arbitrary orientation (0° = vertical)."""
+    """A line at arbitrary orientation (0Â° = vertical)."""
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 2., units="degrees", minimum=.1, maximum=45),
         ConfigField("length_deg", "Line length", "float", 1., units="degrees", minimum=.01, maximum=10),
         ConfigField("width_deg", "Line thickness", "float", .08, units="degrees", minimum=.001, maximum=2),
         ConfigField("orientation_deg", "Orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
-        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -68,7 +68,7 @@ class SquarePatch(LibraryStimulus):
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 3., units="degrees", minimum=.1, maximum=45),
         ConfigField("side_deg", "Square side", "float", 1., units="degrees", minimum=.01, maximum=20),
-        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -92,7 +92,7 @@ class RectanglePatch(LibraryStimulus):
         ConfigField("size_deg", "Patch diameter", "float", 3., units="degrees", minimum=.1, maximum=45),
         ConfigField("width_deg", "Rectangle width", "float", 1., units="degrees", minimum=.01, maximum=20),
         ConfigField("height_deg", "Rectangle height", "float", 2., units="degrees", minimum=.01, maximum=20),
-        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -116,7 +116,7 @@ class EllipsePatch(LibraryStimulus):
         ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=60),
         ConfigField("radius_x_deg", "Horizontal semi-axis", "float", 2., units="degrees", minimum=.01, maximum=30),
         ConfigField("radius_y_deg", "Vertical semi-axis", "float", 1., units="degrees", minimum=.01, maximum=30),
-        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -140,7 +140,7 @@ class AnnulusPatch(LibraryStimulus):
         ConfigField("radius_x_deg", "Horizontal semi-axis", "float", 2., units="degrees", minimum=.01, maximum=30),
         ConfigField("radius_y_deg", "Vertical semi-axis", "float", 1., units="degrees", minimum=.01, maximum=30),
         ConfigField("inner_ratio", "Inner-to-outer radius ratio", "float", .85, minimum=0, maximum=.99),
-        ConfigField("intensity", "Digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -163,7 +163,7 @@ class GaussianDot(LibraryStimulus):
     PARAMETERS = (
         ConfigField("size_deg", "Patch diameter", "float", 2., units="degrees", minimum=.1, maximum=45),
         ConfigField("sigma_deg", "Gaussian standard deviation", "float", .2, units="degrees", minimum=.001, maximum=10),
-        ConfigField("intensity", "Peak digital brightness", "float", 1., units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Peak digital brightness", "float", 1., units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -189,7 +189,7 @@ class SinusoidalGrating(LibraryStimulus):
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
         ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
         ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=-360, maximum=360),
-        ConfigField("contrast", "Digital modulation", "float", .2, units="0–1", minimum=0, maximum=1),
+        ConfigField("contrast", "Digital modulation", "float", .2, units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -218,7 +218,7 @@ class GaborPatch(LibraryStimulus):
         ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20),
         ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
         ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=-360, maximum=360),
-        ConfigField("contrast", "Digital modulation", "float", .2, units="0–1", minimum=0, maximum=1),
+        ConfigField("contrast", "Digital modulation", "float", .2, units="0â€“1", minimum=0, maximum=1),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -248,7 +248,7 @@ class FixationCross(LibraryStimulus):
         ConfigField("size_deg", "Patch diameter", "float", 0.8, units="degrees", minimum=0.2, maximum=3),
         ConfigField("arm_length_deg", "Cross arm length", "float", 0.35, units="degrees", minimum=0.05, maximum=1),
         ConfigField("width_deg", "Cross line width", "float", 0.06, units="degrees", minimum=0.01, maximum=0.3),
-        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0â€“1", minimum=0, maximum=1),
     )
     
     def render(parameters, x_deg, y_deg):
@@ -274,7 +274,7 @@ class VerticalLineProbe(LibraryStimulus):
         ConfigField("size_deg", "Patch diameter", "float", 1.0, units="degrees", minimum=0.3, maximum=5),
         ConfigField("length_deg", "Line length", "float", 0.6, units="degrees", minimum=0.1, maximum=2),
         ConfigField("width_deg", "Line width", "float", 0.08, units="degrees", minimum=0.02, maximum=0.5),
-        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0–1", minimum=0, maximum=1),
+        ConfigField("intensity", "Digital brightness", "float", 1.0, units="0â€“1", minimum=0, maximum=1),
     )
     
     def render(parameters, x_deg, y_deg):
@@ -304,7 +304,7 @@ class ExampleWhiteLine(LibraryStimulus):
         ConfigField("line_length_deg", "Line length", "float", 1.2,
                     units="degrees", minimum=0.2, maximum=2.0),
         ConfigField("intensity", "Digital line intensity", "float", 1.0,
-                    units="0–1 command", minimum=0.5, maximum=1.0),
+                    units="0â€“1 command", minimum=0.5, maximum=1.0),
     )
     
     
@@ -403,13 +403,6 @@ class ComposedScene(LibraryStimulus):
         spatial_frequencies=frequencies.__func__)
 
 
-# Hardware-dependent reference CSF (Events/stimuliC.py) and monitor diagnostic
-# geometry_bar are deliberately NOT reimplemented here: duplicating them would
-# invent an unverified rendering model. Keep these as read-only adapters until
-# physical equivalence has been established. Custom researcher modules already
-# tied to saved experiment versions are also preserved, not overwritten.
-
-
 class ResearcherVerticalLine(LibraryStimulus):
     """Researcher's original vertical-line stimulus, migrated without altering its maths.
 
@@ -426,7 +419,7 @@ class ResearcherVerticalLine(LibraryStimulus):
         ConfigField("line_length_deg", "Line length", "float", 1.2,
                     units="degrees", minimum=0.2, maximum=2.0),
         ConfigField("intensity", "Digital line intensity", "float", 1.0,
-                    units="0–1 command", minimum=0.5, maximum=1.0),
+                    units="0â€“1 command", minimum=0.5, maximum=1.0),
     )
     
     
@@ -457,121 +450,13 @@ class ResearcherVerticalLine(LibraryStimulus):
 
 
 
-class CSFGrating(LibraryStimulus):
-    """Reference CSF stimulus: authoritative shader and validated configuration.
-
-    This is deliberately not a NumPy preview: the original display uses a
-    GLSL luminance/contrast shader and monitor-specific geometry. An ordinary
-    Scene raster does NOT yet reproduce its optical or timing behaviour.
-    Researchers can inspect the scientific shader HERE in the single library.
-    The existing qualified presentation implementation is internal only.
-    """
-    from ._reference_csf.experiment_definition import CSF_SPEC as _CSF_SPEC
-    PARAMETERS = tuple(
-        field for field in _CSF_SPEC.fields if field.section == "Stimulus conditions"
-    )
-    del _CSF_SPEC
-
-    # Copied verbatim from the previously authoritative Events/stimuliC.py.
-    # Acquisition's internal OpenGL presenter now references THIS exact string.
-    FRAGMENT_SOURCE = """
-        //precision highp float;
-        
-        uniform float fs;
-        uniform float phase;
-        uniform float contr;
-        uniform float bg;
-        uniform float box;
-        uniform float theta;
-        uniform float Lbg, Lmin, Lmax, gamma, BTRR;
-        uniform float width;  // Declare width uniform  # <- added
-        uniform float SdeX;
-        uniform float SdeY;
-        uniform float physicalFrequency;
-        uniform float pitchX, pitchY, eyeDistance;
-        uniform float screenCx, screenCy, stimCx, stimCy;
-        
-        vec3 lum2image(float c) {
-            vec3 vout;
-            float U = 255.0*pow(((1+c)*Lbg-Lmin)/(Lmax-Lmin),1.0/gamma);
-            float b1 = (BTRR+1.0)/BTRR;
-            //float b = min(floor(U*b1),255.0);
-            float b = min(floor(U*b1),255.0) + 1.0/32.0;
-            //float b2 = floor((U-b/b1)*(BTRR+1.0));
-            float b2 = floor((U-b/b1)*(BTRR+1.0)) + 1.0/32.0;
-            vout = vec3(b2/255.0, 0.0 ,b/255.0);
-            return vout;
-        }
-
-        void main() {
-            float x = gl_TexCoord[0].x - 0.5;
-            float y = -(gl_TexCoord[0].y - 0.5);
-            float pi = 2.0 * acos(0.0);
-            float Sde = 0.03; // 0.05 or 0.17 | USE: Sde = 0.03, 0.025 for <10cdm2
-            //float m = exp(-0.5*(x*x + y*y)/pow(Sde,2)); // <- 2 or 2.5
-            float m = exp(-0.5*((x*x)/pow(SdeX,2) + (y*y)/pow(SdeY,2)));
-            // In cpd mode the phase is computed from the physical angular
-            // coordinate of every fragment, not an uncalibrated legacy scalar.
-            // This also avoids a screen-wide-FOV approximation near eccentricity.
-            vec2 phase_coords = vec2(x, y);
-            float frequency_phase = fs * (x*cos(theta)+y*sin(theta));
-            if (physicalFrequency > 0.5) {
-                vec2 pitch = vec2(pitchX, pitchY);
-                vec2 screen_centre = vec2(screenCx, screenCy);
-                vec2 monitor_px = vec2(stimCx,stimCy) + phase_coords * width;
-                vec2 screen_m = (monitor_px - screen_centre) * pitch;
-                vec2 centre_m = (vec2(stimCx,stimCy)-screen_centre)*pitch;
-                vec2 degrees_relative = degrees(atan(screen_m / eyeDistance))
-                                       - degrees(atan(centre_m / eyeDistance));
-                float pi = 2.0 * acos(0.0);
-                frequency_phase = 2.0 * pi * fs
-                    * (degrees_relative.x * cos(theta)
-                       + degrees_relative.y * sin(theta));
-            }
-            float c = m*contr*sin(frequency_phase + phase);
-            if (box == 1.0) {
-                gl_FragColor.rgba = vec4(lum2image(c),1.0);
-            } else {
-                c = bg + c/2.0;
-                gl_FragColor.rgba = vec4(c,c,c,1.0);
-            }
-        }
-        """
-
-    @staticmethod
-    def render(parameters, x_deg, y_deg):
-        raise NotImplementedError(
-            "Reference CSF uses its hardware-specific GLSL renderer; "
-            "a NumPy Scene preview would not establish shader equivalence."
-        )
-
-    SPEC = StimulusSpec(
-        "legacy_csf", "CSF grating (reference shader)",
-        "Authoritative physical CSF shader, driven by the registered CSF experiment.",
-        "src/psychophysics_lab/stimulus_library.py",
-        parameters=PARAMETERS,
-        default_config="configs/stimuli/legacy_csf.json",
-        family="csf", render=None,
-        calibration_requirements=("geometry", "luminance", "timing"),
-        source_dependencies=(
-            "src/psychophysics_lab/_reference_csf/stimuliC.py",
-            "src/psychophysics_lab/_reference_csf/libC.py",
-            "src/psychophysics_lab/_reference_csf/adaptiveMethods.py",
-            "src/psychophysics_lab/_reference_csf/adaptive_session.py",
-            "src/psychophysics_lab/_reference_csf/functionsForUse.py",
-            "src/psychophysics_lab/_reference_csf/config.py",
-            "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py",
-        ),
-    )
-
-
 class ContrastSensitivityGrating(LibraryStimulus):
-    """Thesis CSF: Gaussian sigma in degrees; sinusoidal carrier in cycles/degree.
+    """Contrast sensitivity: Gaussian sigma in degrees; sinusoidal carrier in cycles/degree.
 
     RGB command = background + (contrast/2) * Gaussian * sin(carrier phase).
     Contrast is digital peak-to-peak modulation, not measured optical Michelson
     contrast. The 8-degree raster aperture is an explicit implementation extent,
-    not a historical aperture established by the thesis. Hardware parity is unverified.
+    chosen by the researcher. Physical display performance requires measurement.
     """
     PARAMETERS = (
         ConfigField("size_deg", "Raster aperture", "float", 8., minimum=.1, maximum=30, units="degrees"),
@@ -592,13 +477,13 @@ class ContrastSensitivityGrating(LibraryStimulus):
         image = parameters["background"] + parameters["contrast"]*envelope*carrier/2
         return image
 
-    SPEC = StimulusSpec("thesis_csf_grating", "Contrast sensitivity grating", "Gaussian-windowed grating in explicit degree coordinates.",
-        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_csf",
+    SPEC = StimulusSpec("contrast_sensitivity_grating", "Contrast sensitivity grating", "Gaussian-windowed grating in explicit degree coordinates.",
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="contrast_sensitivity_grating",
         render=render, validator=validate.__func__, floating_raster=True, calibration_requirements=("geometry", "luminance"))
 
 
 class GaussianFixation(LibraryStimulus):
-    """Thesis fixation: sigma .035 degrees; peak background + .09, limited to 1."""
+    """Gaussian fixation: sigma .035 degrees; peak background + .09, limited to 1."""
     PARAMETERS = (
         ConfigField("size_deg", "Fixation patch", "float", .5, minimum=.1, maximum=3, units="degrees"),
         ConfigField("sigma_deg", "Gaussian standard deviation", "float", .035, minimum=.001, maximum=.2, units="degrees"),
@@ -612,8 +497,8 @@ class GaussianFixation(LibraryStimulus):
         image = parameters["background"] + (peak-parameters["background"])*envelope
         return image
 
-    SPEC = StimulusSpec("thesis_gaussian_fixation", "Gaussian fixation", "Small Gaussian fixation marker in degrees.",
-        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="thesis_fixation",
+    SPEC = StimulusSpec("gaussian_fixation", "Gaussian fixation", "Small Gaussian fixation marker in degrees.",
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="gaussian_fixation",
         render=render, calibration_requirements=("geometry", "luminance"))
 
 
@@ -648,11 +533,15 @@ class DetectionScene(LibraryStimulus):
     )
 
     def validate(p):
-        if p["ring_present"] and p["ring_radius_deg"]*p["aspect_ratio"] <= .16:
-            raise ValueError("Ring inner axes must remain positive after the .16 degree inset.")
-        increment = (p["contrast"] if p["probe_present"] else 0) + (p["ring_increment"] if p["ring_present"] else .009 if p["flanker_present"] else 0)
-        if p["background"]+increment>1 or (p["flanker_present"] and p["background"]<.009):
-            raise ValueError("Scene digital increments exceed gamut; no clipping.")
+        a, b = p["ring_radius_deg"], p["ring_radius_deg"] * p["aspect_ratio"]
+        if p["ring_present"] and min(a, b) <= .16:
+            raise ValueError(f"Ring inner axes must remain positive: a={a:g}, b={b:g} deg; both must exceed 0.16 deg.")
+        if p["ring_present"] and p["background"] + p["ring_increment"] > 1:
+            raise ValueError(f"Ring exceeds gamut: background {p['background']:g} + increment {p['ring_increment']:g} > 1; allowed increment <= {1-p['background']:g}.")
+        if p["flanker_present"] and not .009 <= p["background"] <= .991:
+            raise ValueError(f"Flanker exceeds gamut: background {p['background']:g} must be in [0.009, 0.991] for +/-0.009 modulation.")
+        # Additive probe overlap depends on pixel coverage. render_values and
+        # the experiment's resolved staircase limit check the actual grid.
 
     def render(p,x,y):
         image = np.full_like(x,p["background"],dtype=float)

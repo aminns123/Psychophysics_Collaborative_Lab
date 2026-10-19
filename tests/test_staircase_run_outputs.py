@@ -47,7 +47,7 @@ def test_multiple_independent_staircases_per_condition_and_nonempty_dynamic_plot
 def test_scenario_report_trials_and_images_cohabit_same_run(tmp_path):
     root = tmp_path / "local_psychophysics_data"
     output = run_scenario(
-        experiment_id="contrast_sensitivity", scenario_id="csf_baseline",
+        experiment_id="legacy_contrast_sensitivity", scenario_id="csf_baseline",
         data_root=root, repo_root=ROOT, seeds=(123,),
         experiment_values={"staircases_per_condition": 2, "max_trials": 150},
     )
@@ -70,7 +70,7 @@ def test_scenario_report_trials_and_images_cohabit_same_run(tmp_path):
 def test_multiple_seeds_each_get_own_scenario_report(tmp_path):
     root = tmp_path / "local_psychophysics_data"
     result = run_scenario(
-        experiment_id="contrast_sensitivity", scenario_id="csf_shifted_preference",
+        experiment_id="legacy_contrast_sensitivity", scenario_id="csf_shifted_preference",
         data_root=root, repo_root=ROOT, seeds=(41, 42),
         experiment_values={"max_trials": 100},
     )
@@ -83,7 +83,7 @@ def test_multiple_seeds_each_get_own_scenario_report(tmp_path):
 
 
 def test_staircase_instance_count_is_registered_and_validated_for_both_modes():
-    spec = get_experiment("contrast_sensitivity")
+    spec = get_experiment("legacy_contrast_sensitivity")
     assert "staircases_per_condition" in {field.key for field in spec.fields}
     assert "staircases_per_condition" in spec.adaptive.controls
     from simulations.csf import DEFAULT_VALUES
@@ -119,7 +119,7 @@ def test_human_finalisation_generates_staircases_from_actual_canonical_records(t
     legacy.run_experiment = fake_human_study
     monkeypatch.setitem(sys.modules, "psychophysics_lab._reference_csf.contrast_sensitivity_function", legacy)
     artifacts = run_request(
-        SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display",
+        SetupRequest("H001", "new", "legacy_contrast_sensitivity", "legacy_reference_display",
                      dict(DEFAULT_VALUES, max_trials=10, starting_probe_intensity=.7)), repo_root=ROOT, data_root=root,
     )
     assert artifacts.accepted_trials == 3
@@ -161,7 +161,7 @@ def test_data_browser_run_folder_and_scenario_report_are_directly_accessible(tmp
     from psychophysics_lab.ui import plots as viewer
 
     root = tmp_path / "local_psychophysics_data"
-    result = run_scenario(experiment_id="contrast_sensitivity",
+    result = run_scenario(experiment_id="legacy_contrast_sensitivity",
                           scenario_id="csf_short_censored",
                           data_root=root, repo_root=ROOT)
     opened = []

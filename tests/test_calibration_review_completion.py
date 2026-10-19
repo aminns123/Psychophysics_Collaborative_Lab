@@ -14,7 +14,7 @@ from psychophysics_lab.config.calibration_review import qualify_experiment, save
 from psychophysics_lab.config.preflight import validate_setup, qualification_checks
 from psychophysics_lab.config.calibration_workflow import import_and_save_luminance
 from psychophysics_lab.config.calibration_templates import example_luminance_document
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, DisplayCheckScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
 
@@ -290,7 +290,7 @@ def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_pa
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             screen = PhysicalVerificationScreen(
-                fake, experiment_id='contrast_sensitivity'
+                fake, experiment_id='legacy_contrast_sensitivity'
             )
             await app.push_screen(screen)
             await pilot.pause()

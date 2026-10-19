@@ -48,7 +48,7 @@ def test_consolidated_procedure_matches_original_complete_scientific_trace(tmp_p
 def test_every_python_procedure_is_owned_by_its_named_file():
     for spec in list_experiments(include_historical=True):
         if spec.procedure is None:
-            assert spec.id == "contrast_sensitivity"  # documented retained renderer exception
+            assert spec.id == "legacy_contrast_sensitivity"  # documented retained renderer exception
             continue
         if spec.historical:
             continue  # Frozen replay tests qualify archived scientific behaviour.
@@ -62,7 +62,7 @@ def test_every_python_procedure_is_owned_by_its_named_file():
 
 def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timings():
     from psychophysics_lab._reference_csf.experiment_definition import trial_timeline
-    csf = get_experiment("contrast_sensitivity")
+    csf = get_experiment("legacy_contrast_sensitivity")
     expected = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
                              timings=csf.field_defaults(), slots=csf.stimulus_slots)
     assert trial_timeline(csf.field_defaults()).to_dict() == expected.to_dict()

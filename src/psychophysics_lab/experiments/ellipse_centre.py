@@ -1,11 +1,12 @@
 """Ellipse Centre: a scientific design in visual degrees, separate from historical replay.
 
-Source: thesis Chapter 4, Figures 4.3B/4.5, Tables 4.3/4.6. Study-specific
+Researcher-defined psychophysics procedure. Study-specific
 choices remain TUI controls; unspecified ring digital increment must
 be supplied rather than copied from historical pixels. No claim of calibrated
 physical contrast or timing is made by this software implementation.
 """
 
+from psychophysics_lab.analysis.primary import expected_staircases
 import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
@@ -101,9 +102,10 @@ FIELDS += (
         "Ring digital increment (study choice; required)",
         "float",
         None,
-        minimum=0.00001,
+        minimum=0,
         maximum=1,
-        units='digital increment',
+        units='normalised digital increment above background',
+        help_text="Ring pixels = background + increment, not absolute intensity or measured luminance. Range 0 to 1-background; probe overlap can reduce local headroom. Ignored for absent rings.",
     ),
     ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1",
                 units="minor/major axis ratio (unitless)",
@@ -257,10 +259,8 @@ def interpret_response(condition, response):
 
 
 def maximum_contrast(settings, condition):
-    """Digital headroom for the additive scene (or symmetric grating)."""
-    return (1
-        - settings["background_intensity"]
-        - (settings["ring_increment"] if condition["ring"] else 0))
+    """Probe increment bounded by resolved local pixel overlap, never remote layers."""
+    return condition.get("maximum_probe_increment", 1 - settings["background_intensity"])
 
 
 def change_contrast(state, response, step):
@@ -309,6 +309,8 @@ def trial_record(run, condition, state):
 
 def initialise_experiment(run, conditions):
     settings = run.values
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+    resolve_probe_limits(run, conditions, prepare_stimuli)
     algorithm = run.adaptive(
         {
             c["id"]: StaircaseConfig(
@@ -352,7 +354,8 @@ def initialise_experiment(run, conditions):
     }
     run.initialise(
         expected_trials=settings["max_trials"],
-        resolution=description,
+        resolution=description | {"primary_estimator": primary_rule(settings, conditions),
+                                  "expected_staircases": expected_staircases(conditions)},
         background_intensity=settings["background_intensity"],
     )
     return {
@@ -370,6 +373,22 @@ def is_finished(run, conditions, state):
     return state["adaptive"].status != "running"
 
 
+def primary_rule(settings, conditions):
+    return {
+            "version": 1,
+            "value_column": "presented_display_contrast",
+            "within_staircase": "median",
+            "across_staircases": "arithmetic_mean",
+            "retained_reversals": settings["threshold_reversals"],
+            "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(settings, c)]
+                for c in conditions
+            },
+            "units": "digital_probe_increment",
+        }
+
+
 def finish_experiment(run, conditions, state):
     run.save_resolution(
         **(
@@ -379,22 +398,7 @@ def finish_experiment(run, conditions, state):
     )
     run.complete_adaptive(state["adaptive"])
     # One declared estimator is used here and by post-hoc analysis.
-    run.save_primary(
-        {
-            "version": 1,
-            "value_column": "presented_display_contrast",
-            "within_staircase": "median",
-            "across_staircases": "arithmetic_mean",
-            "retained_reversals": run.values["threshold_reversals"],
-            "completion": "all configured staircases complete",
-            "strength_bounds": {
-                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
-                for c in conditions
-            },
-            "units": "digital_probe_increment",
-        },
-        conditions,
-    )
+    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def procedure(run):
@@ -429,9 +433,12 @@ def validate_settings(values):
                 or len(set(ratios)) != len(ratios)
                 or any(not 0.5 <= x <= 1 for x in ratios)
             ):
-                yield "Choose distinct ellipse aspect ratios within 0.5–1."
+                yield "Choose distinct ellipse aspect ratios within 0.5Ã¢â‚¬â€œ1."
             elif any(values["ring_radius_deg"] * ratio <= 0.16 for ratio in ratios):
-                yield "Ellipse ring radius times b/a must exceed the 0.16-degree inner-axis inset."
+                yield (f"Ellipse inner axes must be positive: a={values['ring_radius_deg']:g} deg, "
+                       f"b=a*(b/a)={[round(values['ring_radius_deg']*r, 8) for r in ratios]} deg. "
+                       f"Both must exceed the 0.16 deg inner-axis inset; for these ratios choose a > {0.16/min(ratios):g} deg "
+                       f"or each b/a > {0.16/values['ring_radius_deg']:g}.")
     except ValueError:
         yield "Enter finite comma-separated numeric condition values."
     if values["starting_probe_intensity"] < values["background_intensity"]:
@@ -443,11 +450,10 @@ def validate_settings(values):
         yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
     if values["threshold_reversals"] > values["reversal_termination"]:
         yield "Threshold reversal count exceeds reversal termination."
-    if (
-        (values["starting_probe_intensity"] - values["background_intensity"]) + (values["ring_increment"] or 0)
-        > 1 - values["background_intensity"]
-    ):
-        yield "Starting probe intensity plus any additive ring/flanker layer exceeds 1. Review the scene headroom; no intensity was clipped."
+    if values["ring_increment"] is not None and values["ring_increment"] > 1 - values["background_intensity"]:
+        yield (f"Ring increment {values['ring_increment']:g} plus background {values['background_intensity']:g} "
+               f"exceeds 1; allowed ring increment is [0, {1-values['background_intensity']:g}].")
+    # Probe/ring overlap is checked on the resolved stimulus grid before acquisition.
 
 
 def definition(identity="ellipse_centre"):

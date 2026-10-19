@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_registered_experiment_has_inspectable_source_files():
-    paths = _source_candidates(ROOT, get_experiment("contrast_sensitivity"))
+    paths = _source_candidates(ROOT, get_experiment("legacy_contrast_sensitivity"))
     assert any(path.name == "experiment_definition.py" for path in paths)
     assert any(path.name == "contrast_sensitivity_function.py" for path in paths)
 

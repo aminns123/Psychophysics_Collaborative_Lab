@@ -17,7 +17,7 @@ def test_workspace_state_does_not_persist_machine_data_root(tmp_path):
     request = SetupRequest(
         participant_id="S001",
         session_mode="new",
-        experiment_id="contrast_sensitivity",
+        experiment_id="legacy_contrast_sensitivity",
         monitor_profile_id="legacy_reference_display",
         experiment_values={"example": 1},
         data_root=r"C:\Users\ExampleUser\Desktop\PsyCoLabData",

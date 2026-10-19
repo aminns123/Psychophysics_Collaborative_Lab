@@ -104,19 +104,12 @@ def validate_run(run_directory: Path) -> list[Check]:
                 "unsupported/missing trial_schema_version")
 
     check("Manifest JSON and schema", manifest_check)
-    csf = manifest.get("experiment_id") == "contrast_sensitivity"
-    adaptive_needed = csf or "adaptive_session" in manifest or (root / "adaptive_session.json").exists()
+    adaptive_needed = "adaptive_session" in manifest or (root / "adaptive_session.json").exists()
     required = ["manifest.json", "experiment_config.json", "monitor_profile.json",
                 "runtime_display.json", "resolved_experiment.json", "trials.tsv",
                 "trials_readable.txt", "trial_data_dictionary.tsv"]
     if adaptive_needed:
         required.append("adaptive_session.json")
-    if csf:
-        required += ["legacy_response.txt", "state/experiment_defined.json",
-                     "state/user_experiment_config.json"]
-        required += [f"state/{kind}.{phase}.json" for kind in ("conditions", "parameters")
-                     for phase in ("initial", "runtime", "final")]
-        required += [f"state/user_config.{phase}.json" for phase in ("initial", "final")]
 
     def files_check():
         missing = [name for name in required if not owned_path(root, name).is_file()]
@@ -378,22 +371,6 @@ def validate_run(run_directory: Path) -> list[Check]:
                     found.append((name + location, value))
         if adaptive_needed:
             require(bool(found), "no saved response ceiling")
-        if csf:
-            expected_locations = {
-                "manifest.json": ("legacy_setup.max_trials",),
-                "experiment_config.json": ("normalised_experiment_values.max_trials", "legacy_setup.max_trials"),
-                "resolved_experiment.json": ("adaptive_parameters.max_accepted_responses",),
-                "adaptive_session.json": ("max_trials", "legacy_parameters.max_trials", "legacy_parameters.number_trials"),
-                "state/experiment_defined.json": ("max_trials",),
-            }
-            for phase in ("initial", "runtime", "final"):
-                expected_locations[f"state/parameters.{phase}.json"] = ("max_trials", "number_trials")
-            for name in ("state/user_experiment_config.json", "state/user_config.initial.json", "state/user_config.final.json"):
-                expected_locations[name] = ("experiment_params.number_trials", "staircase_params.number_trials", "staircase_params.max_trials")
-            for name, locations in expected_locations.items():
-                for location in locations:
-                    require(any(key == name + "." + location for key, _ in found),
-                            f"missing response ceiling: {name}.{location}")
         require(len({value for _, value in found}) <= 1, "saved response ceilings disagree: " + repr(found))
         if found:
             require(len(rows) <= found[0][1], "accepted responses exceed configured maximum")
@@ -451,15 +428,6 @@ def validate_run(run_directory: Path) -> list[Check]:
             require(config["request"][key] == manifest[key], f"request/manifest {key} differs")
         require(metadata["resolved_experiment.json"]["experiment_id"] == manifest["experiment_id"],
                 "resolved experiment identity differs")
-        if csf:
-            require(metadata["state/experiment_defined.json"] == config["legacy_setup"], "defined setup differs")
-            for kind in ("conditions", "parameters"):
-                require(metadata[f"state/{kind}.runtime.json"] == metadata[f"state/{kind}.final.json"],
-                        f"{kind} final/runtime snapshot differs")
-            require(metadata["state/parameters.initial.json"] == metadata["state/parameters.final.json"],
-                    "static parameters changed during run")
-            require(metadata["state/user_config.initial.json"] == metadata["state/user_config.final.json"] ==
-                    metadata["state/user_experiment_config.json"], "user config snapshots differ")
 
     check("Manifest, configuration and state snapshot consistency", snapshots_check)
 
@@ -477,18 +445,6 @@ def validate_run(run_directory: Path) -> list[Check]:
 
     check("Trial context and display calibration snapshot", profile_context_check)
 
-    def legacy_check():
-        if not csf:
-            return
-        legacy = [line.split() for line in owned_path(root, "legacy_response.txt").read_text().splitlines() if line.strip()]
-        columns = ("stimulus_condition", "target_alternative", "participant_response", "staircase_id",
-                   "next_display_contrast", "next_screen_intensity")
-        require(len(legacy) == len(rows), "legacy response count differs (or placeholder remains)")
-        for index, (old, row) in enumerate(zip(legacy, rows), 1):
-            require(len(old) == 6 and all(same_number(value, row[key]) for value, key in zip(old, columns)),
-                    f"legacy response {index} differs from canonical post-response values")
-
-    check("Legacy response agrees with canonical post-response values where applicable", legacy_check)
     return checks
 
 

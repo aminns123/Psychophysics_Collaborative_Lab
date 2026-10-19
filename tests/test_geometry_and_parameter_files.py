@@ -63,7 +63,7 @@ def test_each_axis_and_frequency_use_real_pixel_pitch_and_distance():
     np.testing.assert_array_equal(x[0], expected_x)
     np.testing.assert_array_equal(y[:,0], expected_y)
     # The actual production grating must use these coordinates in its carrier.
-    stimulus = get_stimulus('thesis_csf_grating')
+    stimulus = get_stimulus('contrast_sensitivity_grating')
     params = document_for(stimulus)['parameters'] | {'spatial_frequency_cpd':3.,'contrast':.2}
     image = render_values(stimulus,params,pixels=pixels,coordinates=(x,y))
     expected = .5+.1*np.exp(-(x*x+y*y)/2)*np.sin(2*np.pi*3*x)

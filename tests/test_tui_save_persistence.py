@@ -126,7 +126,7 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
-        experiment = get_experiment("contrast_sensitivity")
+        experiment = get_experiment("legacy_contrast_sensitivity")
         defaults = experiment.normalise_values(dict(DEFAULT_VALUES))
         async with app.run_test(size=(100, 30)) as pilot:
             app.push_screen(

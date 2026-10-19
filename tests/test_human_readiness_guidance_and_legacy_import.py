@@ -13,7 +13,7 @@ from psychophysics_lab.config.human_readiness import (
 )
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.config.preflight import validate_setup
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen
 
@@ -25,17 +25,6 @@ def _request(profile):
     )
 
 
-def test_legacy_gl_module_binds_pyglet_before_using_pyglet_clock():
-    """Catch the real Windows NameError without requiring a live OpenGL window."""
-    source=(ROOT/"src/psychophysics_lab/_reference_csf/libC.py").read_text(encoding="utf-8")
-    tree=ast.parse(source)
-    bound=[node.lineno for node in tree.body
-           if isinstance(node,ast.Import)
-           and any(alias.name=="pyglet" and alias.asname is None for alias in node.names)]
-    used=[node.lineno for node in ast.walk(tree)
-          if isinstance(node,ast.Attribute) and isinstance(node.value,ast.Name)
-          and node.value.id=="pyglet"]
-    assert bound and used and min(bound)<min(used)
 
 
 def test_photometry_blocker_is_prioritised_before_experiment_qualification():

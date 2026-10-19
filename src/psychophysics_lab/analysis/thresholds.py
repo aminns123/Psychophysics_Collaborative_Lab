@@ -243,11 +243,7 @@ def analyse_thresholds(
     )
 
     entered_unit = manifest.get("experiment_values", {}).get("condition_unit")
-    if manifest.get("experiment_id") == "contrast_sensitivity":
-        x_label = ("Spatial frequency (cycles/degree)" if entered_unit in {"cycles_per_degree", "degrees_per_cycle"}
-                   else "Historical shader phase (uncalibrated legacy units)")
-    else:
-        x_label = "Condition"
+    x_label = "Condition"
     incomplete = manifest.get("status") != "completed"
     missing_ids = []
     states = manifest.get("adaptive_session", {}).get("staircases", {})

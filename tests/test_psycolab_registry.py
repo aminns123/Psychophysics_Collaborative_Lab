@@ -6,12 +6,12 @@ from psychophysics_lab.experiments._internal.registry import get_experiment, lis
 
 def test_csf_is_explicitly_registered():
     specs = list_experiments(include_historical=True)
-    assert {spec.id for spec in specs} >= {"contrast_sensitivity", "orientation_task", "orientation_adaptive"}
-    assert get_experiment("contrast_sensitivity") is specs[0]
+    assert {spec.id for spec in specs} >= {"legacy_contrast_sensitivity", "orientation_task", "orientation_adaptive"}
+    assert get_experiment("legacy_contrast_sensitivity") is specs[0]
 
 
 def test_csf_builds_legacy_setup_without_changing_defaults():
-    spec = get_experiment("contrast_sensitivity")
+    spec = get_experiment("legacy_contrast_sensitivity")
     profile = MonitorProfile(
         id="legacy_reference_display",
         display_name="Legacy",
