@@ -88,16 +88,16 @@ def test_new_advanced_experiment_reuses_builtin_line_stimulus(tmp_path):
 def test_csf_and_beginner_both_declare_phases_without_changing_csf_science():
     from psychophysics_lab.core.timeline import load_timeline
     beginner = get_experiment("example_experiment")
-    csf = get_experiment("legacy_contrast_sensitivity")
+    csf = get_experiment("contrast_sensitivity")
     from psychophysics_lab.experiments.example_experiment import make_trial
     ex = make_trial(beginner.field_defaults(), {"target":0}).resolve(beginner.field_defaults()).validate_slots(beginner.stimulus_slots)
-    cs = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
-                       timings=csf.field_defaults(), slots=csf.stimulus_slots)
+    from psychophysics_lab.experiments import contrast_sensitivity
+    cs=contrast_sensitivity.make_trial(csf.field_defaults(),{"target":0}).resolve(csf.field_defaults())
     assert len(ex.phases) == 6
-    assert len(cs.phases) == 5
+    assert len(cs.phases) == 3
     assert ex.phases[4].kind == cs.phases[-1].kind == "response"
     assert ex.phases[-1].kind == "record_state"  # update_experiment runs explicitly after presentation
-    assert csf.legacy_module == "psychophysics_lab._reference_csf.contrast_sensitivity_function"
+    assert csf.procedure.__module__ == "psychophysics_lab.experiments.contrast_sensitivity"
 
 
 def test_normal_tui_has_explicit_example_source_controls():
