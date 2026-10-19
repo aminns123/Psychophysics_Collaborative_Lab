@@ -65,8 +65,7 @@ def test_current_csf_preflight_rejects_frequency_above_nyquist():
         "frequencies_cpd":"2,31"
     })
     with pytest.raises(ValueError,match="sampling limit"):
-        validate_setup(SetupRequest("H001","new",CSF_SPEC.id,p.id,values),
-                       CSF_SPEC,p,mode="configuration")
+        validate_monitor(values,p)
 
 
 def test_virtual_pipeline_records_actual_selected_cpd_not_retired_shader_units(tmp_path):
