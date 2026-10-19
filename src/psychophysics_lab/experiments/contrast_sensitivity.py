@@ -28,8 +28,8 @@ from psychophysics_lab.researcher import (
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIXATION_MS = 500
 GRATING_MS = 300
-GRATING_OFFSET_DEG = 0.5
-GAUSSIAN_SIGMA_DEG = 1.0
+GRATING_OFFSET_DEG = 1.0
+GAUSSIAN_SIGMA_DEG = 0.5
 CORRECT_BEFORE_DECREASE = 4
 LOG_INCREASE = 0.36
 LOG_DECREASE = 0.30294
