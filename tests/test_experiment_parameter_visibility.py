@@ -53,7 +53,7 @@ def test_above_below_probes_follow_selected_offset_in_conditions_and_timeline(mo
     for label, sign in [("above_timeline", 1), ("below_timeline", -1)]:
         timeline = run.initialisation["resolution"][label]
         probe_phase = next(ph for ph in timeline["phases"] if ph["name"] == "probe")
-        assert probe_phase["placements"][-1]["y_deg"] == sign * distance_deg
+        assert probe_phase["stimuli"][-1]["y_deg"] == sign * distance_deg
 
 
 @pytest.mark.parametrize("bad", [-1.0, 0.0, float("nan"), float("inf")])
