@@ -51,12 +51,22 @@ FIELDS = (
     ),
     ConfigField(
         "grating_offset_deg",
-        "Grating distance left/right of fixation",
+        "Grating centre eccentricity (left/right)",
         "float",
         DEFAULT_GRATING_OFFSET_DEG,
         minimum=sys.float_info.min,
         units="degrees",
-        help_text="Distance of the grating centre from fixation on either side; chosen by the researcher.",
+        help_text="Positive angular distance from fixation. Left and right targets use opposite signs.",
+    ),
+    ConfigField(
+        "grating_sigma_deg",
+        "Gaussian grating envelope sigma",
+        "float",
+        GAUSSIAN_SIGMA_DEG,
+        minimum=0.001,
+        maximum=5.0,
+        units="degrees",
+        help_text="Standard deviation of the spatial Gaussian window, not the grating diameter.",
     ),
     ConfigField(
         "staircases_per_condition",
@@ -212,7 +222,7 @@ def prepare_stimuli(run, condition, state):
     return {
         "grating": run.stimulus_parameters(
             "grating",
-            sigma_deg=GAUSSIAN_SIGMA_DEG,
+            sigma_deg=run.values["grating_sigma_deg"],
             spatial_frequency_cpd=condition["frequency_cpd"],
             contrast=condition["contrast"],
             background=background,
@@ -354,7 +364,7 @@ def initialise_experiment(run, conditions):
         "frequencies_cpd": frequencies,
         "staircases_per_condition": settings["staircases_per_condition"],
         "target_offset_deg": settings["grating_offset_deg"],
-        "gaussian_sigma_deg": GAUSSIAN_SIGMA_DEG,
+        "gaussian_sigma_deg": settings["grating_sigma_deg"],
         "background_digital_intensity": background,
         "random_seed": run.seed,
         "adaptive_rule": {

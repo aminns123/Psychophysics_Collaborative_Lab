@@ -3,7 +3,7 @@
 This Python file replaces the built-in JSON procedure without changing its
 scientific choices. The old design and loader remain internal compatibility
 resources for saved data and independently tested historical designs.
-Target 0 = above (+2 degrees), 1 = below (-2 degrees); default keys F/J.
+Target 0 = above (+selected degrees), 1 = below (-selected degrees); default keys F/J.
 Correctness is equality of the target/response alternative indices. Conditions
 are balanced then shuffled using random_seed. Stop at trial_count responses.
 No adaptation or sound. All durations are milliseconds; 0 timeout waits for a key.
@@ -28,7 +28,13 @@ from psychophysics_lab.researcher import (
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
     ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000),
-    ConfigField("random_seed", "Condition seed", "int", 123, minimum=0),
+    ConfigField("random_seed", "Condition seed", "int", 123, minimum=0, units="integer seed"),
+    ConfigField(
+        "probe_vertical_offset_deg", "Line distance above/below fixation",
+        "float", 2.0, minimum=0.000001,
+        units="degrees",
+        help_text="Positive vertical angular displacement; above is + and below is -.",
+    ),
     ConfigField(
         "fixation_ms",
         "Fixation time",
@@ -86,7 +92,8 @@ SCIENTIFIC_SPEC = {'version': 'probe_above_below-1', 'response': 'Two named alte
 def make_conditions(settings):
     order = [i % 2 for i in range(settings["trial_count"])]
     random.Random(settings["random_seed"]).shuffle(order)
-    return [{"target": target, "probe_y_deg": 2.0 if target == 0 else -2.0} for target in order]
+    offset = settings["probe_vertical_offset_deg"]
+    return [{"target": target, "probe_y_deg": offset if target == 0 else -offset} for target in order]
 
 
 def choose_condition(run, conditions, state):
@@ -158,10 +165,11 @@ def initialise_experiment(run, conditions):
             "task": "A white vertical line is shown above or below a central fixation cross.",
             "condition_order": [run.responses.alternatives[c["target"]] for c in conditions],
             "trial_order_seed": run.values["random_seed"],
-            "above_timeline": make_trial(run.values, {"probe_y_deg": 2.0})
+            "probe_vertical_offset_deg": run.values["probe_vertical_offset_deg"],
+            "above_timeline": make_trial(run.values, {"probe_y_deg": run.values["probe_vertical_offset_deg"]})
             .resolve(run.values)
             .to_dict(),
-            "below_timeline": make_trial(run.values, {"probe_y_deg": -2.0})
+            "below_timeline": make_trial(run.values, {"probe_y_deg": -run.values["probe_vertical_offset_deg"]})
             .resolve(run.values)
             .to_dict(),
             "stimulus_slots": run.stimulus_snapshots,

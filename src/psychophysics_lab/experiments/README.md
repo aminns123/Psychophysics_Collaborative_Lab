@@ -9,7 +9,15 @@ also called 2AFTC here).
 ## Read every file in this order
 
 1. **Settings and stimuli:** `FIELDS`, `RESPONSES`, stimulus slots/defaults and
-   `PARADIGM`. The TUI supplies the selected values; this section gives defaults.
+   `PARADIGM`. All *researcher-adjustable experiment parameters* should be
+   declared here as `ConfigField` values with meaningful names, units, bounds
+   where physically or numerically necessary, and `help_text` for ambiguity.
+   The TUI supplies the selected values; this section gives defaults. The
+   selected values must be read from `run.values` (or `settings` inside
+   `make_trial` / `make_conditions`), not from frozen defaults further down.
+   Geometric relationships defining the task (e.g. a probe at its ellipse
+   centre or a target sign corresponding to the response alternatives) may
+   remain equations/invariants; explain them near the setting declarations.
 2. **Conditions and order:** `make_conditions(settings)` returns named condition
    dictionaries; `choose_condition(run, conditions, state)` selects one and sets
    its `target` (correct alternative index) and `value` (condition saved in data).
@@ -72,6 +80,32 @@ The edited custom probe retains its existing Draft/Test/Ready gate.
 `_internal/` holds discovery, declaration validation, source-name compatibility and
 historical design loading. Researchers do not edit it to add experiments.
 `__init__.py` is the required package entry point and contains no experiment science.
+
+## Editing scientific parameters consistently
+
+- **Experiment choices** such as condition positions, CSF grating eccentricity
+  and envelope width, ellipse ring radius/vertical centre, trial durations,
+  staircase settings and sound cues belong in the experiment's leading
+  `FIELDS` section. They must be reflected by the rendered timeline,
+  canonical trial measurements and scientific run summary.
+- **Stimulus appearance** such as the line's drawn width, grating phase or
+  Gabor diameter belongs in that stimulus's `PARAMETERS` in
+  `stimulus_library.py`; edit the stimulus class/preset, not a duplicate
+  experimental constant. The experiment can use a named field to vary an
+  appearance choice specifically for that study.
+- **Shared algorithms and coordinate conventions** belong in the shared
+  engine. For example, above/below uses the sign of a positive displacement;
+  a probe at the centre of an ellipse tracks that ellipse's centre. Do not
+  expose literal alternative indices or zero coordinate origins as misleading
+  "scientific settings".
+- Some examples use an authoritative `default_config` JSON that supplies
+  initial `values`. Keep declared Python fields, JSON keys, their defaults
+  and units coherent. Other JSON designs in `configs/experiment_designs/`
+  may be *historical compatibility inputs*, not the active Python protocol.
+- Regression tests should vary each editable field and test the *chosen*
+  value, not freeze a specific default (except a compatibility/default
+  round-trip test). Qualifying physical geometry, luminance and timing remains
+  a separate laboratory task.
 
 ## Contrast sensitivity naming
 

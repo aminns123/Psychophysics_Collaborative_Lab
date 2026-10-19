@@ -112,7 +112,19 @@ FIELDS += (
         maximum=1,
         units='digital increment',
     ),
-    ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1", units='b/a, unitless'),
+    ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1",
+                units="minor/major axis ratio (unitless)",
+                help_text="Comma-separated ratios from 0.5 to 1; each ratio defines a condition."),
+    ConfigField(
+        "major_axis_y_deg", "Ring and probe major-axis vertical position",
+        "float", 0.0, minimum=-5, maximum=5, units="degrees",
+        help_text="Both ring and probe use this common y coordinate (0 = fixation).",
+    ),
+    ConfigField(
+        "ring_radius_deg", "Ellipse outer horizontal radius",
+        "float", 0.6, minimum=0.17, maximum=3, units="degrees",
+        help_text="Outer semi-major axis; ellipse aspect ratio controls the vertical semi-axis.",
+    ),
     ConfigField(
         "auditory_cues", "Interval onset cues", "choice", True, choices=(True, False)
     ),
@@ -214,9 +226,9 @@ def prepare_stimuli(run, condition, state):
         background=background,
         contrast=condition["contrast"],
         probe_x_deg=condition["x_deg"],
-        probe_y_deg=0.0,
-        ring_radius_deg=0.6,
-        ring_y_deg=0.0,
+        probe_y_deg=settings["major_axis_y_deg"],
+        ring_radius_deg=settings["ring_radius_deg"],
+        ring_y_deg=settings["major_axis_y_deg"],
         aspect_ratio=condition["aspect_ratio"],
         ring_present=condition["ring"],
         ring_increment=settings["ring_increment"],
@@ -359,6 +371,8 @@ def initialise_experiment(run, conditions):
         "protocol": dict(SCIENTIFIC_SPEC),
         "staircases_per_condition": settings["staircases_per_condition"],
         "condition_definitions": conditions,
+        "major_axis_y_deg": settings["major_axis_y_deg"],
+        "ring_radius_deg": settings["ring_radius_deg"],
         "hardware_equivalence": False,
     }
     run.initialise(
@@ -448,6 +462,9 @@ def validate_settings(values):
                 or any(not 0.5 <= x <= 1 for x in ratios)
             ):
                 yield "Choose distinct ellipse aspect ratios within 0.5–1."
+            elif (values["ring_conditions"] != "base_only"
+                  and any(values["ring_radius_deg"] * ratio <= 0.16 for ratio in ratios)):
+                yield "Ellipse ring radius times b/a must exceed the 0.16-degree inner-axis inset."
     except ValueError:
         yield "Enter finite comma-separated numeric condition values."
     if values["starting_probe_intensity"] < values["background_intensity"]:
