@@ -246,7 +246,7 @@ class ExperimentQualificationScreen(Screen):
         if spec.id in self.profile.qualified_experiments:
             text+='\n\nQualification is already declared; unchanged Save will not create a revision.'
         for key in ('binding','geometry','luminance','timing','contrast'):
-            self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='contrast_sensitivity'
+            self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='legacy_contrast_sensitivity'
         self.query_one('#qualification-checks',Static).update(text)
         failures=[item for item in checks if not item['passed']]
         self.query_one('#qualification-overview',Static).update(
@@ -285,7 +285,7 @@ class ExperimentQualificationScreen(Screen):
                 from .profiles import ProfileScreen
                 self.app.push_screen(ProfileScreen(profile=self.profile,focus_field='profile-binding'))
             elif key=='contrast':
-                self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,participant_id='synthetic_preview',session_mode='new',experiment=spec,monitor_profile_id=self.profile.id,defaults=values or spec.field_defaults(),focus_field='starting_probe_intensity' if spec.id=='contrast_sensitivity' else None))
+                self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,participant_id='synthetic_preview',session_mode='new',experiment=spec,monitor_profile_id=self.profile.id,defaults=values or spec.field_defaults(),focus_field='starting_probe_intensity' if spec.id=='legacy_contrast_sensitivity' else None))
             else: self.app.push_screen(PhysicalVerificationScreen(self.profile,experiment_id=spec.id,focus_category=key+'_status'))
             return
         if event.button.id=='qualification-back':

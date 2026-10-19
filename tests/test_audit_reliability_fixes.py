@@ -147,7 +147,7 @@ def test_truncated_journal_tail_is_reported_after_readable_prefix(tmp_path, tail
         next(records)
 
 
-@pytest.mark.parametrize("identity,units", [("csf_thesis", "digital_peak_to_peak"),
+@pytest.mark.parametrize("identity,units", [("contrast_sensitivity", "digital_peak_to_peak"),
     ("line_position_baseline", "digital_probe_increment"), ("line_position_flanker", "digital_probe_increment"),
     ("ellipse_centre", "digital_probe_increment"), ("ellipse_major_axis", "digital_probe_increment")])
 def test_saved_dictionary_agrees_with_actual_scientific_strength(tmp_path, identity, units):
@@ -223,7 +223,7 @@ def test_png_preview_preserves_positive_y_up_for_array_equations(tmp_path, monke
     assert np.all(png[-1, :, :3] == 0)
 
 
-@pytest.mark.parametrize("identity,selected", [("csf_thesis", {"frequencies_cpd": "32"}),
+@pytest.mark.parametrize("identity,selected", [("contrast_sensitivity", {"frequencies_cpd": "32"}),
                                               ("line_position_flanker", {"flanker_cpd": 32., "probe_vertical_offset_deg": .5})])
 def test_condition_sampling_feedback_does_not_block_editing_or_simulation(identity, selected):
     spec = get_experiment(identity)
@@ -239,7 +239,7 @@ def test_condition_sampling_feedback_does_not_block_editing_or_simulation(identi
 
 
 def test_sampling_feedback_covers_the_raster_backends_lower_pixel_axis_limit():
-    spec = get_experiment("csf_thesis")
+    spec = get_experiment("contrast_sensitivity")
     profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"], expected_resolution_px=(1920, 540))
     values = spec.field_defaults() | {"frequencies_cpd": "20"}
     assert display_configuration_notes(spec, profile, values)
@@ -337,7 +337,7 @@ def test_review_shows_condition_limit_without_disabling_simulation(tmp_path):
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path)
         async with app.run_test(size=(110, 45)) as pilot:
             identity = profile.id
-            spec = get_experiment("csf_thesis")
+            spec = get_experiment("contrast_sensitivity")
             request = SetupRequest("synthetic_preview", "new", spec.id, identity,
                                    spec.normalise_values(spec.field_defaults() | {"frequencies_cpd": "32"}), str(tmp_path))
             app.run_intent = "simulation"

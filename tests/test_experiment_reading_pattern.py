@@ -276,6 +276,10 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         analyse=False,
     )
     assert artifacts.accepted_trials > 0
+    # Ignore the explicit pre-acquisition render planning, before interpretation.
+    first_interpretation = calls.index("interpret")
+    assert all(c == "prepare" for c in calls[:first_interpretation])
+    calls = calls[first_interpretation-1:]
     assert calls == [
         stage
         for _ in range(artifacts.accepted_trials)

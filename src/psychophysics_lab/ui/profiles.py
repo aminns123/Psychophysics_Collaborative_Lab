@@ -165,7 +165,7 @@ class ProfileScreen(Screen):
                 "physical timing evidence separately before choosing Verified. "
                 "Only declare an experiment qualified after the laboratory has "
                 "reviewed all its requirements. Use the experiment ID, e.g. "
-                "'contrast_sensitivity', in the qualified-experiments field; "
+                "'legacy_contrast_sensitivity', in the qualified-experiments field; "
                 "a ruler check alone is insufficient.",
                 classes="info-card",
             )

@@ -11,6 +11,14 @@ from pathlib import Path
 from statistics import median, mean, geometric_mean
 
 
+def expected_staircases(conditions):
+    expected = {}
+    for condition in conditions:
+        key = str(condition.get("value", condition.get("frequency_cpd")))
+        expected.setdefault(key, []).append(condition["id"])
+    return expected
+
+
 def estimate(rows, rule, expected, status):
     if (
         rule.get("version") != 1
@@ -50,7 +58,7 @@ def estimate(rows, rule, expected, status):
     conditions = {}
     excluded = {}
     reversal_counts = {}
-    allowed = status in {"completed", "max_trials_reached"}
+    allowed = status in {"completed", "max_trials_reached", "aborted_by_user"}
     for condition, ids in expected.items():
         valid = []
         for identity in ids:
@@ -69,7 +77,7 @@ def estimate(rows, rule, expected, status):
             )
             if not allowed or not complete or len(reversal_values) < retained:
                 excluded[str(identity)] = (
-                    "run error/abort, incomplete staircase, or insufficient reversals"
+                    "run error, incomplete staircase, or insufficient reversals"
                 )
                 continue
             value = reducer(reversal_values[-retained:])

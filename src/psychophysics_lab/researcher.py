@@ -22,7 +22,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                calibration_requirements=(), calibration_not_applicable="", monitor_capabilities=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
                acquisition_block_reason="", historical=False, scientific_spec=None,
-               trial_column_overrides=None, migrate_values=None):
+               trial_column_overrides=None, migrate_values=None, data_directory_name=""):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
@@ -35,7 +35,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         dictionary.setdefault(column, {}).update(overrides)
     return ExperimentSpec(id=id, display_name=name, description=description,
         legacy_module=procedure.__module__, legacy_experiment_type=id,
-        fields=tuple(fields), procedure=procedure, adaptive=adaptive,
+        fields=tuple(fields), procedure=procedure, adaptive=adaptive, data_directory_name=data_directory_name,
         response_paradigm=responses, source_paths=tuple(source_paths),
         configure_module="psychophysics_lab.researcher", configure_function="configure",
         validator=validator, monitor_validator=monitor_validator, migrate_values=migrate_values,

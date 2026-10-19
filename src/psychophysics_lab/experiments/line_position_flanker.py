@@ -1,11 +1,12 @@
 """Line Position Flanker: a scientific design in visual degrees, separate from historical replay.
 
-Source: thesis Chapter 4, Figures 4.3B/4.5, Tables 4.3/4.6. Study-specific
+Researcher-defined psychophysics procedure. Study-specific
 choices remain TUI controls; vertical separation and observer-specific flanker frequency
-must be supplied rather than copied from historical pixels. No claim of calibrated
+must be supplied rather than copied from historical pixels. No prior CSF run is required. No claim of calibrated
 physical contrast or timing is made by this software implementation.
 """
 
+from psychophysics_lab.analysis.primary import expected_staircases
 import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
@@ -63,7 +64,7 @@ FIELDS = (
         minimum=0,
         maximum=1,
         units='digital intensity, 0 to 1',
-        help_text="The inducing grating adds +/-0.009. Background must be at least 0.009 so its dark bands stay at or above digital zero. Probe and flanker share the upper headroom shown in Review.",
+        help_text="The inducing grating adds +/-0.009. Background must be in [0.009, 0.991] so the grating stays in gamut. Only pixels where the probe overlaps the flanker share headroom.",
     ),
     ConfigField(
         "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1,
@@ -121,7 +122,7 @@ FIELDS += (
 FIELDS += (
     ConfigField(
         "flanker_cpd",
-        "Flanker frequency from prior observer CSF (required)",
+        "Flanker spatial frequency (required)",
         "float",
         None,
         minimum=0.01,
@@ -146,7 +147,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected from prior CSF.",
+    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected independently by the researcher.",
 }
 
 
@@ -237,8 +238,8 @@ def interpret_response(condition, response):
 
 
 def maximum_contrast(settings, condition):
-    """Digital headroom for the additive scene (or symmetric grating)."""
-    return (1 - settings["background_intensity"] - 0.009)
+    """Probe increment bounded by resolved local pixel overlap, never remote layers."""
+    return condition.get("maximum_probe_increment", 1 - settings["background_intensity"])
 
 
 def change_contrast(state, response, step):
@@ -287,6 +288,8 @@ def trial_record(run, condition, state):
 
 def initialise_experiment(run, conditions):
     settings = run.values
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+    resolve_probe_limits(run, conditions, prepare_stimuli)
     algorithm = run.adaptive(
         {
             c["id"]: StaircaseConfig(
@@ -328,7 +331,8 @@ def initialise_experiment(run, conditions):
     }
     run.initialise(
         expected_trials=settings["max_trials"],
-        resolution=description,
+        resolution=description | {"primary_estimator": primary_rule(settings, conditions),
+                                  "expected_staircases": expected_staircases(conditions)},
         background_intensity=settings["background_intensity"],
     )
     return {
@@ -346,6 +350,22 @@ def is_finished(run, conditions, state):
     return state["adaptive"].status != "running"
 
 
+def primary_rule(settings, conditions):
+    return {
+            "version": 1,
+            "value_column": "presented_display_contrast",
+            "within_staircase": "geometric_mean",
+            "across_staircases": "arithmetic_mean",
+            "retained_reversals": settings["threshold_reversals"],
+            "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(settings, c)]
+                for c in conditions
+            },
+            "units": "digital_probe_increment",
+        }
+
+
 def finish_experiment(run, conditions, state):
     run.save_resolution(
         **(
@@ -355,22 +375,7 @@ def finish_experiment(run, conditions, state):
     )
     run.complete_adaptive(state["adaptive"])
     # One declared estimator is used here and by post-hoc analysis.
-    run.save_primary(
-        {
-            "version": 1,
-            "value_column": "presented_display_contrast",
-            "within_staircase": "geometric_mean",
-            "across_staircases": "arithmetic_mean",
-            "retained_reversals": run.values["threshold_reversals"],
-            "completion": "all configured staircases complete",
-            "strength_bounds": {
-                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
-                for c in conditions
-            },
-            "units": "digital_probe_increment",
-        },
-        conditions,
-    )
+    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def procedure(run):
@@ -412,14 +417,13 @@ def validate_settings(values):
     difference = values["starting_probe_intensity"] - values["background_intensity"]
     if 0 < difference < sys.float_info.min:
         yield "Starting probe intensity is closer to background than the positive log-staircase numeric floor; use exact background or a representable larger difference."
-    if values["background_intensity"] < 0.009:
-        yield "Background intensity must be at least 0.009 for this flanker procedure: its dark grating bands subtract 0.009."
+    if not 0.009 <= values["background_intensity"] <= 0.991:
+        yield f"Background intensity {values['background_intensity']:g} must be in [0.009, 0.991]: flanker bands add/subtract 0.009."
     if values["background_intensity"] == 1:
         yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
     if values["threshold_reversals"] > values["reversal_termination"]:
         yield "Threshold reversal count exceeds reversal termination."
-    if (values["starting_probe_intensity"] - values["background_intensity"]) + 0.009 > 1 - values["background_intensity"]:
-        yield "Starting probe intensity plus any additive ring/flanker layer exceeds 1. Review the scene headroom; no intensity was clipped."
+    # Local overlap is checked on the resolved stimulus grid before acquisition.
 
 
 def validate_monitor(settings, profile):

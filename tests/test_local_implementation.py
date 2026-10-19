@@ -31,7 +31,7 @@ def profile():
     return MonitorProfile("bench", "Bench monitor", .61, .35, 59.94, 1,
                           expected_resolution_px=(1920,1080), origin="local",
                           display_binding={"index":1,"x":1920,"y":0,"width":1920,"height":1080,"device_id":"monitor-B"},
-                          qualified_experiments=("contrast_sensitivity",))
+                          qualified_experiments=("legacy_contrast_sensitivity",))
 
 @pytest.mark.parametrize("value", [float('nan'),float('inf'),float('-inf'),True,"NaN"])
 def test_numeric_configuration_rejects_invalid_numbers(value):
@@ -80,7 +80,7 @@ def test_windows_display_identity_uses_pyglet_api():
     assert screen_info(screen,0).refresh_hz == 59.94
 
 def test_preflight_catches_changed_profiles_and_verified_luminance_mismatch():
-    spec = get_experiment('contrast_sensitivity')
+    spec = get_experiment('legacy_contrast_sensitivity')
     values=spec.field_defaults() | {'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374}
     request=SetupRequest('S001','new',spec.id,'bench',values)
     checked=validate_setup(request,spec,profile(),mode="configuration")
@@ -229,7 +229,7 @@ def test_extension_adapter_runs_without_csf_configuration_or_hardware(tmp_path,m
 
 def test_primary_setup_error_is_preserved_with_final_manifest(tmp_path,monkeypatch):
     import psychophysics_lab.core.runner as runner
-    values=get_experiment('contrast_sensitivity').field_defaults()|{'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374,'condition_unit':'legacy_shader_radians','starting_probe_intensity':.7}
+    values=get_experiment('legacy_contrast_sensitivity').field_defaults()|{'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374,'condition_unit':'legacy_shader_radians','starting_probe_intensity':.7}
     error=RuntimeError('intentional initial config write failure')
     original=runner.atomic_write_json
     def failing(path,payload):
@@ -237,7 +237,7 @@ def test_primary_setup_error_is_preserved_with_final_manifest(tmp_path,monkeypat
         return original(path,payload)
     monkeypatch.setattr(runner,'atomic_write_json',failing)
     with pytest.raises(RuntimeError) as caught:
-        run_request(SetupRequest('S001','new','contrast_sensitivity','legacy_reference_display',values),repo_root=ROOT,data_root=tmp_path/'data')
+        run_request(SetupRequest('S001','new','legacy_contrast_sensitivity','legacy_reference_display',values),repo_root=ROOT,data_root=tmp_path/'data')
     assert caught.value is error
     manifests=list((tmp_path/'data').rglob('manifest.json'))
     assert len(manifests)==1

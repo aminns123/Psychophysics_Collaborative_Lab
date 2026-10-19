@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_all_human_fields_and_virtual_only_observer_controls_exposed():
-    scenario = get_scenario("contrast_sensitivity", "csf_short_censored")
-    spec = get_experiment("contrast_sensitivity")
+    scenario = get_scenario("legacy_contrast_sensitivity", "csf_short_censored")
+    spec = get_experiment("legacy_contrast_sensitivity")
     experiment_values = effective_experiment_values(scenario)
     assert set(experiment_values) == {f.key for f in spec.fields}
     assert experiment_values["n_down"] == 2
@@ -42,7 +42,7 @@ def test_all_human_fields_and_virtual_only_observer_controls_exposed():
 def test_complete_run_records_human_equivalent_adaptive_overrides(tmp_path):
     root = tmp_path / "local_psychophysics_data"
     result = run_scenario(
-        experiment_id="contrast_sensitivity", scenario_id="csf_short_censored",
+        experiment_id="legacy_contrast_sensitivity", scenario_id="csf_short_censored",
         data_root=root, repo_root=ROOT, seeds=(441,),
         observer_parameters={"slope": 4.0, "threshold": .07},
         experiment_values={
@@ -138,7 +138,7 @@ def test_tui_exposes_human_config_and_step_calculator(tmp_path):
 
 def test_data_browser_can_open_saved_staircases_without_hardware(tmp_path, monkeypatch):
     root = tmp_path / "local_psychophysics_data"
-    result = run_scenario(experiment_id="contrast_sensitivity",
+    result = run_scenario(experiment_id="legacy_contrast_sensitivity",
                           scenario_id="csf_short_censored", data_root=root, repo_root=ROOT)
     opened = []
     real_open_png = image_viewer.open_analysis_png

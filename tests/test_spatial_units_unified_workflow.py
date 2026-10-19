@@ -69,7 +69,7 @@ def test_preflight_rejects_unrenderable_physical_frequencies_when_resolution_kno
     values = dict(DEFAULT_VALUES,
                   condition_unit="cycles_per_degree",condition_values="2,500",
                   number_conditions=2)
-    request = SetupRequest("H001","new","contrast_sensitivity",
+    request = SetupRequest("H001","new","legacy_contrast_sensitivity",
                            "legacy_reference_display",values)
     with pytest.raises(ValueError,match="sampling limit"):
         validate_setup(request, CSF_SPEC,p)
@@ -98,7 +98,7 @@ def test_review_can_choose_real_or_virtual_with_one_condition_configuration(tmp_
     base = dict(DEFAULT_VALUES, condition_unit="cycles_per_degree",
                 condition_values="2,8", number_conditions=2)
     checked = CSF_SPEC.normalise_values(base)
-    request = SetupRequest("H001","new","contrast_sensitivity",profile.id,
+    request = SetupRequest("H001","new","legacy_contrast_sensitivity",profile.id,
                            checked, str(tmp_path/"external"))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"external")
@@ -148,7 +148,7 @@ def test_human_cpd_acquisition_blocks_uncalibrated_resolution_but_virtual_path_w
     assert p.expected_resolution_px is None
     values = CSF_SPEC.normalise_values(dict(DEFAULT_VALUES,
         condition_unit="cycles_per_degree",condition_values="2,8"))
-    request = SetupRequest("H021","new","contrast_sensitivity",p.id,
+    request = SetupRequest("H021","new","legacy_contrast_sensitivity",p.id,
                            values,str(tmp_path/"workspace"))
     async def scenario():
         app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/"workspace")

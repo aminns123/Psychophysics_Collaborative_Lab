@@ -122,7 +122,7 @@ def test_human_preflight_and_direct_calls_are_blocked_before_display():
         with pytest.raises(ValueError,match="Development reconstruction"):
             spec.procedure(type("Run",(),{"synthetic":False})())
     from psychophysics_lab.experiments._internal.flanker_response import SPEC
-    assert SPEC is get_experiment("contrast_sensitivity")
+    assert SPEC is get_experiment("legacy_contrast_sensitivity")
     assert SPEC.procedure is None
 
 
@@ -189,5 +189,5 @@ def test_adaptive_completion_requires_owned_stopped_algorithm(tmp_path):
 def test_registered_development_protocol_does_not_change_csf_default():
     from psychophysics_lab.experiments._internal.registry import list_experiments
     specs = list_experiments(include_historical=True)
-    assert specs[0].id == "contrast_sensitivity"
+    assert specs[0].id == "legacy_contrast_sensitivity"
     assert {s.id for s in specs if s.acquisition_block_reason} >= {"base_flanker","indirect_flanker","ellipse_2d"}

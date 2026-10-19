@@ -11,7 +11,7 @@ from textual.widgets import Button, Collapsible, Input, Static
 from psychophysics_lab.adaptive import AdaptiveRun, AdaptiveAlgorithm, AdaptiveSelection, StaircaseConfig, Step
 from psychophysics_lab.adaptive.registry import register_algorithm
 from psychophysics_lab.adaptive.steps import paired_step
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.experiments._internal.responses import LEFT_RIGHT, TWO_INTERVAL, ResponseParadigm
 from _manual_authoring_fixture import scaffold
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen

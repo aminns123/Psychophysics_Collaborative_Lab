@@ -53,7 +53,7 @@ def test_stages_use_current_profile_hash_and_human_flags(tmp_path):
             LuminanceCalibrationPoint(0.0, 0.5),
             LuminanceCalibrationPoint(1.0, 140.0),
         ),
-        qualified_experiments=("contrast_sensitivity",),
+        qualified_experiments=("legacy_contrast_sensitivity",),
     )
     status = stage_states(profile, tmp_path)
     assert status["bind"][0] and status["luminance"][0]

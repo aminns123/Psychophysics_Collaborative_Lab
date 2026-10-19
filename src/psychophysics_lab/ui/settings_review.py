@@ -79,8 +79,13 @@ def parameter_sources(description, slot):
 
 def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     """One visible table of the values that feed the selected procedure."""
-    rows = [("Experiment", field.display_label, str(values[field.key]), "Experiment setting") for field in spec.fields]
-    rows.extend(probe_intensity_rows(spec, values))
+    saved = spec.settings_snapshot()
+    defaults = saved["values"] if saved else {f.key: f.default for f in spec.fields}
+    def origin(field):
+        base = (saved["file_identity"] if saved and field.key in saved["document"]["values"] else "Python ConfigField default")
+        return f"Selected value (TUI/saved setup); {base} = {defaults[field.key]!r}"
+    rows = [("Experiment", field.display_label, str(values[field.key]), origin(field)) for field in spec.fields]
+    rows.extend(probe_intensity_rows(spec, values, conditions=description.get("conditions")))
     if spec.adaptive:
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
     if spec.response_paradigm:
@@ -92,7 +97,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         stimulus = get_stimulus(identity)
         effective = description["stimuli"].get(slot, selected["document"]["parameters"])
         for field in stimulus.parameters:
-            source = "Selected stimulus parameter"
+            source = f"Selected stimulus: {selected['file_identity']} (Python defaults fill missing keys)"
             if field.key in description["overrides"].get(slot, {}):
                 source = "Experiment-controlled; sample" if field.key in parameter_sources(description, slot) else "Base parameter used by experiment; sample"
             rows.append((slot, field.display_label, str(effective[field.key]), source))
@@ -127,7 +132,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     return rows
 
 
-def probe_intensity_rows(spec, values):
+def probe_intensity_rows(spec, values, *, conditions=None):
     """Explain declared bright-probe log steps in digital units, not photometry.
 
     Read the experiment's own maximum and shared update arithmetic. No separate
@@ -150,7 +155,7 @@ def probe_intensity_rows(spec, values):
     try:
         # Some study conditions are still incomplete while typing. The shared
         # minimum condition fields can nevertheless resolve the exact ceiling.
-        conditions = module.make_conditions(values)
+        conditions = conditions or module.make_conditions(values)
         bounds = [module.maximum_contrast(values, condition) for condition in conditions]
     except (ValueError, TypeError, KeyError):
         bounds = []

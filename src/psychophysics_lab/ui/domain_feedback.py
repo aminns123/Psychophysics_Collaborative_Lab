@@ -105,9 +105,7 @@ def diagnostic_domains(screen):
 
 
 def observer_domain(experiment_id,key,value):
-    if experiment_id=='contrast_sensitivity':
-        if key=='lapse': return 'finite 0 ≤ lapse < 0.5'
-        if key in ('threshold','preferred_condition','tuning_width_octaves','slope'): return 'positive finite number'
+    pass  # Retired protocol branch removed.
     if isinstance(value,bool): return 'true or false'
     if isinstance(value,int): return 'whole number; selected observer validates its domain'
     if isinstance(value,float): return 'finite number; selected observer validates its domain'

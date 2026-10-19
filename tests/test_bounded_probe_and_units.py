@@ -71,7 +71,7 @@ def test_run_continues_at_ceiling_saves_answers_and_flags_boundary_affected_resu
         if name.endswith('flanker'): values['flanker_cpd'] = 2.
     elif name.startswith('ellipse_'):
         values['ring_increment'] = .1
-    identity = 'csf_thesis' if name == 'contrast_sensitivity' else name
+    identity = 'contrast_sensitivity' if name == 'contrast_sensitivity' else name
     artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path/'data', experiment_id=identity,
                             values=values, analyse=False)
     assert artifacts.status == 'max_trials_reached'
@@ -84,7 +84,7 @@ def test_run_continues_at_ceiling_saves_answers_and_flags_boundary_affected_resu
     assert result['boundary_warning'] and not result['condition_thresholds']
     assert all(check.passed for check in validate_run(artifacts.run_directory))
     if name.startswith('line_'):
-        assert {float(row['next_display_contrast']) for row in rows} == { .75 if name.endswith('baseline') else .741 }
+        assert {float(row['next_display_contrast']) for row in rows} == {.75}  # At x=0 the probe does not overlap the flanker ending at x=-0.5.
         traces = json.loads((artifacts.run_directory/'trial_actions.json').read_text())['trials']
         for trial in traces:
             tones = [e['audio'] for e in trial['events'] if 'audio' in e]

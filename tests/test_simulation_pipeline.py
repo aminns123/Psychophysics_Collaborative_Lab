@@ -82,7 +82,7 @@ def test_virtual_observers_share_human_data_root_without_touching_human_files(tm
     human.mkdir()
     sentinel = human / "human_trials.tsv"
     sentinel.write_bytes(b"DO NOT CHANGE")
-    request = SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display", {})
+    request = SetupRequest("H001", "new", "legacy_contrast_sensitivity", "legacy_reference_display", {})
     save_workspace_state(data_root, request, status="completed")
     original_state = (data_root / "psycolab_data_config.json").read_bytes()
 
@@ -112,10 +112,10 @@ def test_virtual_ids_are_reserved_and_existing_unmarked_ids_are_not_adopted(tmp_
     assert sentinel.read_bytes() == b"DO NOT CHANGE"
 
     with pytest.raises(ValueError, match="reserved"):
-        run_request(SetupRequest("synthetic_77", "new", "contrast_sensitivity",
+        run_request(SetupRequest("synthetic_77", "new", "legacy_contrast_sensitivity",
                                  "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root)
     with pytest.raises(ValueError, match="synthetic_"):
-        run_request(SetupRequest("real_person", "new", "contrast_sensitivity",
+        run_request(SetupRequest("real_person", "new", "legacy_contrast_sensitivity",
                                  "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root,
                     simulation=SimulationRun(data_root, {"seed": 1}, lambda *args: None))
     with pytest.raises(ValueError, match="separate folder"):
@@ -134,10 +134,10 @@ def test_default_simulator_uses_selected_external_human_data_root(tmp_path, monk
 def test_simulator_failure_stays_synthetic_and_finalises(tmp_path,monkeypatch):
     from simulations import registry
     from dataclasses import replace
-    original=registry.get_simulation("contrast_sensitivity")
+    original=registry.get_simulation("legacy_contrast_sensitivity")
     def fail(*args):
         raise RuntimeError("synthetic test failure")
-    monkeypatch.setitem(registry._REGISTRY,"contrast_sensitivity",replace(original,runtime_factory=lambda *args:fail))
+    monkeypatch.setitem(registry._REGISTRY,"legacy_contrast_sensitivity",replace(original,runtime_factory=lambda *args:fail))
     workspace=tmp_path/"psycolab_simulations"
     with pytest.raises(RuntimeError,match="synthetic test failure"):
         simulate(workspace=workspace,repo_root=ROOT)

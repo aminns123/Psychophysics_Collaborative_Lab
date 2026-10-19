@@ -61,10 +61,10 @@ def test_normal_catalogs_hide_history_and_explicit_replay_remains_available():
         "base_flanker",
         "indirect_flanker",
         "ellipse_2d",
-        "contrast_sensitivity",
+        "legacy_contrast_sensitivity",
     ):
         assert get_experiment(identity).historical
-    assert list_scenarios("contrast_sensitivity")  # explicit compatibility request
+    assert list_scenarios("legacy_contrast_sensitivity")  # explicit compatibility request
 
 
 def test_every_normal_protocol_declares_its_scientific_interpretation():
@@ -123,7 +123,7 @@ def test_ellipse_intervals_preserve_the_actual_discrimination():
 
 
 def test_small_contrasts_survive_scientific_raster_but_preview_is_explicitly_eight_bit():
-    stimulus = get_stimulus("thesis_csf_grating")
+    stimulus = get_stimulus("contrast_sensitivity_grating")
     defaults = {f.key: f.default for f in stimulus.parameters}
     a, b = defaults | {"contrast": 0.001}, defaults | {"contrast": 0.0001}
     assert not np.array_equal(render_values(stimulus, a), render_values(stimulus, b))
@@ -149,7 +149,7 @@ def test_thin_probe_preserves_integrated_area_and_ring_never_silently_clips():
     )
     with pytest.raises(ValueError, match="gamut"):
         stimulus.validate_parameters(
-            defaults | {"ring_present": True, "ring_increment": 0.49}
+            defaults | {"ring_present": True, "ring_increment": 0.51}
         )
     with pytest.raises(ValueError, match="inner axes"):
         stimulus.validate_parameters(
@@ -271,7 +271,7 @@ def test_full_pipeline_primary_matches_posthoc_and_keeps_protocol_description(tm
     artifacts, _ = simulate(
         repo_root=ROOT,
         data_root=tmp_path,
-        experiment_id="csf_thesis",
+        experiment_id="contrast_sensitivity",
         seed=5,
         values={
             "frequencies_cpd": "2",
@@ -408,7 +408,7 @@ def test_finalisation_failure_revokes_a_previously_computed_primary_result(
     artifacts, _ = simulate(
         repo_root=ROOT,
         data_root=tmp_path,
-        experiment_id="csf_thesis",
+        experiment_id="contrast_sensitivity",
         seed=5,
         values={
             "frequencies_cpd": "2",

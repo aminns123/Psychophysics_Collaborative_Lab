@@ -84,22 +84,7 @@ def human_requirements(spec, profile, values=None):
             add(key,check['name'],check['passed'],check['detail'],"calibration" if key=="binding" else "verification",stage="bind" if key=="binding" else None)
     if "luminance" in spec.calibration_requirements and photometry_is_test_data(profile) and not any(row['key']=='luminance' for row in rows):
         add("luminance","Physical photometry",False,"Fake/synthetic photometry cannot support human acquisition.","verification")
-    if spec.id=="contrast_sensitivity" and values:
-        if values.get("condition_unit") != "legacy_shader_radians":
-            add("sampling","Fullscreen pixel resolution",bool(profile.expected_resolution_px),
-                "Physical cpd acquisition needs expected fullscreen pixel resolution; bind the display and check its actual framebuffer.","calibration",stage="bind")
-        from ..stimuli.contrast_validation import starting_contrast_limits,contrast_limit_text
-        try:
-            result=starting_contrast_limits(float(values["Background_Screen_intensity"]),float(values["starting_probe_intensity"]),float(values["logUNIT_UP"]) if "logUNIT_UP" in values else None)
-            detail=contrast_limit_text(float(values["Background_Screen_intensity"]),float(values["starting_probe_intensity"]),float(values["logUNIT_UP"]) if "logUNIT_UP" in values else None)
-            passed=result['initial_valid']
-        except (ValueError,TypeError,KeyError) as exc:
-            detail=str(exc); passed=False
-        if not passed:
-            detail="Grating command may clip. " + detail
-        add("contrast","Digital contrast range",passed,detail,"settings",field="starting_probe_intensity")
-        add("adaptive_range","Adaptive contrast boundary policy",True,
-            "A valid initial command does not guarantee safe later steps. The runtime rejects unsafe human draws and preserves accepted data, without clamping or altered reversals.","settings",field="logUNIT_UP",required=False)
+    pass  # Retired protocol branch removed.
     return rows
 
 
@@ -171,12 +156,6 @@ def validate_setup(request, spec, profile, *, mode="human"):
             validate_geometry(profile, profile.expected_resolution_px, get_stimulus(document['stimulus_id']), document['parameters'])
     if spec.monitor_validator and (mode == "human" or spec.historical):
         spec.monitor_validator(values,profile)
-    if spec.id == "contrast_sensitivity" and values.get("condition_unit") != "legacy_shader_radians":
-        from .._reference_csf.experiment_definition import resolved_condition_frequencies
-        from ..stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
-        conditions = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
-        if profile.expected_resolution_px:
-            validate_requested_cpd(conditions, resolve_spatial_geometry(profile, profile.expected_resolution_px))
     request = replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()), stimulus_snapshots=snapshots)
     if mode == "human":
         from .researcher_override import outstanding_requirements, validate_researcher_override

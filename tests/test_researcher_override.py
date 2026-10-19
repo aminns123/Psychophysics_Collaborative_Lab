@@ -32,7 +32,7 @@ def setup(tmp_path):
         geometry_status="unverified", calibration_status="unverified",
         timing_status="unverified", luminance_calibration=(), calibration_method="",
     ))
-    spec = get_experiment("csf_thesis")
+    spec = get_experiment("contrast_sensitivity")
     request = SetupRequest("H001", "new", spec.id, profile.id,
                            spec.field_defaults() | {"max_trials": 4}, str(tmp_path / "human"))
     return request, spec, profile
@@ -291,19 +291,6 @@ def test_synthetic_photometry_stays_synthetic_and_unverified(setup):
     assert photometry_is_test_data(profile) and not profile.has_verified_luminance_mapping
 
 
-def test_retained_legacy_csf_qualification_override_keeps_contrast_guard(setup):
-    request, _, profile = setup
-    spec = get_experiment("contrast_sensitivity")
-    values = spec.field_defaults() | {
-        "Max_monitor_Luminance": 500., "Background_Luminance": 25.,
-        "Background_Screen_intensity": .25, "starting_probe_intensity": .5,
-    }
-    request = replace(request, experiment_id=spec.id, experiment_values=values)
-    approved = authorize((request, spec, profile))
-    assert "qualification" in approved.researcher_override.waived_requirements
-    assert validate_setup(approved, spec, profile) == approved
-    with pytest.raises(ValueError, match="clip"):
-        authorize((replace(request, experiment_values=values | {"starting_probe_intensity": 1.}), spec, profile))
 
 
 def test_early_configuration_failure_keeps_deliberate_decision(setup, monkeypatch):
@@ -323,7 +310,7 @@ def test_early_configuration_failure_keeps_deliberate_decision(setup, monkeypatc
 
 @pytest.mark.parametrize("identity", [
     "orientation_task", "line_position_baseline", "line_position_flanker",
-    "ellipse_major_axis", "ellipse_centre", "base_flanker", "indirect_flanker", "ellipse_2d",
+    "ellipse_major_axis", "ellipse_centre",
 ])
 def test_other_registered_procedure_gates_use_same_decision(setup, monkeypatch, identity):
     request, _, profile = setup

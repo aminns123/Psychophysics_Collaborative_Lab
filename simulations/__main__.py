@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .csf import CSFObserver
+from .psychometric import PsychometricObserver
 from .run import simulate
 
 
@@ -26,9 +26,6 @@ def main(argv=None) -> int:
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--seeds", help="Comma-separated seeds for direct CSF sweeps")
     parser.add_argument("--thresholds", default="0.1", help="CSF midpoint contrasts, comma-separated")
-    parser.add_argument("--preferred-condition", type=float, default=63.,
-                        help="CSF preferred legacy condition value (not calibrated cycles/degree)")
-    parser.add_argument("--tuning-width-octaves", type=float, default=2.)
     parser.add_argument("--slope", type=float, default=3.)
     parser.add_argument("--lapse", type=float, default=0.02)
     parser.add_argument("--max-trials", type=int, default=400)
@@ -76,11 +73,7 @@ def main(argv=None) -> int:
         for seed in seeds:
             artifacts, analysis = simulate(
                 data_root=data_root, seed=seed,
-                observer=CSFObserver(
-                    threshold=threshold, preferred_condition=args.preferred_condition,
-                    tuning_width_octaves=args.tuning_width_octaves,
-                    slope=args.slope, lapse=args.lapse,
-                ),
+                observer=PsychometricObserver(threshold=threshold, slope=args.slope, lapse=args.lapse),
                 values={"max_trials": args.max_trials},
             )
             print(f"SYNTHETIC seed={seed} midpoint={threshold}: "

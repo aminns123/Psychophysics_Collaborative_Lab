@@ -93,7 +93,7 @@ class AlternatingObserver:
         return float(self.calls%2==1)
 
 
-@pytest.mark.parametrize('identity',['line_position_baseline','line_position_flanker','ellipse_centre','ellipse_major_axis','csf_thesis'])
+@pytest.mark.parametrize('identity',['line_position_baseline','line_position_flanker','ellipse_centre','ellipse_major_axis','contrast_sensitivity'])
 def test_modern_first_reversal_matches_presented_visual_strength_and_primary_result(tmp_path,monkeypatch,identity):
     from simulations.run import simulate
     from psychophysics_lab.researcher import RunContext
@@ -125,7 +125,7 @@ def test_modern_first_reversal_matches_presented_visual_strength_and_primary_res
     for row,(target,stimuli) in zip(rows,captured):
         strength=float(row['presented_display_contrast'])
         assert float(row['next_display_contrast'])==pytest.approx(strength*10**(-.1 if row['correct']=='1' else .1))
-        if identity=='csf_thesis':
+        if identity=='contrast_sensitivity':
             assert stimuli['grating']['contrast']==pytest.approx(strength)
         else:
             assert stimuli['first']['contrast']==pytest.approx(strength)
@@ -242,7 +242,7 @@ def test_virtual_observer_is_monotonic_across_its_valid_numeric_range(threshold)
     assert observer.probability(threshold)==pytest.approx(observer.threshold_probability)
 
 
-@pytest.mark.parametrize('identity',['line_position_baseline','line_position_flanker','ellipse_centre','ellipse_major_axis','csf_thesis'])
+@pytest.mark.parametrize('identity',['line_position_baseline','line_position_flanker','ellipse_centre','ellipse_major_axis','contrast_sensitivity'])
 def test_step_accuracy_metadata_uses_a_stable_ratio_for_large_finite_steps(identity):
     from psychophysics_lab.ui.settings_review import _PlanningContext
     from psychophysics_lab.config.stimulus_parameters import resolve_stimuli

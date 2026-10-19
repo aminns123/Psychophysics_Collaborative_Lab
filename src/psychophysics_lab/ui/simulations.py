@@ -42,7 +42,7 @@ class SimulationsScreen(HubPage):
         from simulations.scenarios import list_scenarios
         self.scenarios = list_scenarios(include_historical=include_historical)
         self.experiment_ids = tuple(sorted({s.experiment_id for s in self.scenarios},
-            key=lambda identity: (identity != "contrast_sensitivity",
+            key=lambda identity: (identity != "legacy_contrast_sensitivity",
                                   bool(get_experiment(identity).acquisition_block_reason), identity)))
 
     def _scenarios_for(self, experiment_id: str):

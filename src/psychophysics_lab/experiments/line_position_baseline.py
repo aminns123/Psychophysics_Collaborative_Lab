@@ -1,11 +1,12 @@
 """Line Position Baseline: a scientific design in visual degrees, separate from historical replay.
 
-Source: thesis Chapter 4, Figures 4.3B/4.5, Tables 4.3/4.6. Study-specific
+Researcher-defined psychophysics procedure. Study-specific
 choices remain TUI controls; vertical separation
 must be supplied rather than copied from historical pixels. No claim of calibrated
 physical contrast or timing is made by this software implementation.
 """
 
+from psychophysics_lab.analysis.primary import expected_staircases
 import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
@@ -315,7 +316,8 @@ def initialise_experiment(run, conditions):
     }
     run.initialise(
         expected_trials=settings["max_trials"],
-        resolution=description,
+        resolution=description | {"primary_estimator": primary_rule(settings, conditions),
+                                  "expected_staircases": expected_staircases(conditions)},
         background_intensity=settings["background_intensity"],
     )
     return {
@@ -333,6 +335,22 @@ def is_finished(run, conditions, state):
     return state["adaptive"].status != "running"
 
 
+def primary_rule(settings, conditions):
+    return {
+            "version": 1,
+            "value_column": "presented_display_contrast",
+            "within_staircase": "geometric_mean",
+            "across_staircases": "arithmetic_mean",
+            "retained_reversals": settings["threshold_reversals"],
+            "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(settings, c)]
+                for c in conditions
+            },
+            "units": "digital_probe_increment",
+        }
+
+
 def finish_experiment(run, conditions, state):
     run.save_resolution(
         **(
@@ -342,22 +360,7 @@ def finish_experiment(run, conditions, state):
     )
     run.complete_adaptive(state["adaptive"])
     # One declared estimator is used here and by post-hoc analysis.
-    run.save_primary(
-        {
-            "version": 1,
-            "value_column": "presented_display_contrast",
-            "within_staircase": "geometric_mean",
-            "across_staircases": "arithmetic_mean",
-            "retained_reversals": run.values["threshold_reversals"],
-            "completion": "all configured staircases complete",
-            "strength_bounds": {
-                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
-                for c in conditions
-            },
-            "units": "digital_probe_increment",
-        },
-        conditions,
-    )
+    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def procedure(run):

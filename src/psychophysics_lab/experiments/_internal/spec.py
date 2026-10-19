@@ -64,7 +64,7 @@ class ConfigField:
                 if not math.isfinite(number):
                     raise ValueError(f"{self.display_label} must be finite.")
             if self.minimum is not None and number < self.minimum or self.maximum is not None and number > self.maximum:
-                raise ValueError(f"{self.display_label} ({self.key.replace(chr(95), chr(45))}) is outside its permitted range.")
+                raise ValueError(f"{self.display_label} ({self.key.replace(chr(95), chr(45))}) = {number:g} is outside its permitted range [{self.minimum if self.minimum is not None else '-infinity'}, {self.maximum if self.maximum is not None else '+infinity'}].")
             return int(number) if self.kind == "int" else number
         if self.kind == "choice":
             if value not in self.choices:
@@ -92,14 +92,15 @@ class ExperimentSpec:
     # Optional human-facing grouping levels placed between display profile and
     # date. This keeps the universal storage engine experiment-agnostic.
     data_path_builder: DataPathBuilder | None = None
+    data_directory_name: str = ""
     # Optional experiment-specific clarifications for the canonical trial
     # dictionary. Keys are trials.tsv column names; values may override
     # logical_type, units_or_encoding, meaning and/or notes.
     trial_column_overrides: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     monitor_validator: Callable | None = None
-    configure_module: str = "psychophysics_lab._reference_csf.config"
-    configure_function: str = "run_configure_experiment"
+    configure_module: str = "psychophysics_lab.researcher"
+    configure_function: str = "configure"
     source_paths: tuple[str, ...] = ()
     adaptive: Any = None
     response_paradigm: Any = None
@@ -132,6 +133,8 @@ class ExperimentSpec:
         from pathlib import PurePosixPath
         from psychophysics_lab.data.identifiers import validate_path_component
         validate_path_component(self.id, label="experiment")
+        if self.data_directory_name:
+            validate_path_component(self.data_directory_name, label="experiment directory")
         if len({item.key for item in self.fields}) != len(self.fields):
             raise ValueError("Experiment fields must have unique keys.")
         if self.adaptive is not None:
@@ -161,9 +164,7 @@ class ExperimentSpec:
 
     def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
         values = self.normalise_input_keys(values)
-        if self.id == "contrast_sensitivity":
-            from psychophysics_lab._reference_csf.experiment_definition import _legacy_condition_defaults
-            values = _legacy_condition_defaults(values)
+        pass  # Retired protocol branch removed.
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:
             raise ValueError(f"Unknown experiment values: {sorted(unknown)}")

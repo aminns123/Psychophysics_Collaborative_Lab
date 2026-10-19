@@ -9,7 +9,7 @@ import importlib
 
 from .core import SimulationScenario
 
-SCENARIO_MODULES = ("simulations.scenarios.csf",)
+SCENARIO_MODULES = ()
 _REGISTRY: dict[tuple[str, str], SimulationScenario] = {}
 _loaded = False
 

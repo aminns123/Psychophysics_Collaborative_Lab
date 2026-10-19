@@ -85,10 +85,21 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
         if required - set(reader.fieldnames):
             raise ValueError("Staircase preview requires staircase ID, condition, response correctness and contrast.")
         rows = list(reader)
+    resolved_path = run / "resolved_experiment.json"
+    resolved = json.loads(resolved_path.read_text(encoding="utf-8")) if resolved_path.exists() else {}
+    units = resolved.get("primary_estimator", {}).get("units", "declared digital strength")
+    dictionary = run / "trial_data_dictionary.tsv"
+    if dictionary.exists():
+        with dictionary.open(encoding="utf-8", newline="") as stream:
+            for field in csv.DictReader(stream, delimiter="\t"):
+                if field.get("column_name") == "presented_display_contrast":
+                    units = field.get("units_or_encoding") or units
+    completions = {}
+    condition_plots = []
     by_condition: dict[str, dict[str, list[tuple[int, float, bool, bool]]]] = {}
     for row in rows:
         raw = str(row.get("presented_display_contrast", "")).strip()
-        if not raw:
+        if not raw or not str(row.get("staircase_id", "")).strip():
             continue
         contrast = float(raw)
         if not math.isfinite(contrast) or contrast < 0:
@@ -99,6 +110,7 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
             raise ValueError("Each plotted response must have a positive accepted trial index.") from exc
         condition = str(row["stimulus_condition"])
         identity = str(row["staircase_id"])
+        completions[identity] = str(row.get("staircase_complete", "")).lower() in {"1", "true"}
         correct = str(row["correct"]).strip().lower() in {"1", "true"}
         reversal = str(row.get("reversal", "")).strip().lower() in {"1", "true"}
         by_condition.setdefault(condition, {}).setdefault(identity, []).append(
@@ -130,7 +142,7 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
                 xx = [item[0] for item in sorted_values]
                 yy = [item[1] for item in sorted_values]
                 (line,) = ax.plot(xx, yy, marker=".", linewidth=1.15,
-                                  label=f"Staircase {identity} ({len(values)} responses)")
+                                  label=f"Staircase {identity} ({len(values)} responses; {'complete' if completions[identity] else 'incomplete'})")
                 for target_correct, marker in ((True, "o"), (False, "x")):
                     chosen = [(x, y) for x, y, correct, _ in sorted_values if correct is target_correct]
                     if chosen:
@@ -144,10 +156,11 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
                                linewidths=1.7, zorder=4)
             if log_scale:
                 ax.set_yscale("log")
+                ax.set_ylim(min(.001, min(values_all)*.8), max(.1, max(values_all)*1.2))
             ax.set_title(f"Condition {condition}  |  {len(staircases)} staircases  |  "
                          f"{sum(len(v) for v in staircases.values())} accepted responses")
             ax.set_xlabel("Accepted response number within staircase")
-            ax.set_ylabel("Presented display contrast (normalised)")
+            ax.set_ylabel(f"Presented strength ({units})")
             ax.grid(True, which="major", alpha=.22)
             ax.legend(fontsize=8, loc="best")
         for ax in axes.flat[len(ordered):]:
@@ -163,8 +176,19 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
         fig.suptitle(f"Run staircases — {kind} — exploratory, not final thresholds", y=.997)
         fig.tight_layout(rect=(0, 0, 1, .95))
         png = output / "staircases.png"
-        fig.savefig(png, dpi=145)
-        plt.close(fig)
+        try:
+            fig.savefig(png, dpi=145)
+            fig.canvas.draw()
+            from .thresholds import _safe_component
+            for panel_index, condition in enumerate(ordered):
+                name = "staircases_condition_" + _safe_component(condition) + "_" + hashlib.sha256(condition.encode()).hexdigest()[:8] + ".png"
+                ax = axes.flat[panel_index]
+                # Export each full panel, including labels and independent traces.
+                box = ax.get_tightbbox(fig.canvas.get_renderer()).transformed(fig.dpi_scale_trans.inverted()).expanded(1.04, 1.08)
+                fig.savefig(output / name, dpi=145, bbox_inches=box)
+                condition_plots.append(name)
+        finally:
+            plt.close(fig)
 
     summary = output / "staircase_preview.json"
     atomic_write_json(summary, {
@@ -176,8 +200,102 @@ def create_staircase_preview(*, data_root: Path, run_directory: Path) -> Stairca
         "canonical_trials_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "plotted_accepted_trials": sum(len(values) for group in by_condition.values() for values in group.values()),
         "condition_staircase_counts": counts,
+        "condition_plots": condition_plots,
+        "staircase_complete": completions,
+        "strength_units": units,
         "staircases_plotted": sum(counts.values()),
         "plot": "staircases.png" if png else None,
         "warning": "Exploratory software output, not a final threshold or measured display timing.",
     })
     return StaircasePreview(output, png, summary)
+
+
+def create_run_figures(*, data_root: Path, run_directory: Path):
+    """Best-effort derived output, dispatched by canonical adaptive records.
+
+    Errors are written beside the figures and never alter acquisition status.
+    A declared primary estimator is mandatory for primary threshold figures.
+    """
+    run = _owned_run(Path(data_root), Path(run_directory))
+    output = run / "analysis"
+    report = {"schema_version": 1, "status": "unavailable", "errors": [], "plots": []}
+    try:
+        manifest = _read_manifest(run)
+        report.update(source_run_uuid=manifest.get("run_uuid"), data_kind=manifest.get("data_kind", "human"),
+                      run_status=manifest.get("status"), researcher_override=manifest.get("researcher_override"))
+        source = run / "trials.tsv"
+        with source.open(encoding="utf-8", newline="") as stream:
+            rows = list(csv.DictReader(stream, delimiter="\t"))
+        # Canonical nonadaptive rows have blank staircase IDs. No experiment IDs
+        # or human/simulation mode tests determine eligibility.
+        rows = [r for r in rows if str(r.get("staircase_id", "")).strip() and r.get("presented_display_contrast", "").strip()]
+        if not rows:
+            return None
+        output.mkdir(exist_ok=True)
+        report["canonical_trials_sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
+        try:
+            preview = create_staircase_preview(data_root=data_root, run_directory=run)
+            report["plots"] = json.loads(preview.summary_file.read_text(encoding="utf-8"))["condition_plots"]
+            report["status"] = "staircases_only"
+        except Exception as exc:
+            report["errors"].append(f"Staircase figures: {exc!r}")
+        resolved_path = run / "resolved_experiment.json"
+        resolved = json.loads(resolved_path.read_text(encoding="utf-8")) if resolved_path.exists() else {}
+        rule = resolved.get("primary_estimator")
+        if rule is None:
+            report["threshold_status"] = "No declared primary estimator; no primary threshold fabricated."
+        else:
+            from .primary import estimate
+            result = estimate(rows, rule, resolved["expected_staircases"], manifest.get("status"))
+            report["primary"] = result
+            atomic_write_json(output / "primary_thresholds.json", result)
+            estimates = result["condition_thresholds"]
+            report["threshold_status"] = "eligible complete conditions" if estimates else "No eligible complete condition; see excluded_staircases."
+            if estimates:
+                import matplotlib
+                matplotlib.use("Agg", force=True)
+                import matplotlib.pyplot as plt
+                labels = sorted(estimates, key=_sort_condition)
+                try:
+                    xx = [float(label) for label in labels]
+                except ValueError:
+                    xx = list(range(len(labels)))
+                affected = set(result["boundary_affected_staircases"])
+                censored = [any(str(i) in affected for i in result["expected_staircases"][c]) for c in labels]
+                for metric, filename, ylabel in (
+                    ("threshold", "threshold_vs_condition.png", f"Threshold ({rule.get('units', 'declared strength')})"),
+                    ("sensitivity", "sensitivity_vs_condition.png", f"Sensitivity (1 / {rule.get('units', 'declared strength')})"),
+                ):
+                    fig, ax = plt.subplots(figsize=(max(7, min(16, len(labels)*.8)), 5))
+                    try:
+                        yy = [estimates[label][metric] for label in labels]
+                        ax.plot(xx, yy, marker="o")
+                        if any(censored):
+                            ax.scatter([x for x,c in zip(xx,censored) if c], [y for y,c in zip(yy,censored) if c],
+                                       marker="x", s=100, color="red", label="Boundary affected; review censoring")
+                            ax.legend()
+                        ax.set_xticks(xx, labels, rotation=25 if any(len(s)>8 for s in labels) else 0)
+                        ax.set_xlabel("Condition")
+                        ax.set_ylabel(ylabel)
+                        ax.set_yscale("log")
+                        ax.set_title(f"{rule['within_staircase']}; last {rule['retained_reversals']} reversals; "
+                                     f"{rule['across_staircases']} across repeats\n"
+                                     f"{manifest.get('status', 'finalised')} â€” complete conditions only")
+                        ax.grid(True, alpha=.25)
+                        fig.tight_layout()
+                        fig.savefig(output / filename, dpi=145)
+                        report["plots"].append(filename)
+                    finally:
+                        plt.close(fig)
+                report["status"] = "available"
+    except Exception as exc:
+        report["errors"].append(f"Automatic analysis: {exc!r}")
+    if report["errors"]:
+        report["status"] = "partial" if report["plots"] else "error"
+    try:
+        output.mkdir(exist_ok=True)
+        atomic_write_json(output / "analysis_status.json", report)
+    except Exception:
+        # Runner adds a warning if even the diagnostic cannot be written.
+        raise
+    return report

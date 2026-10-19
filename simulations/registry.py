@@ -10,7 +10,6 @@ from typing import Callable
 from psychophysics_lab.data.identifiers import validate_path_component
 from psychophysics_lab.analysis.thresholds import analyse_thresholds
 
-from .csf import CSFObserver, DEFAULT_VALUES, runtime
 
 
 @dataclass(frozen=True)
@@ -76,8 +75,3 @@ class TeachingObserver:
             raise ValueError("Observer accuracy must be finite and between 0 and 1.")
 
 
-register_simulation(SimulationSpec(
-    "contrast_sensitivity", CSFObserver, runtime, DEFAULT_VALUES,
-    analysis_factory=analyse_thresholds,
-    unavailable_analysis_messages=("No reversal observations",),
-))

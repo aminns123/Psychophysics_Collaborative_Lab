@@ -7,12 +7,10 @@ from types import SimpleNamespace
 import pytest
 
 from simulations.__main__ import main
-from simulations.csf import CSFObserver
 from simulations.registry import SimulationSpec, get_simulation, register_simulation
 from simulations.scenarios import (
     SimulationScenario, get_scenario, list_scenarios, register_scenario, run_scenario
 )
-from simulations.scenarios.csf import evaluate_csf
 from simulations.scenarios.run import ScenarioRun
 from simulations.scaffold import scaffold_simulation
 from psychophysics_lab.data.workspace import save_workspace_state
@@ -22,9 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_scenario_registry_lists_independent_experiment_cases(capsys):
-    ids = {scenario.id for scenario in list_scenarios("contrast_sensitivity")}
+    ids = {scenario.id for scenario in list_scenarios("legacy_contrast_sensitivity")}
     assert {"csf_baseline", "csf_short_censored", "csf_shifted_preference"} <= ids
-    assert get_scenario("contrast_sensitivity", "csf_short_censored").expect_analysis is False
+    assert get_scenario("legacy_contrast_sensitivity", "csf_short_censored").expect_analysis is False
     assert main(["--list-scenarios"]) == 0
     assert "csf_baseline" in capsys.readouterr().out
     assert not list_scenarios("unknown_experiment")
@@ -34,13 +32,13 @@ def test_scenario_registry_lists_independent_experiment_cases(capsys):
 
 def test_scenario_definitions_fail_loudly_if_invalid():
     with pytest.raises(ValueError, match="nonnegative integer seed"):
-        SimulationScenario("test", "contrast_sensitivity", "Test", seeds=(-1,))
+        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", seeds=(-1,))
     with pytest.raises(ValueError, match="Duplicate random seeds"):
-        SimulationScenario("test", "contrast_sensitivity", "Test", seeds=(1, 1))
+        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", seeds=(1, 1))
     with pytest.raises(ValueError, match="description"):
-        SimulationScenario("test", "contrast_sensitivity", "")
+        SimulationScenario("test", "legacy_contrast_sensitivity", "")
     with pytest.raises(TypeError, match="evaluator"):
-        SimulationScenario("test", "contrast_sensitivity", "Test", evaluate="not callable")
+        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", evaluate="not callable")
 
 
 def test_other_experiments_can_register_other_observers_and_evaluators(monkeypatch):
@@ -72,69 +70,10 @@ def test_other_experiments_can_register_other_observers_and_evaluators(monkeypat
         register_simulation(independent)
 
 
-def test_csf_model_comparison_reports_bias_without_fake_pass_criteria():
-    observer = CSFObserver(threshold=.1, preferred_condition=63, tuning_width_octaves=2)
-    fake_analysis = SimpleNamespace(condition_thresholds=(
-        SimpleNamespace(condition="63", threshold=.12),
-        SimpleNamespace(condition="252", threshold=.22),
-    ))
-    observations = (
-        ScenarioRun(3, SimpleNamespace(status="completed", accepted_trials=100), fake_analysis),
-    )
-    evaluation = evaluate_csf(observer, observations)
-    result = evaluation["runs"][0]
-    assert result["conditions"][0]["model_midpoint_contrast"] == pytest.approx(.1)
-    assert result["conditions"][1]["model_midpoint_contrast"] > .1
-    assert result["sampled_preference_direction_matches"] is True
-    assert "not a strict numerical recovery guarantee" in evaluation["comparison_interpretation"]
 
 
-def test_full_named_scenario_uses_shared_data_root_and_generates_report(tmp_path, monkeypatch):
-    import builtins
-    original = builtins.__import__
-    def no_hardware(name, *args, **kwargs):
-        if name.split(".")[0] in {"pyglet", "winsound", "libC"}:
-            raise AssertionError("Hardware imported during headless scenario: " + name)
-        return original(name, *args, **kwargs)
-    monkeypatch.setattr(builtins, "__import__", no_hardware)
-
-    root = tmp_path / "local_psychophysics_data"
-    root.mkdir()
-    human = root / "H001"
-    human.mkdir()
-    human_file = human / "keep.tsv"
-    human_file.write_bytes(b"human response: preserve")
-    request = SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display", {})
-    save_workspace_state(root, request, status="completed")
-    original_prefs = (root / "psycolab_data_config.json").read_bytes()
-
-    report = run_scenario(experiment_id="contrast_sensitivity", scenario_id="csf_baseline",
-                          data_root=root, repo_root=ROOT)
-    assert report.passed, [entry for entry in report.checks if not entry["passed"]]
-    assert report.report_file.parent == report.runs[0].artifacts.run_directory
-    assert report.report_file.name == "scenario_report.json"
-    saved = json.loads(report.report_file.read_text())
-    assert saved["data_kind"] == "synthetic"
-    assert saved["passed"] is True
-    assert saved["experiment_id"] == "contrast_sensitivity"
-    assert saved["experiment_evaluation"]["runs"][0]["conditions"]
-    assert saved["runs"][0]["relative_run_directory"].startswith("synthetic_123/")
-    assert len(report.runs) == 1
-    assert report.runs[0].analysis is not None
-    assert human_file.read_bytes() == b"human response: preserve"
-    assert (root / "psycolab_data_config.json").read_bytes() == original_prefs
 
 
-def test_censored_case_is_not_given_an_invented_threshold(tmp_path):
-    result = run_scenario(experiment_id="contrast_sensitivity", scenario_id="csf_short_censored",
-                          data_root=tmp_path / "local_psychophysics_data", repo_root=ROOT)
-    assert result.passed
-    assert len(result.runs) == 1
-    assert result.runs[0].analysis is None
-    assert result.runs[0].artifacts.accepted_trials == 1
-    report = json.loads(result.report_file.read_text())
-    assert report["runs"][0]["relative_analysis_summary"] is None
-    assert report["experiment_evaluation"]["runs"][0]["conditions"] == []
 
 
 def test_simulation_scaffold_is_only_two_files_and_never_overwrites(tmp_path):
@@ -153,40 +92,5 @@ def test_simulation_scaffold_is_only_two_files_and_never_overwrites(tmp_path):
             scaffold_simulation(tmp_path, name)
 
 
-def test_scientific_checks_can_fail_without_corrupting_pipeline(tmp_path, monkeypatch):
-    from simulations.scenarios import registry
-    monkeypatch.setattr(registry, "_REGISTRY", dict(registry._REGISTRY))
-    original = get_scenario("contrast_sensitivity", "csf_short_censored")
-    def experiment_rejects(observer, records):
-        return {"checks": [{"name": "experiment-owned recovery requirement",
-                            "passed": False, "detail": "Deliberately failed by the test"}]}
-    monkeypatch.setitem(
-        registry._REGISTRY, ("contrast_sensitivity", "csf_short_censored"),
-        replace(original, evaluate=experiment_rejects),
-    )
-    result = run_scenario(experiment_id="contrast_sensitivity",
-                          scenario_id="csf_short_censored",
-                          data_root=tmp_path / "local_psychophysics_data", repo_root=ROOT)
-    assert result.passed is False
-    assert any(check["name"] == "experiment-owned recovery requirement" and not check["passed"]
-               for check in result.checks)
-    saved = json.loads(result.report_file.read_text())
-    assert saved["passed"] is False
-    assert saved["runs"][0]["relative_run_directory"].startswith("synthetic_")
 
 
-def test_shifted_preference_runs_multiple_seeds_and_reports_true_midpoints(tmp_path):
-    result = run_scenario(experiment_id="contrast_sensitivity",
-                          scenario_id="csf_shifted_preference",
-                          data_root=tmp_path / "local_psychophysics_data", repo_root=ROOT)
-    assert result.passed, [entry for entry in result.checks if not entry["passed"]]
-    assert [run.seed for run in result.runs] == [11, 12]
-    report = json.loads(result.report_file.read_text())
-    assert report["observer_parameters"]["preferred_condition"] == 252.0
-    assert len(report["experiment_evaluation"]["runs"]) == 2
-    for run in report["experiment_evaluation"]["runs"]:
-        assert run["model_preferred_condition"] == 252.0
-        midpoints = {item["condition_legacy_units"]: item["model_midpoint_contrast"]
-                     for item in run["conditions"]}
-        if 63.0 in midpoints and 252.0 in midpoints:
-            assert midpoints[252.0] < midpoints[63.0]

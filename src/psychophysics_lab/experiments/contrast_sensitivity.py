@@ -1,12 +1,13 @@
-"""CONTRAST SENSITIVITY — which side contained the grating?
+"""CONTRAST SENSITIVITY â€” which side contained the grating?
 
 Read top to bottom: settings -> what is shown -> one trial -> contrast updates
--> the experiment. Thesis Chapter 4, Fig. 4.3A and Tables 4.3–4.4.
-The saved-run ID csf_thesis is retained internally for compatibility.
+-> the experiment. Thesis Chapter 4, Fig. 4.3A and Tables 4.3â€“4.4.
+The saved-run ID contrast_sensitivity is retained internally for compatibility.
 The older contrast_sensitivity ID refers to a different historical protocol.
 The software protocol is implemented; raster/photometric equivalence is unverified.
 """
 
+from psychophysics_lab.analysis.primary import expected_staircases
 import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
@@ -165,10 +166,10 @@ FIELDS = (
 RESPONSES = ResponseParadigm(
     "csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT")
 )
-STIMULUS_SLOTS = {"fixation": "thesis_fixation", "grating": "thesis_csf"}
+STIMULUS_SLOTS = {"fixation": "gaussian_fixation", "grating": "contrast_sensitivity_grating"}
 STIMULUS_DEFAULTS = {
-    "fixation": "thesis_gaussian_fixation",
-    "grating": "thesis_csf_grating",
+    "fixation": "gaussian_fixation",
+    "grating": "contrast_sensitivity_grating",
 }
 
 PARADIGM = "two_alternative_forced_choice"
@@ -355,7 +356,7 @@ def initialise_experiment(run, conditions):
             if accuracy_target is not None
             else "n-up greater than one: threshold accuracy interpretation requires separate validation"
         ),
-        "protocol": "thesis Chapter 4, Fig. 4.3A; fixation -> grating -> self-paced spatial response",
+        "protocol": "fixation -> grating -> self-paced spatial response",
         "timings_ms": {
             "fixation": settings["fixation_ms"],
             "grating": settings["grating_ms"],
@@ -385,7 +386,8 @@ def initialise_experiment(run, conditions):
     }
     run.initialise(
         expected_trials=settings["max_trials"],
-        resolution=description,
+        resolution=description | {"primary_estimator": primary_rule(settings, conditions),
+                                  "expected_staircases": expected_staircases(conditions)},
         background_intensity=background,
     )
     return {
@@ -401,6 +403,22 @@ def is_finished(run, conditions, state):
     return state["adaptive"].status != "running"
 
 
+def primary_rule(settings, conditions):
+    return {
+            "version": 1,
+            "value_column": "presented_display_contrast",
+            "within_staircase": "median",
+            "across_staircases": "arithmetic_mean",
+            "retained_reversals": settings["threshold_reversals"],
+            "completion": "all configured staircases complete",
+            "strength_bounds": {
+                str(c["id"]): [sys.float_info.min, maximum_contrast(settings, c)]
+                for c in conditions
+            },
+            "units": "digital_peak_to_peak",
+        }
+
+
 def finish_experiment(run, conditions, state):
     run.save_resolution(
         **(
@@ -410,22 +428,7 @@ def finish_experiment(run, conditions, state):
     )
     run.complete_adaptive(state["adaptive"])
     # One declared estimator is used here and by post-hoc analysis.
-    run.save_primary(
-        {
-            "version": 1,
-            "value_column": "presented_display_contrast",
-            "within_staircase": "median",
-            "across_staircases": "arithmetic_mean",
-            "retained_reversals": run.values["threshold_reversals"],
-            "completion": "all configured staircases complete",
-            "strength_bounds": {
-                str(c["id"]): [sys.float_info.min, maximum_contrast(run.values, c)]
-                for c in conditions
-            },
-            "units": "digital_peak_to_peak",
-        },
-        conditions,
-    )
+    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def procedure(run):
@@ -457,7 +460,7 @@ def validate_settings(values):
             or len(set(frequencies)) != len(frequencies)
             or any(not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
         ):
-            yield "Choose distinct finite spatial frequencies within 0.5–32 cycles/degree."
+            yield "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
     except ValueError:
         yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
     if values["threshold_reversals"] > values["reversal_termination"]:
@@ -483,10 +486,11 @@ def validate_monitor(settings, profile):
         validate_requested_cpd(frequencies, geometry, orientation_rad=math.pi / 2)
 
 
-def definition(identity="csf_thesis"):
+def definition(identity="contrast_sensitivity"):
     return experiment(
         id=identity,
         name="Contrast Sensitivity (software validation)",
+        data_directory_name="contrast_sensitivity",
         procedure=procedure,
         description="Fixation then grating at a researcher-selected left/right angular offset; timing, position and adaptation are editable in the TUI.",
         fields=FIELDS,

@@ -68,14 +68,14 @@ def experiment_readiness(request, spec, profile, *, repo_root):
         configuration_error=str(exc)
         target=next((field.key for field in spec.fields if field.key in configuration_error), None)
         if target is None and 'luminance' in configuration_error.lower():
-            target='Background_Screen_intensity' if spec.id=='contrast_sensitivity' else None
+            target='Background_Screen_intensity' if spec.id=='legacy_contrast_sensitivity' else None
         requirements.append({'key':'configuration','passed':False,'required':True,
             'name':'Reviewed configuration','status':'Blocked','detail':configuration_error,
             'action':'Review current settings','destination':'settings','field':target})
     if configuration_error is None:
         requirements.append({'key':'configuration','passed':True,'required':True,'name':'Reviewed configuration',
             'status':'Complete','detail':'Current settings validate. Physical display and acquisition requirements remain separate.',
-            'action':'Review current settings','destination':'settings','field':'starting_probe_intensity' if spec.id=='contrast_sensitivity' else None})
+            'action':'Review current settings','destination':'settings','field':'starting_probe_intensity' if spec.id=='legacy_contrast_sensitivity' else None})
     from simulations.scenarios import list_scenarios
     simulation_available = configuration_error is None and bool(list_scenarios(spec.id))
     if request.participant_id=='synthetic_preview':

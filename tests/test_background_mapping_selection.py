@@ -12,7 +12,7 @@ from psychophysics_lab.config.calibration_dataset import load_active, save_activ
 from psychophysics_lab.config.background_mapping import mapping_choices, configuration_mapping_choices, background_provenance
 from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.models import SetupRequest
-from psychophysics_lab._reference_csf.experiment_definition import CSF_SPEC
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
 
 

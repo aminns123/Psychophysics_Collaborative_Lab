@@ -96,7 +96,7 @@ def test_explicit_mode_mismatch_rejected(monkeypatch):
         select_screen(profile(display_binding=binding))
 
 
-@pytest.mark.parametrize('payload', [[], None, 2, {'luminance_calibration': [None]}, {'luminance_calibration': {}}, {'qualified_experiments': 'contrast_sensitivity'}])
+@pytest.mark.parametrize('payload', [[], None, 2, {'luminance_calibration': [None]}, {'luminance_calibration': {}}, {'qualified_experiments': 'legacy_contrast_sensitivity'}])
 def test_malformed_profile_has_validation_error(payload):
     if isinstance(payload, dict):
         payload = profile().to_dict() | payload
@@ -150,7 +150,7 @@ def test_profile_detection_preserves_existing_monitor_binding(tmp_path, monkeypa
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
     monitors = [DisplayInfo(0,0,0,1920,1080,60,'A'), DisplayInfo(1,1920,0,1920,1080,60,'B')]
     monkeypatch.setattr('psychophysics_lab.ui.profiles.enumerate_displays', lambda: monitors)
-    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', display_binding=asdict(monitors[1]), qualified_experiments=('contrast_sensitivity',)))
+    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', display_binding=asdict(monitors[1]), qualified_experiments=('legacy_contrast_sensitivity',)))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test() as pilot:
@@ -165,7 +165,7 @@ def test_profile_detection_preserves_existing_monitor_binding(tmp_path, monkeypa
 @pytest.mark.parametrize('values', [None, [], 'invalid', 5])
 def test_malformed_workspace_request_is_ignored(values):
     from psychophysics_lab.data.workspace import request_from_workspace_state
-    raw = asdict(SetupRequest('S001','new','contrast_sensitivity','legacy_reference_display',{}))
+    raw = asdict(SetupRequest('S001','new','legacy_contrast_sensitivity','legacy_reference_display',{}))
     raw['experiment_values'] = values
     assert request_from_workspace_state({'last_request': raw}) is None
 
@@ -173,7 +173,7 @@ def test_malformed_workspace_request_is_ignored(values):
 def test_preflight_checks_experiment_identity():
     from psychophysics_lab.config.preflight import validate_setup
     from psychophysics_lab.experiments._internal.registry import get_experiment
-    spec = get_experiment('contrast_sensitivity')
+    spec = get_experiment('legacy_contrast_sensitivity')
     values = spec.field_defaults() | {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374}
     request = SetupRequest('S001','new','different_experiment','legacy_reference_display',values)
     with pytest.raises(ValueError, match='experiment identity'):
@@ -193,7 +193,7 @@ def test_analysis_rejects_running_run_without_writing(tmp_path):
 def test_setup_keeps_compatible_monitor_selection(tmp_path):
     from textual.widgets import Select
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
-    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', qualified_experiments=('contrast_sensitivity',)))
+    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', qualified_experiments=('legacy_contrast_sensitivity',)))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test() as pilot:
@@ -290,10 +290,10 @@ def test_profile_binding_device_id_must_be_text():
 
 def test_malformed_preset_is_not_offered_to_tui():
     from psychophysics_lab.config.local import load_presets
-    directory = config_root(ROOT)/'presets'/'contrast_sensitivity'
+    directory = config_root(ROOT)/'presets'/'legacy_contrast_sensitivity'
     directory.mkdir(parents=True)
-    (directory/'bad.json').write_text(json.dumps({'experiment_id':'contrast_sensitivity','values':5}))
-    assert load_presets(config_root(ROOT),'contrast_sensitivity') == {}
+    (directory/'bad.json').write_text(json.dumps({'experiment_id':'legacy_contrast_sensitivity','values':5}))
+    assert load_presets(config_root(ROOT),'legacy_contrast_sensitivity') == {}
 
 
 @pytest.mark.parametrize('device_id,valid', [(r'\\.\DISPLAY1',True), (r'\\.\DISPLAY12',True), (r'\\server\share',False), ('/home/example/data',False)])
@@ -356,7 +356,7 @@ def test_concurrent_profile_edits_keep_one_revision_and_reject_stale_writer(tmp_
 @pytest.mark.parametrize('field', ['timeFixate','timeInterval','timeAB'])
 def test_zero_length_keyless_phase_is_rejected_before_acquisition(field):
     from psychophysics_lab.experiments._internal.registry import get_experiment
-    spec = get_experiment('contrast_sensitivity')
+    spec = get_experiment('legacy_contrast_sensitivity')
     values = {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374, field:0}
     with pytest.raises(ValueError, match='positive'):
         spec.normalise_values(values)
@@ -376,7 +376,7 @@ def test_loading_workspace_with_removed_experiment_uses_current_selection(tmp_pa
         async with app.run_test() as pilot:
             app._refresh_data_root()
             await pilot.pause()
-            assert app.screen.query_one('#experiment',Select).value == 'contrast_sensitivity'
+            assert app.screen.query_one('#experiment',Select).value == 'legacy_contrast_sensitivity'
     asyncio.run(scenario())
 
 

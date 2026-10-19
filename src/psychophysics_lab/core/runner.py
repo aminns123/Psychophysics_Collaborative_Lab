@@ -161,8 +161,6 @@ def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
                         and (within_package or not name.startswith("test_"))
                         and (within_package or not name.endswith("_test.py"))):
                     paths.append(path)
-    paths.extend(repo_root / name for name in ("src/psychophysics_lab/_reference_csf/packages.zip",)
-                 if (repo_root / name).is_file() and not (repo_root / name).is_symlink())
     return {path.relative_to(repo_root).as_posix(): _sha256(path)
             for path in sorted(paths, key=lambda path: path.relative_to(repo_root).as_posix())}
 
@@ -283,7 +281,7 @@ def _manifest_payload(
     return {
         "schema_version": 3,
         "data_layout_schema_version": DATA_LAYOUT_SCHEMA_VERSION,
-        "project": "PsyCoLab — Psychophysics Collaborative Lab",
+        "project": "PsyCoLab â€” Psychophysics Collaborative Lab",
         "run_uuid": run_uuid,
         "run_label": run_dir.name,
         "run_number": run_number_from_path(run_dir),
@@ -294,6 +292,7 @@ def _manifest_payload(
             "experiment_id": request.experiment_id,
             "monitor_profile_id": request.monitor_profile_id,
             "experiment_grouping_folders": list(grouping_parts),
+            "experiment_directory_name": run_dir.relative_to(data_root).parts[1],
         },
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "status": status,
@@ -368,7 +367,7 @@ def run_request(
     grouping_parts = spec.data_path_parts(values, profile)
     setup = spec.build_legacy_setup(participant_id=request.participant_id, values=values, monitor_profile=profile)
     if presentation is not None: setup['data_kind']='uncalibrated_presentation_test'
-    run_dir = create_run_directory(data, participant_id=request.participant_id, experiment_id=spec.id,
+    run_dir = create_run_directory(data, participant_id=request.participant_id, experiment_id=spec.id, experiment_directory_name=spec.data_directory_name or spec.id,
                                    monitor_profile_id=profile.id, grouping_parts=grouping_parts,
                                    now=datetime.now().astimezone())
     run_uuid = str(uuid4())
@@ -415,7 +414,7 @@ def run_request(
         if override_record is not None:
             payload["researcher_override"] = override_record
         if presentation is not None:
-            payload['presentation_test']={'test_response_limit':presentation.trial_limit,'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST — NOT HUMAN EXPERIMENTAL DATA'}
+            payload['presentation_test']={'test_response_limit':presentation.trial_limit,'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST â€” NOT HUMAN EXPERIMENTAL DATA'}
             atomic_write_json(run_dir/'UNCALIBRATED_TEST_DATA.json',payload['presentation_test']|{'data_kind':data_kind})
         if simulation is not None:
             payload["simulation"] = simulation.metadata
@@ -578,8 +577,7 @@ def run_request(
                 payload["files"]["procedure_lifecycle"] = "procedure_lifecycle.json"
         elif payload["status"] != "error":
             payload["status"] = "returned"
-            if spec.id != "contrast_sensitivity":
-                payload.get("files", {}).pop("adaptive_session", None)
+            payload.get("files", {}).pop("adaptive_session", None)
         if runtime_display_file.exists():
             if spec.procedure is not None and (run_dir / "procedure_lifecycle.json").exists():
                 payload["files"]["procedure_lifecycle"] = "procedure_lifecycle.json"
@@ -618,32 +616,20 @@ def run_request(
         except Exception as exc:
             if primary_error is None: primary_error = exc
             else: primary_error.add_note(f"Final manifest could not be written: {exc!r}")
+    # Derived figures must also survive a partial/aborted/error acquisition.
+    # Canonical records determine eligibility; plotting never changes run status.
+    if payload.get("accepted_trials", 0):
+        try:
+            from ..analysis.previews import create_run_figures
+            create_run_figures(data_root=data, run_directory=run_dir)
+        except Exception as exc:
+            if primary_error is not None:
+                primary_error.add_note(f"Automatic figure diagnostics also failed: {exc!r}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning("Automatic figures unavailable for %s: %s", run_dir, exc)
     if primary_error is not None:
         raise primary_error
-
-    # Post-acquisition figures belong to the SAME run directory for humans
-    # and simulations. They are derived AFTER the immutable trial log and
-    # final manifest are written, and never affect acquisition success.
-    if spec.id == "contrast_sensitivity" and presentation is None and payload.get("accepted_trials", 0) and payload.get("status") != "error":
-        from ..analysis.previews import create_staircase_preview
-        try:
-            create_staircase_preview(data_root=data, run_directory=run_dir)
-        except Exception as exc:
-            import warnings
-            warnings.warn(f"Staircase quick-look unavailable for {run_dir.name}: {exc}", RuntimeWarning)
-        # The legacy CSF threshold analyser is valid for this named experiment
-        # only; other experiments may have completely different estimators.
-        if simulation is None and spec.id == "contrast_sensitivity":
-            from ..analysis.thresholds import analyse_thresholds
-            try:
-                analyse_thresholds(data_root=data, run_directory=run_dir, create_plot=True)
-            except ValueError as exc:
-                if "No reversal observations" not in str(exc):
-                    import warnings
-                    warnings.warn(f"Quick-look THC unavailable: {exc}", RuntimeWarning)
-            except Exception as exc:
-                import warnings
-                warnings.warn(f"Quick-look THC unavailable: {exc}", RuntimeWarning)
 
     adaptive = payload.get("adaptive_session") or {}
     return RunArtifacts(run_directory=run_dir, trial_log_file=trial_log_file, response_file=response_file,
