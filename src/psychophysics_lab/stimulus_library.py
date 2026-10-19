@@ -477,13 +477,20 @@ class ContrastSensitivityGrating(LibraryStimulus):
     def validate(parameters):
         if parameters["contrast"] > 2 * min(parameters["background"], 1-parameters["background"]):
             raise ValueError("Requested grating modulation exceeds the available digital range; no silent clipping.")
-        diameter = 2 * parameters["sigma_deg"] * parameters["cutoff_sigmas"]
-        if diameter > parameters["size_deg"]:
+        # The direct validator is also called with only background/contrast
+        # by existing digital-gamut checks; missing optional fields use the
+        # stimulus's declared defaults. The normal renderer always receives
+        # fully normalised parameters through StimulusSpec.
+        sigma = parameters.get("sigma_deg", 1.)
+        cutoff = parameters.get("cutoff_sigmas", 3.)
+        size = parameters.get("size_deg", 8.)
+        diameter = 2 * sigma * cutoff
+        if diameter > size:
             raise ValueError(
-                f"Grating support diameter {diameter:g} degrees (2 x sigma {parameters['sigma_deg']:g} "
-                f"degrees x cutoff {parameters['cutoff_sigmas']:g}) exceeds the "
-                f"{parameters['size_deg']:g}-degree raster aperture. Increase Raster aperture "
-                "or reduce Gaussian sigma / smooth cutoff to prevent a rectangular boundary."
+                f"Grating support diameter {diameter:g} degrees (2 x sigma {sigma:g} "
+                f"degrees x cutoff {cutoff:g}) exceeds the {size:g}-degree "
+                "raster aperture. Increase Raster aperture or reduce Gaussian "
+                "sigma / smooth cutoff to prevent a rectangular boundary."
             )
 
     def render(parameters, x_deg, y_deg):
