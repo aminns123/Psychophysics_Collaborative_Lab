@@ -62,7 +62,7 @@ def test_current_csf_preflight_rejects_frequency_above_nyquist():
     p=replace(load_monitor_profiles(ROOT)["legacy_reference_display"],
               expected_resolution_px=(1920,1080))
     values=CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
-        "frequencies_cpd":"2,500"
+        "frequencies_cpd":"2,31"
     })
     with pytest.raises(ValueError,match="sampling limit"):
         validate_setup(SetupRequest("H001","new",CSF_SPEC.id,p.id,values),
