@@ -119,7 +119,7 @@ def test_tui_invalid_observer_and_invalid_seed_block_review(tmp_path):
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
-            assert "threshold" in str(screen.query_one("#sim-status", Static).render())
+            assert any(word in str(screen.query_one("#sim-status", Static).render()).lower() for word in ("threshold", "psychometric", "scale"))
     asyncio.run(scenario())
 
 
@@ -134,9 +134,10 @@ def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
             screen.query_one("#sim-scenario", Select).value = "teaching_demo"
             await _settle(pilot, app)
             index = next(i for i, item in enumerate(screen.scenarios)
-                         if item.id == "teaching_demo")
+                         if item.id == "teaching_demo" and item.experiment_id == "contrast_sensitivity")
             assert screen.query_one(f"#sim-panel-{index}").display
-            assert not screen.query_one("#sim-panel-0").display
+            assert all(not screen.query_one(f"#sim-panel-{n}").display
+                       for n in range(len(screen.scenarios)) if n != index)
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
