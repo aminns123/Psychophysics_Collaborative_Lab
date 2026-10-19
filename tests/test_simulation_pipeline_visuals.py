@@ -80,7 +80,11 @@ def test_simulation_tui_exposes_selected_public_csf_adaptive_fields(tmp_path):
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one("#nav-simulations",Button).press()
-            await pilot.pause()
+            await pilot.pause(.2)
+            for _ in range(20):
+                if isinstance(app.screen,SimulationsScreen):
+                    break
+                await pilot.pause(.1)
             screen=app.screen
             assert isinstance(screen,SimulationsScreen)
             screen.query_one("#sim-experiment",Select).value="contrast_sensitivity"
