@@ -19,7 +19,13 @@ from psychophysics_lab.researcher import (
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
+    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200, units="responses"),
+    ConfigField(
+        "probe_vertical_offset_deg", "Line distance above/below fixation",
+        "float", 2.0, minimum=0.000001, maximum=6,
+        units="degrees",
+        help_text="Positive vertical angular displacement from central fixation; above = +, below = -.",
+    ),
     ConfigField("fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1),
     ConfigField("stimulus_ms", "Probe time", "int", 200, units="ms", minimum=1),
     ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1),
@@ -54,7 +60,7 @@ SCIENTIFIC_SPEC = {'version': 'new_probe_vertical_line_stimulus-1', 'response': 
 # 2. CONDITIONS AND TRIAL ORDER
 def make_conditions(settings):
     return [
-        {"target": i % 2, "probe_y_deg": 2.0 if i % 2 == 0 else -2.0}
+        {"target": i % 2, "probe_y_deg": settings["probe_vertical_offset_deg"] if i % 2 == 0 else -settings["probe_vertical_offset_deg"]}
         for i in range(settings["trial_count"])
     ]
 
@@ -137,10 +143,11 @@ def initialise_experiment(run, conditions):
         resolution={
             "task": "Is the white line above or below fixation?",
             "condition_order": [c["target"] for c in conditions],
-            "above_timeline": make_trial(run.values, {"probe_y_deg": 2.0})
+            "probe_vertical_offset_deg": run.values["probe_vertical_offset_deg"],
+            "above_timeline": make_trial(run.values, {"probe_y_deg": run.values["probe_vertical_offset_deg"]})
             .resolve(run.values)
             .to_dict(),
-            "below_timeline": make_trial(run.values, {"probe_y_deg": -2.0})
+            "below_timeline": make_trial(run.values, {"probe_y_deg": -run.values["probe_vertical_offset_deg"]})
             .resolve(run.values)
             .to_dict(),
             "measurement_units": {
