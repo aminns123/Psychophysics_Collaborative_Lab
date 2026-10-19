@@ -496,7 +496,9 @@ class ContrastSensitivityGrating(LibraryStimulus):
     def render(parameters, x_deg, y_deg):
         sigma = parameters["sigma_deg"]
         radius_in_sigmas = np.hypot(x_deg, y_deg) / sigma
-        cutoff = parameters["cutoff_sigmas"]
+        # Existing researcher scripts may call render() directly with the
+        # original parameter dictionary; preserve the three-sigma default.
+        cutoff = parameters.get("cutoff_sigmas", 3.)
         gaussian = np.exp(-.5 * radius_in_sigmas**2)
 
         # C1-continuous at both ends of the last-sigma taper. No square or
