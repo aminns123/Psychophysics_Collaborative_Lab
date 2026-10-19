@@ -188,8 +188,8 @@ def test_calibration_researcher_workflow_persistence_and_revision_policy(tmp_pat
     p=save_profile(root,replace(p,notes='Metadata only',geometry_status='verified'),expected_revision=p.revision)
     assert diagnostic_matches_profile(json.loads(ruler.report_file.read_text()),p)
     assert calibration_progress(p,root)['geometry']['ready']
-    spec=get_experiment('legacy_contrast_sensitivity')
-    request=SetupRequest('test_subject','new',spec.id,p.id,spec.field_defaults() | {'Max_monitor_Luminance':200.,'Background_Luminance':50.,'Background_Screen_intensity':.5})
+    spec=get_experiment('contrast_sensitivity')
+    request=SetupRequest('test_subject','new',spec.id,p.id,spec.field_defaults())
     with pytest.raises(ValueError,match='qualified'): validate_setup(request,spec,p,mode='human')
     # Headless validation requires no instrument verification.
     validate_setup(request,spec,p,mode='simulation')

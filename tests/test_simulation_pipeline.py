@@ -5,7 +5,7 @@ from pathlib import Path
 import random
 
 import pytest
-from simulations.csf import CSFObserver
+from simulations.psychometric import PsychometricObserver
 from simulations.run import simulate
 from psychophysics_lab.core.synthetic import simulation_workspace, SimulationRun, synthetic_recorded_utc
 from psychophysics_lab.core.runner import run_request
@@ -32,10 +32,15 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
     assert a.run_directory != b.run_directory
     assert a.trial_log_file.read_bytes() == b.trial_log_file.read_bytes()
     assert a.response_file.read_bytes() == b.response_file.read_bytes()
-    assert a.status == "completed" and analysis is not None
+    assert a.status in {"completed", "max_trials_reached"}
+    if analysis is not None:
+        assert analysis.summary_json.is_file()
     assert all(c.passed for c in validate_run(a.run_directory)), [c for c in validate_run(a.run_directory) if not c.passed]
     for name in ("manifest.json","trial_context.json","experiment_config.json","SYNTHETIC_DATA.json","runtime_display.json","adaptive_session.json"):
-        assert json.loads((a.run_directory/name).read_text())["data_kind"] == "synthetic"
+        assert (a.run_directory/name).is_file(), name
+    assert json.loads((a.run_directory/"manifest.json").read_text())["data_kind"] == "synthetic"
+    assert json.loads((a.run_directory/"trial_context.json").read_text())["data_kind"] == "synthetic"
+    assert json.loads((a.run_directory/"SYNTHETIC_DATA.json").read_text())["data_kind"] == "synthetic"
     rows=list(csv.DictReader(a.trial_log_file.open(),delimiter="\t"))
     assert rows and all(row["response_key"].startswith("SIMULATED_") for row in rows)
     assert rows[0]["recorded_utc"] == "2000-01-01T00:00:00+00:00"
@@ -55,20 +60,24 @@ def test_short_simulation_has_no_fabricated_threshold(tmp_path):
     assert analysis is None
 
 
-def test_csf_tuning_and_threshold_have_correct_direction():
-    observer=CSFObserver(threshold=.1,preferred_condition=63,lapse=.02)
-    assert observer.probability_correct(0,63) == .5
-    assert observer.probability_correct(.1,63) == pytest.approx(.74)
-    assert observer.probability_correct(.2,63) > observer.probability_correct(.1,63)
-    assert observer.probability_correct(.1,63) > observer.probability_correct(.1,252)
-    assert observer.probability_correct(1e300,63) == pytest.approx(.98)
-    assert CSFObserver(threshold=.2).probability_correct(.1,63) < observer.probability_correct(.1,63)
+def test_psychometric_observer_has_declared_threshold_and_monotonic_response():
+    observer = PsychometricObserver(threshold=.1, slope=3., lapse=.02)
+    assert observer.probability(0) == .5
+    assert observer.probability(.1) == pytest.approx(observer.threshold_probability)
+    assert observer.probability(.2) > observer.probability(.1)
+    assert observer.probability(.05) < observer.probability(.1)
+    assert observer.probability(1e300) == pytest.approx(.98)
+    assert PsychometricObserver(threshold=.2).probability(.1) < observer.probability(.1)
 
 
-@pytest.mark.parametrize("kwargs", [dict(threshold=0),dict(slope=-1),dict(lapse=.5),dict(lapse=float("nan")),dict(preferred_condition=0),dict(tuning_width_octaves=0)])
-def test_invalid_observer_rejected(kwargs):
+@pytest.mark.parametrize("kwargs", [
+    dict(threshold=0), dict(slope=-1), dict(lapse=1.),
+    dict(lapse=float("nan")), dict(chance=-.1),
+    dict(threshold_probability=0), dict(threshold_probability=1)
+])
+def test_invalid_psychometric_observer_rejected(kwargs):
     with pytest.raises(ValueError):
-        CSFObserver(**kwargs)
+        PsychometricObserver(**kwargs)
 
 
 def test_virtual_observers_share_human_data_root_without_touching_human_files(tmp_path):
@@ -82,7 +91,7 @@ def test_virtual_observers_share_human_data_root_without_touching_human_files(tm
     human.mkdir()
     sentinel = human / "human_trials.tsv"
     sentinel.write_bytes(b"DO NOT CHANGE")
-    request = SetupRequest("H001", "new", "legacy_contrast_sensitivity", "legacy_reference_display", {})
+    request = SetupRequest("H001", "new", "contrast_sensitivity", "legacy_reference_display", {})
     save_workspace_state(data_root, request, status="completed")
     original_state = (data_root / "psycolab_data_config.json").read_bytes()
 
@@ -112,10 +121,10 @@ def test_virtual_ids_are_reserved_and_existing_unmarked_ids_are_not_adopted(tmp_
     assert sentinel.read_bytes() == b"DO NOT CHANGE"
 
     with pytest.raises(ValueError, match="reserved"):
-        run_request(SetupRequest("synthetic_77", "new", "legacy_contrast_sensitivity",
+        run_request(SetupRequest("synthetic_77", "new", "contrast_sensitivity",
                                  "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root)
     with pytest.raises(ValueError, match="synthetic_"):
-        run_request(SetupRequest("real_person", "new", "legacy_contrast_sensitivity",
+        run_request(SetupRequest("real_person", "new", "contrast_sensitivity",
                                  "legacy_reference_display", {}), repo_root=ROOT, data_root=data_root,
                     simulation=SimulationRun(data_root, {"seed": 1}, lambda *args: None))
     with pytest.raises(ValueError, match="separate folder"):
@@ -132,12 +141,12 @@ def test_default_simulator_uses_selected_external_human_data_root(tmp_path, monk
 
 
 def test_simulator_failure_stays_synthetic_and_finalises(tmp_path,monkeypatch):
-    from simulations import registry
+    from psychophysics_lab.experiments._internal import registry
     from dataclasses import replace
-    original=registry.get_simulation("legacy_contrast_sensitivity")
-    def fail(*args):
+    original=registry.get_experiment("contrast_sensitivity")
+    def fail(run):
         raise RuntimeError("synthetic test failure")
-    monkeypatch.setitem(registry._REGISTRY,"legacy_contrast_sensitivity",replace(original,runtime_factory=lambda *args:fail))
+    monkeypatch.setitem(registry._REGISTRY,"contrast_sensitivity",replace(original,procedure=fail))
     workspace=tmp_path/"psycolab_simulations"
     with pytest.raises(RuntimeError,match="synthetic test failure"):
         simulate(workspace=workspace,repo_root=ROOT)

@@ -175,9 +175,9 @@ parameters, including retained legacy constants.
 `adaptive_session.json` records adaptive-run completion, reversals and
 staircase state.
 
-`legacy_response.txt` remains only for compatibility with historical analysis.
+Older saved datasets may contain `legacy_response.txt`; it is not part of the current supported acquisition route.
 
-`state/` contains mutable legacy runtime state plus initial/final snapshots.
+`state/` contains run-owned runtime state plus original initial/final snapshots. New experiments rely on canonical `trials.tsv` for analysis.
 
 ## Acquisition versus analysis
 
@@ -191,20 +191,26 @@ recomputing threshold contrast from a different reversal subset.
 run_NNN/
 ├── manifest.json
 ├── experiment_config.json
+├── resolved_experiment.json
+├── monitor_profile.json
 ├── trials.tsv
-├── adaptive_session.json
-├── scenario_report.json              # virtual runs only
-├── state/                            # original runtime/snapshot records
-└── analysis/                         # derived, noncanonical output
-    ├── staircases.png                # actual correct/incorrect trial responses
-    ├── staircase_preview.json
-    ├── threshold_vs_condition.png    # only when reversals permit
-    ├── latest_threshold_analysis.json
-    └── thresholds/<timestamp>/       # N-reversal/fraction reanalysis versions
+├── adaptive_session.json           # adaptive runs, if applicable
+├── scenario_report.json            # named virtual scenarios, if applicable
+├── state/                          # original run-owned state and snapshots
+└── analysis/                       # derived outputs; not raw acquisition
+    ├── staircases.png              # observed adaptive staircases overview
+    ├── staircases_condition_*.png  # each condition's independent staircases
+    ├── staircase_preview.json      # source hash and QC context
+    ├── primary_thresholds.json     # experiment-declared primary estimator
+    ├── threshold_vs_condition.png  # if any eligible primary thresholds exist
+    ├── sensitivity_vs_condition.png
+    ├── analysis_status.json        # unavailable/partial/error explanations
+    └── thresholds/<timestamp>/     # explicitly requested exploratory analysis
 ```
 
-Both human and virtual experiments generate condition-specific staircase
-figures automatically when the run finishes. Synthetic software test results
+Human and virtual adaptive experiments attempt condition-specific staircase
+figures at finalisation when accepted trial records are available, even for
+partial/aborted runs. No thresholds are fabricated from incomplete staircases. Synthetic software test results
 are stored as `scenario_report.json` in the same run folder as the trials.
 Plots are QC/quick-look products, not publication-authorised thresholds.
 Publication repositories can maintain separate fitted models, bootstraps and

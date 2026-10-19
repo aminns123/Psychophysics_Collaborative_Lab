@@ -48,7 +48,7 @@ def test_complete_new_stimulus_classes_are_automatically_registered():
 
 
 def test_no_second_dispatch_or_generator_in_researcher_facing_file():
-    source = (ROOT / "src/psychophysics_lab/stimulus_library.py").read_text()
+    source = (ROOT / "src/psychophysics_lab/stimulus_library.py").read_text(encoding="utf-8")
     assert "def _layer(" not in source
     assert "_FUNCTIONS =" not in source
     assert "_FIELDS =" not in source

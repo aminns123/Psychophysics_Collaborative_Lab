@@ -17,15 +17,26 @@
 4. **Acquire:** use the normal TUI and physical calibration/review gates.
    Run data and historical source hashes live in a separate data repository.
 
-`CSFGrating` contains the physically trusted reference CSF shader in the
-same stimulus library. The internal `_reference_csf/` hardware presenter
-remains an uneditable implementation detail until validated replacement
-under the standard RunContext presenter is available. The original top-level
-legacy code directories have been removed.
+The supported public experiment catalogue now uses only the experiments in
+`src/psychophysics_lab/experiments/`, with names that match their Python
+source files. `contrast_sensitivity.py` is a general-purpose psychophysics
+experiment, **not** a thesis-specific contract. Retired experiment engines,
+their renderer, and their executable adapters were removed in PR #73; they
+can be examined at older Git revisions if historical provenance is needed.
 
-The registered JSON-only spatial experiment facility and historical source
-files are implementation compatibility, **not** another recommended public
-authoring route.
+Old participant data and original run identifiers must never be silently
+renamed. New runs use the current public experiment identity and a
+human-readable directory; check each run's `manifest.json` and
+`resolved_experiment.json` for the effective acquisition version.
+
+The active stimulus library's `ContrastSensitivityGrating` accepts a Gaussian
+width, frequency and digital contrast set by the selected experiment. It is
+not a physical contrast calibration by itself. Ruler, photometer and timing
+evidence remain separate from a syntactically valid Python experiment.
+
+Adaptive runs automatically attempt post-acquisition QC figures in the run's
+`analysis/` directory; the primary threshold estimator is
+experiment-defined and should never be inferred from a graph alone.
 
 See [AUTHORING_CONTRACT.md](AUTHORING_CONTRACT.md),
 [ARCHITECTURE.md](ARCHITECTURE.md) and

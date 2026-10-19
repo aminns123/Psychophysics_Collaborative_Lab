@@ -121,14 +121,17 @@ class LifecycleTests(unittest.TestCase):
             self.value(run, 0, value)
         self.assertEqual(run.states[0].reversal_count, 2)
 
-    def test_reversals_match_existing_detector_on_recorded_values(self):
-        from psychophysics_lab._reference_csf.adaptiveMethods import count_reversals_HighLow
-        for values in ([1], [1, 1, 1], [3, 2, 2, 3, 3, 2], [1, 1, 2, 3, 2, 1, 2]):
+    def test_reversals_match_independent_direction_change_oracle(self):
+        # Count changes of non-flat direction directly from presented levels.
+        # The retired historical detector must not be a runtime dependency.
+        for values in ([1], [1,1,1], [3,2,2,3,3,2], [1,1,2,3,2,1,2]):
             with self.subTest(values=values):
-                run = self.make_run((100,))
+                run=self.make_run((100,))
                 for value in values:
-                    self.value(run, 0, value)
-                self.assertEqual(run.states[0].reversal_count, count_reversals_HighLow(values)[0])
+                    self.value(run,0,value)
+                directions=[(b>a)-(b<a) for a,b in zip(values,values[1:]) if b != a]
+                expected=sum(a != b for a,b in zip(directions,directions[1:]))
+                self.assertEqual(run.states[0].reversal_count, expected)
 
     def test_ceiling_records_complete_and_unfinished(self):
         run = self.make_run(max_trials=4)

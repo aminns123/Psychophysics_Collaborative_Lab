@@ -80,15 +80,20 @@ def test_windows_display_identity_uses_pyglet_api():
     assert screen_info(screen,0).refresh_hz == 59.94
 
 def test_preflight_catches_changed_profiles_and_verified_luminance_mismatch():
-    spec = get_experiment('legacy_contrast_sensitivity')
-    values=spec.field_defaults() | {'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374}
+    spec = get_experiment('contrast_sensitivity')
+    values=spec.field_defaults()
     request=SetupRequest('S001','new',spec.id,'bench',values)
     checked=validate_setup(request,spec,profile(),mode="configuration")
     with pytest.raises(ValueError,match='changed since review'):
         validate_setup(checked,spec,replace(profile(),viewing_distance_m=1.1),mode="configuration")
     verified=_profile_from_dict(profile().to_dict() | {'calibration_status':'verified','luminance_calibration':[{'screen_intensity':.374,'luminance_cdm2':49},{'screen_intensity':1.,'luminance_cdm2':500}]})
-    with pytest.raises(ValueError,match='calibrated pair'):
-        validate_setup(replace(request,experiment_values=values|{'Background_Screen_intensity':.38}),spec,verified,mode='configuration')
+    # The current protocol stores digital intensity independently of an
+    # optional photometer lookup. Changing it cannot fabricate calibrated
+    # optical measurements or silently rewrite the profile.
+    changed=validate_setup(replace(request,experiment_values=values|{
+        'background_intensity':.38}),spec,verified,mode='configuration')
+    assert changed.experiment_values['background_intensity']==pytest.approx(.38)
+    assert verified.luminance_calibration==_profile_from_dict(verified.to_dict()).luminance_calibration
 
 def test_quantisation_is_explicit_and_sine_is_a_distinct_plan():
     quantised=temporal_plan(60,8,'temporal_binary')
@@ -166,6 +171,9 @@ def test_config_draft_survives_help_and_returns_with_fixed_review_action(tmp_pat
         app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(80,30)) as pilot:
             app.screen.query_one('#participant',Input).value='S001'
+            from textual.widgets import Select
+            app.screen.query_one('#experiment',Select).value='contrast_sensitivity'
+            await pilot.pause()
             assert await pilot.click(app.screen.query_one('#configure',Button))
             await pilot.pause()
             assert isinstance(app.screen,ExperimentConfigScreen)
@@ -229,7 +237,10 @@ def test_extension_adapter_runs_without_csf_configuration_or_hardware(tmp_path,m
 
 def test_primary_setup_error_is_preserved_with_final_manifest(tmp_path,monkeypatch):
     import psychophysics_lab.core.runner as runner
-    values=get_experiment('legacy_contrast_sensitivity').field_defaults()|{'Max_monitor_Luminance':500,'Background_Luminance':49,'Background_Screen_intensity':.374,'condition_unit':'legacy_shader_radians','starting_probe_intensity':.7}
+    values=get_experiment('contrast_sensitivity').field_defaults()
+    # This test injects a write failure after allocation, not a qualification
+    # failure. Preflight policy is independently covered by readiness tests.
+    monkeypatch.setattr(runner,'validate_setup',lambda request,spec,profile,mode='human':request)
     error=RuntimeError('intentional initial config write failure')
     original=runner.atomic_write_json
     def failing(path,payload):
@@ -237,7 +248,7 @@ def test_primary_setup_error_is_preserved_with_final_manifest(tmp_path,monkeypat
         return original(path,payload)
     monkeypatch.setattr(runner,'atomic_write_json',failing)
     with pytest.raises(RuntimeError) as caught:
-        run_request(SetupRequest('S001','new','legacy_contrast_sensitivity','legacy_reference_display',values),repo_root=ROOT,data_root=tmp_path/'data')
+        run_request(SetupRequest('S001','new','contrast_sensitivity','legacy_reference_display',values),repo_root=ROOT,data_root=tmp_path/'data')
     assert caught.value is error
     manifests=list((tmp_path/'data').rglob('manifest.json'))
     assert len(manifests)==1

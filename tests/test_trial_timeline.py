@@ -55,20 +55,16 @@ def test_unknown_json_fields_and_non_integer_durations_are_rejected(tmp_path):
         load_timeline(path, slots={"target"})
 
 
-def test_csf_reference_matches_existing_five_phase_queue():
-    spec = get_experiment("legacy_contrast_sensitivity")
-    timeline = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
-                             timings=spec.field_defaults(), slots=spec.stimulus_slots)
-    assert [(p.name, p.kind, p.duration_ms) for p in timeline.phases] == [
-        ("fixation", "show", 250), ("new_condition", "show", 250),
-        ("stimuli", "show", 200), ("interval", "show", 250),
-        ("response", "response", 0)]
-    # Compatibility contract: these phase role names also drive the original
-    # dynamic CSF trial objects, rather than rewriting their OpenGL renderer.
-    source = (ROOT / "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py").read_text()
-    assert "existing_trials[phase.name] for phase in timeline.phases" in source
-    assert '"new_condition": fixate_state_new_condition' in source
-    assert '"response": fixateRESPONSE' in source
+def test_current_csf_researcher_selected_three_phase_timeline():
+    from psychophysics_lab.experiments import contrast_sensitivity as csf
+    selected=csf.SPEC.normalise_values(csf.SPEC.field_defaults() | {
+        "fixation_ms":173,"grating_ms":241,"grating_offset_deg":.8,
+    })
+    trial=csf.make_trial(selected,{"target":1}).resolve(selected)
+    assert [(p.name,p.kind,p.duration_ms) for p in trial.phases] == [
+        ("fixation","show",173),("grating","show",241),("answer","response",0)]
+    assert trial.phases[1].placements[0].x_deg==pytest.approx(.8)
+    assert trial.phases[-1].actions==("left","right")
 
 
 def test_timed_sequence_simulates_saves_phases_and_keeps_response_metadata(tmp_path):
@@ -125,7 +121,8 @@ def test_authoring_screen_shows_create_buttons_and_timeline_file():
     spec = get_experiment("orientation_task")
     roles = dict(_source_inventory(ROOT, spec))
     assert roles["Legacy timeline example (not executed)"].name == "orientation_task.json"
-    assert dict(_source_inventory(ROOT, get_experiment("legacy_contrast_sensitivity")))["Trial timeline JSON"].name == "contrast_sensitivity.json"
+    paths=_source_inventory(ROOT,get_experiment("contrast_sensitivity"))
+    assert any(item.name=="contrast_sensitivity.py" for _,item in paths)
 
 
 def test_one_file_stimulus_ui_no_generators(tmp_path, monkeypatch):

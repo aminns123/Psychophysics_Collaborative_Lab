@@ -51,13 +51,13 @@ def test_readiness_stage_progress_does_not_conflate_software_check_with_photomet
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "config"))
     profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
     ready=profile_readiness(CSF_SPEC,profile,repo_root=ROOT,
-                            values={"starting_probe_intensity":1.,
-                                    "Background_Screen_intensity":.25})
+                            values=CSF_SPEC.field_defaults() | {
+                                    "background_intensity":.25,"starting_contrast":.1})
     states=guide_statuses(ready, profile, {})
     assert len(states)==7
     assert states[3][0]=="missing"  # luminance is never inferred from a ruler
     assert states[4][0] in {"missing","partial"}
-    assert states[5][0]=="missing"  # current starting command would clip
+    assert states[5][0]=="partial"  # initial digital range alone is not physical qualification
     assert states[6][0]=="verified"  # explicit legacy reference profile ID
     assert all(key in {"display","geometry","spatial","luminance",
                        "timing","contrast","qualification"} for key,_ in GUIDE_STEPS)
@@ -66,11 +66,9 @@ def test_readiness_stage_progress_does_not_conflate_software_check_with_photomet
 def test_review_guide_is_persistent_navigable_and_user_dismissible(tmp_path,monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path/"machine"))
     profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
-    values=CSF_SPEC.normalise_values({
-        "Max_monitor_Luminance":500.,
-        "Background_Luminance":49.,
-        "Background_Screen_intensity":.25,
-        "starting_probe_intensity":1.,
+    values=CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
+        "background_intensity":.25,
+        "starting_contrast":.1,
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
@@ -111,11 +109,9 @@ def test_review_guide_is_persistent_navigable_and_user_dismissible(tmp_path,monk
 def test_guide_link_opens_current_profile_editor_without_changing_monitor(tmp_path,monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
-    values=CSF_SPEC.normalise_values({
-        "Max_monitor_Luminance":500.,
-        "Background_Luminance":49.,
-        "Background_Screen_intensity":.25,
-        "starting_probe_intensity":.55,
+    values=CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
+        "background_intensity":.25,
+        "starting_contrast":.1,
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():
@@ -158,14 +154,10 @@ def test_duration_control_defaults_to_manual_exit(tmp_path,monkeypatch):
 def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path/"machine"))
     profile=load_monitor_profiles(ROOT)["legacy_reference_display"]
-    values=CSF_SPEC.normalise_values({
-        "Max_monitor_Luminance":500.,
-        "Background_Luminance":49.,
-        "Background_Screen_intensity":.25,
-        "starting_probe_intensity":1.0,
-        "condition_unit":"cycles_per_degree",
-        "condition_values":"2,4,8",
-        "number_conditions":3,
+    values=CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
+        "background_intensity":.25,
+        "starting_contrast":.1,
+        "frequencies_cpd":"2,4,8",
     })
     request=SetupRequest("P001","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
 
@@ -193,7 +185,7 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
             await pilot.pause()
             assert isinstance(app.screen, ExperimentConfigScreen)
             config = app.screen  # focused editor returns to the existing Experiment Review
-            assert config.query_one("#field-number-conditions",Input).value=="3"
-            assert config.query_one("#field-condition-values",Input).value=="2,4,8"
-            assert config.query_one("#field-starting-probe-intensity",Input).value=="1.0"
+            assert config.query_one("#field-frequencies-cpd",Input).value=="2,4,8"
+            assert float(config.query_one("#field-starting-contrast",Input).value)==pytest.approx(.1)
+            assert float(config.query_one("#field-background-intensity",Input).value)==pytest.approx(.25)
     asyncio.run(scenario())

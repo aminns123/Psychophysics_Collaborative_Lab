@@ -48,23 +48,17 @@ def rows(identity, values, complete=True, condition="A"):
     ]
 
 
-def test_normal_catalogs_hide_history_and_explicit_replay_remains_available():
+def test_normal_catalogue_excludes_retired_implementations():
     from simulations.registry import list_simulations
     from simulations.scenarios import list_scenarios
-
     assert all(not spec.historical for spec in list_experiments())
-    assert all(
-        not get_experiment(spec.experiment_id).historical for spec in list_simulations()
-    )
+    assert all(not get_experiment(spec.experiment_id).historical for spec in list_simulations())
     assert all(not get_experiment(s.experiment_id).historical for s in list_scenarios())
-    for identity in (
-        "base_flanker",
-        "indirect_flanker",
-        "ellipse_2d",
-        "legacy_contrast_sensitivity",
-    ):
-        assert get_experiment(identity).historical
-    assert list_scenarios("legacy_contrast_sensitivity")  # explicit compatibility request
+    for identity in ("base_flanker","indirect_flanker","ellipse_2d",
+                     "legacy_contrast_sensitivity","csf_thesis"):
+        with pytest.raises(KeyError):
+            get_experiment(identity)
+    assert get_experiment("contrast_sensitivity").id == "contrast_sensitivity"
 
 
 def test_every_normal_protocol_declares_its_scientific_interpretation():

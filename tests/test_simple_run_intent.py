@@ -56,8 +56,7 @@ def test_review_shows_selected_mode_only_and_keeps_human_blockers(tmp_path, monk
         calibration_status="manual_unverified",
     ))
     values=CSF_SPEC.field_defaults()|{
-        "Max_monitor_Luminance":500.0,"Background_Luminance":25.0,
-        "Background_Screen_intensity":.3,"starting_probe_intensity":.5
+        "background_intensity":.3, "starting_contrast":.2
     }
     request=SetupRequest("synthetic_preview","new",CSF_SPEC.id,profile.id,values,str(tmp_path/"data"))
     async def scenario():

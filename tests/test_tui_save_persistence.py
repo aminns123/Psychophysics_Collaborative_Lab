@@ -15,7 +15,7 @@ from psychophysics_lab.ui.setup import (
     DisplayCheckScreen, ExperimentConfigScreen, PsyCoLabSetupApp,
 )
 from psychophysics_lab.ui.profiles import ProfileScreen
-from simulations.csf import DEFAULT_VALUES
+from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -126,8 +126,8 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
-        experiment = get_experiment("legacy_contrast_sensitivity")
-        defaults = experiment.normalise_values(dict(DEFAULT_VALUES))
+        experiment = get_experiment("contrast_sensitivity")
+        defaults = experiment.field_defaults()
         async with app.run_test(size=(100, 30)) as pilot:
             app.push_screen(
                 ExperimentConfigScreen(
@@ -141,43 +141,43 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
             presets_panel = next(c for c in screen.query(Collapsible) if c.title == "Local presets")
             presets_panel.collapsed = False
             await pilot.pause()
-            screen.query_one("#field-number-conditions", Input).value = "3"
-            screen.query_one("#field-condition-values", Input).value = "1,4,8"
+            screen.query_one("#field-staircases-per-condition", Input).value = "3"
+            screen.query_one("#field-frequencies-cpd", Input).value = "1,4,8"
             screen.query_one("#preset-name", Input).value = "three_conditions"
             screen.query_one("#save-preset", Button).press()
             await pilot.pause()
             assert "saved successfully" in str(screen.query_one("#config-status", Static).render())
-            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["condition_values"] == "1,4,8"
-            screen.query_one("#field-number-conditions", Input).value = "2"
-            screen.query_one("#field-condition-values", Input).value = "2,8"
+            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["frequencies_cpd"] == "1,4,8"
+            screen.query_one("#field-staircases-per-condition", Input).value = "2"
+            screen.query_one("#field-frequencies-cpd", Input).value = "2,8"
             # Existing preset requires a new name; it may never silently overwrite.
             screen.query_one("#save-preset", Button).press()
             await pilot.pause()
             assert "already exists" in str(screen.query_one("#config-status", Static).render())
-            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["condition_values"] == "1,4,8"
+            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["frequencies_cpd"] == "1,4,8"
             screen.query_one("#config-preset", Select).value = "three_conditions"
             screen.query_one("#load-preset", Button).press()
             await pilot.pause()
-            assert screen.query_one("#field-number-conditions", Input).value == "3"
-            assert screen.query_one("#field-condition-values", Input).value == "1,4,8"
+            assert screen.query_one("#field-staircases-per-condition", Input).value == "3"
+            assert screen.query_one("#field-frequencies-cpd", Input).value == "1,4,8"
             assert "loaded successfully" in str(screen.query_one("#config-status", Static).render())
-            assert screen._collect()["number_conditions"] == 3
+            assert screen._collect()["staircases_per_condition"] == 3
             # The explicit Update action archives an old version and saves
             # the new values, rather than silently overwriting on Save new.
-            screen.query_one("#field-condition-values", Input).value = "1,5,9"
+            screen.query_one("#field-frequencies-cpd", Input).value = "1,5,9"
             screen.query_one("#update-preset", Button).press()
             await pilot.pause()
             assert "updated successfully" in str(screen.query_one("#config-status", Static).render())
-            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["condition_values"] == "1,5,9"
+            assert load_presets(app.local_config_root, experiment.id)["three_conditions"]["frequencies_cpd"] == "1,5,9"
             backups = list((tmp_path / "machine" / "presets" /
                             experiment.id / ".history").glob("three_conditions_*.json"))
             assert len(backups) == 1
             import json
-            assert json.loads(backups[0].read_text())["values"]["condition_values"] == "1,4,8"
+            assert json.loads(backups[0].read_text())["values"]["frequencies_cpd"] == "1,4,8"
             screen.query_one("#review", Button).press()
             await pilot.pause()
-            assert app.screen.request.experiment_values["condition_values"] == "1,5,9"
+            assert app.screen.request.experiment_values["frequencies_cpd"] == "1,5,9"
             app.pop_screen()
             await pilot.pause()
-            assert screen.query_one("#field-condition-values", Input).value == "1,5,9"
+            assert screen.query_one("#field-frequencies-cpd", Input).value == "1,5,9"
     asyncio.run(scenario())

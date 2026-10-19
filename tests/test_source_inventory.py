@@ -7,10 +7,7 @@ from psychophysics_lab.core.runner import _runtime_source_fingerprints
 def test_source_inventory_includes_new_runtime_helpers_and_excludes_local_files(tmp_path):
     included = ["src/psychophysics_lab/core/new_lifecycle_helper.py",
                 "src/psychophysics_lab/experiments/test_probe.py",
-                "src/psychophysics_lab/stimuli/test_line.py",
-                "src/psychophysics_lab/_reference_csf/nested/runtime.py",
-                "src/psychophysics_lab/_reference_csf/libC.py",
-                "src/psychophysics_lab/_reference_csf/packages.zip"]
+                "src/psychophysics_lab/stimuli/test_line.py"]
     excluded = ["tests/test_run.py", "src/psychophysics_lab/tests/helper.py",
                 "src/psychophysics_lab/_reference_csf/test_runtime.py", "src/psychophysics_lab/_reference_csf/runtime_test.py", "src/psychophysics_lab/_reference_csf/conftest.py",
                 "src/psychophysics_lab/_reference_csf/__pycache__/a.py", "src/psychophysics_lab/_reference_csf/a.pyc", "src/psychophysics_lab/_reference_csf/.venv/a.py",

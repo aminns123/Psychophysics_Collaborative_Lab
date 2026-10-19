@@ -16,7 +16,6 @@ from psychophysics_lab.core.timeline import load_timeline
 from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = json.loads((ROOT / "tests/fixtures/researcher_procedures.json").read_text())
 
 
 def normalise(value):
@@ -28,28 +27,18 @@ def normalise(value):
     return value
 
 
-@pytest.mark.parametrize("identity", FIXTURE["cases"])
-def test_consolidated_procedure_matches_original_complete_scientific_trace(tmp_path, identity):
-    case = FIXTURE["cases"][identity]
-    sim = SimulationRun(tmp_path / "data", {
-        "seed": case["seed"], "physical_display_used": False,
-        "observer_parameters": {"accuracy": case["accuracy"]}}, lambda *a: None)
-    result = run_request(SetupRequest("synthetic_123", "new", identity, "legacy_reference_display", case["values"]),
-                         repo_root=ROOT, data_root=tmp_path / "data", simulation=sim)
-    expected = case["expected"]
-    assert result.trial_log_file.read_text() == expected["trials_tsv"]
-    actions = json.loads((result.run_directory / "trial_actions.json").read_text())["trials"]
-    # Only callback module qualification changes when policy moves to its owner.
-    digest = hashlib.sha256(json.dumps(normalise(actions), sort_keys=True).encode()).hexdigest()
-    assert digest == expected["actions_sha256"]
-    assert json.loads((result.run_directory / "adaptive_session.json").read_text()) == expected["adaptive"]
+def test_current_public_csf_exposes_its_scientific_parameter_contract():
+    spec = get_experiment("contrast_sensitivity")
+    assert spec.procedure is not None
+    assert spec.id == "contrast_sensitivity"
+    assert "grating_offset_deg" in spec.field_defaults()
+    assert "frequencies_cpd" in spec.field_defaults()
+    assert "src/psychophysics_lab/experiments/contrast_sensitivity.py" in spec.source_paths
 
 
 def test_every_python_procedure_is_owned_by_its_named_file():
     for spec in list_experiments(include_historical=True):
-        if spec.procedure is None:
-            assert spec.id == "legacy_contrast_sensitivity"  # documented retained renderer exception
-            continue
+        assert spec.procedure is not None, spec.id
         if spec.historical:
             continue  # Frozen replay tests qualify archived scientific behaviour.
         if spec.procedure.__module__.endswith("library_builder"):
@@ -60,27 +49,23 @@ def test_every_python_procedure_is_owned_by_its_named_file():
         assert f"src/psychophysics_lab/experiments/{name}.py" in spec.source_paths
 
 
-def test_python_orientation_and_csf_timelines_preserve_original_roles_and_timings():
-    from psychophysics_lab._reference_csf.experiment_definition import trial_timeline
-    csf = get_experiment("legacy_contrast_sensitivity")
-    expected = load_timeline(ROOT / "configs/experiments/contrast_sensitivity.json",
-                             timings=csf.field_defaults(), slots=csf.stimulus_slots)
-    assert trial_timeline(csf.field_defaults()).to_dict() == expected.to_dict()
-    for identity in ("orientation_task", "orientation_adaptive"):
+def test_current_csf_and_orientation_timelines_use_selected_settings():
+    from psychophysics_lab.experiments import contrast_sensitivity as csf
+    values = csf.SPEC.normalise_values(csf.SPEC.field_defaults() | {
+        "fixation_ms":173,"grating_ms":91,"grating_offset_deg":1.7
+    })
+    trial = csf.make_trial(values, {"target":0}).resolve(values)
+    assert [(p.name,p.duration_ms) for p in trial.phases] == [
+        ("fixation",173),("grating",91),("answer",0)]
+    assert trial.phases[1].placements[0].x_deg == -1.7
+    for identity in ("orientation_task","orientation_adaptive"):
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
-        values = module.SPEC.field_defaults() | {"fixation_ms": 173, "stimulus_ms": 91}
-        expected = load_timeline(ROOT / "configs/experiments/orientation_task.json", timings=values, slots={"target"})
-        actual = module.make_trial(values, {"target":0}).resolve(values)
-        assert [(p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in actual.phases] == [
-            (p.name, p.kind, p.slot, p.duration_ms, p.instructions) for p in expected.phases]
-
-
-def test_csf_runtime_consumes_experiment_timeline_without_package_config_lookup():
-    source = (ROOT / "src/psychophysics_lab/_reference_csf/contrast_sensitivity_function.py").read_text()
-    tree = ast.parse(source)
-    assert any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "trial_timeline"
-               for n in ast.walk(tree))
-    assert "configs/experiments/contrast_sensitivity.json" not in source
+        values = module.SPEC.field_defaults() | {"fixation_ms":173,"stimulus_ms":91}
+        expected = load_timeline(ROOT / "configs/experiments/orientation_task.json",
+                                 timings=values,slots={"target"})
+        actual = module.make_trial(values,{"target":0}).resolve(values)
+        assert [(p.name,p.kind,p.slot,p.duration_ms,p.instructions) for p in actual.phases] == [
+            (p.name,p.kind,p.slot,p.duration_ms,p.instructions) for p in expected.phases]
 
 
 def test_new_file_is_discovered_without_registry_edits_and_managed_drafts_stay_gated(tmp_path, monkeypatch):
@@ -115,17 +100,17 @@ def test_single_python_file_can_be_staged_and_fingerprinted_without_companion(tm
         publish(tmp_path, "experiment", "single_file")
 
 
-@pytest.mark.parametrize("identity", ["base_flanker", "indirect_flanker", "ellipse_2d"])
-def test_adaptive_policy_is_explicit_in_the_experiment(identity):
-    source = (ROOT / f"src/psychophysics_lab/experiments/_internal/historical/{identity}.py").read_text()
-    module = importlib.import_module("psychophysics_lab.experiments._internal.historical." + identity)
-    defaults = module.SPEC.field_defaults()
-    for key, value in {"n_down":3, "trial_point":9, "reverse_point":1,
-                       "reversal_limit":10, "condition_trial_limit":101}.items():
-        assert defaults[key] == value
-        assert f'{key}=v["{key}"]' in source
-        assert key in module.SPEC.adaptive.controls
-
+@pytest.mark.parametrize("identity", [
+    "line_position_baseline","line_position_flanker","ellipse_centre","ellipse_major_axis"
+])
+def test_public_adaptive_policy_is_visible_in_the_experiment_source(identity):
+    from psychophysics_lab.experiments._internal.registry import get_experiment
+    spec=get_experiment(identity)
+    source=(ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text()
+    defaults=spec.field_defaults()
+    for key in ("n_down","n_up","reversal_termination","staircases_per_condition"):
+        assert key in defaults and key in source
+        assert key in spec.adaptive.controls
 
 
 def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_position():

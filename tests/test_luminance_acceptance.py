@@ -179,8 +179,7 @@ def test_accept_returns_to_existing_experiment_review_preserving_human_mode(tmp_
     root, profile = saved_test_profile()
     before = evidence(root)
     values = CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
-        'Max_monitor_Luminance': 499.667, 'Background_Luminance': 249.667,
-        'Background_Screen_intensity': .5})
+        'background_intensity': .5, 'starting_contrast': .1})
     request = SetupRequest('test_subject', 'new', CSF_SPEC.id, profile.id,
                            values, str(tmp_path/'participants'))
 
@@ -198,7 +197,7 @@ def test_accept_returns_to_existing_experiment_review_preserving_human_mode(tmp_
             await pilot.pause()
             assert app.screen is review
             assert review.request.experiment_values == request.experiment_values
-            assert review.query_one('#review-run-intent', Select).value == 'human'
+            assert app.run_intent == 'human'
             assert not next(row for row in review.readiness_report['requirements'] if row['key']=='luminance')['passed']
             assert not review.readiness_report['human_ready']
 

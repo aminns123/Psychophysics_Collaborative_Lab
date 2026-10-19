@@ -19,26 +19,26 @@ from psychophysics_lab.config.models import SetupRequest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_scenario_registry_lists_independent_experiment_cases(capsys):
-    ids = {scenario.id for scenario in list_scenarios("legacy_contrast_sensitivity")}
-    assert {"csf_baseline", "csf_short_censored", "csf_shifted_preference"} <= ids
-    assert get_scenario("legacy_contrast_sensitivity", "csf_short_censored").expect_analysis is False
+def test_retired_scenarios_are_not_registered_but_extension_point_remains(capsys):
+    # The old thesis-specific canned scenarios were retired. Researchers can
+    # contribute scenarios for any registered experiment using the same API.
+    assert all(item.id != "csf_baseline" for item in list_scenarios("contrast_sensitivity"))
     assert main(["--list-scenarios"]) == 0
-    assert "csf_baseline" in capsys.readouterr().out
-    assert not list_scenarios("unknown_experiment")
+    assert "csf_baseline" not in capsys.readouterr().out
     with pytest.raises(ValueError, match="No scenario"):
-        get_scenario("unknown_experiment", "csf_baseline")
+        get_scenario("contrast_sensitivity", "csf_baseline")
+    assert not list_scenarios("unknown_experiment")
 
 
 def test_scenario_definitions_fail_loudly_if_invalid():
     with pytest.raises(ValueError, match="nonnegative integer seed"):
-        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", seeds=(-1,))
+        SimulationScenario("test", "contrast_sensitivity", "Test", seeds=(-1,))
     with pytest.raises(ValueError, match="Duplicate random seeds"):
-        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", seeds=(1, 1))
+        SimulationScenario("test", "contrast_sensitivity", "Test", seeds=(1, 1))
     with pytest.raises(ValueError, match="description"):
-        SimulationScenario("test", "legacy_contrast_sensitivity", "")
+        SimulationScenario("test", "contrast_sensitivity", "")
     with pytest.raises(TypeError, match="evaluator"):
-        SimulationScenario("test", "legacy_contrast_sensitivity", "Test", evaluate="not callable")
+        SimulationScenario("test", "contrast_sensitivity", "Test", evaluate="not callable")
 
 
 def test_other_experiments_can_register_other_observers_and_evaluators(monkeypatch):

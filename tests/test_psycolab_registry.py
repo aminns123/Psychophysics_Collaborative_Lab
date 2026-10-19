@@ -1,47 +1,30 @@
-from datetime import datetime
-
-from psychophysics_lab.config.models import MonitorProfile
+"""Registry contracts for the supported public one-file experiment catalogue."""
+import pytest
 from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
+from psychophysics_lab.experiments.contrast_sensitivity import make_conditions
 
 
-def test_csf_is_explicitly_registered():
-    specs = list_experiments(include_historical=True)
-    assert {spec.id for spec in specs} >= {"legacy_contrast_sensitivity", "orientation_task", "orientation_adaptive"}
-    assert get_experiment("legacy_contrast_sensitivity") is specs[0]
+def test_public_csf_is_registered_once_without_retired_thesis_ids():
+    specs = list_experiments()
+    assert "contrast_sensitivity" in {spec.id for spec in specs}
+    assert get_experiment("contrast_sensitivity").id == "contrast_sensitivity"
+    assert all(not spec.historical for spec in specs)
+    for retired in ("legacy_contrast_sensitivity","csf_thesis","base_flanker",
+                    "indirect_flanker","ellipse_2d"):
+        with pytest.raises(KeyError):
+            get_experiment(retired)
 
 
-def test_csf_builds_legacy_setup_without_changing_defaults():
-    spec = get_experiment("legacy_contrast_sensitivity")
-    profile = MonitorProfile(
-        id="legacy_reference_display",
-        display_name="Legacy",
-        physical_width_m=0.610,
-        physical_height_m=0.350,
-        refresh_rate_hz=60,
-        viewing_distance_m=1.0,
-    )
-    values = spec.field_defaults()
-    values.update(
-        {
-            "Max_monitor_Luminance": 500.0,
-            "Background_Luminance": 204.0,
-            "Background_Screen_intensity": 0.72,
-        }
-    )
-
-    setup = spec.build_legacy_setup(
-        participant_id="S001",
-        values=values,
-        monitor_profile=profile,
-        now=datetime(2026, 9, 14),
-    )
-
-    assert setup["Experiment_Type"] == "contrast_sensitivity_function"
-    assert setup["n_down"] == 2
-    assert setup["n_up"] == 1
-    assert setup["reversal_termination"] == 10
-    assert setup["max_trials"] == 30
-    assert setup["timeFixate"] == 250
-    assert setup["timeInterval"] == 250
-    assert setup["timeAB"] == 200
-    assert setup["monitor_profile"]["physical_width_m"] == 0.610
+def test_csf_selected_frequency_list_and_adaptation_belong_to_public_spec():
+    spec = get_experiment("contrast_sensitivity")
+    settings = spec.normalise_values(spec.field_defaults() | {
+        "frequencies_cpd": "1,3,6.5", "staircases_per_condition": 2,
+        "n_down": 3, "n_up": 1, "grating_offset_deg": 1.25
+    })
+    assert settings["n_down"] == 3
+    assert settings["grating_offset_deg"] == 1.25
+    conditions = make_conditions(settings)
+    assert [row["frequency_cpd"] for row in conditions] == [
+        1.,1.,3.,3.,6.5,6.5
+    ]
+    assert len({row["id"] for row in conditions}) == 6

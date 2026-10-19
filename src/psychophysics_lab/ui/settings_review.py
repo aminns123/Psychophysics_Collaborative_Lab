@@ -19,6 +19,12 @@ class _ParameterReads(dict):
 
 
 class _PlanningContext(RunContext):
+    def __post_init__(self):
+        # Direct construction (also used by regression tests) needs the same
+        # read-tracking state as describe_settings().
+        self.overrides = {}
+        self.parameter_reads = {}
+
     """RunContext's actual parameter/adaptive machinery, with saving disabled."""
     def initialise(self, *, expected_trials, resolution, **kwargs):
         self.expected_trials = expected_trials

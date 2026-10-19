@@ -489,7 +489,7 @@ def validate_monitor(settings, profile):
 def definition(identity="contrast_sensitivity"):
     return experiment(
         id=identity,
-        name="Contrast Sensitivity (software validation)",
+        name="Contrast Sensitivity",
         data_directory_name="contrast_sensitivity",
         procedure=procedure,
         description="Fixation then grating at a researcher-selected left/right angular offset; timing, position and adaptation are editable in the TUI.",
@@ -518,7 +518,7 @@ def definition(identity="contrast_sensitivity"):
         stimulus_defaults=STIMULUS_DEFAULTS,
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
-        acquisition_block_reason="Contrast sensitivity implemented for software tests; raster aperture, grayscale precision, calibrated contrast/luminance and physical timing must be qualified before human acquisition. The 2,8 cpd defaults are a short software example, choose the full study frequency list.",
+        acquisition_block_reason="Scientific acquisition requires the researcher to assess the selected display, raster geometry, effective contrast/luminance, response mapping and physical timing for this protocol. The declared default frequencies are editable choices, not a required published experiment. Use the explicit researcher override if proceeding without protocol qualification.",
         trial_column_overrides={
             "presented_display_contrast": {
                 "units_or_encoding": "digital_peak_to_peak",

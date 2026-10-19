@@ -72,7 +72,8 @@ def test_human_review_marks_next_check_and_opens_photometry_verification(tmp_pat
                 review.query_one("#human-next-action",Static).render())
             assert "luminance" in str(review.query_one("#human-checklist",Static).render()).lower()
             assert review.query_one("#readiness-luminance",Static).has_class("readiness-next")
-            assert review.query_one("#readiness-qualification",Static).has_class("readiness-blocked")
+            assert any(row["key"]=="luminance" and not row["passed"]
+                       for row in review.readiness_report["requirements"])
             review.query_one("#review-next-action",Button).press()
             await pilot.pause()
             assert isinstance(app.screen,PhysicalVerificationScreen)
