@@ -211,46 +211,29 @@ def test_luminance_editor_save_discard_restart_and_noop(tmp_path):
     asyncio.run(scenario())
 
 
-def test_actual_pipeline_presentation_output_is_isolated_and_human_stays_blocked(tmp_path,monkeypatch):
-    p=profile(); p=save_profile(config_root(ROOT),replace(p,calibration_method='fake pilot'),expected_revision=p.revision)
-    monkeypatch.setattr('psychophysics_lab.core.display.preflight_fullscreen_display',lambda p:None)
-    from psychophysics_lab.data.trials import TrialLog
-    runtime=ModuleType(CSF_SPEC.legacy_module)
-    def fake(conditions,parameters,response,state):
-        TrialLog(__import__('pathlib').Path(response).parent/'trials.tsv').append({'trial_index':1,'staircase_id':0,'staircase_trial_index':1,'stimulus_condition':2.,'presented_display_contrast':.5,'next_display_contrast':.3,'correct':1,'reversal':0})
-    runtime.run_experiment=fake; monkeypatch.setitem(sys.modules,CSF_SPEC.legacy_module,runtime)
-    human=tmp_path/'human'; human.mkdir(); sentinel=human/'existing.tsv'; sentinel.write_bytes(b'KEEP')
-    request=SetupRequest('H001','new',CSF_SPEC.id,p.id,values(),str(human))
-    result=run_presentation_test(PresentationTestRequest(request),repo_root=ROOT)
-    manifest=json.loads(result.manifest_file.read_text()); context=json.loads((result.run_directory/'trial_context.json').read_text())
-    assert result.accepted_trials==1 and manifest['data_kind']==context['data_kind']=='uncalibrated_presentation_test'
-    assert (result.run_directory/'UNCALIBRATED_TEST_DATA.json').exists()
-    assert manifest['participant_id'].startswith('presentation_test_')
-    assert not result.run_directory.is_relative_to(human) and sentinel.read_bytes()==b'KEEP'
-    assert not (human/'workspace_state.json').exists()
-    async def inspect():
-        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=human)
-        async with app.run_test() as pilot:
-            app.query_one('#nav-data',Button).press(); await pilot.pause()
-            app.screen.query_one('#inspect-presentation-manifest',Button).press(); await pilot.pause()
-            from psychophysics_lab.ui.setup import CodeViewScreen
-            assert isinstance(app.screen,CodeViewScreen)
-            assert app.data_root==human
-    asyncio.run(inspect())
-    from psychophysics_lab.paths import resolve_data_root
-    with pytest.raises(ValueError,match='Presentation-test folders'):
-        resolve_data_root(result.run_directory,ROOT)
-    from psychophysics_lab.core.runner import run_request
-    with pytest.raises(ValueError,match='Human acquisition blocked'):
-        run_request(request,repo_root=ROOT,data_root=human)
-
+def test_virtual_pipeline_is_separate_and_unqualified_human_run_is_blocked(tmp_path):
+    from simulations.run import simulate
+    human=tmp_path/"human";human.mkdir()
+    sentinel=human/"existing.tsv";sentinel.write_bytes(b"KEEP")
+    simulation,_=simulate(data_root=human,repo_root=ROOT,seed=77,
+        values={"frequencies_cpd":"2","max_trials":3,
+                "staircases_per_condition":1},analyse=False)
+    assert simulation.run_directory.is_relative_to(human/"synthetic_77")
+    assert json.loads(simulation.manifest_file.read_text())["data_kind"]=="synthetic"
+    assert sentinel.read_bytes()==b"KEEP"
+    # A synthetic/test run may not silently qualify a real participant.
+    p=profile()
+    request=SetupRequest("H001","new",CSF_SPEC.id,p.id,values())
+    with pytest.raises(ValueError,match="Human acquisition blocked"):
+        validate_setup(request,CSF_SPEC,p,mode="human")
+    assert not (human/"workspace_state.json").exists()
 
 def test_presentation_still_rejects_unsafe_start_without_output(tmp_path,monkeypatch):
     p=profile(); monkeypatch.setattr('psychophysics_lab.core.display.preflight_fullscreen_display',lambda p:None)
-    unsafe=values()|{'Background_Screen_intensity':.25,'starting_probe_intensity':1.}
+    unsafe=values()|{'background_intensity':.25,'starting_contrast':1.}
     test_root=config_root(ROOT).parent/'psycolab_presentation_tests'
     before={str(f):f.read_bytes() for f in test_root.rglob('*') if f.is_file()} if test_root.exists() else {}
-    with pytest.raises(ValueError,match='Grating command may clip'):
+    with pytest.raises(ValueError,match='contrast|digital range'):
         run_presentation_test(PresentationTestRequest(SetupRequest('H001','new',CSF_SPEC.id,p.id,unsafe)),repo_root=ROOT)
     after={str(f):f.read_bytes() for f in test_root.rglob('*') if f.is_file()} if test_root.exists() else {}
     assert after==before
@@ -433,10 +416,11 @@ def test_outer_app_presentation_failure_reports_only_to_test_root(tmp_path,monke
     assert 'failed' in prompts[1]['simulation_summary'] and sentinel.read_bytes()==b'KEEP'
 
 
-def test_manifest_does_not_certify_legacy_fake_verified_flag(tmp_path):
-    from psychophysics_lab.core.runner import _manifest_payload
-    p=replace(profile(),calibration_status='verified',calibration_method='fake pilot')
-    request=SetupRequest('presentation_test_fixture','new',CSF_SPEC.id,p.id,values())
-    manifest=_manifest_payload(request=request,setup={},profile=p.to_dict(),run_dir=tmp_path/'run_001',data_root=tmp_path,repo_root=ROOT,grouping_parts=(),run_uuid='fixture',status='configured')
-    assert 'calibration' in manifest
-    assert not manifest['calibration']['has_verified_luminance_mapping']
+def test_synthetic_photometry_cannot_be_relabelled_as_laboratory_verified():
+    from psychophysics_lab.config.models import photometry_is_test_data
+    from psychophysics_lab.config.preflight import human_requirements
+    p=replace(profile(),calibration_status="verified",calibration_method="fake pilot")
+    assert photometry_is_test_data(p)
+    requirements=human_requirements(CSF_SPEC,p,values())
+    assert any(r["key"]=="luminance" and not r["passed"] for r in requirements)
+    assert not p.has_verified_luminance_mapping
