@@ -150,7 +150,7 @@ def test_profile_detection_preserves_existing_monitor_binding(tmp_path, monkeypa
     from psychophysics_lab.ui.setup import PsyCoLabSetupApp
     monitors = [DisplayInfo(0,0,0,1920,1080,60,'A'), DisplayInfo(1,1920,0,1920,1080,60,'B')]
     monkeypatch.setattr('psychophysics_lab.ui.profiles.enumerate_displays', lambda: monitors)
-    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', display_binding=asdict(monitors[1]), qualified_experiments=('legacy_contrast_sensitivity',)))
+    saved = save_profile(config_root(ROOT), profile(id='local', origin='local', display_binding=asdict(monitors[1]), qualified_experiments=('contrast_sensitivity',)))
     async def scenario():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test() as pilot:
@@ -165,7 +165,7 @@ def test_profile_detection_preserves_existing_monitor_binding(tmp_path, monkeypa
 @pytest.mark.parametrize('values', [None, [], 'invalid', 5])
 def test_malformed_workspace_request_is_ignored(values):
     from psychophysics_lab.data.workspace import request_from_workspace_state
-    raw = asdict(SetupRequest('S001','new','legacy_contrast_sensitivity','legacy_reference_display',{}))
+    raw = asdict(SetupRequest('S001','new','contrast_sensitivity','legacy_reference_display',{}))
     raw['experiment_values'] = values
     assert request_from_workspace_state({'last_request': raw}) is None
 
@@ -173,8 +173,8 @@ def test_malformed_workspace_request_is_ignored(values):
 def test_preflight_checks_experiment_identity():
     from psychophysics_lab.config.preflight import validate_setup
     from psychophysics_lab.experiments._internal.registry import get_experiment
-    spec = get_experiment('legacy_contrast_sensitivity')
-    values = spec.field_defaults() | {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374}
+    spec = get_experiment('contrast_sensitivity')
+    values = spec.field_defaults()
     request = SetupRequest('S001','new','different_experiment','legacy_reference_display',values)
     with pytest.raises(ValueError, match='experiment identity'):
         validate_setup(request, spec, profile())
@@ -206,24 +206,19 @@ def test_setup_keeps_compatible_monitor_selection(tmp_path):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize('phase', ['capture', 'record'])
-def test_adaptive_logger_preserves_primary_error_and_stops_queue(monkeypatch, phase):
-    import psychophysics_lab._reference_csf.adaptive_session as module
-    session = module.LegacyStaircaseSession.__new__(module.LegacyStaircaseSession)
-    session.run = SimpleNamespace(total_trials=0)
-    error = OSError('primary recording failure')
-    def fail(*args, **kwargs): raise error
-    def fail_save(*args, **kwargs): raise OSError('secondary save failure')
-    session._capture_pre_response = fail if phase == 'capture' else lambda *a: None
-    monkeypatch.setattr(module, 'record_event', fail)
-    session.save = fail_save
-    exited = []
-    window = SimpleNamespace(trials=[1,2], exit=lambda: exited.append(True))
-    with pytest.raises(OSError) as caught:
-        session.logger(window)('KEY', 0, None, [])
-    assert caught.value is error
-    assert window.trials == [] and exited == [True]
-    assert 'secondary save failure' in '\n'.join(error.__notes__)
+@pytest.mark.parametrize("status", ["aborted_by_user", "error"])
+def test_final_run_failure_retains_original_canonical_rows_and_derived_diagnostics(tmp_path,status):
+    # Retired event-handler tests depended on an abandoned GL presenter.
+    # The supported public contract is the preserved run-owned canonical file.
+    from test_pipeline_repairs import saved_run
+    from psychophysics_lab.analysis.previews import create_run_figures
+    run=saved_run(tmp_path,status=status,kind="human",complete=False)
+    before=(run/"trials.tsv").read_bytes()
+    report=create_run_figures(data_root=tmp_path,run_directory=run)
+    assert (run/"manifest.json").is_file()
+    assert (run/"analysis/staircases.png").is_file()
+    assert report["status"] in ("partial", "staircases_only")
+    assert (run/"trials.tsv").read_bytes()==before
 
 
 def test_keyboard_interrupt_run_is_not_reported_as_returned(tmp_path, monkeypatch):
@@ -242,27 +237,15 @@ def test_keyboard_interrupt_run_is_not_reported_as_returned(tmp_path, monkeypatc
     assert manifest['accepted_trials'] == 0
 
 
-def test_csf_screen_failure_finalises_adaptive_error(tmp_path, monkeypatch):
-    import importlib.util
-    import psychophysics_lab.core.display as display
-    monkeypatch.setitem(sys.modules, 'pyglet', SimpleNamespace(options={}, clock=SimpleNamespace(unschedule=lambda f: None)))
-    monkeypatch.setitem(sys.modules, 'psychophysics_lab._reference_csf.libC', SimpleNamespace(ExpWindow=lambda **kw: None, Params=object, key=None, run=None))
-    monkeypatch.setitem(sys.modules, 'psychophysics_lab._reference_csf.stimuliC', SimpleNamespace(Dot_stairCase_centre=None, Grating_ADM=None))
-    spec = importlib.util.spec_from_file_location('csf_audit_stubbed', ROOT/'src'/'psychophysics_lab'/'_reference_csf'/'contrast_sensitivity_function.py')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    saved, finished = [], []
-    module.LegacyStaircaseSession = lambda *a, **kw: SimpleNamespace(save=lambda **v: saved.append(v), finish=lambda: finished.append(True))
-    monkeypatch.setattr(module.funcs, 'removeZeroRow', lambda p: None)
-    monkeypatch.setattr(module.funcs, 'correctFileSpacings', lambda p: None)
-    error = ValueError('Bound monitor is missing')
-    def missing(p): raise error
-    monkeypatch.setattr(display, 'select_screen', missing)
-    (tmp_path/'user_experiment_config.json').write_text(json.dumps({'experiment_params':{'number_trials':3},'monitor_profile':profile().to_dict()}))
-    with pytest.raises(ValueError) as caught:
-        module.run_experiment('conditions','parameters',str(tmp_path/'response'),str(tmp_path))
-    assert caught.value is error
-    assert saved == [{'status':'error','error':error}] and finished == [True]
+def test_display_binding_rejects_missing_device_before_physical_acquisition(monkeypatch):
+    # Actual display resolution/binding errors are not overridable calibration
+    # declarations. The active renderer must fail closed instead of guessing.
+    from psychophysics_lab.core.display import select_screen
+    screen=Screen("present")
+    mock_display(monkeypatch,[screen],screen)
+    binding=asdict(DisplayInfo(0,0,0,1920,1080,60,"missing"))
+    with pytest.raises(ValueError,match="missing|screen|display"):
+        select_screen(profile(id="local",origin="local",display_binding=binding))
 
 
 def test_trial_log_rejects_existing_incompatible_header(tmp_path):
@@ -290,10 +273,10 @@ def test_profile_binding_device_id_must_be_text():
 
 def test_malformed_preset_is_not_offered_to_tui():
     from psychophysics_lab.config.local import load_presets
-    directory = config_root(ROOT)/'presets'/'legacy_contrast_sensitivity'
+    directory = config_root(ROOT)/'presets'/'contrast_sensitivity'
     directory.mkdir(parents=True)
-    (directory/'bad.json').write_text(json.dumps({'experiment_id':'legacy_contrast_sensitivity','values':5}))
-    assert load_presets(config_root(ROOT),'legacy_contrast_sensitivity') == {}
+    (directory/'bad.json').write_text(json.dumps({'experiment_id':'contrast_sensitivity','values':5}))
+    assert load_presets(config_root(ROOT),'contrast_sensitivity') == {}
 
 
 @pytest.mark.parametrize('device_id,valid', [(r'\\.\DISPLAY1',True), (r'\\.\DISPLAY12',True), (r'\\server\share',False), ('/home/example/data',False)])
@@ -307,18 +290,17 @@ def test_validator_distinguishes_windows_monitor_id_from_file_path(tmp_path, dev
     assert result.passed is valid, result.detail
 
 
-def test_legacy_parameter_helpers_accept_mapping_without_mutating_defaults():
-    # Execute the real pure helpers without importing OpenGL during headless tests.
-    import ast
-    tree = ast.parse((ROOT/'src/psychophysics_lab/_reference_csf/libC.py').read_text(encoding='utf-8'))
-    selected = [node for node in tree.body if isinstance(node,(ast.FunctionDef,ast.ClassDef)) and node.name in {'Params','copy_params','stim_factory'}]
-    namespace = {}
-    exec(compile(ast.Module(body=selected,type_ignores=[]),'libC.py','exec'),namespace)
-    defaults = namespace['Params'](width=100, contrast=.5)
-    copied = namespace['copy_params'](defaults, {'width':200}, contrast=.2)
-    assert copied.width == 200 and copied.contrast == .2 and defaults.width == 100
-    stimulus = namespace['stim_factory'](width=100)(params={'width':200})
-    assert stimulus.params.width == 200
+def test_current_stimulus_parameter_overrides_leave_shared_defaults_unchanged():
+    from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
+    base={f.key:f.default for f in ContrastSensitivityGrating.PARAMETERS}
+    original=dict(base)
+    selected=ContrastSensitivityGrating.validate_parameters(base | {
+        "spatial_frequency_cpd":6.5, "sigma_deg":1.3
+    })
+    assert selected["spatial_frequency_cpd"]==6.5
+    assert selected["sigma_deg"]==1.3
+    assert base==original
+    assert ContrastSensitivityGrating.validate_parameters(base)["sigma_deg"]==original["sigma_deg"]
 
 
 def test_launch_state_nonobject_is_treated_as_missing(tmp_path, monkeypatch):
@@ -353,16 +335,15 @@ def test_concurrent_profile_edits_keep_one_revision_and_reject_stale_writer(tmp_
     assert [json.loads(p.read_text())['revision'] for p in revisions] == [1,2]
 
 
-@pytest.mark.parametrize('field', ['timeFixate','timeInterval','timeAB'])
-def test_zero_length_keyless_phase_is_rejected_before_acquisition(field):
-    from psychophysics_lab.experiments._internal.registry import get_experiment
-    spec = get_experiment('legacy_contrast_sensitivity')
-    values = {'Max_monitor_Luminance':500, 'Background_Luminance':49, 'Background_Screen_intensity':.374, field:0}
-    with pytest.raises(ValueError, match='positive'):
-        spec.normalise_values(values)
-    # Zero response timeout keeps its existing, deliberate self-paced semantics.
-    values[field] = 1
-    assert spec.normalise_values(values)['timeT'] == 0
+@pytest.mark.parametrize("field", ["fixation_ms", "grating_ms"])
+def test_current_csf_positive_stimulus_phase_duration_is_required(field):
+    from psychophysics_lab.experiments.contrast_sensitivity import SPEC, make_trial
+    with pytest.raises(ValueError):
+        SPEC.normalise_values(SPEC.field_defaults() | {field:0})
+    values=SPEC.normalise_values(SPEC.field_defaults() | {field:1})
+    trial=make_trial(values,{"target":0}).resolve(values)
+    assert trial.phases[-1].name=="answer"
+    assert trial.phases[-1].duration_ms==0
 
 
 def test_loading_workspace_with_removed_experiment_uses_current_selection(tmp_path):
@@ -376,7 +357,7 @@ def test_loading_workspace_with_removed_experiment_uses_current_selection(tmp_pa
         async with app.run_test() as pilot:
             app._refresh_data_root()
             await pilot.pause()
-            assert app.screen.query_one('#experiment',Select).value == 'legacy_contrast_sensitivity'
+            assert app.screen.query_one('#experiment',Select).value == 'example_experiment'
     asyncio.run(scenario())
 
 
