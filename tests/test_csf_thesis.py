@@ -19,15 +19,35 @@ from scripts.validate_run import validate_run
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.parametrize("side,x", [("left", -.5), ("right", .5)])
-def test_figure_4_3a_has_exactly_the_three_participant_visible_stages(side, x):
-    phases = make_trial(SPEC.field_defaults(), {"target":0 if side == "left" else 1}).resolve(SPEC.field_defaults()).phases
-    assert [(p.name, p.duration_ms) for p in phases] == [("fixation", 500), ("grating", 300), ("answer", 0)]
+@pytest.mark.parametrize("side,sign", [("left", -1), ("right", 1)])
+@pytest.mark.parametrize("offset_deg", [0.25, 0.5, 1.0, 2.0])
+def test_csf_timeline_respects_researcher_selected_grating_position(side, sign, offset_deg):
+    # Both the location and phase durations belong to the selected run settings;
+    # do not bake a thesis example's numeric values into a runtime contract.
+    settings = SPEC.normalise_values(SPEC.field_defaults() | {
+        "grating_offset_deg": offset_deg,
+        "fixation_ms": 420,
+        "grating_ms": 280,
+    })
+    phases = make_trial(settings, {"target": 0 if side == "left" else 1}).resolve(settings).phases
+    assert [(p.name, p.duration_ms) for p in phases] == [
+        ("fixation", settings["fixation_ms"]),
+        ("grating", settings["grating_ms"]),
+        ("answer", 0),
+    ]
     assert [s.slot for s in phases[0].placements] == ["fixation"]
-    assert [(s.slot, s.x_deg) for s in phases[1].placements] == [("grating", x)]
+    assert [(s.slot, s.x_deg) for s in phases[1].placements] == [
+        ("grating", sign * settings["grating_offset_deg"])
+    ]
     assert [s.slot for s in phases[2].placements] == ["fixation"]
     assert phases[2].actions == ("left", "right")
     assert all(p.beep is None for p in phases)
+
+
+@pytest.mark.parametrize("invalid", [0, -0.5, float("nan"), float("inf")])
+def test_grating_offset_must_be_a_positive_finite_selected_distance(invalid):
+    with pytest.raises(ValueError):
+        SPEC.normalise_values(SPEC.field_defaults() | {"grating_offset_deg": invalid})
 
 
 def test_gaussian_sigma_and_grating_frequency_are_in_degrees_and_cpd():
@@ -130,7 +150,8 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     selected = {"n_down":2, "n_up":2, "logUNIT_UP":.1, "logUNIT_DW":.05,
                 "reversal_termination":4, "threshold_reversals":2,
                 "initial_one_down_limit":0, "staircases_per_condition":1,
-                "max_trials":100, "frequencies_cpd":"2", "starting_contrast":.02}
+                "max_trials":100, "frequencies_cpd":"2", "starting_contrast":.02,
+                "grating_offset_deg":1.75}
     async def collect():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"tui_data")
         async with app.run_test(size=(100, 40)) as pilot:
@@ -163,6 +184,7 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     reversals = resolved["reversal_contrasts"]["1"]
     assert len(reversals) == 4
     assert resolved["threshold_reversals"] == 2
+    assert resolved["target_offset_deg"] == pytest.approx(selected["grating_offset_deg"])
     assert resolved["condition_thresholds"]["2.0"]["threshold"] == median(reversals[-2:])
     assert all(c.passed for c in validate_run(artifacts.run_directory))
     with pytest.raises(ValueError, match="Threshold reversal count"):
