@@ -54,7 +54,7 @@ def test_later_scenario_seed_failure_records_partial_report(tmp_path,monkeypatch
     monkeypatch.setattr(runtime,'simulate',simulate)
     monkeypatch.setattr(runner,'_validator_checks',lambda *args:({'name':'fixture','passed':True,'detail':'isolated'},))
     with pytest.raises(RuntimeError,match='second seed failed'):
-        run_scenario(experiment_id='legacy_contrast_sensitivity',scenario_id='csf_baseline',data_root=tmp_path/'data',seeds=(1,2))
+        run_scenario(experiment_id='contrast_sensitivity',scenario_id='teaching_demo',data_root=tmp_path/'data',seeds=(1,2))
     report=json.loads((folder/'scenario_report.json').read_text())
     assert report['passed'] is False and report['status']=='error'
     assert report['failed_seed']==2 and report['completed_seed_records']==[1]
