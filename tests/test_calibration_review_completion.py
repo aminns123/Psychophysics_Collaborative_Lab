@@ -185,6 +185,10 @@ def test_explicit_qualified_experiment_and_restart(tmp_path):
             review.query_one('#review-qualification',Button).press()
             await pilot.pause()
             focused=app.screen
+            # The public catalogue now defaults to a beginner experiment.
+            # Explicitly select the protocol being qualified.
+            focused.query_one('#qualification-experiment',Select).value=CSF_SPEC.id
+            await pilot.pause()
             assert focused.query_one('#qualification-experiment',Select).value==CSF_SPEC.id
             assert not focused.query_one('#qualification-save',Button).disabled
             focused.query_one('#qualification-reviewed',Checkbox).value=True
@@ -290,7 +294,7 @@ def test_verification_screen_explains_saved_test_data_and_can_open_editor(tmp_pa
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
         async with app.run_test(size=(110, 40)) as pilot:
             screen = PhysicalVerificationScreen(
-                fake, experiment_id='legacy_contrast_sensitivity'
+                fake, experiment_id=CSF_SPEC.id
             )
             await app.push_screen(screen)
             await pilot.pause()
