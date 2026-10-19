@@ -32,7 +32,8 @@ def test_current_csf_uses_independent_frequency_values():
     })
     assert values["frequencies_cpd"]=="2,4,8"
     assert values["grating_offset_deg"]==1.75
-    assert len(CSF_SPEC.make_conditions(values))==6
+    from psychophysics_lab.experiments.contrast_sensitivity import make_conditions
+    assert len(make_conditions(values))==6
 
 
 @pytest.mark.parametrize("background",[.1,.25,.5,.75,.9])
