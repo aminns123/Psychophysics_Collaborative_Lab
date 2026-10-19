@@ -13,7 +13,7 @@ from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.human_readiness import experiment_readiness
 from psychophysics_lab.config.calibration_review import qualify_experiment
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
-from psychophysics_lab.stimuli.contrast_validation import starting_contrast_limits
+from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentConfigScreen, DisplayCheckScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
 
@@ -22,19 +22,25 @@ def request(p, v=None):
     return validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,v or values()),CSF_SPEC,p,mode='configuration')
 
 
-@pytest.mark.parametrize('background,maximum',[(.1,.28),(.25,.625),(.5,1.),(.75,.875),(.9,.92)])
-def test_limits_match_shader_and_inverse_legacy_mapping(background,maximum):
-    result=starting_contrast_limits(background,maximum,.35)
-    assert result['maximum_starting']==pytest.approx(maximum)
-    assert result['maximum_contrast']==pytest.approx(2*min(background,1-background))
-    assert result['initial_valid']
-    assert result['next_up_would_exceed']
-    assert not starting_contrast_limits(background,maximum+.001)['initial_valid']
+@pytest.mark.parametrize("background,expected",[(.1,.2),(.25,.5),(.5,1.),(.75,.5),(.9,.2)])
+def test_active_grating_gamut_depends_on_selected_background(background,expected):
+    from psychophysics_lab.experiments import contrast_sensitivity as csf
+    settings = csf.SPEC.normalise_values(csf.SPEC.field_defaults() | {
+        "background_intensity": background, "starting_contrast": expected
+    })
+    assert csf.maximum_contrast(settings,{}) == pytest.approx(expected)
+    ContrastSensitivityGrating.validate({
+        "background": background, "contrast": expected
+    })
+    with pytest.raises(ValueError, match="digital range"):
+        ContrastSensitivityGrating.validate({"background":background,"contrast":expected+.01})
 
 
-@pytest.mark.parametrize('background,start,up',[(1,1,None),(-.1,.5,None),(.5,float('nan'),None),(.5,.75,0),(.5,.75,float('inf'))])
-def test_ambiguous_or_nonfinite_limits_rejected(background,start,up):
-    with pytest.raises(ValueError): starting_contrast_limits(background,start,up)
+@pytest.mark.parametrize("bad",[float("nan"), float("inf"), -0.1])
+def test_active_grating_rejects_invalid_selected_contrast(bad):
+    from psychophysics_lab.experiments.contrast_sensitivity import SPEC
+    with pytest.raises(ValueError):
+        SPEC.normalise_values(SPEC.field_defaults() | {"starting_contrast":bad})
 
 
 def test_completed_setup_is_not_human_verification_and_fake_pairs_remain_test_data():
@@ -154,23 +160,13 @@ def test_ready_panel_still_checks_connected_hardware_at_launch(tmp_path,monkeypa
     asyncio.run(scenario()); assert calls==[p.id]
 
 
-def test_actual_draw_rejects_later_legacy_up_step_before_opengl():
-    # Extract the production methods to exercise them without importing a display backend.
-    def extract(path,name,class_name=None):
-        tree=ast.parse(path.read_text(encoding='utf-8'))
-        parent=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==class_name) if class_name else tree
-        node=next(n for n in parent.body if isinstance(n,ast.FunctionDef) and n.name==name)
-        return compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),str(path),'exec')
-    namespace={}; exec(extract(ROOT/'src/psychophysics_lab/_reference_csf/adaptiveMethods.py','_update_probe_weber_contrast'),namespace)
-    contrast=namespace['_update_probe_weber_contrast'](1,.5,.35,.1)
-    assert contrast==pytest.approx(.5*10**.35)
-    calls=[]
-    draw_globals={'read_JSON':lambda path:{'staircase_Identity_active':[0],'condition_list':[63],'stimulus_choice_active':[0],'weber_contrast_active':[contrast]},'glUseProgram':lambda program:calls.append(program)}
-    exec(extract(ROOT/'src/psychophysics_lab/_reference_csf/stimuliC.py','draw','Grating_ADM'),draw_globals)
-    stim=SimpleNamespace(pos=(0,0),file_experiment_Conditions='fixture',params=SimpleNamespace(box=False,bg=.25))
-    with pytest.raises(ValueError,match='No contrast was clamped'):
-        draw_globals['draw'](stim)
-    assert calls==[] and contrast>.5
+def test_current_grating_range_guard_rejects_invalid_modulation_without_clipping():
+    # The production grating must reject unrenderable digital modulation,
+    # independent of any retired shader source.
+    legal={"background":.25,"contrast":.5}
+    ContrastSensitivityGrating.validate(legal)
+    with pytest.raises(ValueError,match="digital range"):
+        ContrastSensitivityGrating.validate(legal | {"contrast":.50001})
 
 
 def test_focused_settings_apply_back_to_original_form_without_revision(tmp_path):
