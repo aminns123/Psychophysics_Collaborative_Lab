@@ -75,8 +75,8 @@ def test_stale_physical_mapping_is_not_trusted_for_photometry():
 
 @pytest.mark.parametrize('endpoint',[True,False])
 
-def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_stale():
-    p = measured(kind='synthetic')
+def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_stale(endpoint):
+    p = measured(kind='synthetic', endpoint=endpoint)
     changed = replace(p, viewing_distance_m=p.viewing_distance_m + 0.1)
     with pytest.raises(ValueError, match='stale'):
         mapping_choices(config_root(ROOT), changed)
