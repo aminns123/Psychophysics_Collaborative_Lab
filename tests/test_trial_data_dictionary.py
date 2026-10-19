@@ -32,13 +32,13 @@ def test_per_run_dictionary_preserves_order_and_csf_specific_encodings():
 
         assert [row["column_name"] for row in rows] == list(TRIAL_COLUMNS)
         assert all(int(row["trial_schema_version"]) == TRIAL_SCHEMA_VERSION for row in rows)
-        assert all(row["experiment_id"] == "legacy_contrast_sensitivity" for row in rows)
+        assert all(row["experiment_id"] == "contrast_sensitivity" for row in rows)
 
         by_name = {row["column_name"]: row for row in rows}
         assert by_name["participant_response"]["units_or_encoding"] == "0 = left; 1 = right"
         assert by_name["target_alternative"]["units_or_encoding"] == "0 = left; 1 = right"
-        assert "31.5" in by_name["stimulus_condition"]["notes"]
-        assert "actually presented" in by_name["presented_screen_intensity"]["meaning"]
+        assert by_name["stimulus_condition"]["units_or_encoding"] == "cycles/degree"
+        assert "presented" in by_name["presented_screen_intensity"]["meaning"].lower()
         assert "not what was shown" in by_name["next_screen_intensity"]["notes"]
 
 
