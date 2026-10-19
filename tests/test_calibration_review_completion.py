@@ -53,7 +53,7 @@ def fixture_profile(*, verified=False, observations=True):
     return p
 
 def values():
-    return CSF_SPEC.field_defaults()|{'Max_monitor_Luminance':200.,'Background_Luminance':49.,'Background_Screen_intensity':.5,'starting_probe_intensity':.75}
+    return CSF_SPEC.field_defaults() | {'background_intensity': .5, 'starting_contrast': .1}
 
 def revisions(p):
     return list((config_root(ROOT)/'profiles'/p.id).glob('revision_*.json'))
