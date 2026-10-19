@@ -121,3 +121,33 @@ def test_csf_gaussian_sigma_is_an_experiment_field_and_drives_grating(sigma):
 def test_csf_sigma_rejects_invalid_width(bad):
     with pytest.raises(ValueError):
         csf.SPEC.normalise_values(csf.SPEC.field_defaults() | {"grating_sigma_deg": bad})
+
+
+
+# Every public experiment must remain understandable from its first section.
+from psychophysics_lab.experiments import (
+    example_experiment, line_position_baseline, line_position_flanker,
+    orientation_task, orientation_adaptive,
+)
+
+PUBLIC_FILES = (
+    csf, probe, new_probe, centre, axis, example_experiment,
+    line_position_baseline, line_position_flanker, orientation_task,
+    orientation_adaptive,
+)
+
+
+@pytest.mark.parametrize("module", PUBLIC_FILES)
+def test_all_public_experiment_fields_precede_scientific_execution(module):
+    import inspect
+    source = inspect.getsource(module)
+    assert source.index("# 1. SETTINGS AND STIMULI") < source.index("FIELDS = (")
+    assert source.index("FIELDS = (") < source.index("# 2. CONDITIONS AND TRIAL ORDER")
+    assert source.index("# 2. CONDITIONS AND TRIAL ORDER") < source.index("def procedure")
+    for field in module.SPEC.fields:
+        if field.key.endswith("_deg"):
+            assert field.units == "degrees", (module.__name__, field.key, field.units)
+        if field.key.endswith("_ms"):
+            assert field.units == "ms", (module.__name__, field.key, field.units)
+        if field.key.endswith("_cpd"):
+            assert "cycles/degree" in field.units, (module.__name__, field.key, field.units)
