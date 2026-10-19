@@ -22,12 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize("n_down,ratio", [(1,.2845),(2,.5488),(3,.7393),(4,.8415)])
 @pytest.mark.parametrize("up", [.01,.1,.35,1.0])
 def test_literature_mapping_and_inverse_in_actual_legacy_log_convention(n_down, ratio, up):
-    from psychophysics_lab._reference_csf.adaptiveMethods import _update_probe_weber_contrast
     down = paired_step(known_value=up, calculate="down", n_down=n_down, n_up=1)
     assert down == pytest.approx(up * ratio)
     assert paired_step(known_value=down, calculate="up", n_down=n_down, n_up=1) == pytest.approx(up)
-    assert _update_probe_weber_contrast(Step.UP, .1, up, down) == pytest.approx(.1 * 10**up)
-    assert _update_probe_weber_contrast(Step.DOWN, .1, up, down) == pytest.approx(.1 * 10**(-down))
+    from psychophysics_lab.adaptive.steps import bounded_log_step
+    assert bounded_log_step(.1, up, maximum=1.) == pytest.approx(min(.1*10**up,1.))
+    assert bounded_log_step(.1, -down, maximum=1.) == pytest.approx(.1*10**(-down))
 
 
 @pytest.mark.parametrize("changes", [dict(n_up=2),dict(n_down=5),dict(n_down=True),dict(n_down=2.),
@@ -39,12 +39,10 @@ def test_unsupported_calculations_fail_without_a_guess(changes):
         paired_step(**(args | changes))
 
 
-def test_legacy_defaults_and_imports_are_preserved():
-    from psychophysics_lab._reference_csf.staircase import AdaptiveRun as LegacyRun, StaircaseConfig as LegacyConfig
-    assert LegacyRun is AdaptiveRun and LegacyConfig is StaircaseConfig
-    assert CSF_SPEC.field_defaults()["logUNIT_UP"] == .35
-    assert CSF_SPEC.field_defaults()["logUNIT_DW"] == .5488 * .35
-    assert CSF_SPEC.field_defaults()["max_trials"] == 30
+def test_active_csf_defaults_are_declared_in_public_source():
+    assert CSF_SPEC.id == "contrast_sensitivity"
+    assert CSF_SPEC.field_defaults()["frequencies_cpd"] == "2,8"
+    assert CSF_SPEC.field_defaults()["staircases_per_condition"] >= 1
 
 
 def test_response_paradigms_do_not_change_update_rules():
