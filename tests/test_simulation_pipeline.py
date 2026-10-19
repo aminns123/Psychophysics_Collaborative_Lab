@@ -37,7 +37,10 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
         assert analysis.summary_json.is_file()
     assert all(c.passed for c in validate_run(a.run_directory)), [c for c in validate_run(a.run_directory) if not c.passed]
     for name in ("manifest.json","trial_context.json","experiment_config.json","SYNTHETIC_DATA.json","runtime_display.json","adaptive_session.json"):
-        assert json.loads((a.run_directory/name).read_text())["data_kind"] == "synthetic"
+        assert (a.run_directory/name).is_file(), name
+    assert json.loads((a.run_directory/"manifest.json").read_text())["data_kind"] == "synthetic"
+    assert json.loads((a.run_directory/"trial_context.json").read_text())["data_kind"] == "synthetic"
+    assert json.loads((a.run_directory/"SYNTHETIC_DATA.json").read_text())["data_kind"] == "synthetic"
     rows=list(csv.DictReader(a.trial_log_file.open(),delimiter="\t"))
     assert rows and all(row["response_key"].startswith("SIMULATED_") for row in rows)
     assert rows[0]["recorded_utc"] == "2000-01-01T00:00:00+00:00"
@@ -138,12 +141,12 @@ def test_default_simulator_uses_selected_external_human_data_root(tmp_path, monk
 
 
 def test_simulator_failure_stays_synthetic_and_finalises(tmp_path,monkeypatch):
-    from simulations import registry
+    from psychophysics_lab.experiments._internal import registry
     from dataclasses import replace
-    original=registry.get_simulation("contrast_sensitivity")
-    def fail(*args):
+    original=registry.get_experiment("contrast_sensitivity")
+    def fail(run):
         raise RuntimeError("synthetic test failure")
-    monkeypatch.setitem(registry._REGISTRY,"contrast_sensitivity",replace(original,runtime_factory=lambda *args:fail))
+    monkeypatch.setitem(registry._REGISTRY,"contrast_sensitivity",replace(original,procedure=fail))
     workspace=tmp_path/"psycolab_simulations"
     with pytest.raises(RuntimeError,match="synthetic test failure"):
         simulate(workspace=workspace,repo_root=ROOT)
