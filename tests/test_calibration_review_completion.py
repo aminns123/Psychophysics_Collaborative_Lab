@@ -202,7 +202,11 @@ def test_explicit_qualified_experiment_and_restart(tmp_path):
     asyncio.run(scenario())
     updated=load_monitor_profiles(ROOT)[p.id]
     assert len(revisions(p))==2 and updated.luminance_calibration==p.luminance_calibration
-    validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,values()),CSF_SPEC,updated)
+    # Monitor qualification is recorded separately from the protocol's
+    # outstanding acquisition declaration. Only a deliberate researcher
+    # override can waive the latter; qualification does not fabricate it.
+    with pytest.raises(ValueError,match='Human acquisition blocked'):
+        validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,values()),CSF_SPEC,updated)
     unchanged=qualify_experiment(updated,config_root(ROOT),CSF_SPEC,reviewed=True)
     assert unchanged==updated and len(revisions(p))==2
 
