@@ -3,6 +3,7 @@
   "experiment_id": "new_probe_vertical_line_stimulus",
   "values": {
     "trial_count": 6,
+    "probe_vertical_offset_deg": 2,
     "fixation_ms": 500,
     "stimulus_ms": 200,
     "interval_ms": 150,
