@@ -22,7 +22,7 @@ FIELDS = (
     ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200, units="responses"),
     ConfigField(
         "probe_vertical_offset_deg", "Line distance above/below fixation",
-        "float", 2.0, minimum=0.000001, maximum=6,
+        "float", 2.0, minimum=0.000001,
         units="degrees",
         help_text="Positive vertical angular displacement from central fixation; above = +, below = -.",
     ),
