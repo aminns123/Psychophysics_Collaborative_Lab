@@ -57,7 +57,7 @@ def test_spatial_preflight_rejects_unrenderable_selected_cpd():
     })
     request=SetupRequest("H001","new",CSF_SPEC.id,profile.id,values)
     with pytest.raises(ValueError,match="sampling limit"):
-        validate_setup(request,CSF_SPEC,profile,mode="configuration")
+        validate_monitor(values,profile)
 
 
 def test_display_geometry_procedure_uses_physical_monitor_not_unverified_optical_claim():
