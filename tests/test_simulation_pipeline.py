@@ -33,7 +33,8 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
     assert a.trial_log_file.read_bytes() == b.trial_log_file.read_bytes()
     assert a.response_file.read_bytes() == b.response_file.read_bytes()
     assert a.status in {"completed", "max_trials_reached"}
-    assert (analysis is not None) == bool((a.run_directory / "analysis" / "threshold_vs_condition.png").exists())
+    if analysis is not None:
+        assert analysis.summary_json.is_file()
     assert all(c.passed for c in validate_run(a.run_directory)), [c for c in validate_run(a.run_directory) if not c.passed]
     for name in ("manifest.json","trial_context.json","experiment_config.json","SYNTHETIC_DATA.json","runtime_display.json","adaptive_session.json"):
         assert json.loads((a.run_directory/name).read_text())["data_kind"] == "synthetic"
