@@ -451,16 +451,23 @@ class ResearcherVerticalLine(LibraryStimulus):
 
 
 class ContrastSensitivityGrating(LibraryStimulus):
-    """Contrast sensitivity: Gaussian sigma in degrees; sinusoidal carrier in cycles/degree.
+    """Gaussian-windowed grating with a finite, smoothly tapered support.
 
-    RGB command = background + (contrast/2) * Gaussian * sin(carrier phase).
-    Contrast is digital peak-to-peak modulation, not measured optical Michelson
-    contrast. The 8-degree raster aperture is an explicit implementation extent,
-    chosen by the researcher. Physical display performance requires measurement.
+    Sigma is the standard deviation of the *Gaussian*, not the grating radius.
+    Within (cutoff_sigmas - 1)*sigma its profile is the original Gaussian.
+    A raised-cosine taper removes the remaining tail, reaching exactly zero
+    modulation at cutoff_sigmas*sigma. The surrounding command is precisely
+    background, including within the square floating-point texture.
+
+    The square raster is an implementation extent, not the grating boundary.
+    Contrast is digital peak-to-peak modulation, not measured optical contrast.
     """
     PARAMETERS = (
         ConfigField("size_deg", "Raster aperture", "float", 8., minimum=.1, maximum=30, units="degrees"),
         ConfigField("sigma_deg", "Gaussian standard deviation", "float", 1., minimum=.001, maximum=5, units="degrees"),
+        ConfigField("cutoff_sigmas", "Smooth grating cutoff radius", "float", 3., minimum=2., maximum=5.,
+                    units="multiples of sigma",
+                    help_text="Gaussian unchanged to (cutoff - 1) sigma, smoothly fades to exact background at cutoff sigma."),
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., minimum=.01, maximum=64, units="cycles/degree"),
         ConfigField("contrast", "Digital peak-to-peak modulation", "float", .1, minimum=0, maximum=1, units='digital peak-to-peak modulation'),
         ConfigField("background", "Digital background", "float", .5, minimum=0, maximum=1, units='digital intensity, 0 to 1'),
@@ -470,14 +477,41 @@ class ContrastSensitivityGrating(LibraryStimulus):
     def validate(parameters):
         if parameters["contrast"] > 2 * min(parameters["background"], 1-parameters["background"]):
             raise ValueError("Requested grating modulation exceeds the available digital range; no silent clipping.")
+        # The direct validator is also called with only background/contrast
+        # by existing digital-gamut checks; missing optional fields use the
+        # stimulus's declared defaults. The normal renderer always receives
+        # fully normalised parameters through StimulusSpec.
+        sigma = parameters.get("sigma_deg", 1.)
+        cutoff = parameters.get("cutoff_sigmas", 3.)
+        size = parameters.get("size_deg", 8.)
+        diameter = 2 * sigma * cutoff
+        if diameter > size:
+            raise ValueError(
+                f"Grating support diameter {diameter:g} degrees (2 x sigma {sigma:g} "
+                f"degrees x cutoff {cutoff:g}) exceeds the {size:g}-degree "
+                "raster aperture. Increase Raster aperture or reduce Gaussian "
+                "sigma / smooth cutoff to prevent a rectangular boundary."
+            )
 
     def render(parameters, x_deg, y_deg):
-        envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg)/(2*parameters["sigma_deg"]**2))
-        carrier = np.sin(2*np.pi*parameters["spatial_frequency_cpd"]*x_deg)
-        image = parameters["background"] + parameters["contrast"]*envelope*carrier/2
-        return image
+        sigma = parameters["sigma_deg"]
+        radius_in_sigmas = np.hypot(x_deg, y_deg) / sigma
+        # Existing researcher scripts may call render() directly with the
+        # original parameter dictionary; preserve the three-sigma default.
+        cutoff = parameters.get("cutoff_sigmas", 3.)
+        gaussian = np.exp(-.5 * radius_in_sigmas**2)
 
-    SPEC = StimulusSpec("contrast_sensitivity_grating", "Contrast sensitivity grating", "Gaussian-windowed grating in explicit degree coordinates.",
+        # C1-continuous at both ends of the last-sigma taper. No square or
+        # discontinuous hard crop that could add high-frequency edge artifacts.
+        progress = np.clip(radius_in_sigmas - (cutoff - 1.), 0., 1.)
+        taper = .5 * (1. + np.cos(np.pi * progress))
+        envelope = np.where(radius_in_sigmas >= cutoff, 0., gaussian * taper)
+
+        carrier = np.sin(2 * np.pi * parameters["spatial_frequency_cpd"] * x_deg)
+        return parameters["background"] + parameters["contrast"] * envelope * carrier / 2
+
+    SPEC = StimulusSpec("contrast_sensitivity_grating", "Contrast sensitivity grating",
+        "Compact-support Gaussian-windowed grating with smoothly tapered outer edge in degree coordinates.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="contrast_sensitivity_grating",
         render=render, validator=validate.__func__, floating_raster=True, calibration_requirements=("geometry", "luminance"))
 

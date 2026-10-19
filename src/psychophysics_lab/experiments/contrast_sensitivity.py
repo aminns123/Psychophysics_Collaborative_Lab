@@ -67,7 +67,17 @@ FIELDS = (
         minimum=0.001,
         maximum=5.0,
         units="degrees",
-        help_text="Standard deviation of the spatial Gaussian window, not the grating diameter.",
+        help_text="Gaussian standard deviation, not a hard radius; the grating smoothly fades to background at the separately selected cutoff.",
+    ),
+    ConfigField(
+        "grating_cutoff_sigmas",
+        "Grating outer edge (multiples of sigma)",
+        "float",
+        3.0,
+        minimum=2.0,
+        maximum=5.0,
+        units="multiples of sigma",
+        help_text="Full Gaussian through (cutoff - 1) × sigma, then smooth fade. Exact background outside cutoff × sigma. Default 3 gives a 1.5° radius at sigma 0.5°.",
     ),
     ConfigField(
         "staircases_per_condition",
@@ -224,6 +234,7 @@ def prepare_stimuli(run, condition, state):
         "grating": run.stimulus_parameters(
             "grating",
             sigma_deg=run.values["grating_sigma_deg"],
+            cutoff_sigmas=run.values["grating_cutoff_sigmas"],
             spatial_frequency_cpd=condition["frequency_cpd"],
             contrast=condition["contrast"],
             background=background,
@@ -366,6 +377,9 @@ def initialise_experiment(run, conditions):
         "staircases_per_condition": settings["staircases_per_condition"],
         "target_offset_deg": settings["grating_offset_deg"],
         "gaussian_sigma_deg": settings["grating_sigma_deg"],
+        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        "grating_taper": "raised cosine over outer 1 Gaussian sigma; zero modulation outside cutoff radius",
+        "grating_support_radius_deg": settings["grating_sigma_deg"] * settings["grating_cutoff_sigmas"],
         "background_digital_intensity": background,
         "random_seed": run.seed,
         "adaptive_rule": {
