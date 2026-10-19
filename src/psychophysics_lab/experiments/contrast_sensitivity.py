@@ -28,7 +28,7 @@ from psychophysics_lab.researcher import (
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIXATION_MS = 500
 GRATING_MS = 300
-GRATING_OFFSET_DEG = 1.0
+DEFAULT_GRATING_OFFSET_DEG = 1.0
 GAUSSIAN_SIGMA_DEG = 0.5
 CORRECT_BEFORE_DECREASE = 4
 LOG_INCREASE = 0.36
@@ -48,6 +48,15 @@ FIELDS = (
     ),
     ConfigField(
         "grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"
+    ),
+    ConfigField(
+        "grating_offset_deg",
+        "Grating distance left/right of fixation",
+        "float",
+        DEFAULT_GRATING_OFFSET_DEG,
+        minimum=sys.float_info.min,
+        units="degrees",
+        help_text="Distance of the grating centre from fixation on either side; chosen by the researcher.",
     ),
     ConfigField(
         "staircases_per_condition",
@@ -158,7 +167,7 @@ PARADIGM = "two_alternative_forced_choice"
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
     "version": "csf-spatial-3",
-    "response": "Left or right grating location; target/response alternative equality.",
+    "response": "Left or right grating location; researcher-selected offset and target/response alternative equality.",
     "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
     "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
     "adaptive": "TUI-selected consecutive n-down/n-up log10 changes, initial phase and reversal limit. No guaranteed target probability for arbitrary settings.",
@@ -214,7 +223,8 @@ def prepare_stimuli(run, condition, state):
 
 # 4. ONE TRIAL
 def make_trial(settings, condition):
-    x = -GRATING_OFFSET_DEG if condition["target"] == 0 else GRATING_OFFSET_DEG
+    offset = settings["grating_offset_deg"]
+    x = -offset if condition["target"] == 0 else offset
     return TrialTimeline(
         (
             Show("fixation", slot="fixation", duration="fixation_ms"),
@@ -286,7 +296,8 @@ def trial_record(run, condition, state):
             "spatial_frequency_cpd": condition["frequency_cpd"],
             "staircase_repeat": condition["repeat"],
             "grating_x_deg": (
-                -GRATING_OFFSET_DEG if condition["target"] == 0 else GRATING_OFFSET_DEG
+                -settings["grating_offset_deg"] if condition["target"] == 0
+                else settings["grating_offset_deg"]
             ),
         },
         instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
@@ -342,7 +353,7 @@ def initialise_experiment(run, conditions):
         },
         "frequencies_cpd": frequencies,
         "staircases_per_condition": settings["staircases_per_condition"],
-        "target_offset_deg": GRATING_OFFSET_DEG,
+        "target_offset_deg": settings["grating_offset_deg"],
         "gaussian_sigma_deg": GAUSSIAN_SIGMA_DEG,
         "background_digital_intensity": background,
         "random_seed": run.seed,
@@ -467,7 +478,7 @@ def definition(identity="csf_thesis"):
         id=identity,
         name="Contrast Sensitivity (software validation)",
         procedure=procedure,
-        description="500 ms fixation, 300 ms grating at +/-0.5 degrees, LEFT/RIGHT; adaptive settings editable in the TUI.",
+        description="Fixation then grating at a researcher-selected left/right angular offset; timing, position and adaptation are editable in the TUI.",
         fields=FIELDS,
         scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
