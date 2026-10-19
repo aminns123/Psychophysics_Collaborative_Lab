@@ -25,6 +25,8 @@ def measured(*, kind='genuine', endpoint=True):
 
 
 def selected_values():
+    # Historical stored mapping fields remain readable as provenance; they
+    # are not required inputs to the current generic CSF configuration.
     return values() | {'Background_Screen_intensity':.25,'Background_Luminance':19,
                        'Max_monitor_Luminance':500,'starting_probe_intensity':.55}
 
@@ -48,14 +50,16 @@ def test_mapping_uses_one_mean_per_intensity_and_keeps_repetitions():
     assert path.read_bytes()==before
 
 
+
 def test_synthetic_means_are_selectable_but_not_human_qualification():
     p=measured(kind='synthetic')
     rows,_,state=mapping_choices(config_root(ROOT),p)
     assert len(rows)==4 and 'SYNTHETIC' in state
-    request=SetupRequest('H001','new',CSF_SPEC.id,p.id,selected_values())
+    request=SetupRequest('H001','new',CSF_SPEC.id,p.id,CSF_SPEC.field_defaults())
     validate_setup(request,CSF_SPEC,p,mode='simulation')
     with pytest.raises(ValueError): validate_setup(request,CSF_SPEC,p)
     assert not p.has_verified_luminance_mapping and not p.qualified_experiments
+
 
 
 def test_stale_physical_mapping_is_not_trusted_for_photometry():
@@ -70,84 +74,6 @@ def test_stale_physical_mapping_is_not_trusted_for_photometry():
 
 
 @pytest.mark.parametrize('endpoint',[True,False])
-def test_tui_pair_updates_both_values_and_only_real_endpoint(tmp_path,endpoint):
-    p=measured(endpoint=endpoint)
-    async def scenario():
-        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
-        async with app.run_test() as pilot:
-            editor=editor_for(p,tmp_path/'data',selected_values()|{'Max_monitor_Luminance':700})
-            await app.push_screen(editor); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='1'
-            editor.query_one('#background-mapping',Select).value='2'; await pilot.pause()
-            assert float(editor.query_one('#field-Background-Screen-intensity',Input).value)==.5
-            assert float(editor.query_one('#field-Background-Luminance',Input).value)==100
-            assert float(editor.query_one('#field-Max-monitor-Luminance',Input).value)==(500 if endpoint else 700)
-            assert float(editor.query_one('#field-starting-probe-intensity',Input).value)==.55
-            # The measured command-1.0 endpoint is a maximum, not a valid
-            # background command (< 1); it remains available for Max L.
-            assert all(point['screen_intensity'] < 1 for point in editor._mapping_rows)
-            assert any(point['screen_intensity'] == 1 for point in editor._all_mapping_rows) == endpoint
-            assert 'Digital intensity 0.5' in str(editor.query_one('#mapping-provenance',Static).render())
-    asyncio.run(scenario())
-
-
-def test_display_confirmation_and_explicit_manual_survive_restart(tmp_path):
-    p=measured()
-    second=save_profile(config_root(ROOT),replace(p,id='second_display',profile_uuid='',revision=0,luminance_source_hash=''))
-    async def scenario():
-        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
-        async with app.run_test() as pilot:
-            editor=editor_for(p,tmp_path/'data'); await app.push_screen(editor); await pilot.pause()
-            editor._apply_display(second.id); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='confirm'
-            assert float(editor.query_one('#field-Background-Luminance',Input).value)==19
-            with pytest.raises(ValueError,match='changed'): editor._collect()
-        restart=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
-        async with restart.run_test() as pilot:
-            editor=editor_for(second,tmp_path/'data'); await restart.push_screen(editor); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='confirm'
-            editor.query_one('#background-mapping',Select).value='manual'; await pilot.pause()
-            assert editor._collect()['Background_Luminance']==19
-            editor._save_calibration_draft()
-        last=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
-        async with last.run_test() as pilot:
-            editor=editor_for(second,tmp_path/'data'); await last.push_screen(editor); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='manual'
-            assert editor._collect()['Background_Luminance']==19
-    asyncio.run(scenario())
-
-
-def test_preset_restores_exact_saved_pair_without_mutating_calibration(tmp_path):
-    p=measured(); path=active_directory(config_root(ROOT),p)/'luminance.json'; before=path.read_bytes()
-    save_preset(config_root(ROOT),'mean_background',CSF_SPEC.id,selected_values())
-    async def scenario():
-        app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
-        async with app.run_test() as pilot:
-            editor=editor_for(p,tmp_path/'data',values()); await app.push_screen(editor); await pilot.pause()
-            editor.query_one('#config-preset',Select).value='mean_background'
-            editor.query_one('#load-preset',Button).press(); await pilot.pause()
-            assert editor.query_one('#background-mapping',Select).value=='1'
-            assert editor._collect()['Background_Luminance']==19
-    asyncio.run(scenario())
-    assert path.read_bytes()==before
-
-
-def test_run_snapshots_keep_exact_pair_mean_provenance_and_monitor(tmp_path):
-    from simulations.run import simulate
-    p=measured(kind='synthetic')
-    result,_=simulate(workspace=tmp_path/'data',seed=3,repo_root=ROOT,analyse=False,
-        monitor_profile_id=p.id,values=selected_values()|{'max_trials':1})
-    manifest=json.loads(result.manifest_file.read_text())
-    config=json.loads((result.run_directory/'experiment_config.json').read_text())
-    profile=json.loads((result.run_directory/'monitor_profile.json').read_text())
-    assert manifest['background_mapping']==config['background_mapping']
-    evidence=manifest['background_mapping']
-    assert evidence['screen_intensity']==.25 and evidence['luminance_cdm2']==19
-    assert evidence['saved_mapping_row']['n']==2
-    assert evidence['profile_uuid']==profile['profile_uuid']
-    assert evidence['luminance_source_hash']==profile['luminance_source_hash']
-    assert manifest['data_kind']=='synthetic' and not evidence['physically_verified_mapping']
-
 
 def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_stale():
     p = measured(kind='synthetic')
@@ -168,6 +94,7 @@ def test_unverified_profile_summary_is_available_for_tests_if_active_dataset_sta
     assert not provenance['physically_verified_mapping']
 
 
+
 def test_verified_profile_must_not_offer_stale_untrusted_raw_mapping():
     p = measured(kind='genuine')
     verified = replace(p, calibration_status='verified', calibration_method='Laboratory photometer')
@@ -178,30 +105,23 @@ def test_verified_profile_must_not_offer_stale_untrusted_raw_mapping():
     assert 'repair' in message.lower()
 
 
-def test_background_dropdown_is_adjacent_to_fields_and_locks_linked_pair(tmp_path):
-    p = measured()
-    async def scenario():
-        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / 'data')
-        async with app.run_test() as pilot:
-            editor = editor_for(p, tmp_path / 'data')
-            await app.push_screen(editor)
-            await pilot.pause()
-            picker = editor.query_one('#background-mapping', Select)
-            luminance = editor.query_one('#field-Background-Luminance', Input)
-            intensity = editor.query_one('#field-Background-Screen-intensity', Input)
-            assert picker.value == '1'
-            assert luminance.disabled and intensity.disabled
-            assert editor.query_one('#edit-background-calibration', Button)
-            picker.value = '2'
-            await pilot.pause()
-            assert float(luminance.value) == 100
-            assert float(intensity.value) == .5
-            assert luminance.disabled and intensity.disabled
-            picker.value = 'manual'
-            await pilot.pause()
-            assert not luminance.disabled and not intensity.disabled
-            luminance.value = '90'
-            await pilot.pause()
-            assert picker.value == 'manual'
-            assert float(intensity.value) == .5
-    asyncio.run(scenario())
+
+def test_current_csf_digital_background_is_independent_of_photometer_pair_selection():
+    fields={f.key:f for f in CSF_SPEC.fields}
+    assert "background_intensity" in fields
+    assert fields["background_intensity"].units.startswith("digital intensity")
+    assert "Background_Luminance" not in fields
+    assert "Background_Screen_intensity" not in fields
+    # The photometer observations remain available on the monitor profile,
+    # without requiring that every public experiment has a linked luminance pair.
+    p=measured()
+    rows,_,_=mapping_choices(config_root(ROOT),p)
+    assert rows[1]["luminance_cdm2"]==19
+
+
+def test_current_config_editor_allows_researcher_selected_background(tmp_path):
+    p=measured()
+    defaults=CSF_SPEC.field_defaults()
+    screen=editor_for(p,tmp_path,defaults)
+    assert CSF_SPEC.normalise_values(defaults | {"background_intensity":.4})["background_intensity"]==.4
+    assert "background_intensity" in {f.key for f in screen.experiment.fields}
