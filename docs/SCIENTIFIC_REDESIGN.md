@@ -1,5 +1,17 @@
 # Ordered scientific redesign
 
+> **Historical design audit (superseded for current code):** This document
+> records design and testing decisions from earlier revisions. PR #73 (19 Oct
+> 2026) retired the reference CSF renderer, its old simulations and historical
+> experiment adapters. The current public CSF ID is
+> `contrast_sensitivity`, not `csf_thesis`. For active authoring and analysis
+> consult [EXTENDING_PSYCOLAB.md](EXTENDING_PSYCOLAB.md),
+> [EXPERIMENTS README](../src/psychophysics_lab/experiments/README.md),
+> [THRESHOLD_ANALYSIS.md](THRESHOLD_ANALYSIS.md), and
+> [DATA_LAYOUT.md](DATA_LAYOUT.md). Test counts below refer to the old audit,
+> **not** to today's CI. No old ID is runnable in the public catalogue.
+
+
 Requested order: historical separation (2), scientific specifications (3), flexible
 readability (6), presentation precision/timing (1), recovery validation (5), primary
 analysis alignment (4). Physical qualification remains a measured hardware task.
