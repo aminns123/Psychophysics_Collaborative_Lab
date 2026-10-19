@@ -19,6 +19,13 @@ its local environment and opens the setup interface.
 | **Simulate responses** | The same configured experiment runs with a virtual observer. Observer settings are optional. |
 | **Collect participant data** | Uses the selected participant and external data folder, after acquisition checks pass. |
 
+If calibration or protocol qualification is outstanding, select **Collect
+participant data → Researcher override…** on Review. Confirm the displayed
+requirements to start the full human experiment in the ordinary participant
+workspace. The decision is recorded with the run; calibration records stay
+unchanged. Display and parameter safeguards still apply. See
+[Researcher override](docs/RESEARCHER_OVERRIDE.md).
+
 A preview shows the selected stimulus parameters. An experiment can change those
 values for each condition: **Try the experiment** shows the actual trial sequence.
 Preview images are not calibrated contrast or physical timing measurements.

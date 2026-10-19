@@ -14,6 +14,7 @@ from psychophysics_lab.experiments._internal.responses import ResponseParadigm, 
 from .stimuli.registry import StimulusSpec
 from .data.trials import TrialLog
 from .data.session import atomic_write_json, append_json_record
+from .config.models import ResearcherOverride
 
 
 def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
@@ -50,6 +51,22 @@ class ParticipantAbort(Exception):
     """Raised by RunContext.abort; the runner preserves an aborted run."""
 
 
+def check_acquisition_qualification(run, spec):
+    """Apply the same protocol decision at procedure and presenter entry."""
+    if getattr(run, "synthetic", False) or not spec.acquisition_block_reason:
+        return
+    record = getattr(run, "researcher_override", None)
+    data_kind = getattr(run, "data_kind", "human")
+    protocol_override = (
+        data_kind == "human"
+        and isinstance(record, ResearcherOverride)
+        and record.experiment_id == spec.id
+        and "protocol" in record.waived_requirements
+    )
+    if not protocol_override and (data_kind != "uncalibrated_presentation_test" or spec.historical):
+        raise ValueError(spec.acquisition_block_reason)
+
+
 @dataclass
 class RunContext:
     values: Mapping[str, Any]
@@ -64,15 +81,14 @@ class RunContext:
     observer_probability: Any = None
     test_trial_limit: int | None = None
     virtual_presentation: Any = None  # explicit development replay backend; never used for humans
+    researcher_override: ResearcherOverride | None = None
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
     expected_trials: int = field(default=0, init=False)
 
     def initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
         """Declare the planned response count and resolved scientific settings."""
-        if not self.synthetic and self.spec.acquisition_block_reason:
-            if self.data_kind != "uncalibrated_presentation_test" or self.spec.historical:
-                raise ValueError(self.spec.acquisition_block_reason)
+        check_acquisition_qualification(self, self.spec)
         if self.status != "created" or type(expected_trials) is not int or expected_trials < 1:
             raise ValueError("Initialise once with a positive expected_trials count.")
         if not resolution:

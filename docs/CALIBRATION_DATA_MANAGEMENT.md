@@ -1,6 +1,6 @@
 # Active calibration data, live constraints and presentation testing
 
-The latest workflow separates **saved measurements**, **physical laboratory verification**, **experiment qualification**, **uncalibrated presentation testing**, and **simulation**. None of the software-only paths certifies a display. The existing human-acquisition preflight, command guard, shader convention and staircase mathematics remain authoritative.
+The latest workflow separates **saved measurements**, **physical laboratory verification**, **experiment qualification**, **uncalibrated presentation testing**, and **simulation**. None of the software-only paths certifies a display. The existing human-acquisition preflight, command guard, shader convention and staircase mathematics remain authoritative. Researchers can explicitly waive calibration/qualification requirements for a human run using [Researcher override](RESEARCHER_OVERRIDE.md); this records the decision without changing verification or bypassing operational safeguards.
 
 ## Luminance workflow
 
@@ -179,7 +179,7 @@ At background 0.25, the starting domain is **0.250–0.625** under the retained 
 |---|---|---|
 | Run simulation | Registered virtual observer, no physical display | Existing synthetic-labelled pipeline |
 | Test experiment presentation (UNCALIBRATED) | Actual registered procedure/renderer, response keys, trials and adaptive updates | Reserved `presentation_test_*` identity in an isolated marked test root |
-| Run human experiment | Actual acquisition with unchanged strict certification/preflight | Established real participant workspace |
+| Run human experiment | Actual acquisition with strict default qualification, or an explicit recorded researcher override; operational safeguards remain | Established real participant workspace |
 
 Use **Data → Latest uncalibrated test manifest / trials** to inspect the latest test records without changing the human workspace. These viewers are read-only.
 
