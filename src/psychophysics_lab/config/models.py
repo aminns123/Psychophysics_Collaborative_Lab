@@ -186,6 +186,16 @@ class MonitorProfile:
 
 
 @dataclass(frozen=True)
+class ResearcherOverride:
+    """Explicit decision for one reviewed human setup, never a calibration claim."""
+
+    confirmed_utc: str
+    review_sha256: str
+    experiment_id: str
+    waived_requirements: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class SetupRequest:
     participant_id: str
     session_mode: str
@@ -195,3 +205,4 @@ class SetupRequest:
     data_root: str | None = None
     monitor_profile_hash: str | None = None
     stimulus_snapshots: dict[str, Any] = field(default_factory=dict)
+    researcher_override: ResearcherOverride | None = None

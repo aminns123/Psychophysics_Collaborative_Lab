@@ -145,6 +145,11 @@ def validate_setup(request, spec, profile, *, mode="human"):
     if mode not in {"human", "configuration", "simulation"}:
         raise ValueError("Unknown acquisition validation mode.")
     participant=validate_participant_id(request.participant_id)
+    if (mode == "human" and request.researcher_override is not None
+            and participant.lower().startswith(("synthetic_", "presentation_test_"))):
+        raise ValueError("Provide a human participant ID; synthetic/test identities are reserved.")
+    if mode == "simulation" and request.researcher_override is not None:
+        raise ValueError("Researcher overrides apply only to human acquisition.")
     if request.session_mode not in {'new','reuse'}:
         raise ValueError('Unknown starting-settings mode.')
     profile.validate()
@@ -172,8 +177,13 @@ def validate_setup(request, spec, profile, *, mode="human"):
         conditions = resolved_condition_frequencies(values["condition_values"], values["condition_unit"])
         if profile.expected_resolution_px:
             validate_requested_cpd(conditions, resolve_spatial_geometry(profile, profile.expected_resolution_px))
+    request = replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()), stimulus_snapshots=snapshots)
     if mode == "human":
-        blockers = human_blockers(spec, profile, values)
+        from .researcher_override import outstanding_requirements, validate_researcher_override
+        outstanding = outstanding_requirements(spec, profile, values)
+        waived = (validate_researcher_override(request, profile, outstanding)
+                  if request.researcher_override is not None else ())
+        blockers = tuple(row['detail'] for row in outstanding if row['key'] not in waived)
         if blockers:
             raise ValueError("Human acquisition blocked:\n" + "\n".join(blockers))
-    return replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()), stimulus_snapshots=snapshots)
+    return request

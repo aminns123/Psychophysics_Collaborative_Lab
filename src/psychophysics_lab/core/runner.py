@@ -357,6 +357,13 @@ def run_request(
         request = validate_presentation(request,spec,profile)
     else:
         request = validate_setup(request, spec, profile, mode="simulation" if simulation is not None else "human")
+    override_record = None
+    if request.researcher_override is not None:
+        from ..config.researcher_override import override_provenance
+        override_record = override_provenance(request, spec, profile)
+        # Direct API launches receive the same hardware check as the TUI.
+        from .display import preflight_fullscreen_display
+        preflight_fullscreen_display(profile)
     values = request.experiment_values
     grouping_parts = spec.data_path_parts(values, profile)
     setup = spec.build_legacy_setup(participant_id=request.participant_id, values=values, monitor_profile=profile)
@@ -378,6 +385,8 @@ def run_request(
     payload = {"schema_version": 3, "run_uuid": run_uuid, "created_utc": started_utc,
                "status": "configuring", "data_kind": data_kind, "participant_id": request.participant_id,
                "experiment_id": spec.id, "monitor_profile_id": profile.id}
+    if override_record is not None:
+        payload["researcher_override"] = override_record
     primary_error = None
     procedure_context = None
 
@@ -403,6 +412,8 @@ def run_request(
                     data_root=data, repo_root=root, grouping_parts=grouping_parts, run_uuid=run_uuid, status="configuring")
         payload["created_utc"] = started_utc
         payload["data_kind"] = data_kind
+        if override_record is not None:
+            payload["researcher_override"] = override_record
         if presentation is not None:
             payload['presentation_test']={'test_response_limit':presentation.trial_limit,'physical_certification':False,'scientific_human_data':False,'warning':'UNCALIBRATED PRESENTATION TEST — NOT HUMAN EXPERIMENTAL DATA'}
             atomic_write_json(run_dir/'UNCALIBRATED_TEST_DATA.json',payload['presentation_test']|{'data_kind':data_kind})
@@ -491,6 +502,7 @@ def run_request(
                 from ..researcher import RunContext
                 procedure_context = RunContext(values, profile, spec, run_dir,
                     synthetic=simulation is not None, data_kind=data_kind,
+                    researcher_override=request.researcher_override,
                     stimulus_snapshots=request.stimulus_snapshots,
                     observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
                     seed=simulation.metadata["seed"] if simulation is not None else (0 if spec.historical else __import__("secrets").randbits(64)),

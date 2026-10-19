@@ -21,6 +21,7 @@ import json
 import math
 import random
 from psychophysics_lab.researcher import (
+    check_acquisition_qualification,
     ConfigField,
     experiment,
     ResponseParadigm,
@@ -428,8 +429,7 @@ def trial_record(run, condition, state):
 
 # 6. RUN AND FINISH
 def initialise_experiment(run, conditions):
-    if not run.synthetic:
-        raise ValueError(BLOCK_REASON)
+    check_acquisition_qualification(run, SPEC)
     v = run.values
     geometry = pixel_geometry(run)
     ceiling = v["trials_per_condition"] * len(conditions)
@@ -490,8 +490,7 @@ def finish_experiment(run, conditions, state):
 
 
 def procedure(run):
-    if not getattr(run, "synthetic", False) and SPEC.acquisition_block_reason:
-        raise ValueError(SPEC.acquisition_block_reason)
+    check_acquisition_qualification(run, SPEC)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
     while not is_finished(run, conditions, state):

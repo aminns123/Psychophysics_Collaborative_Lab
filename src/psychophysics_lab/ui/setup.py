@@ -2343,6 +2343,7 @@ class ReviewScreen(Screen):
                 yield Button("Simulate responses", id="run-simulation", variant="primary")
             yield Button("Resolve human acquisition requirements",
                          id="review-calibration-guide")
+            yield Button("Researcher override…", id="run-researcher-override")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
@@ -2631,12 +2632,13 @@ class ReviewScreen(Screen):
             button.variant=("warning" if mode=="test" else
                             "success" if mode=="human" else "primary") if mode==intent else "default"
         self.query_one("#review-calibration-guide", Button).display=self.app.include_historical or intent=="human"
+        self.query_one("#run-researcher-override", Button).display = intent == "human"
         report=self.readiness_report
         if intent=="human":
             status=("READY for human acquisition — final hardware preflight still applies."
                     if report["human_ready"] else
                     f"Human acquisition requires {len(report['blockers'])} more item(s). "
-                    "Use the actions below to resolve them.")
+                    "Resolve them below or choose Researcher override.")
         elif intent=="simulation":
             status=("READY to simulate using the registered virtual observer."
                     if report["simulation_available"] else
@@ -2815,11 +2817,11 @@ class ReviewScreen(Screen):
             if getattr(self, "next_requirement_key", None):
                 self.resolve_requirement(self.next_requirement_key)
             return
-        if button_id not in {"back", "run", "run-simulation", "run-presentation-test", "review-calibration-guide"}:
+        if button_id not in {"back", "run", "run-simulation", "run-presentation-test", "run-researcher-override", "review-calibration-guide"}:
             return
         event.stop()
         try:
-            if button_id in {"run", "run-simulation", "run-presentation-test"}:
+            if button_id in {"run", "run-simulation", "run-presentation-test", "run-researcher-override"}:
                 self.app.verify_settings_current(self.request)
             if button_id == "review-calibration-guide":
                 from .calibration_guide import CalibrationGuideScreen
@@ -2838,6 +2840,11 @@ class ReviewScreen(Screen):
             elif button_id == "run-presentation-test":
                 from .presentation_testing import PresentationTestScreen
                 self.app.push_screen(PresentationTestScreen(self.request))
+            elif button_id == "run-researcher-override":
+                from .researcher_override import ResearcherOverrideScreen
+                current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
+                self.app.push_screen(ResearcherOverrideScreen(
+                    self.request, get_experiment(self.request.experiment_id), current))
             else:
                 spec = get_experiment(self.request.experiment_id)
                 current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]

@@ -30,6 +30,8 @@ class PresentationTestComplete(Exception):
 
 
 def validate_presentation(request, spec, profile):
+    if request.researcher_override is not None:
+        raise ValueError("Researcher overrides apply only to human acquisition.")
     request = validate_setup(request, spec, profile, mode="configuration")
     # Certification is omitted only for this explicitly labelled test boundary.
     # Shader, physical sampling and connected framebuffer requirements remain.

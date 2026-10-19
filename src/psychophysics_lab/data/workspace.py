@@ -63,6 +63,8 @@ def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest |
         monitor_profile_id=str(raw["monitor_profile_id"]),
         experiment_values=dict(raw["experiment_values"]),
         stimulus_snapshots=dict(raw.get("stimulus_snapshots", {})),
+        # A previous run's deliberate override is provenance, never a reusable
+        # default. Leave researcher_override unset for every restored setup.
         # The selected data folder is machine-local context, not part of a
         # portable reusable experiment setup.
         data_root=None,
