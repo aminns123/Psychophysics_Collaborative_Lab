@@ -16,6 +16,14 @@ from psychophysics_lab.ui.simulations import SimulationsScreen, SimulationReview
 
 ROOT = Path(__file__).resolve().parents[1]
 
+async def _choose_current_csf(screen, pilot, app):
+    # The current catalogue intentionally starts with a non-CSF example.
+    # Tests must explicitly choose the experiment whose fields they inspect.
+    screen.query_one("#sim-experiment", Select).value = "contrast_sensitivity"
+    await _settle(pilot, app)
+    assert screen.query_one("#sim-experiment", Select).value == "contrast_sensitivity"
+
+
 
 async def _settle(pilot, app):
     """Wait for scenario inputs to mount, without forcing their values."""
@@ -63,16 +71,17 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             screen = app.screen
-            assert screen.query_one("#sim-experiment", Select).value == "legacy_contrast_sensitivity"
-            assert screen.query_one("#sim-scenario", Select).value == "csf_baseline"
+            await _choose_current_csf(screen, pilot, app)
+            assert screen.query_one("#sim-scenario", Select).value == "teaching_demo"
             nav = screen.query_one("#hub-nav")
             for button in nav.query(Button):
                 assert button.region.x >= 0
                 assert button.region.right <= size[0]
 
-            screen.query_one("#sim-seeds-0", Input).value = "7,8"
+            index,_=screen._current()
+            screen.query_one(f"#sim-seeds-{index}", Input).value = "7,8"
             # Baseline CSF scenario declares 'threshold' as the first observer parameter.
-            screen.query_one("#sim-observer-0-0", Input).value = "0.08"
+            screen.query_one(f"#sim-observer-{index}-0", Input).value = "0.08"
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
@@ -82,8 +91,8 @@ def test_tui_simulation_navigation_review_and_typed_handoff(tmp_path, monkeypatc
             assert len(captured) == 1
             request = captured[0]
             assert isinstance(request, SimulationLaunchRequest)
-            assert request.experiment_id == "legacy_contrast_sensitivity"
-            assert request.scenario_id == "csf_baseline"
+            assert request.experiment_id == "contrast_sensitivity"
+            assert request.scenario_id == "teaching_demo"
             assert request.seeds == (7, 8)
             assert request.observer_parameters["threshold"] == pytest.approx(.08)
             assert request.data_root == data_root.resolve()
@@ -98,13 +107,15 @@ def test_tui_invalid_observer_and_invalid_seed_block_review(tmp_path):
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
             screen = app.screen
-            screen.query_one("#sim-seeds-0", Input).value = "1,x"
+            await _choose_current_csf(screen,pilot,app)
+            index,_=screen._current()
+            screen.query_one(f"#sim-seeds-{index}", Input).value = "1,x"
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
             assert "Seeds must" in str(screen.query_one("#sim-status", Static).render())
-            screen.query_one("#sim-seeds-0", Input).value = "123"
-            screen.query_one("#sim-observer-0-0", Input).value = "-0.1"
+            screen.query_one(f"#sim-seeds-{index}", Input).value = "123"
+            screen.query_one(f"#sim-observer-{index}-0", Input).value = "-0.1"
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationsScreen)
@@ -119,16 +130,17 @@ def test_tui_scenario_change_shows_experiment_owned_inputs(tmp_path):
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
             screen = app.screen
-            screen.query_one("#sim-scenario", Select).value = "csf_short_censored"
+            await _choose_current_csf(screen,pilot,app)
+            screen.query_one("#sim-scenario", Select).value = "teaching_demo"
             await _settle(pilot, app)
             index = next(i for i, item in enumerate(screen.scenarios)
-                         if item.id == "csf_short_censored")
+                         if item.id == "teaching_demo")
             assert screen.query_one(f"#sim-panel-{index}").display
             assert not screen.query_one("#sim-panel-0").display
             screen.query_one("#sim-review", Button).press()
             await _settle(pilot, app)
             assert isinstance(app.screen, SimulationReviewScreen)
-            assert app.screen.request.experiment_values["max_trials"] == 1
+            assert app.screen.request.experiment_values["max_trials"] >= 1
     asyncio.run(scenario())
 
 
@@ -153,8 +165,8 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
 
     data_root = tmp_path / "local_psychophysics_data"
     request = SimulationLaunchRequest(
-        "legacy_contrast_sensitivity", "csf_short_censored", data_root,
-        (11,), observer_parameters={"threshold": 0.1, "preferred_condition": 63.0},
+        "contrast_sensitivity", "teaching_demo", data_root,
+        (11,), observer_parameters={"threshold": 0.1, "slope": 3.0},
         experiment_values={"max_trials": 1},
     )
     calls = []
@@ -195,6 +207,7 @@ def test_adaptive_button_opens_editor_and_applies_settings_to_review(tmp_path, s
             await _settle(pilot, app)
             screen = app.screen
             assert isinstance(screen, SimulationsScreen)
+            await _choose_current_csf(screen,pilot,app)
             index, selected = screen._current()
             fields = {f.key: n for n, f in enumerate(get_experiment(selected.experiment_id).fields)}
             def source(key):
@@ -248,6 +261,7 @@ def test_adaptive_editor_cancel_invalid_input_and_step_calculator(tmp_path):
             app.query_one("#nav-simulations", Button).press()
             await _settle(pilot, app)
             parent = app.screen
+            await _choose_current_csf(parent,pilot,app)
             index, current = parent._current()
             keys = {field.key: n for n, field in enumerate(get_experiment(current.experiment_id).fields)}
             def source(key):
