@@ -82,6 +82,7 @@ class RunContext:
     test_trial_limit: int | None = None
     virtual_presentation: Any = None  # explicit development replay backend; never used for humans
     researcher_override: ResearcherOverride | None = None
+    show_response_instructions: bool = True
     status: str = field(default="created", init=False)
     accepted_trials: int = field(default=0, init=False)
     expected_trials: int = field(default=0, init=False)
@@ -100,8 +101,12 @@ class RunContext:
             if not self.spec.stimulus_slots:
                 raise ValueError("Human presentation must record the actual runtime_display.")
             from .core.presentation import Presentation
-            self._presentation = (Presentation(self.display, self.responses) if background_intensity == .5 else
-                                  Presentation(self.display, self.responses, background_intensity=background_intensity))
+            # Existing display construction is unchanged unless instructions
+            # are explicitly hidden by the researcher at final Review.
+            options = {} if background_intensity == .5 else {"background_intensity": background_intensity}
+            if not self.show_response_instructions:
+                options["show_response_instructions"] = False
+            self._presentation = Presentation(self.display, self.responses, **options)
             runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
         settings = self.spec.settings_snapshot()
