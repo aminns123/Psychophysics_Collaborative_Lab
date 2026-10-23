@@ -463,8 +463,6 @@ class DisplayCheckScreen(HubPage):
             with Horizontal(id="calibration-stage-nav"):
                 for stage, label in STAGES:
                     yield Button(label, id=f"cal-stage-{stage}", variant="error")
-            yield Static("", id="calibration-stage-summary")
-            yield Static("", id="calibration-next-action", markup=False, classes="info-card")
             with Horizontal(classes="buttons"):
                 if getattr(self, "return_to_configuration", False):
                     yield Button("Return to Experiment Review" if getattr(self,"return_to_review",False) else "Return to display choice", id="calibration-return")
@@ -473,6 +471,10 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Next stage", id="calibration-next", variant="primary")
                 yield Button("Refresh status", id="calibration-refresh")
             yield Static("", id="geometry-status")
+
+        with Collapsible(title="Stage guidance and readiness details", collapsed=True, id="calibration-details"):
+            yield Static("", id="calibration-stage-summary")
+            yield Static("", id="calibration-next-action", markup=False)
 
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
             with VerticalScroll(id="cal-panel-bind", classes="page-body calibration-panel"):
@@ -741,6 +743,10 @@ class DisplayCheckScreen(HubPage):
                     )
         yield Footer()
 
+    def on_resize(self):
+        if self.is_mounted and self.query("#calibration-stage-summary"):
+            self._refresh_stage_status()
+
     def _go_to_stage(self, stage: str, *, remember: bool = True) -> None:
         if stage not in dict(STAGES):
             return
@@ -794,7 +800,9 @@ class DisplayCheckScreen(HubPage):
             ready, _ = states[stage]
             button = self.query_one(f"#cal-stage-{stage}", Button)
             button.variant = {'green': 'success', 'yellow': 'warning', 'red': 'error'}[colours[stage]]
-            button.label = f"{title} {'✓' if colours[stage] == 'green' else '!' if ready else '✕'}"
+            marker = '✓' if colours[stage] == 'green' else '!' if ready else '✕'
+            button.tooltip = f"{title}: {states[stage][1]}"
+            button.label = f"{title.split(' · ')[0] if self.app.size.width < 100 else title} {marker}"
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         self.query_one("#calibration-stage-summary", Static).update(
             "[b]GREEN = stated check satisfied; AMBER = saved, physical verification pending; RED = missing.[/b] "
@@ -2873,8 +2881,6 @@ class PsyCoLabSetupApp(App):
 
     from .console import CONSOLE_CSS
     CSS += CONSOLE_CSS
-    from .slate_precision import SLATE_PRECISION_CSS
-    CSS += SLATE_PRECISION_CSS
     from .coffee_forest import COFFEE_FOREST_CSS
     CSS += COFFEE_FOREST_CSS
 
