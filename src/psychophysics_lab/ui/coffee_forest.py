@@ -4,6 +4,44 @@ No rules in this module affect the fullscreen participant stimulus renderer.
 """
 
 COFFEE_FOREST_CSS = """
+/* Wide Setup: editable choices on the left; read-only context on the right. */
+Screen.laboratory-console #setup-columns {
+    width: 100%;
+    height: 1fr;
+    layout: horizontal;
+}
+Screen.laboratory-console #setup-columns #setup-body {
+    width: 2fr;
+    height: 100%;
+    min-width: 0;
+}
+Screen.laboratory-console #setup-side {
+    width: 1fr;
+    min-width: 0;
+    height: 100%;
+    padding: 1;
+}
+Screen.laboratory-console #setup-side .info-card {
+    padding: 1;
+}
+/* Preserve both forms and read-only context on compact terminals. */
+Screen.console-compact #setup-columns {
+    layout: vertical;
+}
+Screen.console-compact #setup-columns #setup-body {
+    width: 100%;
+    height: 2fr;
+}
+Screen.console-compact #setup-side {
+    width: 100%;
+    height: 1fr;
+    min-height: 3;
+    padding: 0 1;
+}
+Screen.console-compact .slate-section-title {
+    padding: 0 1;
+}
+
 Screen.laboratory-console { background: #171914; color: #eee9de; }
 Screen.laboratory-console #console-heading {
     background: #29261f; color: #f1ebdf;
@@ -64,7 +102,7 @@ Screen.laboratory-console #review-body,
 Screen.laboratory-console .page-body,
 Screen.laboratory-console #config-body,
 Screen.laboratory-console #code-body {
-    background: #171914; padding: 1 4 1 2; border: none;
+    background: #171914; padding: 0 3 0 2; border: none;
 }
 Screen.laboratory-console #setup-side {
     background: #25281f; border-left: solid #547057;
@@ -81,7 +119,7 @@ Screen.laboratory-console .slate-section-title,
 Screen.laboratory-console .section-title {
     color: #dbe4cd; background: #30372b;
     border-left: heavy #668263; padding: 0 1;
-    height: auto; text-style: bold; margin-top: 1; margin-bottom: 1;
+    height: auto; text-style: bold; margin-top: 1; margin-bottom: 0;
 }
 /* Calibration readiness states retain independent amber/green/red meaning. */
 Screen.laboratory-console .readiness-blocked,
@@ -99,7 +137,7 @@ Screen.laboratory-console #config-body Input,
 Screen.laboratory-console #config-body Select,
 Screen.laboratory-console .page-body Input,
 Screen.laboratory-console .page-body Select {
-    width: 100%; max-width: 76;
+    width: 100%; max-width: 64;
 }
 Screen.laboratory-console .page-body .buttons,
 Screen.laboratory-console #review-body .buttons,
@@ -110,18 +148,18 @@ Screen.laboratory-console .page-body .buttons Button,
 Screen.laboratory-console #review-body .buttons Button,
 Screen.laboratory-console #config-body .buttons Button {
     width: 38; min-width: 0; max-width: 100%;
-    height: 3; margin: 0 0 1 0;
+    height: 3; margin: 0;
 }
 Screen.laboratory-console .page-body > Button,
 Screen.laboratory-console #setup-body > Button,
 Screen.laboratory-console #review-body > Button,
 Screen.laboratory-console #config-body > Button {
     width: 38; min-width: 0; max-width: 100%;
-    height: 3; margin: 0 0 1 0;
+    height: 3; margin: 0;
 }
 /* Header actions remain stationary above page scroll panes. */
 Screen.laboratory-console #fixed-shell .buttons Button {
-    width: 1fr; max-width: 32; min-width: 0;
+    width: 1fr; max-width: 28; min-width: 0; height: 3;
 }
 Screen.laboratory-console #setup-status,
 Screen.laboratory-console #review-status,
@@ -150,4 +188,17 @@ Screen.console-compact #review-body .buttons Button,
 Screen.console-compact #config-body .buttons Button {
     width: 38; min-width: 0; max-width: 100%;
 }
+
+/* Calibration navigation stays above the scrolling measurement workspace. */
+
+Screen.laboratory-console #fixed-shell .buttons { align-horizontal: left; }
+Screen.laboratory-console #calibration-details { height: auto; max-height: 30%; overflow-y: auto; padding: 0; margin: 0; }
+DisplayCheckScreen.laboratory-console #fixed-shell { max-height: 100%; overflow-y: auto; }
+DisplayCheckScreen.laboratory-console #calibration-stage-nav { height: 3; }
+DisplayCheckScreen.laboratory-console #fixed-shell .buttons { layout: horizontal; height: 3; }
+DisplayCheckScreen.laboratory-console #fixed-shell .buttons Button { width: 1fr; height: 3; }
+DisplayCheckScreen.console-compact #calibration-stage-nav { layout: horizontal; height: 1; }
+DisplayCheckScreen.console-compact #calibration-stage-nav Button { width: 1fr; height: 1; border: none; }
+DisplayCheckScreen.laboratory-console #geometry-status { min-height: 0; margin: 0; height: auto; }
+Screen.laboratory-console #data-root { max-width: 100%; }
 """

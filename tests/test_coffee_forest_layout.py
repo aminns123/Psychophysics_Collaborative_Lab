@@ -76,3 +76,39 @@ def test_review_parameter_table_and_response_guidance_preserved(tmp_path, monkey
             assert app.screen.query_one("#run-researcher-override", Button)
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("size", [(60, 24), (80, 24), (120, 40), (160, 55)])
+def test_calibration_navigation_visible_and_details_expand(tmp_path, monkeypatch, size):
+    from textual.widgets import Collapsible
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "config"))
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        async with app.run_test(size=size) as pilot:
+            app.open_hub_page("display")
+            await pilot.pause()
+            for stage in ("bind", "geometry", "spatial", "luminance", "precision", "timing", "review"):
+                button = app.screen.query_one("#cal-stage-" + stage, Button)
+                await pilot.click(button)
+                await pilot.pause()
+                panel = app.screen.query_one("#cal-panel-" + stage)
+                assert panel.display
+                assert panel.region.height >= (10 if size[1] == 24 else 20)
+                for identity in ("calibration-start", "calibration-previous", "calibration-next", "calibration-refresh"):
+                    control = app.screen.query_one("#" + identity, Button)
+                    assert control.region.right <= size[0]
+                    assert control.region.bottom <= panel.region.y
+                    assert control.region.width >= 8
+            details = app.screen.query_one("#calibration-details", Collapsible)
+            assert details.collapsed
+            details.collapsed = False
+            await pilot.pause()
+            assert app.screen.query_one("#calibration-stage-summary").display
+            assert app.screen.query_one("#cal-panel-review").region.height > 0
+            details.collapsed = True
+            await pilot.resize_terminal(120, 40)
+            await pilot.pause()
+            assert "Display" in str(app.screen.query_one("#cal-stage-bind", Button).label)
+
+    asyncio.run(scenario())

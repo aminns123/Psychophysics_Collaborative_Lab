@@ -122,11 +122,6 @@ Screen.laboratory-console Label { width: 100%; height: auto; }
 .console-compact .buttons { layout: grid; grid-size: 2; grid-rows: 3; height: auto; }
 .console-compact .buttons Button { width: 100%; max-width: 100%; height: 3; border: none; }
 .console-compact .buttons Button:focus { text-style: bold underline; }
-.console-compact #calibration-stage-nav { layout: grid; grid-size: 4 2;
-    grid-rows: 3 3; height: 6; }
-.console-compact #calibration-stage-nav Button { width: 100%; height: 3; border: none; }
-.console-compact #calibration-stage-nav Button.calibration-active { text-style: bold underline; }
-.console-narrow #calibration-stage-nav { grid-size: 3 3; grid-rows: 3 3 3; height: 9; }
 .old-navigation-placeholder { display: none; }
 Screen.laboratory-console #fixed-shell { background: $background; dock: none; width: 100%; max-height: 45%; overflow-y: auto; }
 
