@@ -1375,8 +1375,10 @@ class DataScreen(HubPage):
                 "subfolder for staircase plots and versioned thresholds. "
                 "Virtual runs also save scenario_report.json beside trials.tsv."
             )
+            yield Static("RUN SELECTION", classes="slate-section-title")
             yield Select(options, value=options[0][1], allow_blank=False, id="data-run")
             yield Static("", id="data-details", classes="info-card")
+            yield Static("SAVED FILES & RUN OUTPUTS", classes="slate-section-title")
             with Horizontal(classes="buttons wrap-buttons"):
                 yield Button("Latest uncalibrated test manifest",id="inspect-presentation-manifest")
                 yield Button("Latest uncalibrated test trials",id="inspect-presentation-trials")
@@ -2301,6 +2303,7 @@ class ReviewScreen(Screen):
                 yield Button("Researcher override…", id="run-researcher-override")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
+            yield Static("RUN MODE & RESPONSE GUIDANCE", classes="slate-section-title")
             yield Label("What would you like to run?")
             yield Select([
                 ("Try the experiment", "test"),
@@ -2315,6 +2318,7 @@ class ReviewScreen(Screen):
             )
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
+            yield Static("CONFIGURATION & SOURCE FILES", classes="slate-section-title")
             yield Label("Parameters used by this experiment")
             from .review_table import ReviewSettingsTable
             yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
@@ -2860,6 +2864,8 @@ class PsyCoLabSetupApp(App):
 
     from .console import CONSOLE_CSS
     CSS += CONSOLE_CSS
+    from .slate_precision import SLATE_PRECISION_CSS
+    CSS += SLATE_PRECISION_CSS
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
@@ -3050,59 +3056,68 @@ class PsyCoLabSetupApp(App):
                 yield Button("Exit", id="exit")
                 yield Button("Configure Experiment", id="configure", variant="primary")
             yield Static("", id="setup-status")
-        with VerticalScroll(id="setup-body"):
-            yield Static("[b]What would you like to do?[/b]")
-            yield Select([
-                ("Try the experiment", "test"),
-                ("Collect participant data", "human"),
-                ("Simulate responses", "simulation"),
-            ], value=self.run_intent, allow_blank=False, id="run-intent")
-            yield Static("", id="run-intent-help", markup=False)
-            yield Static("Configure the experiment and its stimuli. The chosen run type "
-                         "decides which final checks are shown.", markup=False)
-            if self.simulation_summary:
-                yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
+        with Horizontal(id="setup-columns"):
+            with VerticalScroll(id="setup-body"):
+                yield Static("RUN MODE", classes="slate-section-title")
+                yield Static("[b]What would you like to do?[/b]")
+                yield Select([
+                    ("Try the experiment", "test"),
+                    ("Collect participant data", "human"),
+                    ("Simulate responses", "simulation"),
+                ], value=self.run_intent, allow_blank=False, id="run-intent")
+                yield Static("", id="run-intent-help", markup=False)
+                yield Static("Configure the experiment and its stimuli. The chosen run type "
+                             "decides which final checks are shown.", markup=False)
+                if self.simulation_summary:
+                    yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
-            yield Label("External data workspace")
-            yield Input(value=str(self.data_root), id="data-root")
-            yield Static(
-                "Participant/acquisition data must remain outside the Git repository. An adjacent "
-                "folder is recommended.",
-                classes="field-help",
-            )
-            yield Button("Load Data Workspace", id="load-data-root")
-            yield Static(last_summary, id="last-run-summary", classes="field-help")
+                yield Static("DATA WORKSPACE", classes="slate-section-title")
+                yield Label("External data workspace")
+                yield Input(value=str(self.data_root), id="data-root")
+                yield Static(
+                    "Participant/acquisition data must remain outside the Git repository. An adjacent "
+                    "folder is recommended.",
+                    classes="field-help",
+                )
+                yield Button("Load Data Workspace", id="load-data-root")
 
-            with Vertical(id="human-participant-panel"):
-                yield Label("Existing participant")
-                yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
-                yield Label("Participant ID (pseudonymous)")
-                yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
-                yield Static("Only needed for real human acquisition.", classes="field-help")
+                yield Static("PARTICIPANT & EXPERIMENT", classes="slate-section-title")
+                with Vertical(id="human-participant-panel"):
+                    yield Label("Existing participant")
+                    yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
+                    yield Label("Participant ID (pseudonymous)")
+                    yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
+                    yield Static("Only needed for real human acquisition.", classes="field-help")
 
-            yield Label("Starting settings")
-            yield Select(
-                [
-                    ("Start from experiment defaults / new settings", "new"),
-                    ("Reuse last settings — starts a new run", "reuse"),
-                ],
-                value=session_default,
-                allow_blank=False,
-                id="session-mode",
-            )
+                yield Label("Starting settings")
+                yield Select(
+                    [
+                        ("Start from experiment defaults / new settings", "new"),
+                        ("Reuse last settings — starts a new run", "reuse"),
+                    ],
+                    value=session_default,
+                    allow_blank=False,
+                    id="session-mode",
+                )
 
-            yield Label("Experiment")
-            yield Select(experiment_options, value=experiment_default, allow_blank=False, id="experiment")
-            yield Static("", id="experiment-summary", classes="info-card")
+                yield Label("Experiment")
+                yield Select(experiment_options, value=experiment_default, allow_blank=False, id="experiment")
 
-            yield Label("Display profile")
-            yield Select(
-                monitor_options,
-                value=monitor_default,
-                allow_blank=False,
-                id="monitor-profile",
-            )
-            yield Static("", id="monitor-summary", classes="info-card")
+                yield Label("Display profile")
+                yield Select(
+                    monitor_options,
+                    value=monitor_default,
+                    allow_blank=False,
+                    id="monitor-profile",
+                )
+
+            with VerticalScroll(id="setup-side"):
+                yield Static("RECENT ACTIVITY", classes="slate-section-title")
+                yield Static(last_summary, id="last-run-summary", classes="info-card")
+                yield Static("SELECTED EXPERIMENT", classes="slate-section-title")
+                yield Static("", id="experiment-summary", classes="info-card")
+                yield Static("DISPLAY READINESS", classes="slate-section-title")
+                yield Static("", id="monitor-summary", classes="info-card")
 
         yield Footer()
 
