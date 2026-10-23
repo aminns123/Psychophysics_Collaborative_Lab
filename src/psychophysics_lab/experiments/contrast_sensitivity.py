@@ -32,6 +32,7 @@ GRATING_MS = 300
 DEFAULT_GRATING_OFFSET_DEG = 1.0
 GAUSSIAN_SIGMA_DEG = 0.5
 CORRECT_BEFORE_DECREASE = 4
+CORRECT_BEFORE_INCREASE = 1
 LOG_INCREASE = 0.36
 LOG_DECREASE = 0.30294
 REVERSALS_TO_FINISH = 10
@@ -117,7 +118,7 @@ FIELDS = (
         "n_up",
         "Consecutive incorrect answers before increasing contrast",
         "int",
-        1,
+        CORRECT_BEFORE_INCREASE,
         minimum=1,
         units='consecutive incorrect responses',
     ),
