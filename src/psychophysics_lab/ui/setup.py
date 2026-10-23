@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 from datetime import datetime
 import json
 from pathlib import Path
@@ -11,7 +12,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable, Checkbox
 from textual.widgets._select import InvalidSelectValueError
 
 from ..analysis.thresholds import analyse_thresholds
@@ -2323,6 +2324,11 @@ class ReviewScreen(Screen):
                 ("Collect participant data", "human"),
                 ("Simulate responses", "simulation"),
             ], value=self.app.run_intent, allow_blank=False, id="review-run-intent")
+            yield Checkbox(
+                "Show response-key guidance during the experiment",
+                value=self.request.show_response_instructions,
+                id="review-show-response-instructions",
+            )
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Try the experiment", id="run-presentation-test", variant="warning")
@@ -2551,6 +2557,11 @@ class ReviewScreen(Screen):
         self._refresh_readiness()
         self._apply_run_intent()
         self.query_one("#resolved-settings-table",DataTable).focus()
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        if event.checkbox.id == "review-show-response-instructions":
+            # Only the appearance of response-stage guidance changes.
+            self.request = replace(self.request, show_response_instructions=event.value)
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "review-run-intent" and self.is_mounted:
