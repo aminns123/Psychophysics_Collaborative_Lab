@@ -139,5 +139,9 @@ physical stimulus appearance, photometric accuracy or photon timing. Use
 
 Before updating source, review `git status` and preserve local edits. After a
 reviewed update, rerun the launcher; do not copy environments between computers.
+For the branch/fork workflow, conflict recovery and local-preset boundaries,
+follow [safe updates and local work](SAFE_UPDATES_AND_LOCAL_WORK.md). A private
+Python extension folder placed inside the checkout is **not** protected against
+`git clean -fdx` or deleting the checkout, even if Git ignores the folder.
 Superseded ZIP-overlay instructions are recoverable from Git history; use the
 current launcher instead of applying old overlays.
