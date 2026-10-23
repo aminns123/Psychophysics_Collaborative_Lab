@@ -502,6 +502,7 @@ def run_request(
                 procedure_context = RunContext(values, profile, spec, run_dir,
                     synthetic=simulation is not None, data_kind=data_kind,
                     researcher_override=request.researcher_override,
+                    show_response_instructions=request.show_response_instructions,
                     stimulus_snapshots=request.stimulus_snapshots,
                     observer_parameters=simulation.metadata.get("observer_parameters", {}) if simulation is not None else {},
                     seed=simulation.metadata["seed"] if simulation is not None else (0 if spec.historical else __import__("secrets").randbits(64)),
