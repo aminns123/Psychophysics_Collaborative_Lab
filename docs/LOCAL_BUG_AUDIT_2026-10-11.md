@@ -1,5 +1,8 @@
 # PsyCoLab local bug audit — 11 October 2026
 
+> **Historical evidence (11 October 2026).** This audit describes an earlier source tree. Several links into `_reference_csf/` refer to files that have since been removed or relocated and do not resolve on current `main`; examine the corresponding older Git revision to inspect their historical contents. This document is retained as evidence, not current installation or authoring guidance. See [the current roadmap](INTERNATIONAL_LAB_ROADMAP.md) and [documentation audit](DOCUMENTATION_AUDIT_2026-10-23.md).
+
+
 The Windows geometry/test-stimulus crash is fixed and verified on the affected machine. The local audit identified and corrected the issues below. This is software verification, not certification of psychophysical stimulus accuracy.
 
 ## Baseline and preservation
