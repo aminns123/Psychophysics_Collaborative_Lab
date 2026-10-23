@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.widgets import (
     Button,
     Footer,

@@ -11,7 +11,7 @@ from typing import Any
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable, Checkbox
 from textual.widgets._select import InvalidSelectValueError
 
@@ -37,17 +37,6 @@ from ..paths import resolve_data_root
 from ..stimuli.geometry import physical_length_for_visual_angle
 from .calibration_stages import STAGES, stage_states, stage_next_action
 from ..config.readiness import diagnostic_matches_profile
-
-
-NAV_PAGES = (
-    ("setup", "Experiment"),
-    ("stimuli", "Build Stimuli"),
-    ("experiments", "Build Experiments"),
-    ("display", "Calibrate"),
-    ("simulations", "Scenarios"),
-    ("data", "Data"),
-    ("help", "Learn / Help"),
-)
 
 
 def _report_ui_exception(app: App, exc: BaseException, *, phase: str) -> None:
@@ -194,28 +183,10 @@ def _source_inventory(repo_root, experiment):
     return entries
 
 
-class HubNavigation(Horizontal):
-    def on_button_pressed(self, event):
-        if event.button.id == "refresh-psycolab":
-            event.stop()
-            self.app.action_refresh_files()
-
-    def on_mount(self):
-        page = {"ExperimentsScreen": "experiments", "StimuliScreen": "stimuli",
-                "DisplayCheckScreen": "display", "ProfileScreen": "display",
-                "DataScreen": "data", "HelpScreen": "help",
-                "SimulationsScreen": "simulations",
-                "SimulationReviewScreen": "simulations"}.get(type(self.screen).__name__, "setup")
-        self.query_one("#nav-" + page, Button).variant = "primary"
-        self.query_one("#nav-simulations", Button).display = self.app.include_historical
-
-
-def _nav_bar() -> Horizontal:
-    return HubNavigation(
-        *[Button(label, id=f"nav-{key}") for key, label in NAV_PAGES],
-        Button("Refresh", id="refresh-psycolab", tooltip="Reload saved Python and JSON files (F5)"),
-        id="hub-nav",
-    )
+def _nav_bar():
+    # Existing compose functions keep their structure; navigation is now a
+    # direct screen child installed by the shared console shell.
+    return Static(classes="old-navigation-placeholder")
 
 
 def _handle_nav(screen: Screen, event: Button.Pressed) -> bool:
@@ -481,6 +452,7 @@ class DisplayCheckScreen(HubPage):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            yield Button("Finish calibration setup → Return to Experiment", id="calibration-finish", variant="success")
             with Horizontal(id="calibration-stage-nav"):
                 for stage, label in STAGES:
                     yield Button(label, id=f"cal-stage-{stage}", variant="error")
@@ -493,7 +465,6 @@ class DisplayCheckScreen(HubPage):
                 yield Button("Previous", id="calibration-previous")
                 yield Button("Next stage", id="calibration-next", variant="primary")
                 yield Button("Refresh status", id="calibration-refresh")
-            yield Button("Finish calibration setup → Return to Experiment", id="calibration-finish", variant="success")
             yield Static("", id="geometry-status")
 
         with ContentSwitcher(initial=f"cal-panel-{self.active_calibration_stage}", id="calibration-pages"):
@@ -2318,6 +2289,18 @@ class ReviewScreen(Screen):
         with Vertical(id="fixed-shell"):
             yield Header(show_clock=True)
             yield _nav_bar()
+            with Horizontal(classes="buttons"):
+                yield Button("Back", id="back")
+                yield Button("Try the experiment", id="run-presentation-test", variant="warning")
+                yield Button("Collect participant data", id="run", variant="success")
+                yield Button("Simulate responses", id="run-simulation", variant="primary")
+            with Horizontal(classes="buttons"):
+                yield Button("Human requirements",
+                             tooltip="Resolve human acquisition requirements",
+                             id="review-calibration-guide")
+                yield Button("Researcher override…", id="run-researcher-override")
+            yield Static("", id="review-status")
+        with VerticalScroll(id="review-body"):
             yield Label("What would you like to run?")
             yield Select([
                 ("Try the experiment", "test"),
@@ -2325,20 +2308,11 @@ class ReviewScreen(Screen):
                 ("Simulate responses", "simulation"),
             ], value=self.app.run_intent, allow_blank=False, id="review-run-intent")
             yield Checkbox(
-                "Show response-key guidance during the experiment",
+                "Show response-key guidance",
+                tooltip="Show response-key guidance during the experiment",
                 value=self.request.show_response_instructions,
                 id="review-show-response-instructions",
             )
-            with Horizontal(classes="buttons"):
-                yield Button("Back", id="back")
-                yield Button("Try the experiment", id="run-presentation-test", variant="warning")
-                yield Button("Collect participant data", id="run", variant="success")
-                yield Button("Simulate responses", id="run-simulation", variant="primary")
-            yield Button("Resolve human acquisition requirements",
-                         id="review-calibration-guide")
-            yield Button("Researcher override…", id="run-researcher-override")
-            yield Static("", id="review-status")
-        with VerticalScroll(id="review-body"):
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             yield Label("Parameters used by this experiment")
@@ -2839,8 +2813,6 @@ class PsyCoLabSetupApp(App):
     Screen { align: center top; }
     #fixed-shell { dock: top; height: auto; width: 100%; }
     #fixed-shell Header { dock: none; height: 1; }
-    #hub-nav { width: 100%; height: 3; }
-    #hub-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
     #setup-body, #review-body, .page-body, #code-body, #config-body {
         width: 100%; height: 1fr; border: round $accent; padding: 1 2;
     }
@@ -2885,6 +2857,9 @@ class PsyCoLabSetupApp(App):
     }
     .calibration-panel Button { margin: 1 0; min-width: 0; }
     """
+
+    from .console import CONSOLE_CSS
+    CSS += CONSOLE_CSS
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
@@ -3131,7 +3106,9 @@ class PsyCoLabSetupApp(App):
 
         yield Footer()
 
-    def on_mount(self) -> None:
+    async def on_mount(self) -> None:
+        from .console import install_console
+        await install_console(self.screen)
         self._refresh_experiment_context()
         self._refresh_run_intent()
         if self.refresh_state is not None:
@@ -3139,7 +3116,14 @@ class PsyCoLabSetupApp(App):
         elif self.geometry_summary:
             self.call_after_refresh(self._restore_diagnostic_review)
 
-    BINDINGS = [("f5", "refresh_files", "Refresh files")]
+    BINDINGS = [("f5", "refresh_files", "Refresh files"),
+                ("f6", "focus_navigation", "Sidebar")]
+
+    def action_focus_navigation(self):
+        section = getattr(self.screen, "console_section", None)
+        if section is not None:
+            self.screen.query_one("#nav-" + section, Button).focus()
+
 
     @work(exclusive=True, group="refresh-files")
     async def action_refresh_files(self):

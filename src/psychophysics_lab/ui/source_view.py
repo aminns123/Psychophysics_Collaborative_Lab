@@ -1,5 +1,5 @@
 """Read-only fallback when an external source editor is unavailable."""
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.widgets import Button, Label, TextArea
 
 
