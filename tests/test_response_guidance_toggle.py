@@ -96,3 +96,24 @@ def test_review_checkbox_is_presentation_only_and_survives_run_mode_switch(tmp_p
             assert screen.request.show_response_instructions is True
 
     asyncio.run(exercise())
+
+
+
+def test_saved_workspace_preference_restores_without_exposing_old_runs():
+    from dataclasses import asdict, replace
+    from psychophysics_lab.data.workspace import request_from_workspace_state
+
+    original = SetupRequest(
+        "practice", "new", "contrast_sensitivity", "legacy_reference_display",
+        {"starting_contrast": .1}, show_response_instructions=False
+    )
+    recovered = request_from_workspace_state({"last_request": asdict(original)})
+    assert recovered.show_response_instructions is False
+    assert recovered.researcher_override is None
+    assert request_from_workspace_state({
+        "last_request": asdict(replace(original, show_response_instructions=True))
+    }).show_response_instructions is True
+    # Older workspaces never included this optional choice.
+    old = asdict(original)
+    del old["show_response_instructions"]
+    assert request_from_workspace_state({"last_request": old}).show_response_instructions is True
