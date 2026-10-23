@@ -60,3 +60,13 @@ automatic discovery. Managed Drafts continue through the existing fingerprint
 gate. No companion JSON or authoring-list edit is required for a new definition.
 See [the authoring contract](AUTHORING_CONTRACT.md#scientific-decisions-retained-internally)
 for every shared-mechanism justification and the documented reference-CSF exception.
+
+## International ownership boundary (planned)
+
+The core and public experiment layers above are implemented. Machine-local
+presets, monitor calibration and external acquisition records already live
+outside the source checkout. A *third* layer for independently loadable
+`PsyCoLab_Extensions/` Python studies is a reviewed future change: current
+experiment discovery and registered source hashing assume repository-relative
+code. See [the international roadmap](INTERNATIONAL_LAB_ROADMAP.md) before
+changing discovery or experiment source-path semantics.

@@ -68,6 +68,17 @@ Physical tests still require a usable monitor configuration and supported render
 They do not establish calibration. Current scientific protocols retain their blocks
 on participant acquisition until qualified.
 
+## Safe local research and updates
+
+Keep run values in named local TUI presets whenever possible. If you edit
+scientific Python, save it on a private Git branch/fork before updating; an
+external lab-owned extension loader is proposed but **not available yet**.
+Never overlay a new ZIP on an existing checkout or place participant data in Git.
+See [safe updates](docs/SAFE_UPDATES_AND_LOCAL_WORK.md),
+[contributor workflow](docs/CONTRIBUTING_EXPERIMENTS.md),
+[international development roadmap](docs/INTERNATIONAL_LAB_ROADMAP.md) and
+[release compatibility policy](docs/RELEASE_POLICY.md).
+
 ## Further reading
 
 - [Installation and moving computers](docs/INSTALLATION.md)

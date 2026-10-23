@@ -1,5 +1,17 @@
 # Extending PsyCoLab
 
+## Local ownership and safe updates
+
+The instructions below describe the **currently supported public Python
+source locations**. A local scientist should normally change selected values
+in the TUI and save them as **local presets**, not edit official source defaults.
+To change the scientific procedure or add a class today, use a private branch
+or fork, test the exact source and submit a PR if appropriate. Automatic loading
+from a sibling `PsyCoLab_Extensions/` directory is **planned, not implemented**.
+See [safe Git updates](SAFE_UPDATES_AND_LOCAL_WORK.md),
+[contributor policy](CONTRIBUTING_EXPERIMENTS.md) and
+[the architecture roadmap](INTERNATIONAL_LAB_ROADMAP.md).
+
 ## The only authoring workflow
 
 1. **Stimulus:** edit `src/psychophysics_lab/stimulus_library.py`.
