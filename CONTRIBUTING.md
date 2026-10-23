@@ -2,13 +2,16 @@
 
 PsyCoLab is a general psychophysics framework; CSF is its first reference experiment.
 Read [the architecture](docs/ARCHITECTURE.md) before changing package boundaries.
+For new scientific work, follow [the contributor checklist](docs/CONTRIBUTING_EXPERIMENTS.md).
+For preserving local code when updating, follow [safe updates](docs/SAFE_UPDATES_AND_LOCAL_WORK.md).
 
 - The supported baseline is **Python 3.11**.
 - Never silently change scientific or stimulus behaviour. Scientific changes
   require explicit review, including mathematics, timings, response mappings,
   contrast definitions, monitor calibration and geometry.
-- Register new experiments explicitly through the experiment registry. Keep
-  experiment-specific assumptions in their specification and implementation.
+- Public Python experiment files with a matching `SPEC` are discovered automatically;
+  keep experiment-specific science in that file. Managed Draft/Test/Ready
+  publications still require exact-source fingerprint validation.
 - Keep acquisition data outside the Git repository. Preserve raw run records;
   put analysis outputs elsewhere.
 - Canonical data-schema changes require deliberate versioning and review.
@@ -39,5 +42,6 @@ Keep scientific changes explicit and separate from infrastructure cleanup.
 
 ## Licensing
 
-No software licence has been selected. Repository-owner approval is required
-before adding a licence; do not infer licensing terms from this document.
+No software licence has been selected. Repository-owner/institutional approval is required
+before adding a licence or accepting distribution permissions; public visibility
+alone does not grant an open-source licence. See [release policy](docs/RELEASE_POLICY.md).
