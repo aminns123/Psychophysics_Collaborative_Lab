@@ -28,6 +28,18 @@ Screen.laboratory-console #fixed-shell {
     background: #29261f; border-bottom: solid #51634e;
     height: auto; min-height: 0;
 }
+Screen.laboratory-console Footer {
+    background: #29261f; color: #f1ebdf;
+}
+Screen.laboratory-console Input,
+Screen.laboratory-console Select {
+    background: #2e2a23; color: #f1e8d9;
+    border-bottom: solid #547057;
+}
+Screen.laboratory-console Input:focus,
+Screen.laboratory-console Select:focus {
+    border-bottom: heavy #779b72;
+}
 Screen.laboratory-console Button {
     background: #40352c; color: #f1e8d9; border: none;
 }
