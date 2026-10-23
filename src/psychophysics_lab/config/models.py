@@ -206,3 +206,5 @@ class SetupRequest:
     monitor_profile_hash: str | None = None
     stimulus_snapshots: dict[str, Any] = field(default_factory=dict)
     researcher_override: ResearcherOverride | None = None
+    # Purely visual presentation preference; default preserves older runs.
+    show_response_instructions: bool = True

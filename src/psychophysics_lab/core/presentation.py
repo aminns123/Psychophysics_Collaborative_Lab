@@ -123,8 +123,11 @@ def presentation_frames(duration_ms, refresh_hz):
 class Presentation:
     synthetic = False
     background_intensity = .5
-    def __init__(self, profile, responses, *, background_intensity=.5):
+    def __init__(self, profile, responses, *, background_intensity=.5, show_response_instructions=True):
         import math
+        if type(show_response_instructions) is not bool:
+            raise ValueError("Show response-key guidance must be a boolean.")
+        self.show_response_instructions = show_response_instructions
         if type(background_intensity) not in (int, float) or not math.isfinite(background_intensity) or not 0 <= background_intensity <= 1:
             raise ValueError("Background must be a finite digital command in [0, 1].")
         import pyglet
@@ -141,7 +144,7 @@ class Presentation:
         if profile.expected_resolution_px != self.resolution:
             self.window.close()
             raise ValueError("Actual fullscreen size differs from calibration; rebind the display.")
-        self.metadata = {"geometry_basis": "flat-screen atan(pixel-centre position / viewing distance), independent x/y pitch; local angles relative to requested patch centre","monitor_profile_id": profile.id, "physical_display_used": True,
+        self.metadata = {"show_response_instructions": show_response_instructions, "geometry_basis": "flat-screen atan(pixel-centre position / viewing distance), independent x/y pitch; local angles relative to requested patch centre","monitor_profile_id": profile.id, "physical_display_used": True,
                          "resolution_px": self.resolution, "display_identity": identity,
                          "photon_timing_verified": False, "input_latency_verified": False,
                          "timing_basis": "vsync frame-counted show stages; self-paced response",
@@ -244,6 +247,10 @@ class Presentation:
             for x, y, picture in self._rendered[phase.name]:
                 picture.blit(x, y)
             label = instructions if instructions and phase.kind == "response" else phase.instructions
+            # Hide only optional response-stage prompts, never stimulus phases,
+            # response mapping, accepted keys or timing.
+            if phase.kind == "response" and not getattr(self, "show_response_instructions", True):
+                label = ""
             text = pyglet.text.Label(label, x=self.resolution[0]//2,
                                   y=25 if phase.placements else self.resolution[1]//2,
                                   anchor_x="center", font_size=16) if label else None
