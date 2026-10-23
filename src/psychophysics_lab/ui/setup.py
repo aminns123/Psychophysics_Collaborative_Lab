@@ -261,6 +261,7 @@ class ExperimentsScreen(HubPage):
         options = [(experiment_choice_label(spec, self.app.repo_root), spec.id)
                    for spec in specs]
         with VerticalScroll(classes="page-body"):
+            yield Static("EXPERIMENT CATALOGUE", classes="slate-section-title")
             yield Static(
                 "[b]Registered experiments[/b]\n"
                 "Python experiment definitions are discovered automatically. CSF is the current reference experiment, "
@@ -268,11 +269,13 @@ class ExperimentsScreen(HubPage):
             )
             yield Select(options, value=specs[0].id, allow_blank=False, id="inspect-experiment")
             yield Static("", id="experiment-inspection")
+            yield Static("SOURCE INSPECTION", classes="slate-section-title")
             yield Select([], id="inspect-source-file", prompt="Choose a definition, procedure or stimulus/renderer")
             yield Button("Open selected source", id="view-selected-source")
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
+            yield Static("LEARNING & EXAMPLES", classes="slate-section-title")
             yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. The old left/right example is a worked example, not a new-file template.")
             yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
@@ -284,6 +287,7 @@ class ExperimentsScreen(HubPage):
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
                 "and SPEC. Declare defaults in that Python file; JSON presets are optional. "
                 "No auto-generation or separate JSON experiment editor.")
+            yield Static("SUBMIT AN EXISTING EXPERIMENT", classes="slate-section-title")
             yield Static("Already wrote the Python experiment? "
                          "Track it as Draft to require simulation before marking it Ready.")
             yield Input(placeholder="Existing experiment ID, e.g. my_task", id="register-experiment-name")
@@ -374,6 +378,7 @@ class StimuliScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
         with VerticalScroll(classes="page-body"):
+            yield Static("STIMULUS LIBRARY", classes="slate-section-title")
             yield Static("[b]ONE place for all stimulus science[/b]\n"
                 "Open stimulus_library.py. Define LibraryStimulus classes "
                 "with PARAMETERS, render(), and SPEC. There is no new-file generator "
@@ -381,11 +386,13 @@ class StimuliScreen(HubPage):
             yield Button("Open stimulus_library.py", id="view-shared-stimulus-library", variant="primary")
             yield Button("See Scene example", id="view-shared-scene-example")
             yield Button("Read short authoring guide", id="learn-stimuli")
+            yield Static("BUILT-IN STIMULI", classes="slate-section-title")
             yield Static("[b]Already available[/b]\n"
                 "Fixation, white lines, Gabor, gratings, ellipse, annulus, square, "
                 "rectangle, Gaussian dot and composable Scenes.")
             from ..stimuli.registry import list_stimuli
             choices = [(item.display_name,item.id) for item in list_stimuli() if item.render is not None]
+            yield Static("PREVIEW", classes="slate-section-title")
             yield Select(choices, value=choices[0][1], allow_blank=False, id="library-preview-stimulus")
             yield Button("Preview stimulus", id="library-show-preview", variant="primary")
             yield Static("[b]Preview directly[/b]\n"
@@ -1587,8 +1594,10 @@ class HelpScreen(HubPage):
             yield Header(show_clock=True)
             yield _nav_bar()
         with VerticalScroll(classes="page-body"):
+            yield Static("START HERE", classes="slate-section-title")
             yield Static("[b]Edit → Preview → Try → Check results[/b]\nUse Experiment to configure once, then choose Try the experiment, Simulate responses, or Collect participant data.")
             yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
+            yield Static("SCIENTIFIC AUTHORING", classes="slate-section-title")
             yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/.\nRestart after Python edits; parameter edits preview immediately.")
             yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
             with Collapsible(title="Advanced authoring references", collapsed=True):
@@ -2866,6 +2875,8 @@ class PsyCoLabSetupApp(App):
     CSS += CONSOLE_CSS
     from .slate_precision import SLATE_PRECISION_CSS
     CSS += SLATE_PRECISION_CSS
+    from .coffee_forest import COFFEE_FOREST_CSS
+    CSS += COFFEE_FOREST_CSS
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
