@@ -89,3 +89,12 @@ stimulus authoring interface.
 - This does not establish physical luminance, stimulus timing, flicker/SOA
   accuracy, monitor geometry or keyboard latency.
 - Existing CSF presentation and human experiment preflight remain unchanged.
+
+## Share, update and promote local science
+
+`USER_env` is not an isolated external extension runtime. Use its supported
+preview/test/publish commands on source currently recognised by PsyCoLab;
+retain custom scientific edits on a private branch/fork. For safe Git updates
+and an eventual sibling extension directory, see
+[safe updates](SAFE_UPDATES_AND_LOCAL_WORK.md) and
+[the international roadmap](INTERNATIONAL_LAB_ROADMAP.md).
