@@ -3070,7 +3070,7 @@ class PsyCoLabSetupApp(App):
                              "decides which final checks are shown.", markup=False)
                 if self.simulation_summary:
                     yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
-    
+
                 yield Static("DATA WORKSPACE", classes="slate-section-title")
                 yield Label("External data workspace")
                 yield Input(value=str(self.data_root), id="data-root")
@@ -3080,7 +3080,7 @@ class PsyCoLabSetupApp(App):
                     classes="field-help",
                 )
                 yield Button("Load Data Workspace", id="load-data-root")
-    
+
                 yield Static("PARTICIPANT & EXPERIMENT", classes="slate-section-title")
                 with Vertical(id="human-participant-panel"):
                     yield Label("Existing participant")
@@ -3088,7 +3088,7 @@ class PsyCoLabSetupApp(App):
                     yield Label("Participant ID (pseudonymous)")
                     yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
                     yield Static("Only needed for real human acquisition.", classes="field-help")
-    
+
                 yield Label("Starting settings")
                 yield Select(
                     [
@@ -3099,10 +3099,10 @@ class PsyCoLabSetupApp(App):
                     allow_blank=False,
                     id="session-mode",
                 )
-    
+
                 yield Label("Experiment")
                 yield Select(experiment_options, value=experiment_default, allow_blank=False, id="experiment")
-    
+
                 yield Label("Display profile")
                 yield Select(
                     monitor_options,
@@ -3110,7 +3110,7 @@ class PsyCoLabSetupApp(App):
                     allow_blank=False,
                     id="monitor-profile",
                 )
-    
+
             with VerticalScroll(id="setup-side"):
                 yield Static("RECENT ACTIVITY", classes="slate-section-title")
                 yield Static(last_summary, id="last-run-summary", classes="info-card")
