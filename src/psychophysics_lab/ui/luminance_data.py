@@ -1,7 +1,7 @@
 """Focused active luminance editor: draft/preview first, explicit atomic Save."""
 from copy import deepcopy
 from pathlib import Path
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.widgets import Header, Footer, Button, Input, Select, Checkbox, Static, Label, Collapsible
 from ..config.calibration_dataset import (load_active,save_active,accept_active,observation,summary,merge_observations,

@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from textual.app import ComposeResult
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.widgets import Header, Footer, Button, Static, Input, Label, Select, Checkbox
 from ..config.local import save_profile

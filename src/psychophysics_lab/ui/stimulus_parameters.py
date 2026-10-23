@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.widgets import Button, Input, Label, Select, Static, TextArea, Collapsible
 from ..stimuli.registry import list_stimuli, get_stimulus
 from ..config.stimulus_parameters import load_parameters, save_parameter_preset, snapshot, document_for

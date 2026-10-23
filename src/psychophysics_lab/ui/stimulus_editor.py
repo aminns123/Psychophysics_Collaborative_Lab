@@ -1,6 +1,6 @@
 """Edit declared stimulus values; JSON remains an advanced preset format."""
 
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.containers import VerticalScroll, Horizontal, Vertical
 from textual.widgets import Label, Input, Select, Button, Static, Header, Footer
 

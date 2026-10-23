@@ -144,8 +144,8 @@ def test_navigation_does_not_move_with_scroll_content_page_or_resize(tmp_path,si
     async def scenario():
         app=PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=size) as pilot:
-            baseline=app.screen.query_one('#nav-setup',Button).region.y
-            assert baseline==1
+            baseline=app.screen.query_one('#hub-nav').region.y
+            assert baseline==app.screen.query_one('#console-heading').region.bottom
             for page in ('experiments','stimuli','display','data','help','setup'):
                 button=app.screen.query_one('#nav-'+page,Button)
                 assert await pilot.click(button)
@@ -153,7 +153,7 @@ def test_navigation_does_not_move_with_scroll_content_page_or_resize(tmp_path,si
                 nav=app.screen.query_one('#hub-nav')
                 assert nav.region.y==baseline
                 assert all(0<=b.region.x and b.region.right<=size[0] for b in nav.query(Button))
-                body=app.screen.query(VerticalScroll).first()
+                body=app.screen.query_one('#setup-body, .page-body',VerticalScroll)
                 for static in body.query(Static):
                     if static.id not in {'experiment-summary','monitor-summary'}:
                         static.update('Long content\n'*200)
@@ -185,7 +185,8 @@ def test_config_draft_survives_help_and_returns_with_fixed_review_action(tmp_pat
             review=app.screen.query_one('#review',Button)
             y=review.region.y
             app.screen.query_one('#config-body').scroll_end(animate=False);await pilot.pause()
-            assert review.region.y==y==4
+            # At 80 columns the third action wraps onto the second fixed row.
+            assert review.region.y==y==app.screen.query_one('#console-heading').region.bottom+3
     asyncio.run(scenario())
 
 def test_profile_editor_saves_locally_without_replacing_reference(tmp_path,monkeypatch):

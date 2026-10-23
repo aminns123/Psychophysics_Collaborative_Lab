@@ -1,6 +1,6 @@
 """Focused laboratory declarations and registered experiment qualification."""
 from textual.app import ComposeResult
-from textual.screen import Screen
+from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, VerticalScroll, Horizontal
 from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Static, Label, Collapsible
 
