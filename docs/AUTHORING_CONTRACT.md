@@ -26,8 +26,9 @@
 ## Required reading order and executable contract
 
 Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md)
-and [implementation plan](EXPERIMENT_CONSISTENCY_PLAN.md). All nine experiment
-files have the same actual main loop and function signatures, not only headings.
+and [implementation plan](EXPERIMENT_CONSISTENCY_PLAN.md). The current public experiment files follow the same seven-section narrative;
+procedure details and loop structures remain experiment-owned, not artificially
+standardised for convenience.
 Conditions are named dictionaries; `prepare_stimuli(run, condition, state)` always
 returns parameters by slot. `make_trial(settings, condition)` contains chronological
 presentation, response collection and observation markers, with no update actions.
@@ -107,3 +108,12 @@ in `contrast_sensitivity.py`. Historical CSF definition/validators live in
 `_reference_csf/experiment_definition.py`; the old experiment ID remains available
 for interpreting saved runs. Source consolidation did not make the older protocol
 equivalent to the thesis, so their identities and acquisition qualifications remain distinct.
+
+## Collaboration and local ownership
+
+The current TUI supports local configuration presets, but the production
+experiment loader does **not** yet import an external sibling
+`PsyCoLab_Extensions/` source tree. Until that separately reviewed addition,
+keep locally modified scientific Python on a branch/fork. See
+[contributor workflow](CONTRIBUTING_EXPERIMENTS.md) and
+[three-layer roadmap](INTERNATIONAL_LAB_ROADMAP.md).
