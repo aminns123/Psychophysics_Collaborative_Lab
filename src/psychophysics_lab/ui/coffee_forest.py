@@ -136,6 +136,6 @@ Screen.console-compact #config-body .buttons {
 Screen.console-compact .page-body .buttons Button,
 Screen.console-compact #review-body .buttons Button,
 Screen.console-compact #config-body .buttons Button {
-    width: 100%; max-width: 100%;
+    width: 38; min-width: 0; max-width: 100%;
 }
 """
