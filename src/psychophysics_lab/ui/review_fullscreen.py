@@ -20,6 +20,10 @@ class ReviewTableFullscreen(Screen):
         color: #eeeeee;
         layout: vertical;
     }
+    ReviewTableFullscreen > Vertical {
+        width: 100%;
+        height: 100%;
+    }
     #expanded-review-toolbar {
         layout: horizontal;
         height: 3;
