@@ -279,6 +279,15 @@ def _main(
         initial_data_root = resolve_data_root(refresh_state["data_root"], repo_root)
     initial_data_root.mkdir(parents=True, exist_ok=True)
 
+    # First normal launch supplies a usable sibling starter, much like the
+    # default external data folder. Preparing files never trusts/loads them.
+    # Existing or deliberately selected laboratory source is never modified.
+    from .extensions import initialise_default
+    try:
+        initialise_default(repo_root, data_root=initial_data_root)
+    except (OSError, ValueError) as exc:
+        print(f"Laboratory starter not changed: {exc}. Built-in experiments remain available.")
+
     # The hub may close for fullscreen display checks or headless scenarios.
     # Real participants and virtual observers must never execute inside the
     # active Textual event loop.
