@@ -38,9 +38,13 @@ A software version such as `0.2.2`, a Git commit, a monitor `revision` and a sch
 - Test each supported legacy schema version with fixtures, unexpected/unknown versions, corrupted/truncated input, partial data and interrupted writes.
 - Never interpret an old scientifically different protocol as the new one because it shares a convenient display name. Preserve stable experiment IDs and the existing documented source-identity compatibility map.
 
+## Issue #81 — current compatibility audit
+
+See [the persisted-format writer/reader inventory](PERSISTED_FORMAT_INVENTORY.md) for inspected run, profile, calibration, preset, scenario and derived-analysis formats, confirmed versus absent schema markers, and remaining gaps. Read-only non-identifying *synthetic old-shape* fixtures live in `tests/fixtures/compatibility/`. They are not substitutes for genuine, appropriately de-identified laboratory archives. The first targeted reader change rejects unknown newer `manifest.json` schema markers without rewriting acquired files. This audit does **not** introduce a global schema framework, migrate canonical trials or alter psychophysical interpretation.
+
 ## Next code PRs required
 
-1. Build a **writer/reader inventory** for all persisted JSON/TSV objects, including monitor profile, resolved configuration, scenario report, analysis estimates, presets, calibration evidence and runtime displays.
+1. **Inventory created**, with named writer/reader evidence and confirmed versus absent schema markers. Keep it updated as new scientific formats are introduced; investigate the documented family-specific gaps.
 2. Document which exact old schemas the current code can already read; add non-identifying real historical fixtures.
 3. Add shared but minimal format-specific validation. Avoid an indiscriminate 'global schema manager' that obscures scientific ownership.
 4. Add targeted, non-destructive migration functions **only for demonstrated compatibility gaps**, with a separately reviewed PR per data family.
