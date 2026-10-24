@@ -19,20 +19,26 @@ def test_review_adaptive_settings_and_resolved_rules_follow_selected_values(iden
     fields = {field.key: field for field in spec.fields}
     for key in spec.adaptive.controls:
         assert ('Adaptive', fields[key].display_label, str(values[key])) in [row[:3] for row in rows]
-    plan = {(group, label): value for group, label, value, _ in rows}
-    assert plan['Run plan', 'adaptive_rule / n_down'] == '3'
-    assert plan['Run plan', 'adaptive_rule / n_up'] == '2'
-    assert plan['Run plan', 'adaptive_rule / log_up'] == '0.21'
-    assert plan['Run plan', 'adaptive_rule / log_down'] == '0.07'
-    assert plan['Run plan', 'adaptive_rule / reversal_limit'] == '6'
-    assert plan['Run plan', 'adaptive_rule / initial_one_down_limit'] == '2'
+    # Each actual configurable staircase input occurs only once, in the
+    # editable Adaptive section. Don't repeat it under Run plan.
+    adaptive_keys = ('n_down', 'n_up', 'logUNIT_UP', 'logUNIT_DW',
+                     'reversal_termination', 'initial_one_down_limit')
+    for key in adaptive_keys:
+        matches = [row for row in rows if row[0] == 'Adaptive' and
+                   row[1] == fields[key].display_label]
+        assert len(matches) == 1
+        assert matches[0][2] == str(values[key])
+    assert not any(group == 'Run plan' and label.startswith('adaptive_rule /')
+                   for group, label, *_ in rows)
+    assert not any(group == 'Adaptive scale' and label == 'Response rule'
+                   for group, label, *_ in rows)
     assert any(group == 'Run plan' and 'threshold' in label for group, label, *_ in rows)
     targets = targets_for_rows(spec, snapshots, description, rows,
                               {'experiment': None, 'stimuli': {}}, ROOT)
     step_row = next(i for i, row in enumerate(rows) if row[:2] == ('Adaptive', fields['logUNIT_UP'].display_label))
     assert targets[step_row]['kind'] == 'experiment_json'
     assert targets[step_row]['key'] == 'logUNIT_UP'
-    resolved_row = next(i for i, row in enumerate(rows) if row[:2] == ('Run plan', 'adaptive_rule / log_up'))
+    resolved_row = next(i for i, row in enumerate(rows) if row[:2] == ('Run plan', 'threshold_rule'))
     assert targets[resolved_row]['kind'] == 'python'
     assert 'initialise_experiment' in targets[resolved_row]['path'].read_text(encoding='utf-8').splitlines()[targets[resolved_row]['line']-1]
 
@@ -46,3 +52,16 @@ def test_review_handles_procedures_without_planning_metadata():
     rows = review_rows(spec, values, snapshots, description)
     assert rows
     assert not any(row[0] == 'Run plan' for row in rows)
+
+
+def test_review_keeps_explicit_resolved_differences():
+    """A different effective rule must not be silently hidden as a duplicate."""
+    spec = get_experiment('contrast_sensitivity')
+    values = spec.field_defaults()
+    snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
+    description = describe_settings(spec, values, snapshots)
+    description['resolution']['adaptive_rule']['n_down'] = values['n_down'] + 1
+    rows = review_rows(spec, values, snapshots, description)
+    assert any(group == 'Run plan' and label == 'Effective adaptive_rule / n_down'
+               and value == str(values['n_down'] + 1)
+               for group, label, value, _ in rows)
