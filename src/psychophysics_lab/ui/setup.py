@@ -2316,6 +2316,7 @@ class ReviewScreen(Screen):
             yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
             with Horizontal(classes="buttons"):
                 yield Button("Open selected file",id="review-open-file")
+                yield Button("Expand table",id="review-expand-table")
                 yield Button("Reload files and review",id="review-reload-files")
             yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell")
             yield Static("",id="review-file-location",markup=False)
@@ -2403,7 +2404,8 @@ class ReviewScreen(Screen):
         table = self.query_one("#resolved-settings-table",DataTable)
         cursor=table.cursor_coordinate
         table.clear(columns=True)
-        for label,width in (("Group",12),("Parameter / units",45),("Value",28),("Source",34),("File / saved location",80)):
+        from .review_table import REVIEW_TABLE_COLUMNS
+        for label,width in REVIEW_TABLE_COLUMNS:
             table.add_column(label,width=width)
         for row,target in zip(rows,self._file_targets):
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
@@ -2463,7 +2465,7 @@ class ReviewScreen(Screen):
                 open_source(self.app.repo_root,path,line=target["line"],executable=executable)
             else:
                 open_parameter_file(self.app.repo_root,path,self.app.local_config_root,
-                    executable=executable,allow_external_existing=True)
+                    executable=executable,allow_external_existing=True,line=target["line"])
             self.query_one("#review-status",Static).update(f"Opened {path}. "+target["note"])
         except (ValueError,OSError,TypeError) as exc:
             self.query_one("#review-status",Static).update(str(exc))
@@ -2723,6 +2725,11 @@ class ReviewScreen(Screen):
         if button_id and button_id.startswith("resolve-"):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
+            return
+        if button_id == "review-expand-table":
+            event.stop()
+            from .review_fullscreen import ReviewTableFullscreen
+            self.app.push_screen(ReviewTableFullscreen(self))
             return
         if button_id in {"review-open-file","review-reload-files"}:
             event.stop()
