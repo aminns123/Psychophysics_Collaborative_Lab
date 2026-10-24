@@ -86,9 +86,13 @@ def test_fullscreen_mirrors_review_and_can_edit_from_selected_cell(tmp_path, mon
             assert table.region.height > 0
             assert not expanded.query("#hub-nav")
 
+            from psychophysics_lab.experiments._internal.registry import get_experiment
+            spec = get_experiment(review.request.experiment_id)
+            label = next(field.display_label for field in spec.fields
+                         if field.key == "logUNIT_UP")
             row = next(index for index in range(table.row_count)
                        if str(table.get_row_at(index)[0]) == "Adaptive"
-                       and "Increase in probe difference" in str(table.get_row_at(index)[1]))
+                       and str(table.get_row_at(index)[1]) == label)
             table.move_cursor(row=row, column=2)
             table.focus()
             await pilot.press("enter")
