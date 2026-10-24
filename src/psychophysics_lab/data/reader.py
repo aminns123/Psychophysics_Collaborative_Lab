@@ -17,6 +17,10 @@ import numpy as np
 # The established 20-column acquisition table is trial schema 1. A newer,
 # semantically different schema needs an explicit reader review before use.
 SUPPORTED_TRIAL_SCHEMA_VERSIONS = frozenset({1})
+# Reading manifest fields is intentionally opaque; the reader can hand back
+# historical positive versions, but cannot safely accept an unknown NEWER
+# format as though its fields still had current meanings.
+LATEST_KNOWN_MANIFEST_SCHEMA_VERSION = 3
 
 
 def _read_table(path: Path, *, require_column: str | None = None) -> tuple[list[str], list[dict[str, str]]]:
@@ -58,6 +62,15 @@ def load_run(path: str | Path) -> dict[str, Any]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig")) if manifest_path.exists() else {}
     if not isinstance(manifest, dict):
         raise ValueError("manifest.json must contain a JSON object.")
+    manifest_version = manifest.get("schema_version")
+    if manifest_version is not None and (
+        type(manifest_version) is not int
+        or not 1 <= manifest_version <= LATEST_KNOWN_MANIFEST_SCHEMA_VERSION
+    ):
+        raise ValueError(
+            f"Unsupported manifest schema_version {manifest_version!r}; "
+            "inspect the newer format with its corresponding PsyCoLab version."
+        )
     version = manifest.get("trial_schema_version")
     if version is not None and (
         type(version) is not int or version not in SUPPORTED_TRIAL_SCHEMA_VERSIONS
