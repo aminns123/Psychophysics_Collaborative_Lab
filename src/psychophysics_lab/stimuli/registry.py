@@ -23,6 +23,8 @@ class StimulusSpec:
     floating_raster: bool = True
     spatial_frequencies: Callable | None = None
     legacy_parameter_defaults: dict | None = None
+    # Appended to preserve existing positional constructor arguments.
+    origin_namespace: str = ""
 
     def validate_parameters(self, values):
         if not isinstance(values, dict):

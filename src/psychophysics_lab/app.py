@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from .extensions import source_path as component_source
 import traceback
 import sys
 from typing import Any, Sequence
@@ -106,6 +107,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dev-list", action="store_true", help="List manually authored experiment/adaptive drafts.")
     parser.add_argument("--dev-stage", nargs=2, metavar=("KIND", "NAME"),
                         help="Register an existing experiment/adaptive Python file as Draft; never creates files.")
+    parser.add_argument("--extensions-enable", type=Path, help="Trust an independent laboratory Python source folder.")
+    parser.add_argument("--trust-extension-code", action="store_true", help="Acknowledge that external Python executes with your permissions.")
+    parser.add_argument("--extensions-disable", action="store_true", help="Disable laboratory code; built-in components remain available.")
     parser.add_argument("--dev-preview", metavar="STIMULUS", help="Preview/test a stimulus without a physical display.")
     parser.add_argument("--dev-test", metavar="EXPERIMENT", help="Simulate and validate an experiment with a virtual observer.")
     parser.add_argument("--dev-values", type=Path, metavar="JSON", help="Experiment parameters JSON for --dev-test.")
@@ -139,6 +143,13 @@ def _main(
             stream.reconfigure(errors="backslashreplace")
     args = build_parser().parse_args(argv)
     repo_root = find_repo_root()
+    if args.extensions_enable or args.extensions_disable:
+        from .extensions import configure
+        if args.extensions_enable and args.extensions_disable:
+            raise ValueError("Choose enable or disable, not both.")
+        configure(repo_root, args.extensions_enable, trusted=args.trust_extension_code)
+        print("Laboratory extensions configured. Restart PsyCoLab; software readiness is not hardware qualification.")
+        return 0
     if diagnostic_context is not None:
         diagnostic_context["repo_root"] = repo_root
 
@@ -183,7 +194,12 @@ def _main(
         return 0
 
     if args.dev_list:
+        from .experiments._internal.contributions import load_contributions
+        load_contributions()
         from .authoring import inventory, fingerprint
+        from . import extensions
+        for row in extensions.inventory(repo_root):
+            print(f"{row['kind']:10} {row['id']:28} {row['status']} (laboratory)")
         for item in inventory(repo_root):
             if item.kind == "stimulus":
                 continue
@@ -199,6 +215,12 @@ def _main(
         kind, identity = args.dev_ready
         if kind not in {"stimulus", "experiment", "adaptive"}:
             raise ValueError("Valid kinds are stimulus, experiment, adaptive.")
+        from . import extensions
+        current = extensions.configured(repo_root)
+        if current and identity.startswith(current[1] + "__"):
+            extensions.publish(repo_root, kind, identity)
+            print(f"READY: {kind} {identity} (software only). Restart PsyCoLab.")
+            return 0
         item = publish(repo_root, kind, identity)
         print(f"READY: {item.kind} {item.name} (software-tested; NOT calibrated for human runs).")
         print("Restart the main PsyCoLab TUI to refresh the experiment catalogue.")
@@ -227,7 +249,7 @@ def _main(
         if args.stimulus_json:
             selected = load_parameters(args.stimulus_json, stimulus)
         elif stimulus.default_config:
-            selected = load_parameters(repo_root / stimulus.default_config, stimulus)
+            selected = load_parameters(component_source(repo_root, stimulus, stimulus.default_config), stimulus)
         else:
             selected = {"document": document_for(stimulus)}
         if args.preview_output.exists():

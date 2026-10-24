@@ -78,7 +78,7 @@ equations, data acquisition headers, raw photometer measurements or TUI layout.
 - The wider manifest, resolved procedure, profile/current projections, all analysis products and many optional diagnostic JSONs do **not** share a universal schema; their formats need separate family-specific tests where active readers depend on them.
 - The preset loader now prevents newer/invalid schema markers from being used; read-only legacy unversioned files remain inspectable, with a warning. Genuine old preset parameters still require scientist review against the current experiment definition; the loader does not infer scientific equivalence.
 - Some luminance pilot metadata records an **absolute** `source_session_file` path. This is provenance/context, not portable file identity; future portable exports should store a relative reference without rewriting historical files.
-- The external lab-owned extension namespace/provenance loader is Issue **#80**. Do not block current data reading on it or claim it implemented.
+- Issue **#80** adds optional `laboratory_extensions` metadata to new schema-3 manifests; existing readers remain independent of installed source. See [laboratory extensions](LABORATORY_EXTENSIONS.md).
 - Physical display validation, luminance calibration and timing verification remain separate from parser compatibility. A successful test says nothing about photons or hardware.
 - No migration is necessary for the formats tested here. If a demonstrated old format cannot be used safely, implement **explicit opt-in, backup + hash, write-new** conversion as a different scoped PR. Never rewrite originals on `load_run`, `load_active` or ordinary TUI startup.
 
@@ -99,3 +99,11 @@ New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
 ```
 
 Review results **before merging**. This audit does not assume that GitHub Actions billing, the full test suite or physical laboratory verification are complete.
+
+## Issue #80 additions (backward-compatible; no migration)
+
+- Machine-local `preferences.json` optionally contains `extensions`: explicit enabled flag, absolute machine-local root and portable namespace. Disabled by default; this path is not canonical run identity.
+- Machine-local `extension_readiness.json` has `schema_version=1` and a `components` object keyed by kind/ID, containing exact fingerprint and an explicit Ready flag. Unsupported records fail without rewriting the file.
+- The laboratory-owned `psycolab_extensions.json` has `schema_version=1` and `namespace`; PsyCoLab reads it, never generates or migrates it at runtime.
+- New schema-3 run manifests may contain `laboratory_extensions` with its own `schema_version=1`, namespace, experiment/component identities, source SHA-256 and readiness fingerprint. Paths are relative to the named laboratory root. The existing exact parameter snapshots, software provenance and 20-column trial-schema-1 records remain authoritative.
+- No historical record is modified. `load_run()` still reads archived data without importing any installed experiment or extension.

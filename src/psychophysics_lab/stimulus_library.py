@@ -606,7 +606,7 @@ class DetectionScene(LibraryStimulus):
 
 def library_stimulus_specs():
     """Discover explicitly subclassed shared definitions only."""
-    specifications = tuple(cls.SPEC for cls in LibraryStimulus.__subclasses__())
+    specifications = tuple(cls.SPEC for cls in LibraryStimulus.__subclasses__() if cls.__module__ == __name__)
     if len({spec.id for spec in specifications}) != len(specifications):
         raise ValueError("Shared stimulus classes require unique SPEC.id values.")
     return specifications

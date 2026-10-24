@@ -94,6 +94,10 @@ def load_contributions():
             warnings.warn("Invalid/stale JSON library experiments were NOT loaded: "
                           + "; ".join(f"{name}: {reason}" for name, reason in library_problems.items()),
                           RuntimeWarning)
+        from psychophysics_lab.extensions import load as load_extensions
+        extension_problems = load_extensions(find_repo_root())
+        if extension_problems:
+            warnings.warn("Laboratory extensions: " + str(extension_problems), RuntimeWarning)
         _loaded = True
     except Exception:
         experiments._REGISTRY.clear()

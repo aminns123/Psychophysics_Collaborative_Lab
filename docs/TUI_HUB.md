@@ -8,7 +8,7 @@ to focus sidebar navigation. `>` marks focus/hover, `->` the active path,
 and `-` an inactive choice. Configure and Review appear as indented routes.
 Scientific controls remain inside the main workspace.
 
-**Build Stimuli** opens the ONE authoritative
+**Build Stimuli** opens the official
 `src/psychophysics_lab/stimulus_library.py`. Add a `LibraryStimulus`
 class there, with `PARAMETERS`, `render()` and `SPEC`. No wizard,
 stimulus generator or separate per-stimulus file.
@@ -16,6 +16,8 @@ stimulus generator or separate per-stimulus file.
 **Build Experiments** opens manually written files under
 `src/psychophysics_lab/experiments/` and their validated settings.
 No automatic experiment copy/generator.
+
+For independent laboratory science, enable one explicitly trusted external folder in **Build Experiments → Laboratory Extensions**. Its local classes and experiments use the same previews, authoring Test/Ready controls and normal workflow. See [the Windows extensions guide](LABORATORY_EXTENSIONS.md).
 
 **Calibrate**, **Scenarios** and **Data** are distinct operations, not
 alternative places to implement stimulus science.

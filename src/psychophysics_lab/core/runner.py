@@ -356,6 +356,9 @@ def run_request(
         request = validate_presentation(request,spec,profile)
     else:
         request = validate_setup(request, spec, profile, mode="simulation" if simulation is not None else "human")
+    from ..extensions import check_run
+    extension_provenance = check_run(root, spec, request.stimulus_snapshots,
+        development=simulation is not None, data_root=data)
     override_record = None
     if request.researcher_override is not None:
         from ..config.researcher_override import override_provenance
@@ -428,11 +431,12 @@ def run_request(
         payload["display_readiness"] = profile_readiness(spec, profile, repo_root=root, values=values)
         registered_sources = {}
         for relative in spec.source_paths:
-            source = (root / relative).resolve()
-            if not source.is_relative_to(root) or not source.is_file():
-                raise ValueError(f"Registered experiment source is missing or outside the repository: {relative}")
+            from ..extensions import source_path
+            source = source_path(root, spec, relative)
             registered_sources[relative] = _sha256(source)
         payload["registered_source_sha256"] = registered_sources
+        if extension_provenance is not None:
+            payload["laboratory_extensions"] = extension_provenance
         payload["adaptive_algorithm"] = asdict(spec.adaptive) if spec.adaptive else None
         payload["response_paradigm"] = asdict(spec.response_paradigm) if spec.response_paradigm else None
         payload["random_provenance"] = {"algorithm": "python.random MT19937", "initial_state": random.getstate()}
