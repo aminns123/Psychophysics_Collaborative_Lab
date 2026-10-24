@@ -1,0 +1,15 @@
+{
+  "last_request": {
+    "participant_id": "TEST_ONLY",
+    "session_mode": "reuse",
+    "experiment_id": "example_experiment",
+    "monitor_profile_id": "legacy_reference_display",
+    "experiment_values": {
+      "trial_count": 4
+    },
+    "data_root": "C:\\obsolete\\lab\\data",
+    "researcher_override": {
+      "requested": true
+    }
+  }
+}
