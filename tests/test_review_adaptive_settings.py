@@ -28,7 +28,13 @@ def test_review_adaptive_settings_and_resolved_rules_follow_selected_values(iden
                    row[1] == fields[key].display_label]
         assert len(matches) == 1
         assert matches[0][2] == str(values[key])
-    assert not any(group == 'Run plan' and label.startswith('adaptive_rule /')
+    duplicated_rule_keys = {
+        'adaptive_rule / algorithm', 'adaptive_rule / n_down',
+        'adaptive_rule / n_up', 'adaptive_rule / log_up',
+        'adaptive_rule / log_down', 'adaptive_rule / reversal_limit',
+        'adaptive_rule / initial_one_down_limit', 'adaptive_rule / max_trials',
+    }
+    assert not any(group == 'Run plan' and label in duplicated_rule_keys
                    for group, label, *_ in rows)
     assert not any(group == 'Adaptive scale' and label == 'Response rule'
                    for group, label, *_ in rows)
