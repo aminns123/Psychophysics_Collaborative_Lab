@@ -13,8 +13,10 @@ import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import stat
 import sys
+import tempfile
 from types import ModuleType
 
 from .config.local import config_root, preferences, save_preferences
@@ -64,6 +66,82 @@ def validate_root(root, repo_root, data_root=None):
     if not _plain(root / "experiments").is_dir():
         raise ValueError("Extensions need an experiments directory and stimulus_library.py.")
     return root, namespace
+
+
+def suggested_root(repo_root):
+    """Stable, editable first-run default outside the Git checkout."""
+    return Path(repo_root).resolve().parent / "PsyCoLab_Extensions"
+
+
+def initialise_starter(repo_root, root=None, *, data_root=None):
+    """Copy the bundled teaching study once; NEVER overwrite laboratory work.
+
+    This only prepares source files. It does not trust or execute Python,
+    register components, set software Ready or change participant data.
+    Returns (path, created). Existing valid roots are preserved untouched.
+    """
+    from .paths import default_data_root
+    from .data.workspace import preferred_data_root
+
+    repo_root = Path(repo_root).resolve()
+    target = Path(root) if root is not None else suggested_root(repo_root)
+    if not target.is_absolute():
+        raise ValueError("Choose an absolute folder for laboratory extensions.")
+    target = _plain(target)
+    chosen_data = Path(data_root or preferred_data_root(
+        repo_root, default_data_root(repo_root)
+    )).resolve()
+    for protected in (repo_root, config_root(repo_root), chosen_data):
+        _separate(target, protected)
+
+    if target.exists():
+        if not target.is_dir():
+            raise ValueError(f"Extension destination is not a directory: {target}")
+        if any(target.iterdir()):
+            try:
+                validate_root(target, repo_root, chosen_data)
+            except (ValueError, OSError) as exc:
+                raise ValueError(
+                    f"Existing folder was left unchanged: {target}. "
+                    "It is not a complete extension root; select its actual "
+                    "manifest-containing subfolder or choose a new/empty folder."
+                ) from exc
+            return target, False
+
+    template = repo_root / "examples" / "laboratory_extensions"
+    if not all((template / part).exists() for part in (
+        MANIFEST, "stimulus_library.py", "experiments", "presets"
+    )):
+        raise ValueError("Bundled laboratory starter files are missing.")
+
+    if target.exists():  # An existing EMPTY directory is safe to initialise.
+        shutil.copytree(template, target, dirs_exist_ok=True)
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Stage in the same parent so a failed copy cannot leave a misleading
+        # half-populated source root. Never replace an existing target.
+        staging = Path(tempfile.mkdtemp(prefix=".psycolab_starter_", dir=target.parent))
+        try:
+            shutil.copytree(template, staging, dirs_exist_ok=True)
+            if target.exists():
+                raise ValueError(
+                    f"Destination appeared during setup; left unchanged: {target}"
+                )
+            staging.rename(target)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
+    validate_root(target, repo_root, chosen_data)
+    return target, True
+
+
+def initialise_default(repo_root, *, data_root=None):
+    """First ordinary TUI launch only; never undo a researcher's selection."""
+    setting = preferences(config_root(Path(repo_root))).get("extensions")
+    if setting is not None:
+        # Both enabled and deliberately disabled settings are respected.
+        return None
+    return initialise_starter(repo_root, data_root=data_root)
 
 
 def source_at(root, relative):
