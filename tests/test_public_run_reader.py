@@ -83,17 +83,20 @@ def test_additive_experiment_column_keeps_existing_fields_and_original_run(tmp_p
             fieldnames=("column_name", "units_or_encoding", "meaning"),
         )
         writer.writeheader()
-        writer.writerow({
-            "column_name": "reaction_time_ms",
-            "units_or_encoding": "ms",
-            "meaning": "Example experiment-specific response interval",
-        })
+        for name in (*TRIAL_COLUMNS, "reaction_time_ms"):
+            writer.writerow({
+                "column_name": name,
+                "units_or_encoding": "ms" if name == "reaction_time_ms" else "see trial schema 1",
+                "meaning": "Example experiment-specific response interval" if name == "reaction_time_ms"
+                           else "Retained established trial column",
+            })
     after_extension = _snapshot(extended)
     data = load_run(extended)
 
     assert data["trials"]["reaction_time_ms"].tolist() == ["245.7"]
     assert data["trials"]["presented_display_contrast"].astype(float).tolist() == [0.125]
     assert data["data_dictionary"]["reaction_time_ms"]["units_or_encoding"] == "ms"
+    assert set(data["data_dictionary"]) == set(data["trials"])
     assert "reaction_time_ms" not in load_run(original)["trials"]
     assert _snapshot(original) == previous
     assert _snapshot(extended) == after_extension
