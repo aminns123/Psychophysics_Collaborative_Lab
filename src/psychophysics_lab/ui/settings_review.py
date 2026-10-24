@@ -94,7 +94,19 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     controls = set(spec.adaptive.controls) if spec.adaptive else set()
     rows = [("Experiment", field.display_label, str(values[field.key]), origin(field))
             for field in spec.fields if field.key not in controls]
-    rows.extend(probe_intensity_rows(spec, values, conditions=description.get("conditions")))
+    # Input settings have one authoritative, editable row. Derived contrast
+    # summaries must not duplicate the same selected intensity or staircase rule.
+    field_keys = {field.key for field in spec.fields}
+    rows.extend(row for row in probe_intensity_rows(
+        spec, values, conditions=description.get("conditions")
+    ) if not (
+        (row[:2] == ("Intensity", "Starting probe intensity")
+         and "starting_probe_intensity" in field_keys)
+        or (row[:2] == ("Intensity", "Background intensity")
+            and "background_intensity" in field_keys)
+        or (row[:2] == ("Adaptive scale", "Response rule")
+            and {"n_down", "n_up"} <= field_keys)
+    ))
     if spec.adaptive:
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
@@ -146,14 +158,41 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                          f"x={placement['x_deg']}, y={placement['y_deg']}","degrees from fixation"))
         if phase.get("beep"):
             rows.append(("Audio",phase["name"],str(phase["beep"]),phase["beep_trigger"]))
-    # Display planning metadata without recomputing scientific rules in the UI.
+    # Display *additional* planning metadata, but do not show a second copy of
+    # settings already available as editable ConfigFields above. Compare with the
+    # ACTUAL resolved output: if an experiment transforms/overrides a value, show
+    # that meaningful difference explicitly rather than silently suppressing it.
+    plan_equivalents = {
+        "adaptive_rule / n_down": "n_down",
+        "adaptive_rule / n_up": "n_up",
+        "adaptive_rule / log_up": "logUNIT_UP",
+        "adaptive_rule / log_down": "logUNIT_DW",
+        "adaptive_rule / reversal_limit": "reversal_termination",
+        "adaptive_rule / initial_one_down_limit": "initial_one_down_limit",
+        "adaptive_rule / max_trials": "max_trials",
+        "threshold_reversals": "threshold_reversals",
+        "staircases_per_condition": "staircases_per_condition",
+        "background_digital_intensity": "background_intensity",
+        "gaussian_sigma_deg": "grating_sigma_deg",
+        "grating_cutoff_sigmas": "grating_cutoff_sigmas",
+        "target_offset_deg": "grating_offset_deg",
+    }
     def plan_rows(mapping, prefix=""):
         for key, value in mapping.items():
             label = f"{prefix} / {key}" if prefix else str(key)
             if isinstance(value, dict):
                 yield from plan_rows(value, label)
+                continue
+            selected_key = plan_equivalents.get(label)
+            if selected_key in field_keys and value == values[selected_key]:
+                continue
+            if label == "adaptive_rule / algorithm" and spec.adaptive and value == spec.adaptive.algorithm_id:
+                continue
+            rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+            if selected_key in field_keys:
+                yield ("Run plan", "Effective " + label, rendered,
+                       "Resolved by experiment; differs from selected " + selected_key)
             else:
-                rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
                 yield ("Run plan", label, rendered, "Resolved by experiment initialise_experiment")
     rows.extend(plan_rows(description.get("resolution", {})))
     return rows

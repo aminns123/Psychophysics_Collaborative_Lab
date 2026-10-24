@@ -67,16 +67,17 @@ def test_review_table_and_page_scrollbar_have_distinct_rails(tmp_path, monkeypat
                     for n in range(table.row_count)]
             assert rows
             resolved = {(row[0], row[1]): row[2] for row in rows}
-            for key, label, expected in (
-                ("adaptive_rule / n_down", "n_down", "3"),
-                ("adaptive_rule / n_up", "n_up", "2"),
-                ("adaptive_rule / log_up", "log_up", "0.21"),
-                ("adaptive_rule / log_down", "log_down", "0.07"),
-                ("adaptive_rule / reversal_limit", "reversal_limit", "6"),
-                ("adaptive_rule / initial_one_down_limit", "initial_one_down_limit", "2"),
-                ("adaptive_rule / max_trials", "max_trials", "30"),
+            # Only the selected, editable setting should appear when the
+            # experiment's resolved run plan agrees with that value.
+            for key in (
+                "adaptive_rule / n_down", "adaptive_rule / n_up",
+                "adaptive_rule / log_up", "adaptive_rule / log_down",
+                "adaptive_rule / reversal_limit",
+                "adaptive_rule / initial_one_down_limit",
+                "adaptive_rule / max_trials",
             ):
-                assert resolved[("Run plan", key)] == expected, label
+                assert ("Run plan", key) not in resolved
+            assert ("Run plan", "threshold_rule") in resolved
 
             editable = {label: value for group, label, value, *_ in rows
                         if group == "Adaptive"}

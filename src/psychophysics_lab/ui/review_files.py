@@ -29,6 +29,36 @@ def definition_line(path, *, key=None, owner=None, function=None):
     return getattr(tree,"lineno",1)
 
 
+def json_value_line(path, key):
+    """Find the exact parameter key inside a JSON values/parameters object.
+
+    This returns a *navigation hint*, not an editable JSON parser. Use the
+    existing JSON loading/validation code for actual scientific values.
+    """
+    if not key or path is None:
+        return 1
+    try:
+        lines = Path(path).read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError):
+        return 1
+    # Generated and imported JSON can have different indentation. Match
+    # the key under its data section, not a duplicate inside parameter_info.
+    import re
+    section = re.compile(r'^\s*"(?:values|parameters)"\s*:\s*\{')
+    wanted = re.compile(r'^\s*"' + re.escape(str(key)) + r'"\s*:')
+    for index, line in enumerate(lines):
+        if not section.search(line):
+            continue
+        level = len(line) - len(line.lstrip())
+        for offset in range(index + 1, len(lines)):
+            candidate = lines[offset]
+            if wanted.search(candidate):
+                return offset + 1
+            if candidate.strip().startswith("}") and len(candidate) - len(candidate.lstrip()) <= level:
+                break
+    return 1
+
+
 def experiment_source(spec,root):
     try:
         source=inspect.getsourcefile(spec.procedure) if spec.procedure else None
@@ -84,7 +114,8 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             return dict(kind="unavailable",path=None,line=1,note="This component records no inspectable source file; file navigation is unavailable for this row")
         return dict(kind="python",path=Path(path),line=definition_line(path,key=key,owner=owner,function=function),note=note)
     def experiment(key=None):
-        return dict(kind="experiment_json",path=sources["experiment"],key=key,line=1,
+        return dict(kind="experiment_json",path=sources["experiment"],key=key,
+            line=json_value_line(sources["experiment"], key),
             note="Edit ordinary JSON, save, then Reload files" if sources["experiment"] else "Unsaved TUI values; Enter saves an ordinary JSON copy and opens it")
     fields={field.display_label:field for field in spec.fields}
     targets=[]
@@ -104,7 +135,8 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             elif field and field.key in parameter_sources(description,slot):
                 targets.append(python(function="prepare_stimuli",note="Trial-controlled value: edit the experiment procedure, not a preset"))
             elif slot in sources["stimuli"]:
-                targets.append(dict(kind="stimulus_json",path=sources["stimuli"][slot],slot=slot,key=field.key if field else None,line=1,
+                targets.append(dict(kind="stimulus_json",path=sources["stimuli"][slot],slot=slot,key=field.key if field else None,
+                    line=json_value_line(sources["stimuli"][slot], field.key if field else None),
                     note="Selected stimulus JSON; save and Reload files"))
             elif (snapshots[slot]["file_identity"]=="library_defaults"
                   and snapshots[slot]["document"]["parameters"]=={field.key:field.default for field in stimulus.parameters}):
