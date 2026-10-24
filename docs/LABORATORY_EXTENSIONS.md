@@ -126,4 +126,4 @@ To propose official inclusion, deliberately open a framework feature branch, rev
 
 ## Validation and remaining acceptance
 
-See [Issue #80 implementation evidence](ISSUE80_VALIDATION.md) for exact Windows commands, changed files and results. Linux/macOS work and GitHub Actions are deferred. Native fullscreen presentation on real laboratory hardware still needs researcher acceptance with the chosen display, photometer and timing equipment. The local headless TUI tests cover selection, Review, source navigation and geometry; they do not certify photons or replace that hardware check.
+See [Issue #80 implementation evidence and Windows verification checklist](ISSUE80_VALIDATION.md) for the reported tests, changed components, pre-existing failures and required Windows acceptance. Linux/macOS work and GitHub Actions are deferred. Native fullscreen presentation on real laboratory hardware still needs researcher acceptance with the chosen display, photometer and timing equipment. The local headless TUI tests cover selection, Review, source navigation and geometry; they do not certify photons or replace that hardware check.
