@@ -12,14 +12,14 @@ PsyCoLab should remain understandable to a scientist reading **one stimulus clas
 |---|---|---|---|
 | 1: Core | TUI, calibration, run/simulation engines, adaptive and storage services, registries | `src/psychophysics_lab/{ui,config,core,adaptive,data,stimuli}` | Implemented; maintain as protected framework code |
 | 2: Curated science | Shared stimulus classes and published experiments (CSF, flanker, ellipse, teaching tasks) | `src/psychophysics_lab/stimulus_library.py` and `src/psychophysics_lab/experiments/*.py` | Implemented, automatic experiment discovery; curated contributions need review |
-| 3: Lab-local studies | Locally written, pilot, unpublished or institution-specific science and presets | Current work can be kept on branches/forks; settings presets and calibration live in local configuration | **Independent external scientific-code loading is NOT implemented yet** |
+| 3: Lab-local studies | Locally written, pilot, unpublished or institution-specific science and presets | Current work can be kept on branches/forks; settings presets and calibration live in local configuration | Opt-in implementation: [laboratory extensions](LABORATORY_EXTENSIONS.md); software readiness remains separate from hardware qualification |
 
-**Do not treat creating a Git-ignored directory as implementing Layer 3.** The current public experiment loader scans the packaged experiment directory; the runner verifies registered source files under the repository root. An external sibling directory cannot safely be run through the standard TUI without explicitly extending discovery, source identity, validation and provenance.
+**Issue #80 implementation update (24 October 2026):** independent trusted roots now enter the existing registries and runner through a shared source resolver. See [architecture, Windows workflow and limitations](LABORATORY_EXTENSIONS.md) and [local evidence](ISSUE80_VALIDATION.md). The milestone plan below records the original acceptance criteria; Windows evidence does not imply Linux or physical qualification.
 
 ## Decisions for routine researcher use — available now
 
 1. For **different values of declared scientific settings**, use the TUI configuration and **local presets**. This includes run-specific conditions, timings and adaptive choices declared by the experiment. Reusing a preset must start a new run, not overwrite the original.
-2. For **different scientific equations, trial order, response meanings or stimulus classes**, author Python on a **Git branch or fork**. Keep the seven-section experiment narrative, the single shared stimulus-class convention, and the published Draft/Test/Ready checks.
+2. For **different scientific equations, trial order, response meanings or stimulus classes**, author Python in an [independent trusted laboratory root](LABORATORY_EXTENSIONS.md), or on a **Git branch or fork** for official contributions. Keep the seven-section experiment narrative, the single shared stimulus-class convention, and the published Draft/Test/Ready checks.
 3. Keep source, machine-local configuration/calibration and external acquisition data separate. Never keep participant data or personally identifying records in a public PR.
 4. Do not download a new ZIP and extract it on top of a working Git checkout. Always review local changes and back up custom code before updating.
 5. Stable future releases should be used for laboratory acquisition instead of following the moving `main` branch, **once** releases have been reviewed and published. There is no approved `v1.0.0` release implied by this roadmap.
@@ -41,7 +41,7 @@ See [Safe updates and local work](SAFE_UPDATES_AND_LOCAL_WORK.md) and [Contribut
 
 Acceptance: this PR changes documentation only. Existing scientific/runtime code is untouched.
 
-### P1 — independent local extensions (separate **code** PR; not implemented by P0)
+### P1 — independent local extensions (implemented in the Issue #80 code PR)
 
 Proposed sibling layout:
 
@@ -71,7 +71,7 @@ Laboratory/
 9. Do not migrate/copy/delete scientists' existing source, presets, monitor profiles or participant data as part of enabling extensions.
 10. Document the upgrade, backup, export/import and promotion-to-official-PR path. Promotion means deliberate review and copying the finished scientific definition into the official source location, **not** an automatic filesystem move.
 
-**Reason this needs a separate PR:** current `ExperimentSpec.source_paths`, registry discovery, user editing, draft/ready fingerprinting and runner guards assume package/repository-relative Python files. A folder alone would give a misleading impression of supported acquisition.
+**Original reason for a separate PR (now addressed by the source resolver):** `ExperimentSpec.source_paths`, registry discovery, user editing, draft/ready fingerprinting and runner guards assume package/repository-relative Python files. A folder alone would give a misleading impression of supported acquisition.
 
 ### P2 — explicit saved-format compatibility, with no silent data rewrite
 

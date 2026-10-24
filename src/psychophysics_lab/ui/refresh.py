@@ -114,7 +114,8 @@ def prepare_state(state, root):
 
     for name in state.get("source_paths", []):
         path = Path(name)
-        if path.is_relative_to(root) and path.suffix == ".py" and path.is_file():
+        from ..extensions import permits_source
+        if (path.is_relative_to(root) or permits_source(root, path)) and path.suffix == ".py" and path.is_file():
             compile(path.read_text(encoding="utf-8-sig"), str(path), "exec")
     list_experiments(include_historical=True)
     list_stimuli()

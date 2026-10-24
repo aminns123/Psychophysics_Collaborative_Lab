@@ -6,7 +6,12 @@ import subprocess
 
 def editor_command(repo_root: Path, source: Path, line: int = 1, executable: str | None = None):
     root=repo_root.resolve(); path=source.resolve()
-    if not path.is_relative_to(root) or not path.is_file(): raise ValueError('Source must be an existing file in this project.')
+    from ..extensions import permits_source, configured
+    if not path.is_relative_to(root):
+        if not permits_source(root, source):
+            raise ValueError('Source must be in the framework or explicitly trusted extensions folder.')
+        root = configured(root)[0]
+    if not path.is_file(): raise ValueError('Source must exist.')
     if isinstance(line,bool) or not isinstance(line,int) or line<1: raise ValueError('Source line must be positive.')
     code=executable or shutil.which('code')
     # Launch Code.exe directly on Windows, avoiding cmd.exe metacharacter rules.

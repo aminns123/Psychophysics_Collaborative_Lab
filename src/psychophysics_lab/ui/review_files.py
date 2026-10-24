@@ -59,12 +59,14 @@ def json_value_line(path, key):
     return 1
 
 
+from ..extensions import source_path
+
 def experiment_source(spec,root):
     try:
         source=inspect.getsourcefile(spec.procedure) if spec.procedure else None
     except TypeError:
         source=None
-    candidates=([Path(source)] if source else [])+[Path(root)/relative for relative in spec.source_paths]
+    candidates=([Path(source)] if source else [])+[source_path(root, spec, relative) for relative in spec.source_paths]
     return next((path.resolve() for path in candidates if path.is_file()),None)
 
 
@@ -83,7 +85,7 @@ def actual_json_sources(app,request):
         except (ValueError,OSError,TypeError,UnicodeError):
             pass
     if experiment is None and spec.default_config:
-        candidate=app.repo_root/spec.default_config
+        candidate=source_path(app.repo_root, spec, spec.default_config)
         try:
             if load_experiment_json(candidate,spec)==request.experiment_values:
                 experiment=candidate
@@ -95,7 +97,7 @@ def actual_json_sources(app,request):
         candidates=([Path(cached[1])] if cached and cached[1] else [])+[Path(name) for name in tracked]
         stimulus=get_stimulus(selected["document"]["stimulus_id"])
         if stimulus.default_config:
-            candidates.append(app.repo_root/stimulus.default_config)
+            candidates.append(source_path(app.repo_root, stimulus, stimulus.default_config))
         for path in candidates:
             try:
                 loaded=load_parameters(path,stimulus)
@@ -141,7 +143,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             elif (snapshots[slot]["file_identity"]=="library_defaults"
                   and snapshots[slot]["document"]["parameters"]=={field.key:field.default for field in stimulus.parameters}):
                 owner=stimulus.render.__qualname__.split(".")[0] if stimulus.render else None
-                targets.append(python(Path(root)/stimulus.source_path,key=field.key if field else None,owner=owner,
+                targets.append(python(source_path(root, stimulus, stimulus.source_path),key=field.key if field else None,owner=owner,
                     note="Stimulus class defaults; save Python changes, then Refresh (F5) to apply updated defaults"))
             else:
                 targets.append(dict(kind="stimulus_json",path=None,slot=slot,key=field.key if field else None,line=1,

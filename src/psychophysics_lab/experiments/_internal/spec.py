@@ -117,6 +117,8 @@ class ExperimentSpec:
     historical: bool = False
     migrate_values: Callable | None = None
     scientific_spec: Mapping[str, Any] = field(default_factory=dict)
+    # Appended to preserve existing positional constructor arguments.
+    origin_namespace: str = ""
 
     def __post_init__(self):
         if self.procedure is not None:

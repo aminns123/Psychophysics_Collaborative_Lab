@@ -89,7 +89,8 @@ def resolve_stimuli(spec, values, snapshots=None, *, repo_root=None):
                 repo_root = find_repo_root()
             # One-file shared classes can declare defaults without a new JSON.
             if stimulus.default_config:
-                selected = load_parameters(Path(repo_root) / stimulus.default_config, stimulus)
+                from ..extensions import source_path
+                selected = load_parameters(source_path(repo_root, stimulus, stimulus.default_config), stimulus)
             else:
                 selected = snapshot(document_for(stimulus), file_identity="library_defaults")
         for key, field in spec.stimulus_field_bindings.get(slot, {}).items():

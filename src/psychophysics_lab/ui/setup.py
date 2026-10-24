@@ -132,8 +132,17 @@ def _prospective_run_path(request: SetupRequest, experiment: ExperimentSpec, pro
     return "/".join(parts)
 
 
+from ..extensions import source_path as component_source, permits_source as extension_source
+
+def _source_label(root, path):
+    if path.is_relative_to(root):
+        return path.relative_to(root).as_posix()
+    from ..extensions import configured
+    external, namespace = configured(root)
+    return namespace + "/" + path.relative_to(external).as_posix()
+
 def _source_candidates(repo_root: Path, experiment: ExperimentSpec) -> tuple[Path, ...]:
-    candidates = [repo_root / path for path in experiment.source_paths]
+    candidates = [component_source(repo_root, experiment, path) for path in experiment.source_paths]
     if not candidates:
         import importlib.util
         for module in (experiment.legacy_module,):
@@ -145,15 +154,14 @@ def _source_candidates(repo_root: Path, experiment: ExperimentSpec) -> tuple[Pat
                 pass
     unique: list[Path] = []
     for path in candidates:
-        if path.resolve().is_relative_to(repo_root.resolve()) and path.is_file() and path not in unique:
+        if (path.resolve().is_relative_to(repo_root.resolve()) or extension_source(repo_root, path)) and path.is_file() and path not in unique:
             unique.append(path)
     return tuple(unique)
 
 
 def _stimulus_sources(repo_root: Path) -> tuple[Path, ...]:
     from ..stimuli.registry import list_stimuli
-    return tuple(repo_root / item.source_path for item in list_stimuli()
-                 if (repo_root / item.source_path).is_file())
+    return tuple(component_source(repo_root, item, item.source_path) for item in list_stimuli())
 
 
 def _source_inventory(repo_root, experiment):
@@ -167,12 +175,12 @@ def _source_inventory(repo_root, experiment):
     else:
         module = importlib.util.find_spec(experiment.legacy_module)
         path = Path(module.origin) if module and module.origin else None
-    if path and path.is_file() and path.resolve().is_relative_to(repo_root.resolve()):
+    if path and path.is_file() and (path.resolve().is_relative_to(repo_root.resolve()) or extension_source(repo_root, path)):
         entries.append(("Procedure", path))
     families = set(experiment.stimulus_slots.values())
     for stimulus in list_stimuli():
         if stimulus.family in families:
-            path = repo_root / stimulus.source_path
+            path = component_source(repo_root, stimulus, stimulus.source_path)
             if path.is_file():
                 entries.append((f"Stimulus / renderer: {stimulus.id}", path))
     timeline = repo_root / "configs" / "experiments" / f"{experiment.id}.json"
@@ -230,7 +238,9 @@ def experiment_choice_label(spec: ExperimentSpec, repo_root: Path) -> str:
     from ..authoring import inventory as authored_inventory
     authored = {(item.kind, item.name): item.status
                 for item in authored_inventory(repo_root)}
-    if ("experiment", spec.id) in authored:
+    if spec.origin_namespace:
+        origin = f"Laboratory {spec.origin_namespace}, software Ready"
+    elif ("experiment", spec.id) in authored:
         origin = f"Researcher Python, {authored['experiment', spec.id].title()}"
     elif getattr(spec.procedure, "__module__", "") == "psychophysics_lab.experiments._internal.library_builder":
         origin = "JSON library"
@@ -249,6 +259,8 @@ class ExperimentsScreen(HubPage):
         options = [(experiment_choice_label(spec, self.app.repo_root), spec.id)
                    for spec in specs]
         with VerticalScroll(classes="page-body"):
+            from .extensions import ExtensionsPanel
+            yield ExtensionsPanel()
             yield Static("EXPERIMENT CATALOGUE", classes="section-title")
             yield Static(
                 "[b]Registered experiments[/b]\n"
@@ -295,8 +307,8 @@ class ExperimentsScreen(HubPage):
         fields = "\n".join(f"  • {field.display_label} ({field.kind})" for field in spec.fields)
         sources = _source_candidates(self.app.repo_root, spec)
         inventory = _source_inventory(self.app.repo_root, spec)
-        self.query_one("#inspect-source-file", Select).set_options([(f"{role} — {path.relative_to(self.app.repo_root)}", str(path)) for role, path in inventory])
-        source_text = "\n".join(f"  • {path.relative_to(self.app.repo_root)}" for path in sources)
+        self.query_one("#inspect-source-file", Select).set_options([(f"{role} — {_source_label(self.app.repo_root, path)}", str(path)) for role, path in inventory])
+        source_text = "\n".join(f"  • {_source_label(self.app.repo_root, path)}" for path in sources)
         self.query_one("#experiment-inspection", Static).update(
             f"[b]{spec.display_name}[/b]\n{spec.description}\n\n"
             f"ID: {spec.id}\nCompatible displays: {profiles}\n\n"
@@ -382,6 +394,15 @@ class StimuliScreen(HubPage):
             yield Static("[b]Preview directly[/b]\n"
                 "USER_env: python -m psychophysics_lab --dev-preview STIMULUS_ID\n"
                 "Preview opens an image. Edit parameters in Experiment setup; Try the experiment shows actual trials.")
+
+            from ..extensions import configured
+            try:
+                local_enabled = configured(self.app.repo_root) is not None
+            except (ValueError, OSError):
+                local_enabled = False
+            if local_enabled:
+                yield Static("LABORATORY STIMULI", classes="section-title")
+                yield AuthoringPanel("stimulus")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
@@ -2069,7 +2090,7 @@ class ExperimentConfigScreen(Screen):
                 else:
                     self.remember_draft()
                     self._save_calibration_draft()
-                    path = self.app.repo_root / self.experiment.source_paths[0]
+                    path = component_source(self.app.repo_root, self.experiment, self.experiment.source_paths[0])
                     self.app.inspect_source(path)
                     self.query_one("#config-status", Static).update("Save Python edits, then use Refresh (F5). Your experiment draft will be retained. JSON alone can use Reload saved JSON.")
             except (ValueError, OSError, KeyError, TypeError) as exc:
@@ -2468,7 +2489,7 @@ class ReviewScreen(Screen):
                 target=self._file_targets[row]
             path=Path(target["path"])
             executable=preferences(self.app.local_config_root).get("editor_executable")
-            if path.resolve().is_relative_to(self.app.repo_root.resolve()):
+            if path.resolve().is_relative_to(self.app.repo_root.resolve()) or extension_source(self.app.repo_root, path):
                 open_source(self.app.repo_root,path,line=target["line"],executable=executable)
             else:
                 open_parameter_file(self.app.repo_root,path,self.app.local_config_root,
@@ -2857,6 +2878,13 @@ class PsyCoLabSetupApp(App):
         source_paths.update(path for stimulus in list_stimuli() for path in stimulus.source_dependencies)
         self.loaded_source_hashes = {str((self.repo_root/path).resolve()):file_hash(self.repo_root/path)
             for path in source_paths if (self.repo_root/path).is_file()}
+        from ..extensions import configured, source_hashes
+        try:
+            external = configured(self.repo_root)
+            if external:
+                self.loaded_source_hashes.update({str(external[0]/path): value for path,value in source_hashes(self.repo_root).items()})
+        except (ValueError, OSError):
+            pass  # Catalogue panel reports invalid/missing roots; built-ins stay usable.
         saved_draft = preferences(self.local_config_root).get("calibration_experiment_draft")
         if isinstance(saved_draft, dict) and isinstance(saved_draft.get("values"), dict):
             keys = tuple(saved_draft.get(k) for k in ("participant", "experiment", "profile"))
@@ -2876,10 +2904,13 @@ class PsyCoLabSetupApp(App):
     def verify_loaded_sources(self, spec, snapshots):
         from .parameter_files import file_hash
         from ..stimuli.registry import get_stimulus
-        paths = set(spec.source_paths)
+        from ..extensions import check_run
+        if spec.origin_namespace:
+            check_run(self.repo_root, spec, snapshots)
+        paths = {component_source(self.repo_root, spec, path) for path in spec.source_paths}
         for selected in snapshots.values():
             stimulus = get_stimulus(selected["document"]["stimulus_id"])
-            paths.update((stimulus.source_path,*stimulus.source_dependencies))
+            paths.update(component_source(self.repo_root, stimulus, path) for path in (stimulus.source_path,*stimulus.source_dependencies))
         for relative in paths:
             path = (self.repo_root/relative).resolve()
             expected = self.loaded_source_hashes.get(str(path))
@@ -2896,7 +2927,7 @@ class PsyCoLabSetupApp(App):
             open_source(self.repo_root, path, executable=preferences(self.local_config_root).get("editor_executable"))
             self.notify(f"Opened {path.name} in your text editor.")
         except (ValueError, OSError) as exc:
-            if path.resolve().is_relative_to(self.repo_root) and path.is_file():
+            if (path.resolve().is_relative_to(self.repo_root) or extension_source(self.repo_root, path)) and path.is_file():
                 from .source_view import SourceView
                 self.push_screen(SourceView(path))
                 self.notify("External editor unavailable; opened a read-only source view.")

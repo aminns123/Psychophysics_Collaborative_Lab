@@ -1,4 +1,5 @@
 """Compact, independent JSON selection for each experiment stimulus slot."""
+from ..extensions import source_path
 from pathlib import Path
 import json
 from textual.containers import Vertical, Horizontal, VerticalScroll
@@ -88,7 +89,7 @@ class StimulusParametersPanel(Vertical):
             self.refresh_summary()
 
     def refresh_presets(self):
-        paths = [self.app.repo_root / self.stimulus.default_config] if self.stimulus.default_config else []
+        paths = [source_path(self.app.repo_root, self.stimulus, self.stimulus.default_config)] if self.stimulus.default_config else []
         paths += sorted((self.app.local_config_root / "stimulus_presets" / self.stimulus.id).glob("*.json"))
         selector = self.query_one("#stimulus-preset-" + self.slot, Select)
         with self.prevent(Select.Changed):
@@ -120,7 +121,7 @@ class StimulusParametersPanel(Vertical):
 
     def load_default(self):
         if self.stimulus.default_config:
-            self.load(self.app.repo_root / self.stimulus.default_config)
+            self.load(source_path(self.app.repo_root, self.stimulus, self.stimulus.default_config))
             return
         self.loaded = snapshot(document_for(self.stimulus), file_identity="library_defaults")
         self.path, self.error = None, None

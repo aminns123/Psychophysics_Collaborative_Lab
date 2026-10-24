@@ -32,6 +32,13 @@ class AuthoringPanel(Vertical):
 
     def refresh_inventory(self):
         records = [i for i in inventory(self.app.repo_root) if i.kind == self.kind]
+        from .. import extensions
+        from ..authoring import Component
+        try:
+            self._external = {row['id']:row for row in extensions.inventory(self.app.repo_root) if row['kind'] == self.kind}
+        except (ValueError, OSError):
+            self._external = {}
+        records.extend(Component(self.kind, row['id'], row['status']) for row in self._external.values())
         selected = self.query_one("#author-component", Select)
         previous = selected.value
         options = []
@@ -40,6 +47,8 @@ class AuthoringPanel(Vertical):
                 tested = bool(item.tested_fingerprint and item.tested_fingerprint == fingerprint(self.app.repo_root, item))
             except (OSError, ValueError):
                 tested = False
+            if item.name in self._external:
+                tested = self._external[item.name]["status"] in {"tested", "ready"}
             options.append((f"{item.name} — {item.status}, {'tested' if tested else 'needs testing'}", item.name))
         selected.set_options(options)
         if records:
@@ -61,7 +70,8 @@ class AuthoringPanel(Vertical):
             folder = "stimuli" if self.kind == "stimulus" else "experiments"
             relative = (f"src/psychophysics_lab/{folder}/{name}.py" if identity == "author-python"
                         else f"configs/{folder}/{name}.json")
-            path = self.app.repo_root / relative
+            path = (self._external[name]["path"] if name in self._external and identity == "author-python"
+                    else self.app.repo_root / relative)
             if not path.is_file():
                 self.query_one("#author-result", Static).update("No optional preset: defaults are declared in the Python file.")
                 return
@@ -91,7 +101,7 @@ class AuthoringPanel(Vertical):
                 # New modules enter the same registries. Existing imported
                 # modules require a restart to avoid stale cross-module references.
                 module_name = f"psychophysics_lab.{'stimuli' if self.kind == 'stimulus' else 'experiments'}.{name}"
-                if module_name in sys.modules:
+                if name in getattr(self,"_external",{}) or module_name in sys.modules:
                     message += "\nUse Refresh (F5) to load the newly tested revision."
                 else:
                     from ..authoring import load_authored

@@ -11,7 +11,12 @@ def settings_snapshot(spec):
     # Authored modules live in src/psychophysics_lab/experiments. This also works
     # for scaffolds in independent checkouts, without changing process cwd.
     source = Path(spec.procedure.__globals__["__file__"]).resolve()
-    path = next(parent.parent for parent in source.parents if parent.name == "src") / relative
+    if spec.origin_namespace:
+        from ..extensions import source_path
+        from ..paths import find_repo_root
+        path = source_path(find_repo_root(), spec, relative.as_posix())
+    else:
+        path = next(parent.parent for parent in source.parents if parent.name == "src") / relative
     raw = path.read_bytes()
     document = json.loads(raw.decode("utf-8"))
     if (not isinstance(document, dict) or set(document) != {"schema_version", "experiment_id", "values"}

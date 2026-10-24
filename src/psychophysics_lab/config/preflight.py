@@ -158,6 +158,8 @@ def validate_setup(request, spec, profile, *, mode="human"):
         spec.monitor_validator(values,profile)
     request = replace(request,participant_id=participant,experiment_values=values,monitor_profile_hash=content_hash(profile.to_dict()), stimulus_snapshots=snapshots)
     if mode == "human":
+        from ..extensions import check_run
+        check_run(None, spec, snapshots)
         from .researcher_override import outstanding_requirements, validate_researcher_override
         outstanding = outstanding_requirements(spec, profile, values)
         waived = (validate_researcher_override(request, profile, outstanding)

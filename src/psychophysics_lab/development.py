@@ -6,6 +6,7 @@ Normal participant acquisition remains subject to full scientific preflight.
 from __future__ import annotations
 
 from pathlib import Path
+from .extensions import source_path as component_source
 import hashlib
 import json
 
@@ -48,7 +49,7 @@ def preview_trial_storyboard(repo_root: Path, spec, values: dict, destination: P
             if phase.slot in spec.stimulus_defaults:
                 stimulus = get_stimulus(spec.stimulus_defaults[phase.slot])
                 if stimulus.render is not None and stimulus.default_config:
-                    selection = load_parameters(repo_root / stimulus.default_config, stimulus)
+                    selection = load_parameters(component_source(repo_root, stimulus, stimulus.default_config), stimulus)
                     pixels = render_pixels(stimulus, selection["document"]["parameters"], pixels=(128,128))
             ax.imshow(pixels, cmap="gray", vmin=0, vmax=255)
             ax.set_title(f"{phase.name}\n{phase.duration_ms} ms" if phase.kind == "show" else f"{phase.name}\nwait/key", fontsize=9)
@@ -64,8 +65,27 @@ def preview_trial_storyboard(repo_root: Path, spec, values: dict, destination: P
 
 
 def execute_user_action(repo_root: Path, operation: str, identity: str, values: dict) -> int:
+    from . import extensions
+    previous = extensions._development
+    extensions._development = True
+    try:
+        return _execute_user_action(repo_root, operation, identity, values)
+    finally:
+        extensions._development = previous
+
+
+def _execute_user_action(repo_root: Path, operation: str, identity: str, values: dict) -> int:
     """CLI subprocess: software-only and synthetic, never real participant acquisition."""
+    from . import extensions
+    from .experiments._internal.contributions import load_contributions
+    load_contributions()
+    extension_problems = extensions.load(repo_root, development=True)
+    before_extension = extensions.fingerprint(repo_root) if extensions.configured(repo_root) else None
     problems = load_authored(repo_root, include_drafts=True, tolerate_errors=True)
+    selected_problems = {key:value for key,value in extension_problems.items()
+                         if key in {"root", "stimulus_library.py", f"experiments/{identity}.py"}}
+    if selected_problems and identity.startswith((extensions.configured(repo_root) or (None, ""))[1] + "__"):
+        raise ValueError("Extension import failed: " + str(selected_problems))
     if any(key.endswith(":" + identity) for key in problems):
         raise ValueError("Draft failed to import: " + "; ".join(f"{k} {v}" for k,v in problems.items() if k.endswith(":" + identity)))
     root = user_data_root(repo_root)
@@ -85,7 +105,7 @@ def execute_user_action(repo_root: Path, operation: str, identity: str, values: 
         if stimulus.render is None:
             raise ValueError("Reference CSF/monitor diagnostic has no raster preview.")
         if stimulus.default_config:
-            selected = load_parameters(repo_root / stimulus.default_config, stimulus)
+            selected = load_parameters(extensions.source_path(repo_root, stimulus, stimulus.default_config), stimulus)
         else:
             from .config.stimulus_parameters import document_for
             selected = {"document": document_for(stimulus)}
@@ -93,6 +113,8 @@ def execute_user_action(repo_root: Path, operation: str, identity: str, values: 
         preview_folder.mkdir(parents=True, exist_ok=True)
         path = preview_folder / (identity + ".png")
         preview_stimulus(identity, selected["document"]["parameters"], path)
+        if stimulus.origin_namespace:
+            extensions.record_test(repo_root, "stimulus", identity, before_extension)
         print("Preview saved:", path)
         print("This is a digital illustration, NOT physically calibrated luminance or timing.")
         return 0
@@ -117,6 +139,8 @@ def execute_user_action(repo_root: Path, operation: str, identity: str, values: 
             print("Storyboard unavailable (virtual run remains validated):", exc)
         if any(item.name == identity and item.kind == "experiment" for item in inventory(repo_root)):
             mark_tested(repo_root, "experiment", identity)
+        if spec.origin_namespace:
+            extensions.record_test(repo_root, "experiment", identity, before_extension)
         print("VALID virtual run:", artifacts.run_directory)
         print("NO human participant / physical display / verified calibration was used.")
         return 0
