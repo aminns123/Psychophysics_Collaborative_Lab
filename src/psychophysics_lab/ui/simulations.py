@@ -11,7 +11,7 @@ from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from .console import ConsoleScreen as Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible
+from textual.widgets import Button, Input, Label, Select, Static, Collapsible
 
 from ..core.simulation_request import SimulationLaunchRequest, parse_parameter, parse_seeds
 from ..paths import resolve_data_root
@@ -23,7 +23,7 @@ from ..config.monitor import load_monitor_profiles
 from ..config.local import content_hash, preferences
 from simulations.registry import get_simulation
 from simulations.controls import effective_experiment_values, effective_observer_values
-from .setup import HubPage, _nav_bar, _handle_nav, _is_blank_select_value
+from .setup import HubPage, _handle_nav, _is_blank_select_value
 
 
 def _value_text(value) -> str:
@@ -68,13 +68,11 @@ class SimulationsScreen(HubPage):
         if field.help_text:
             yield Static(field.help_text, classes="field-help")
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         first = self.experiment_ids[0] if self.experiment_ids else "__none__"
         scenarios = self._scenarios_for(first)
         first_scenario = scenarios[0].id if scenarios else "__none__"
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Adaptive algorithm", id="sim-edit-adaptive",
                              disabled=not any(get_experiment(exp).adaptive for exp in self.experiment_ids))
@@ -193,7 +191,6 @@ class SimulationsScreen(HubPage):
             )
             if getattr(self.app, "simulation_summary", None):
                 yield Static(self.app.simulation_summary, id="sim-latest", classes="info-card")
-        yield Footer()
 
     def on_mount(self) -> None:
         self._refresh()
@@ -423,14 +420,12 @@ class AdaptiveAlgorithmScreen(Screen):
             values[field.key] = field.coerce(raw)
         return values
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         from ..adaptive.registry import get_algorithm
 
         selection = self.experiment.adaptive
         algorithm = get_algorithm(selection.algorithm_id)
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Cancel", id="adaptive-cancel")
                 yield Button("Apply adaptive settings", id="adaptive-apply", variant="primary")
@@ -472,7 +467,6 @@ class AdaptiveAlgorithmScreen(Screen):
                 with Horizontal(classes="buttons"):
                     yield Button("Calculate down from up", id="adaptive-calculate-down")
                     yield Button("Calculate up from down", id="adaptive-calculate-up")
-        yield Footer()
 
     def _calculate(self, direction: str) -> None:
         selection = self.experiment.adaptive
@@ -554,11 +548,9 @@ class SimulationReviewScreen(Screen):
         super().__init__()
         self.request = request
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         request = self.request
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="sim-back")
                 yield Button("Run Virtual Experiment", id="sim-run", variant="success")
@@ -578,7 +570,6 @@ class SimulationReviewScreen(Screen):
                 "The TUI will close while the scenario executes, then reopen.",
                 id="sim-review-summary",
             )
-        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):

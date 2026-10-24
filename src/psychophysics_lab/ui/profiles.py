@@ -6,7 +6,7 @@ import sys
 from textual.app import ComposeResult
 from .console import ConsoleScreen as Screen
 from textual.containers import Horizontal, VerticalScroll, Vertical
-from textual.widgets import Header, Footer, Button, Static, Input, Label, Select, Checkbox
+from textual.widgets import Button, Static, Input, Label, Select, Checkbox
 from ..config.local import save_profile
 from ..config.calibration_templates import (
     write_luminance_example, read_luminance_measurements
@@ -37,12 +37,9 @@ class ProfileScreen(Screen):
             from .domain_feedback import profile_domains
             profile_domains(self)
 
-    def compose(self) -> ComposeResult:
-        from .setup import _nav_bar
+    def compose_content(self) -> ComposeResult:
         p = self.profile
         with Vertical(id="fixed-shell"):
-            yield Header()
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="profile-back")
                 yield Button("Save profile / continue calibration", id="profile-save", variant="success")
@@ -175,7 +172,6 @@ class ProfileScreen(Screen):
                 "a fullscreen test. Check physical dimensions and eye distance manually."
             )
             yield Static("", id="profile-status")
-        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         from .setup import _handle_nav

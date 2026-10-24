@@ -12,7 +12,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from .console import ConsoleScreen as Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable, Checkbox
+from textual.widgets import Button, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable, Checkbox
 from textual.widgets._select import InvalidSelectValueError
 
 from ..analysis.thresholds import analyse_thresholds
@@ -183,12 +183,6 @@ def _source_inventory(repo_root, experiment):
     return entries
 
 
-def _nav_bar():
-    # Existing compose functions keep their structure; navigation is now a
-    # direct screen child installed by the shared console shell.
-    return Static(classes="old-navigation-placeholder")
-
-
 def _handle_nav(screen: Screen, event: Button.Pressed) -> bool:
     button_id = event.button.id or ""
     if not button_id.startswith("nav-"):
@@ -204,10 +198,8 @@ class CodeViewScreen(Screen):
         self.title_text = title
         self.path = path
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back", variant="primary")
         with VerticalScroll(id="code-body"):
@@ -217,7 +209,6 @@ class CodeViewScreen(Screen):
             except Exception as exc:
                 text = f"Could not read file: {exc}"
             yield Static(text, id="code-text", markup=False)
-        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
@@ -253,15 +244,12 @@ def experiment_choice_label(spec: ExperimentSpec, repo_root: Path) -> str:
 class ExperimentsScreen(HubPage):
     page_title = "Experiments"
 
-    def compose(self) -> ComposeResult:
-        with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
+    def compose_content(self) -> ComposeResult:
         specs = list_experiments(include_historical=self.app.include_historical)
         options = [(experiment_choice_label(spec, self.app.repo_root), spec.id)
                    for spec in specs]
         with VerticalScroll(classes="page-body"):
-            yield Static("EXPERIMENT CATALOGUE", classes="slate-section-title")
+            yield Static("EXPERIMENT CATALOGUE", classes="section-title")
             yield Static(
                 "[b]Registered experiments[/b]\n"
                 "Python experiment definitions are discovered automatically. CSF is the current reference experiment, "
@@ -269,13 +257,13 @@ class ExperimentsScreen(HubPage):
             )
             yield Select(options, value=specs[0].id, allow_blank=False, id="inspect-experiment")
             yield Static("", id="experiment-inspection")
-            yield Static("SOURCE INSPECTION", classes="slate-section-title")
+            yield Static("SOURCE INSPECTION", classes="section-title")
             yield Select([], id="inspect-source-file", prompt="Choose a definition, procedure or stimulus/renderer")
             yield Button("Open selected source", id="view-selected-source")
             with Horizontal(classes="buttons"):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
-            yield Static("LEARNING & EXAMPLES", classes="slate-section-title")
+            yield Static("LEARNING & EXAMPLES", classes="section-title")
             yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. The old left/right example is a worked example, not a new-file template.")
             yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
@@ -287,13 +275,12 @@ class ExperimentsScreen(HubPage):
                 "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
                 "and SPEC. Declare defaults in that Python file; JSON presets are optional. "
                 "No auto-generation or separate JSON experiment editor.")
-            yield Static("SUBMIT AN EXISTING EXPERIMENT", classes="slate-section-title")
+            yield Static("SUBMIT AN EXISTING EXPERIMENT", classes="section-title")
             yield Static("Already wrote the Python experiment? "
                          "Track it as Draft to require simulation before marking it Ready.")
             yield Input(placeholder="Existing experiment ID, e.g. my_task", id="register-experiment-name")
             yield Button("Register existing experiment as Draft", id="register-existing-experiment")
             yield AuthoringPanel("experiment")
-        yield Footer()
 
     def on_mount(self) -> None:
         self._refresh()
@@ -373,12 +360,9 @@ class StimuliScreen(HubPage):
     """One editable stimulus library; no per-stimulus creation wizard."""
     page_title = "Stimuli"
 
-    def compose(self) -> ComposeResult:
-        with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
+    def compose_content(self) -> ComposeResult:
         with VerticalScroll(classes="page-body"):
-            yield Static("STIMULUS LIBRARY", classes="slate-section-title")
+            yield Static("STIMULUS LIBRARY", classes="section-title")
             yield Static("[b]ONE place for all stimulus science[/b]\n"
                 "Open stimulus_library.py. Define LibraryStimulus classes "
                 "with PARAMETERS, render(), and SPEC. There is no new-file generator "
@@ -386,19 +370,18 @@ class StimuliScreen(HubPage):
             yield Button("Open stimulus_library.py", id="view-shared-stimulus-library", variant="primary")
             yield Button("See Scene example", id="view-shared-scene-example")
             yield Button("Read short authoring guide", id="learn-stimuli")
-            yield Static("BUILT-IN STIMULI", classes="slate-section-title")
+            yield Static("BUILT-IN STIMULI", classes="section-title")
             yield Static("[b]Already available[/b]\n"
                 "Fixation, white lines, Gabor, gratings, ellipse, annulus, square, "
                 "rectangle, Gaussian dot and composable Scenes.")
             from ..stimuli.registry import list_stimuli
             choices = [(item.display_name,item.id) for item in list_stimuli() if item.render is not None]
-            yield Static("PREVIEW", classes="slate-section-title")
+            yield Static("PREVIEW", classes="section-title")
             yield Select(choices, value=choices[0][1], allow_blank=False, id="library-preview-stimulus")
             yield Button("Preview stimulus", id="library-show-preview", variant="primary")
             yield Static("[b]Preview directly[/b]\n"
                 "USER_env: python -m psychophysics_lab --dev-preview STIMULUS_ID\n"
                 "Preview opens an image. Edit parameters in Experiment setup; Try the experiment shows actual trials.")
-        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
@@ -432,7 +415,7 @@ class StimuliScreen(HubPage):
 class DisplayCheckScreen(HubPage):
     page_title = "Display Calibration"
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
         options = [(f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles]
         selected = next(iter(self.app.monitor_profiles))
@@ -457,8 +440,6 @@ class DisplayCheckScreen(HubPage):
             pilot_json = None
 
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             yield Button("Finish calibration setup → Return to Experiment", id="calibration-finish", variant="success")
             with Horizontal(id="calibration-stage-nav"):
                 for stage, label in STAGES:
@@ -741,7 +722,6 @@ class DisplayCheckScreen(HubPage):
                         "Finish setup to return to Experiment at any time. Use Check / "
                         "qualify experiment for deliberate qualification after laboratory review."
                     )
-        yield Footer()
 
     def on_resize(self):
         if self.is_mounted and self.query("#calibration-stage-summary"):
@@ -804,6 +784,15 @@ class DisplayCheckScreen(HubPage):
             button.tooltip = f"{title}: {states[stage][1]}"
             button.label = f"{title.split(' · ')[0] if self.app.size.width < 100 else title} {marker}"
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
+        for identity, full, short in (
+            ("calibration-start", "Start at page 1", "Start"),
+            ("calibration-previous", "Previous", "Prev"),
+            ("calibration-next", "Next stage", "Next"),
+            ("calibration-refresh", "Refresh status", "Refresh"),
+        ):
+            control = self.query_one("#" + identity, Button)
+            control.label = short if self.app.size.width < 100 else full
+            control.tooltip = full
         self.query_one("#calibration-stage-summary", Static).update(
             "[b]GREEN = stated check satisfied; AMBER = saved, physical verification pending; RED = missing.[/b] "
             "Spatial and Review describe setup records only. Human readiness applies the selected experiment's requirements.\n"
@@ -1363,7 +1352,7 @@ class DisplayCheckScreen(HubPage):
 class DataScreen(HubPage):
     page_title = "Data"
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         rows = self._rows()
         options = [
             (
@@ -1379,8 +1368,6 @@ class DataScreen(HubPage):
             options = [("No runs found in this workspace", "__none__")]
 
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             yield Static("", id="data-status")
         with VerticalScroll(classes="page-body"):
             yield Static(
@@ -1390,10 +1377,10 @@ class DataScreen(HubPage):
                 "subfolder for staircase plots and versioned thresholds. "
                 "Virtual runs also save scenario_report.json beside trials.tsv."
             )
-            yield Static("RUN SELECTION", classes="slate-section-title")
+            yield Static("RUN SELECTION", classes="section-title")
             yield Select(options, value=options[0][1], allow_blank=False, id="data-run")
             yield Static("", id="data-details", classes="info-card")
-            yield Static("SAVED FILES & RUN OUTPUTS", classes="slate-section-title")
+            yield Static("SAVED FILES & RUN OUTPUTS", classes="section-title")
             with Horizontal(classes="buttons wrap-buttons"):
                 yield Button("Latest uncalibrated test manifest",id="inspect-presentation-manifest")
                 yield Button("Latest uncalibrated test trials",id="inspect-presentation-trials")
@@ -1442,7 +1429,6 @@ class DataScreen(HubPage):
                 "staircase thresholds that share a condition. This is derived analysis only.",
                 classes="field-help",
             )
-        yield Footer()
 
     def _rows(self) -> list[dict[str, str]]:
         path = self.app.data_root / "runs_index.csv"
@@ -1597,22 +1583,18 @@ class DataScreen(HubPage):
 class HelpScreen(HubPage):
     page_title = "Learn / Help"
 
-    def compose(self) -> ComposeResult:
-        with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
+    def compose_content(self) -> ComposeResult:
         with VerticalScroll(classes="page-body"):
-            yield Static("START HERE", classes="slate-section-title")
+            yield Static("START HERE", classes="section-title")
             yield Static("[b]Edit → Preview → Try → Check results[/b]\nUse Experiment to configure once, then choose Try the experiment, Simulate responses, or Collect participant data.")
             yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
-            yield Static("SCIENTIFIC AUTHORING", classes="slate-section-title")
+            yield Static("SCIENTIFIC AUTHORING", classes="section-title")
             yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/.\nRestart after Python edits; parameter edits preview immediately.")
             yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
             with Collapsible(title="Advanced authoring references", collapsed=True):
                 yield Button("Authoring structure and ID rules", id="authoring-contract")
                 yield Button("Open internal extension declarations", id="edit-contributions")
                 yield Button("Open Extension Guide", id="view-extension-guide")
-        yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if _handle_nav(self, event):
@@ -1659,7 +1641,7 @@ class ExperimentConfigScreen(Screen):
         # Preserve historical pre-cpd workspaces explicitly when reusing.
         pass  # Retired protocol branch removed.
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         self.draft_key = (self.participant_id, self.experiment.id, self.monitor_profile_id)
         self.defaults.update(self.experiment.normalise_input_keys(self.app.config_drafts.get(self.draft_key, {})))
@@ -1669,8 +1651,6 @@ class ExperimentConfigScreen(Screen):
         if mapping.get("identity"):
             self._mapping_identity = tuple(mapping["identity"])
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Change display / Calibrate", id="change-display")
@@ -1725,7 +1705,6 @@ class ExperimentConfigScreen(Screen):
                 yield Input(placeholder="New preset name", id="preset-name")
                 yield Button("Save new preset", id="save-preset")
                 yield Button("Update selected preset", id="update-preset")
-        yield Footer()
 
     def on_mount(self):
         for group in self.query(Collapsible):
@@ -2239,9 +2218,8 @@ class ChangeDisplayScreen(Screen):
         super().__init__()
         self.configuration = configuration
 
-    def compose(self):
+    def compose_content(self):
         with Vertical(id="fixed-shell"):
-            yield Header()
             with Horizontal(classes="buttons"):
                 yield Button("Cancel", id="display-cancel")
                 yield Button("Refresh profiles", id="display-refresh")
@@ -2255,7 +2233,6 @@ class ChangeDisplayScreen(Screen):
                 allow_blank=False, id="display-choice")
             yield Static("", id="display-choice-summary")
             yield Static("Apply retains your experiment draft and requires a new Review. Cancel leaves the selected display unchanged. Profile revisions saved in Calibrate persist independently.")
-        yield Footer()
 
     def on_mount(self):
         self._refresh()
@@ -2301,13 +2278,11 @@ class ReviewScreen(Screen):
         self.request = request
         self.reviewed_profile_snapshot = None
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         experiment = get_experiment(self.request.experiment_id)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
         self.reviewed_profile_snapshot = profile.to_dict()
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Try the experiment", id="run-presentation-test", variant="warning")
@@ -2320,7 +2295,7 @@ class ReviewScreen(Screen):
                 yield Button("Researcher override…", id="run-researcher-override")
             yield Static("", id="review-status")
         with VerticalScroll(id="review-body"):
-            yield Static("RUN MODE & RESPONSE GUIDANCE", classes="slate-section-title")
+            yield Static("RUN MODE & RESPONSE GUIDANCE", classes="section-title")
             yield Label("What would you like to run?")
             yield Select([
                 ("Try the experiment", "test"),
@@ -2335,7 +2310,7 @@ class ReviewScreen(Screen):
             )
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
-            yield Static("CONFIGURATION & SOURCE FILES", classes="slate-section-title")
+            yield Static("CONFIGURATION & SOURCE FILES", classes="section-title")
             yield Label("Parameters used by this experiment")
             from .review_table import ReviewSettingsTable
             yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
@@ -2362,7 +2337,6 @@ class ReviewScreen(Screen):
             with Collapsible(title="Advanced — run settings and technical preflight", collapsed=True):
                 yield Static(self._summary_text(experiment, profile), id="review-text")
                 yield Static("", id="readiness-technical", markup=False)
-        yield Footer()
 
     def _summary_text(self, experiment, profile):
         prospective = _prospective_run_path(self.request, experiment, profile)
@@ -2828,67 +2802,27 @@ class PsyCoLabSetupApp(App):
     TITLE = "PsyCoLab"
     SUB_TITLE = "Psychophysics Collaborative Lab"
 
-    CSS = """
-    #resolved-settings-table { height: 22; margin: 1 0; }
-    .invalid-input { border: tall $error; }
-    Screen { align: center top; }
-    #fixed-shell { dock: top; height: auto; width: 100%; }
-    #fixed-shell Header { dock: none; height: 1; }
-    #setup-body, #review-body, .page-body, #code-body, #config-body {
-        width: 100%; height: 1fr; border: round $accent; padding: 1 2;
-    }
-    Label { margin-top: 1; }
-    Input, Select { width: 100%; }
-    .field-row { height: 3; width: 100%; }
-    .field-row Input { width: 1fr; }
-    .field-row Button { width: 13; min-width: 0; margin: 0; }
-    Collapsible { padding: 0; margin: 0 0 1 0; }
-    .field-help { color: $text-muted; margin-bottom: 1; }
-    .info-card { border: solid $surface-lighten-2; padding: 1; margin-top: 1; margin-bottom: 1; }
-    /* Human acquisition checks use an obvious visible edge; the first
-       unresolved prerequisite gets the strongest warning border. */
-    .readiness-blocked { border: solid $warning; }
-    .readiness-next { border: heavy $warning; }
-    .readiness-done { border: solid $success; }
-    .readiness-optional { border: solid $surface-lighten-2; }
-    #human-next-action { margin-top: 1; }
-    #review-next-action { width: auto; margin: 0 0 1 1; }
-    .section-title { margin-top: 2; }
-    .buttons { height: 3; margin: 0; align-horizontal: right; }
-    .buttons Button { min-width: 0; max-width: 50%; margin: 0; }
-    .wrap-buttons { align-horizontal: left; }
-    Button { margin-left: 1; }
-    #setup-status, #config-status, #review-status, #geometry-status, #data-status, #sim-status {
-        min-height: 1;
-        margin-top: 1;
-    }
-    #code-text { width: 100%; }
-    #human-participant-panel, #human-review-checks { height: auto; width: 100%; }
-    #calibration-stage-nav { height: 3; width: 100%; }
-    #calibration-stage-nav Button { width: 1fr; min-width: 0; margin: 0; padding: 0; }
-    #calibration-stage-nav Button.calibration-active {
-        text-style: bold underline; border-bottom: heavy $accent;
-    }
-    #calibration-stage-summary {
-        height: auto; min-height: 2; padding: 0 1; background: $surface;
-    }
-    #calibration-pages { width: 100%; height: 1fr; }
-    #calibration-pages .calibration-panel {
-        width: 100%; height: 1fr; overflow-y: auto;
-    }
-    .calibration-panel Button { margin: 1 0; min-width: 0; }
-    """
-
     from .console import CONSOLE_CSS
-    CSS += CONSOLE_CSS
-    from .coffee_forest import COFFEE_FOREST_CSS
-    CSS += COFFEE_FOREST_CSS
+    CSS = CONSOLE_CSS
+
+    def compose(self):
+        from .console import compose_workspace
+        yield from compose_workspace(self.compose_content())
 
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
                  geometry_summary: str | None = None, include_historical: bool = False,
                  refresh_state: dict | None = None) -> None:
         super().__init__()
+        from textual.theme import Theme
+        self.register_theme(Theme(
+            name="laboratory", primary="#cccccc", secondary="#aaaaaa",
+            accent="#dddddd", foreground="#eeeeee", background="#080808",
+            surface="#181818", panel="#101010", warning="#d1b875",
+            error="#d09393", success="#86b98c", dark=True,
+        ))
+        self.theme = "laboratory"
+
         self.refresh_state = refresh_state
         self.include_historical = include_historical
         self.simulation_summary = simulation_summary
@@ -3013,7 +2947,7 @@ class PsyCoLabSetupApp(App):
         state, warning = self._state_for(self.data_root)
         return request_from_workspace_state(state), state, warning
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         experiments = list_experiments(include_historical=self.include_historical)
         experiment_options = [(experiment_choice_label(spec, self.repo_root), spec.id)
                               for spec in experiments]
@@ -3067,76 +3001,76 @@ class PsyCoLabSetupApp(App):
             last_summary = f"[red]{warning}[/red]"
 
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Exit", id="exit")
                 yield Button("Configure Experiment", id="configure", variant="primary")
             yield Static("", id="setup-status")
         with Horizontal(id="setup-columns"):
             with VerticalScroll(id="setup-body"):
-                yield Static("RUN MODE", classes="slate-section-title")
-                yield Static("[b]What would you like to do?[/b]")
-                yield Select([
-                    ("Try the experiment", "test"),
-                    ("Collect participant data", "human"),
-                    ("Simulate responses", "simulation"),
-                ], value=self.run_intent, allow_blank=False, id="run-intent")
-                yield Static("", id="run-intent-help", markup=False)
-                yield Static("Configure the experiment and its stimuli. The chosen run type "
-                             "decides which final checks are shown.", markup=False)
-                if self.simulation_summary:
-                    yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
+                with Vertical(classes="form-section"):
+                    yield Static("RUN MODE", classes="section-title")
+                    yield Static("[b]What would you like to do?[/b]")
+                    yield Select([
+                        ("Try the experiment", "test"),
+                        ("Collect participant data", "human"),
+                        ("Simulate responses", "simulation"),
+                    ], value=self.run_intent, allow_blank=False, id="run-intent")
+                    yield Static("", id="run-intent-help", markup=False)
+                    yield Static("Configure the experiment and its stimuli. The chosen run type "
+                                 "decides which final checks are shown.", markup=False)
+                    if self.simulation_summary:
+                        yield Static(self.simulation_summary, id="last-simulation", classes="info-card")
 
-                yield Static("DATA WORKSPACE", classes="slate-section-title")
-                yield Label("External data workspace")
-                yield Input(value=str(self.data_root), id="data-root")
-                yield Static(
-                    "Participant/acquisition data must remain outside the Git repository. An adjacent "
-                    "folder is recommended.",
-                    classes="field-help",
-                )
-                yield Button("Load Data Workspace", id="load-data-root")
+                with Vertical(classes="form-section"):
+                    yield Static("DATA WORKSPACE", classes="section-title")
+                    yield Label("External data workspace")
+                    yield Input(value=str(self.data_root), id="data-root")
+                    yield Static(
+                        "Participant/acquisition data must remain outside the Git repository. An adjacent "
+                        "folder is recommended.",
+                        classes="field-help",
+                    )
+                    yield Button("Load Data Workspace", id="load-data-root")
 
-                yield Static("PARTICIPANT & EXPERIMENT", classes="slate-section-title")
-                with Vertical(id="human-participant-panel"):
-                    yield Label("Existing participant")
-                    yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
-                    yield Label("Participant ID (pseudonymous)")
-                    yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
-                    yield Static("Only needed for real human acquisition.", classes="field-help")
+                with Vertical(classes="form-section"):
+                    yield Static("PARTICIPANT & EXPERIMENT", classes="section-title")
+                    with Vertical(id="human-participant-panel"):
+                        yield Label("Existing participant")
+                        yield Select(participant_options, value=participant_choice, allow_blank=False, id="participant-select")
+                        yield Label("Participant ID (pseudonymous)")
+                        yield Input(value=participant_default, placeholder="e.g. S001", id="participant")
+                        yield Static("Only needed for real human acquisition.", classes="field-help")
 
-                yield Label("Starting settings")
-                yield Select(
-                    [
-                        ("Start from experiment defaults / new settings", "new"),
-                        ("Reuse last settings — starts a new run", "reuse"),
-                    ],
-                    value=session_default,
-                    allow_blank=False,
-                    id="session-mode",
-                )
+                    yield Label("Starting settings")
+                    yield Select(
+                        [
+                            ("Start from experiment defaults / new settings", "new"),
+                            ("Reuse last settings — starts a new run", "reuse"),
+                        ],
+                        value=session_default,
+                        allow_blank=False,
+                        id="session-mode",
+                    )
 
-                yield Label("Experiment")
-                yield Select(experiment_options, value=experiment_default, allow_blank=False, id="experiment")
+                    yield Label("Experiment")
+                    yield Select(experiment_options, value=experiment_default, allow_blank=False, id="experiment")
 
-                yield Label("Display profile")
-                yield Select(
-                    monitor_options,
-                    value=monitor_default,
-                    allow_blank=False,
-                    id="monitor-profile",
-                )
+                    yield Label("Display profile")
+                    yield Select(
+                        monitor_options,
+                        value=monitor_default,
+                        allow_blank=False,
+                        id="monitor-profile",
+                    )
 
             with VerticalScroll(id="setup-side"):
-                yield Static("RECENT ACTIVITY", classes="slate-section-title")
+                yield Static("RECENT ACTIVITY", classes="section-title")
                 yield Static(last_summary, id="last-run-summary", classes="info-card")
-                yield Static("SELECTED EXPERIMENT", classes="slate-section-title")
+                yield Static("SELECTED EXPERIMENT", classes="section-title")
                 yield Static("", id="experiment-summary", classes="info-card")
-                yield Static("DISPLAY READINESS", classes="slate-section-title")
+                yield Static("DISPLAY READINESS", classes="section-title")
                 yield Static("", id="monitor-summary", classes="info-card")
 
-        yield Footer()
 
     async def on_mount(self) -> None:
         from .console import install_console

@@ -9,12 +9,11 @@ from ..config.stimulus_parameters import load_parameters, save_parameter_preset,
 
 
 class JsonPresetEditor(Screen):
-    DEFAULT_CSS = "JsonPresetEditor TextArea { height: 1fr; } JsonPresetEditor Static { height: auto; }"
     def __init__(self, panel):
         super().__init__()
         self.panel = panel
 
-    def compose(self):
+    def compose_content(self):
         yield Label("Edit stimulus JSON — save as a new named preset; shared defaults are preserved")
         yield TextArea(json.dumps(self.panel.current()["document"], indent=2), id="stimulus-json-editor")
         yield Input(placeholder="New preset name", id="stimulus-preset-name")

@@ -35,6 +35,8 @@ def test_json_preset_edit_reload_review_simulate_and_save(tmp_path, size):
             document["parameters"]["orientation_deg"] = 45.
             text.load_text(json.dumps(document))
             app.screen.query_one("#stimulus-preset-name", Input).value = "tilt45"
+            app.screen.query_one("#json-save", Button).focus()
+            await pilot.pause(0.6)
             assert await pilot.click("#json-save")
             await pilot.pause()
             assert app.screen is screen
@@ -46,6 +48,8 @@ def test_json_preset_edit_reload_review_simulate_and_save(tmp_path, size):
             panel.path.write_text(original)
             panel.query_one("#stimulus-reload-target", Button).press()
             await pilot.pause()
+            app.screen.query_one("#review", Button).focus()
+            await pilot.pause(0.6)
             assert await pilot.click("#review")
             await pilot.pause()
             assert isinstance(app.screen, ReviewScreen)

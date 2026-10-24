@@ -2,7 +2,7 @@
 from textual.app import ComposeResult
 from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, VerticalScroll, Horizontal
-from textual.widgets import Button, Checkbox, Header, Footer, Input, Select, Static, Label, Collapsible
+from textual.widgets import Button, Checkbox, Input, Select, Static, Label, Collapsible
 
 from ..config.calibration_review import save_verification, save_one_verification, qualify_experiment
 from ..config.preflight import qualification_checks
@@ -16,7 +16,7 @@ class PhysicalVerificationScreen(Screen):
         self.experiment_id = experiment_id
         self.focus_category = focus_category
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         from ..config.calibration_review import luminance_verification_guidance
         from ..config.calibration_progress import calibration_progress
         from ..config.models import photometry_is_test_data
@@ -24,7 +24,6 @@ class PhysicalVerificationScreen(Screen):
         category=self.focus_category if self.focus_category in (
             'geometry_status','calibration_status','timing_status') else 'geometry_status'
         with Vertical(id='fixed-shell'):
-            yield Header()
             with Horizontal(classes='buttons'):
                 yield Button('Back to Review', id='verification-back')
                 yield Button('Save this check', id='verification-save-category', variant='primary')
@@ -77,7 +76,6 @@ class PhysicalVerificationScreen(Screen):
                            id='verification-reviewed')
             with Collapsible(title='Advanced — save all declarations together',collapsed=True):
                 yield Button('Save verification declarations',id='verification-save')
-        yield Footer()
 
     def _refresh_category(self):
         if not self.is_mounted:
@@ -211,9 +209,8 @@ class ExperimentQualificationScreen(Screen):
         self.experiment_id=experiment_id
         self.values=values
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         with Vertical(id='fixed-shell'):
-            yield Header()
             with Horizontal(classes='buttons'):
                 yield Button('Back to Review',id='qualification-back')
                 yield Button('Explicitly qualify selected experiment',id='qualification-save',variant='primary')
@@ -228,7 +225,6 @@ class ExperimentQualificationScreen(Screen):
             yield Checkbox('Yes — I reviewed this experiment and its physical evidence.',id='qualification-reviewed')
             with Collapsible(title='Advanced — detailed scientific qualification checks',collapsed=True):
                 yield Static('',id='qualification-checks',markup=False)
-        yield Footer()
 
     def _spec_values(self):
         spec=get_experiment(str(self.query_one('#qualification-experiment',Select).value))

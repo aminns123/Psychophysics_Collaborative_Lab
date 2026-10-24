@@ -34,98 +34,213 @@ CONTEXTS = {
 }
 
 
+class NavigationButton(Button):
+    """Keep marker changes inside a constant-size navigation row."""
+    def __init__(self, label, *, active=False, child=False, **kwargs):
+        self.caption = label
+        self.active = active
+        self.child = child
+        self.hovered = False
+        super().__init__(label, **kwargs)
+        self.set_class(active, 'nav-selected')
+        self.set_class(child, 'nav-child')
+        self.update_marker()
+
+    def update_marker(self, focused=None):
+        marker = '>' if (self.has_focus if focused is None else focused) or self.hovered else '->' if self.active else '-'
+        self.label = ('  ' if self.child else '') + marker + ' ' + self.caption
+
+    def on_focus(self):
+        self.update_marker(focused=True)
+
+    def on_blur(self):
+        self.update_marker(focused=False)
+
+    def on_enter(self):
+        self.hovered = True
+        self.update_marker()
+
+    def on_leave(self):
+        self.hovered = False
+        self.update_marker()
+
+
 class LaboratoryNavigation(VerticalScroll):
-    def __init__(self, section):
-        super().__init__(id="hub-nav")
-        self.section = section
+    def __init__(self, section, title):
+        super().__init__(id='hub-nav')
+        self.section, self.title = section, title
 
     def compose(self):
-        yield Static("LABORATORY", id="laboratory-label")
+        yield Static('LABORATORY', id='laboratory-label')
         for key, label, _ in PAGES:
-            yield Button(label, id="nav-"+key, tooltip=label)
-        yield Button("Refresh · F5", id="refresh-psycolab", tooltip="Reload saved Python and JSON files (F5)")
+            yield NavigationButton(label, active=key == self.section, id='nav-'+key, tooltip=label)
+            if key == 'setup':
+                name = next((type(page).__name__ for page in reversed(self.app.screen_stack)
+                             if type(page).__name__ in {'ExperimentConfigScreen', 'ReviewScreen'}), '')
+                yield NavigationButton('Configure', child=True, active=name == 'ExperimentConfigScreen', id='path-configure')
+                yield NavigationButton('Review', child=True, active=name == 'ReviewScreen', id='path-review')
+        context = self.title.split(' / ')[-1].title() if '/' in self.title else ''
+        if self.title in {'EXPERIMENT / 01 SETUP', 'EXPERIMENT / 02 CONFIGURE', 'EXPERIMENT / 03 REVIEW'}:
+            context = ''
+        yield Static('  -> '+context if context else '', id='nav-context', markup=False)
+        yield Button('Refresh / F5', id='refresh-psycolab', tooltip='Reload saved Python and JSON files (F5)')
 
     def on_mount(self):
-        self.query_one("#nav-simulations").display = self.app.include_historical
+        self.query_one('#nav-simulations').display = self.app.include_historical
         self.update_size(self.app.size.width)
 
     def on_resize(self, event: events.Resize):
         self.update_size(self.app.size.width)
 
     def update_size(self, width):
-        self.screen.set_class(width < 100, "console-compact")
-        self.screen.set_class(width < 70, "console-narrow")
-        self.screen.set_class(self.app.size.height < 32, "console-short")
+        self.screen.set_class(width < 100, 'console-compact')
         for key, label, short in PAGES:
-            button = self.query_one("#nav-"+key, Button)
-            selected = key == self.section
-            button.label = ("> " if selected else "") + (short if width < 100 else label)
-            button.set_class(selected, "nav-selected")
-            button.variant = "primary" if selected else "default"
+            button = self.query_one('#nav-'+key, NavigationButton)
+            button.caption = short if width < 100 else label
+            button.update_marker()
+        if self.query('#path-review'):
+            self.query_one('#path-review').disabled = not any(type(s).__name__ in {'ExperimentConfigScreen','ReviewScreen'} for s in self.app.screen_stack)
 
     def on_button_pressed(self, event):
-        identity = event.button.id or ""
-        if identity.startswith("nav-"):
+        identity = event.button.id or ''
+        if identity.startswith('nav-'):
             event.stop()
             self.app.open_hub_page(identity[4:])
-        elif identity == "refresh-psycolab":
+        elif identity.startswith('path-'):
+            event.stop()
+            target = 'ExperimentConfigScreen' if identity == 'path-configure' else 'ReviewScreen'
+            existing = next((s for s in reversed(self.app.screen_stack) if type(s).__name__ == target), None)
+            if existing is not None:
+                while self.app.screen is not existing:
+                    self.app.pop_screen()
+            elif identity == 'path-configure':
+                self.app.open_hub_page('setup')
+                self.app.screen.query_one('#configure', Button).press()
+            else:
+                configuration = next((s for s in reversed(self.app.screen_stack)
+                                      if type(s).__name__ == 'ExperimentConfigScreen'), None)
+                if configuration is not None:
+                    while self.app.screen is not configuration:
+                        self.app.pop_screen()
+                    configuration.query_one('#review', Button).press()
+        elif identity == 'refresh-psycolab':
             event.stop()
             self.app.action_refresh_files()
 
 
+def compose_workspace(content):
+    """One scroll owner, one reserved rail, independent of the page's length."""
+    with VerticalScroll(id='console-workspace'):
+        yield from content
+    yield Footer()
+
+
 async def install_console(screen):
-    if screen.query("#console-heading"):
+    if screen.query('#console-heading'):
         return
-    section, title = CONTEXTS.get(type(screen).__name__, ("setup", "EXPERIMENT / 01 SETUP"))
-    if type(screen).__name__ in {"SourceView", "CodeViewScreen", "JsonPresetEditor", "StimulusValueEditor"}:
+    section, title = CONTEXTS.get(type(screen).__name__, ('setup', 'EXPERIMENT / 01 SETUP'))
+    if type(screen).__name__ in {'SourceView','CodeViewScreen','JsonPresetEditor','StimulusValueEditor'}:
         previous = list(screen.app.screen_stack)
         previous = previous[:previous.index(screen)]
         if previous:
-            section = getattr(previous[-1], "console_section", "setup")
-        title = dict((key, label.upper()) for key, label, _ in PAGES)[section] + " / " + {
-            "SourceView": "SOURCE", "CodeViewScreen": "SOURCE", "JsonPresetEditor": "PRESET", "StimulusValueEditor": "STIMULUS VALUES"
+            section = getattr(previous[-1], 'console_section', 'setup')
+        title = dict((key,label.upper()) for key,label,_ in PAGES)[section] + ' / ' + {
+            'SourceView':'SOURCE','CodeViewScreen':'SOURCE','JsonPresetEditor':'PRESET','StimulusValueEditor':'STIMULUS VALUES'
         }[type(screen).__name__]
-    if not screen.query(Footer):
-        await screen.mount(Footer())
     screen.console_section = section
-    screen.add_class("laboratory-console")
-    # The sidebar reserves the heading and footer rows with dock margins.
-    await screen.mount(LaboratoryNavigation(section),
-                       Static("PsyCoLab  /  " + title, id="console-heading", markup=False), before=0)
+    screen.add_class('laboratory-console')
+    for button in screen.query('#console-workspace Button'):
+        if button.tooltip is None:
+            button.tooltip = str(button.label)
+    await screen.mount(Static('PsyCoLab / '+title,id='console-heading',markup=False),
+                       LaboratoryNavigation(section,title),before=0)
 
 
 class ConsoleScreen(Screen):
+    def compose(self):
+        yield from compose_workspace(self.compose_content())
+
     async def _on_mount(self):
         await install_console(self)
 
 
 CONSOLE_CSS = """
-Screen.laboratory-console { background: $background; }
-Screen.laboratory-console Header { display: none; }
-Screen.laboratory-console .buttons Button { width: 1fr; }
-Screen.laboratory-console Label { width: 100%; height: auto; }
-#console-heading { dock: top; width: 100%; height: 2; padding: 0 1;
-    background: $surface; color: $text; text-style: bold; border-bottom: solid $primary; }
-#hub-nav { dock: left; layout: vertical; width: 23; height: 1fr;
-    margin: 2 0 1 0; padding: 0 1; background: $surface; border-right: solid $primary-muted; }
-#laboratory-label { height: 2; color: $text-muted; padding-top: 1; }
-#hub-nav Button { width: 100%; height: 3; min-width: 0; margin: 0; padding: 0;
-    content-align: left middle; border: none; background: $surface; }
-#hub-nav Button.nav-selected { background: $primary; text-style: bold; }
-#hub-nav Button:focus { text-style: bold underline; background: $boost; }
-#hub-nav Button:hover { background: $boost; }
-#hub-nav #refresh-psycolab { margin-top: 1; color: $text-muted; }
-.console-short #hub-nav Button { height: 2; }
+/* The only owner of researcher application geometry and visual styling. */
+Screen.laboratory-console { background: #080808; color: #eeeeee; align: left top; layout: grid; grid-size: 2 3; grid-columns: 23 1fr; grid-rows: 2 1fr 1; }
+Screen.console-compact { grid-columns: 17 1fr; }
+#console-heading { column-span: 2; height: 2; width: 100%; padding: 0 1;
+    background: #080808; color: #eeeeee; border-bottom: solid #555555; }
+#hub-nav { width: 23; height: 100%; margin: 0;
+    padding: 0 1; background: #080808; border: none; overflow-y: auto; scrollbar-size: 1 1; }
 .console-compact #hub-nav { width: 17; padding: 0; }
-.console-compact #setup-body, .console-compact #review-body,
-.console-compact .page-body, .console-compact #config-body { padding: 0 1; }
-.console-compact .buttons { layout: grid; grid-size: 2; grid-rows: 3; height: auto; }
-.console-compact .buttons Button { width: 100%; max-width: 100%; height: 3; border: none; }
-.console-compact .buttons Button:focus { text-style: bold underline; }
-.old-navigation-placeholder { display: none; }
-Screen.laboratory-console #fixed-shell { background: $background; dock: none; width: 100%; max-height: 45%; overflow-y: auto; }
-
-Screen.laboratory-console #setup-body, Screen.laboratory-console #review-body,
-Screen.laboratory-console .page-body, Screen.laboratory-console #config-body,
-Screen.laboratory-console #code-body { border: none; }
+#laboratory-label { height: 1; color: #999999; }
+#hub-nav Button { width: 100%; height: 2; min-width: 0; padding: 0; margin: 0;
+    border: none; background: #080808; color: #cccccc; content-align: left middle; }
+#hub-nav Button.nav-child { height: 1; }
+#hub-nav Button.nav-selected { color: #ffffff; text-style: bold underline; }
+#hub-nav Button:focus, #hub-nav Button:hover { background: #333333; color: #ffffff; }
+#nav-context { height: 2; color: #bbbbbb; }
+#hub-nav #refresh-psycolab { height: 1; margin: 0; color: #aaaaaa; }
+Screen.laboratory-console Footer { dock: none; column-span: 2; height: 1; background: #181818; color: #cccccc; }
+FooterKey > .footer-key--key { background: #303030; color: #ffffff; }
+FooterKey > .footer-key--description { background: #181818; color: #cccccc; }
+#console-workspace { width: 100%; height: 100%; border: solid #555555; padding: 0 1;
+    background: #080808; overflow-x: hidden; overflow-y: auto;
+    scrollbar-gutter: stable; scrollbar-size: 1 1; scrollbar-background: #151515;
+    scrollbar-color: #666666; scrollbar-color-hover: #999999; scrollbar-color-active: #cccccc; }
+/* Former per-page scrolling containers are now content-sized groups. Tables
+   and text editors retain deliberate internal scrolling. */
+#console-workspace VerticalScroll { height: auto; width: 100%; overflow: hidden; padding: 0; border: none; }
+#console-workspace Vertical, #console-workspace ContentSwitcher { height: auto; width: 100%; }
+#setup-columns { layout: vertical; height: auto; width: 100%; }
+#fixed-shell { dock: none; height: auto; width: 100%; padding: 0; margin: 0; }
+#console-workspace Static, #console-workspace Label { height: auto; }
+#console-workspace Label { margin-top: 1; width: 100%; }
+#console-workspace Input, #console-workspace Select { width: 64; max-width: 100%; }
+#console-workspace Input { background: #181818; color: #eeeeee; border: solid #444444; }
+#console-workspace Input:focus { border: solid #dddddd; }
+#console-workspace SelectCurrent { background: #181818; color: #eeeeee; border: solid #444444; }
+#console-workspace Select:focus SelectCurrent { border: solid #dddddd; }
+SelectOverlay { background: #181818; color: #eeeeee; border: solid #777777; }
+SelectOverlay > .option-list--highlighted { background: #dddddd; color: #080808; }
+#console-workspace Button { width: 34; max-width: 100%; min-width: 0; height: 3;
+    margin: 0; padding: 0 1; background: #111111; color: #eeeeee; border: solid #444444; }
+#console-workspace Button:focus, #console-workspace Button:hover { background: #dddddd; color: #080808; border: solid #dddddd; }
+#console-workspace Button:disabled { color: #777777; border: solid #222222; background: #080808; }
+#console-workspace .buttons { layout: vertical; height: auto; width: 100%; align-horizontal: left; }
+#console-workspace .field-row { height: 3; width: 64; max-width: 100%; }
+#console-workspace .field-row Input { width: 1fr; }
+#console-workspace .field-row Button { width: 13; }
+#console-workspace Collapsible { padding: 0; margin: 1 0; border: none; background: #080808; }
+#console-workspace CollapsibleTitle { background: #181818; color: #cccccc; }
+#console-workspace .section-title { margin: 1 0 0 0; padding: 0; text-style: bold;
+    color: #ffffff; border-top: solid #444444; }
+#console-workspace .form-section { height: auto; width: 100%; border: solid #333333; padding: 0 1 1 1; margin: 0 0 1 0; }
+#console-workspace .form-section .section-title { border: none; margin: 0; }
+#console-workspace .field-help { color: #aaaaaa; margin-bottom: 1; }
+#console-workspace .info-card { padding: 0; margin: 1 0; background: #080808; border: none; }
+#console-workspace #setup-side { margin-top: 1; }
+#console-workspace #data-root { width: 100%; }
+#console-workspace Checkbox { background: #080808; color: #eeeeee; border: none; }
+Checkbox > .toggle--button { color: #aaaaaa; background: #080808; }
+#console-workspace DataTable { height: 22; width: 100%; background: #080808; color: #eeeeee; scrollbar-size: 1 1; scrollbar-background: #151515; scrollbar-color: #666666; }
+DataTable > .datatable--header { background: #333333; color: #ffffff; }
+DataTable > .datatable--cursor { background: #cccccc; color: #080808; }
+#console-workspace TextArea { height: 20; width: 100%; border: solid #444444; }
+/* Calibration status is semantic, not decoration. Text and symbols accompany colour. */
+#calibration-stage-nav { layout: horizontal; height: 3; width: 100%; }
+#console-workspace #calibration-stage-nav Button { width: 1fr; padding: 0; height: 3; border: none; }
+#console-workspace #calibration-stage-nav Button.-success { color: #86b98c; }
+#console-workspace #calibration-stage-nav Button.-warning { color: #d1b875; }
+#console-workspace #calibration-stage-nav Button.-error { color: #d09393; }
+#console-workspace #calibration-stage-nav Button.calibration-active { text-style: bold underline; }
+.console-compact #console-workspace #calibration-stage-nav,
+.console-compact #console-workspace #calibration-stage-nav Button { height: 1; }
+DisplayCheckScreen #console-workspace #fixed-shell .buttons { layout: horizontal; height: 3; }
+DisplayCheckScreen #console-workspace #fixed-shell .buttons Button { width: 1fr; padding: 0; }
+DisplayCheckScreen.console-compact #console-workspace #fixed-shell .buttons,
+DisplayCheckScreen.console-compact #console-workspace #fixed-shell .buttons Button { height: 1; border: none; }
+#console-workspace .invalid-input { border: solid #d09393; }
+#console-workspace .readiness-next, #console-workspace .readiness-blocked { border-left: solid #d1b875; }
+#console-workspace .readiness-done { border-left: solid #86b98c; }
 """

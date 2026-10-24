@@ -1,5 +1,7 @@
 # Coffee & Forest — researcher page-layout refinement
 
+Historical design report. Superseded by the [fixed monochrome console](FIXED_CONSOLE.md).
+
 **Proposal following Slate Precision (Design E).** Applies to the **researcher-facing Textual TUI** only. The Option B permanent sidebar and existing scientific workflows remain in place.
 
 ## Goals and decisions

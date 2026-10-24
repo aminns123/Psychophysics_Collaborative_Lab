@@ -231,6 +231,8 @@ def test_tui_confirmation_cancel_and_launch(setup, tmp_path, monkeypatch, fault)
             review.query_one("#run", Button).press()
             await pilot.pause()
             assert app.screen is review and not calls
+            app.screen.query_one("#run-researcher-override", Button).focus()
+            await pilot.pause(0.6)
             assert await pilot.click("#run-researcher-override")
             await pilot.pause()
             modal = app.screen

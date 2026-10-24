@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.widgets import Header, Footer, Button, Input, Select, Checkbox, Static, Label, Collapsible
+from textual.widgets import Button, Input, Select, Checkbox, Static, Label, Collapsible
 from ..config.calibration_dataset import (load_active,save_active,accept_active,observation,summary,merge_observations,
     import_observations,luminance_state,physical_snapshot,active_directory,
     physical_snapshot_differences,replacement_draft_for_current_display)
@@ -36,11 +36,10 @@ class LuminanceDataScreen(Screen):
         self._replacement_started = False
         self._physical_changes = {}
 
-    def compose(self):
+    def compose_content(self):
         self.saved=load_active(self.app.local_config_root,self.profile); self.draft=deepcopy(self.saved)
         self._physical_changes=physical_snapshot_differences(self.profile,self.saved)
         with Vertical(id='fixed-shell'):
-            yield Header()
             with Horizontal(classes='buttons'):
                 yield Button('Discard draft / Back',id='dataset-back')
                 yield Button('Save active dataset',id='dataset-save',variant='primary')
@@ -103,7 +102,6 @@ class LuminanceDataScreen(Screen):
                 yield Input(value='',id='dataset-export-path')
                 yield Button('Export saved dataset copy',id='dataset-export')
             yield Button('Review physical photometry (only for actual laboratory readings)',id='dataset-verify')
-        yield Footer()
 
     def on_mount(self):
         from .setup import ReviewScreen
