@@ -1,8 +1,29 @@
 # Changelog
 
-Notable PsyCoLab changes are recorded here. This file begins a maintained change history; it is **not** a claim that any named production release or version tag has been published. Older historical details remain in Git commits and their pull requests.
+Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisition, retain the exact software tag/commit, scientific source hashes, experiment settings and monitor calibration provenance.
 
-## Unreleased — international laboratory governance and documentation
+## Unreleased
+
+No changes beyond the proposed `v0.3.0` release have been recorded here.
+
+## 0.3.0 — prepared pre-release (not tagged or published yet)
+
+- **New public data reader:** `psychophysics_lab.data.reader.load_run(path)` reads an existing run folder or `trials.tsv` into named NumPy text arrays, a manifest and the saved column definitions.
+- **Backwards-compatible access:** tolerates additional named columns in known trial schema 1, retains absent historical columns as absent, and rejects unknown numbered trial schemas.
+- **Researcher documentation:** new `docs/ANALYSING_RUN_DATA.md` guide and a Learn / Help link to a copyable Python example.
+- **Version metadata:** Python package version advances from `0.2.2` to `0.3.0`, corresponding to the future GitHub tag `v0.3.0`.
+- **Scientific scope:** no changes to canonical acquisition writer, existing twenty trial fields, trial schema version, calibration, adaptive algorithms or participant presentation.
+- **Focused validation:** 25 tests passed on the user's Windows Python 3.11 environment on 24 October 2026; full-suite and physical qualification are separate release gates.
+
+Read the proposed [v0.3.0 release notes](docs/releases/v0.3.0.md) before publishing.
+
+## v0.0.1 — published 24 October 2026
+
+The first GitHub release is preserved at its historical commit `f2b981f`. The software at that commit identified internally as `0.2.2`; this inconsistency is not rewritten in an already-published archive. See the [original release](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases/tag/v0.0.1).
+
+## Historical development / governance notes (predating the next release)
+
+### International laboratory governance and documentation
 
 - Document the three-layer architectural direction: shared core, curated public experiments/stimuli, and proposed independent lab-local extensions.
 - Explain safe Git updates, local scientific edits, forks/branches, local TUI presets and external calibration/acquisition storage.
@@ -11,7 +32,7 @@ Notable PsyCoLab changes are recorded here. This file begins a maintained change
 - Introduce release evidence requirements, including licensing, package/environment reproducibility and laboratory hardware checks.
 - No scientific runner, stimulus, adaptive, calibration or participant-data-format change is part of this documentation update.
 
-## Recent merged changes (not formally tagged releases)
+### Earlier merged work
 
 - **PR #78 — Slate Precision (Design E):** visual palette, Setup context layout and researcher screen grouping, with TUI regression tests.
 - **PR #77 — Laboratory Control Console (Design B):** researcher-facing sidebar, shared header, responsive navigation and nested-page layout.
@@ -21,6 +42,6 @@ Notable PsyCoLab changes are recorded here. This file begins a maintained change
 
 The above are PR summaries, not separate version releases. For exact semantics and tests, inspect the corresponding PR diff and documented experiment configurations.
 
-## Version policy
+### Version policy
 
 See [Release policy](docs/RELEASE_POLICY.md), [schema compatibility](docs/SCHEMA_COMPATIBILITY.md) and [international roadmap](docs/INTERNATIONAL_LAB_ROADMAP.md). Historical runs must retain their own source and profile provenance independently of this text.
