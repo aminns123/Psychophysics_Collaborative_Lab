@@ -192,6 +192,27 @@ def test_tui_catalogue_review_and_source_navigation(lab,tmp_path):
     asyncio.run(scenario())
 
 
+def test_authoring_optional_json_opens_external_declared_preset(lab, tmp_path, monkeypatch):
+    """The Build Experiments JSON button must not assume framework config paths."""
+    ready(lab)
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp
+    from textual.widgets import Select, Button
+    opened = []
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        async with app.run_test(size=(120, 40)) as pilot:
+            monkeypatch.setattr(app, "inspect_source", lambda path: opened.append(Path(path)))
+            app.open_hub_page("experiments")
+            await pilot.pause()
+            app.screen.query_one("#author-component", Select).value = EXPERIMENT
+            app.screen.query_one("#author-json", Button).press()
+            await pilot.pause()
+
+    asyncio.run(scenario())
+    assert opened == [lab / "presets" / "left_right.json"]
+
+
 def test_relative_helper_uses_current_bytes_and_is_fingerprinted(lab):
     import os, sys
     helper=lab/'experiments/helper.py';helper.write_text('VALUE = 1\n',encoding='utf-8')
