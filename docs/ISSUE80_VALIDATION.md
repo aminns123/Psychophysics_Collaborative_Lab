@@ -67,6 +67,40 @@ timing, luminance, output precision, monitor calibration or participant acquisit
 | Other operating systems | Explicitly **deferred** | Do not describe Linux/macOS as passed |
 | Physical hardware qualification | Unchanged hardware requirements | **Not provided** by this feature and must remain separately qualified |
 
+## Maintainer Windows follow-up run — 24 October 2026
+
+After PR #94's review branch was fetched on Windows, the maintainer ran:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest `
+  --basetemp="$testRoot\pytest_issue80_followup" `
+  -p no:cacheprovider -q `
+  tests\test_laboratory_extensions.py `
+  tests\test_authoring_actions.py `
+  tests\test_review_file_navigation.py `
+  tests\test_researcher_override.py `
+  tests\test_public_run_reader.py
+```
+
+Result: **81 passed, 1 failed, 1 warning** (73.01 seconds). All extension
+tests, including the new external authoring preset navigation test, passed.
+The sole failing test was
+`tests/test_researcher_override.py::test_tui_confirmation_cancel_and_launch[hardware_runtime]`.
+It deliberately injected `RuntimeError("Display driver changed")`; the
+researcher-override dialog caught that simulated hardware failure, but
+`_report_ui_exception` attempted to print to Textual's captured terminal
+stderr, which raised `OSError: [WinError 6] The handle is invalid`. A
+**separate narrow follow-up** now protects the diagnostic printer so a broken
+console handle cannot mask the original failure, while retaining the local
+crash log and visible dialog feedback. This was **not evidence of an actual
+monitor driver failure**. The single unrelated component warning still concerns
+the source-change retest required by `new_probe_vertical_line_stimulus`.
+
+The Windows diagnostic regression and the earlier failing researcher-override
+case must be retested before the diagnostic follow-up is merged. Do **not**
+reinterpret 81/82 as a fully green run or claim that human display hardware
+was physically validated.
+
 ## Follow-up corrections in a separate PR
 
 This follow-up addresses only verifiable completion gaps:
