@@ -5,11 +5,14 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import warnings
 from pathlib import Path
 from uuid import uuid4
 from ..data.identifiers import validate_path_component
 from ..data.session import atomic_write_json
 from ..data.locking import file_lock
+
+PRESET_SCHEMA_VERSION = 1
 
 def config_root(repo_root: Path, data_root: Path | None = None) -> Path:
     override=os.environ.get('PSYCOLAB_CONFIG_DIR')
@@ -137,7 +140,7 @@ def save_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path
     exp=validate_path_component(experiment_id,label='experiment')
     path=(root/'presets'/exp/f'{name}.json').resolve()
     if not path.is_relative_to(root.resolve()): raise ValueError('Preset path escapes local configuration.')
-    atomic_write_json(path,{'schema_version':1,'experiment_id':exp,'values':values,'saved_utc':datetime.now(timezone.utc).isoformat()})
+    atomic_write_json(path,{'schema_version':PRESET_SCHEMA_VERSION,'experiment_id':exp,'values':values,'saved_utc':datetime.now(timezone.utc).isoformat()})
     return path
 
 def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path:
@@ -157,6 +160,14 @@ def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Pa
         if not path.is_file() or path.is_symlink():
             raise ValueError(f"Preset '{name}' does not exist. Use Save new preset.")
         previous = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(previous, dict):
+            raise ValueError("Existing preset must be a JSON object; it was not overwritten.")
+        if type(previous.get("schema_version")) is not int or previous["schema_version"] != PRESET_SCHEMA_VERSION:
+            raise ValueError(
+                f"Preset '{name}' has missing or unsupported schema_version "
+                f"{previous.get('schema_version')!r}; it was not overwritten. "
+                "Keep the original and save a new preset instead."
+            )
         if (previous.get("experiment_id") != experiment
                 or not isinstance(previous.get("values"), dict)):
             raise ValueError("Existing preset has unexpected content; it was not overwritten.")
@@ -165,7 +176,7 @@ def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Pa
         backup = history_dir / f"{name}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')}_{uuid4().hex[:8]}.json"
         atomic_write_json(backup, previous)
         atomic_write_json(path, {
-            "schema_version": 1, "experiment_id": experiment,
+            "schema_version": PRESET_SCHEMA_VERSION, "experiment_id": experiment,
             "values": values, "saved_utc": datetime.now(timezone.utc).isoformat(),
         })
     return path
@@ -176,8 +187,26 @@ def load_presets(root: Path, experiment_id: str) -> dict[str, dict]:
     directory=root/'presets'/validate_path_component(experiment_id,label='experiment')
     for path in sorted(directory.glob('*.json')):
         try:
-            value=json.loads(path.read_text())
+            value=json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict):
+                continue
+            version = value.get("schema_version")
+            if "schema_version" in value and (
+                type(version) is not int or version != PRESET_SCHEMA_VERSION
+            ):
+                warnings.warn(
+                    f"Ignoring preset '{path.name}': unsupported schema_version {version!r}. "
+                    "The original file was left unchanged.",
+                    RuntimeWarning, stacklevel=2,
+                )
+                continue
             if value.get('experiment_id')==experiment_id and isinstance(value.get('values'), dict):
+                if "schema_version" not in value:
+                    warnings.warn(
+                        f"Preset '{path.name}' has no schema_version (legacy unversioned). "
+                        "Review scientific parameter meanings before using; the file remains unchanged.",
+                        RuntimeWarning, stacklevel=2,
+                    )
                 result[path.stem]=value['values']
         except (OSError,ValueError,KeyError,AttributeError): pass
     return result

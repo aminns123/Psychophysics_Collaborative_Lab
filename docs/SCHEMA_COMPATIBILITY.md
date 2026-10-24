@@ -28,6 +28,23 @@ A software version such as `0.2.2`, a Git commit, a monitor `revision` and a sch
 5. Where existing older records legitimately lack a new field, document exactly which neutral/default value is *semantically safe*. If not safe, require researcher input or report an unsupported record rather than guessing.
 6. Keep data-root paths portable and avoid tying historical runs to one computer's absolute Windows username/folder layout.
 
+## Local experiment preset compatibility
+
+Local `presets/<experiment>/*.json` currently use `schema_version: 1`.
+The `load_presets` reader loads **version 1** normally and retains a narrow
+read-only legacy path for older files that omit the version marker but still
+declare a matching experiment ID and a values object. It warns that the
+scientific meaning of such unversioned settings must be checked. Files with
+an explicitly present, unsupported version (including a string or boolean)
+are skipped with an actionable warning instead of being interpreted as version 1.
+
+The explicit `update_preset` action refuses to overwrite **any** missing or
+unsupported version, even if an older file can be inspected. Save an updated
+configuration under a **new preset name**, preserving its original bytes.
+Ordinary version-1 updates continue to archive their previous document
+before writing. None of this upgrades files during read, changes scientific
+parameter defaults or affects saved trial observations.
+
 ## Migration contract
 
 - Migration is **opt-in**, not a side effect of launching PsyCoLab or pulling Git changes.

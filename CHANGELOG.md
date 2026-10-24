@@ -4,10 +4,10 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
-- **Issue #81 compatibility audit (proposed):** inventory current run, profile, photometry, preset, simulation and derived-analysis writers/readers, distinguishing known schema markers from profile and data revisions.
-- **Read-only historical-shape regressions (proposed):** exercise unversioned trial tables, older monitor metadata, legacy summary-only luminance, old workspace requests, moved archives, malformed/unknown formats and truncated journals. Fixtures are synthetic/non-identifying, not measured participant or hardware evidence.
-- **Small reader safeguard (proposed):** reject unknown newer `manifest.json` schema versions, without modifying existing acquisition records or the fixed trial schema.
-- **No scientific protocol, calibration gate, acquisition writer or saved raw-data format changes.** Actual historical laboratory archives and end-to-end international extension compatibility remain separate tasks.
+- **Issue #81 compatibility audit (merged):** inventory current run, profile, photometry, preset, simulation and derived-analysis writers/readers, distinguishing known schema markers from profile and data revisions.
+- **Read-only historical-shape regressions (merged):** exercise unversioned trial tables, older monitor metadata, legacy summary-only luminance, old workspace requests, moved archives, malformed/unknown formats and truncated journals. Fixtures are synthetic/non-identifying, not measured participant or hardware evidence.
+- **Small reader safeguard (merged):** reject unknown newer `manifest.json` schema versions, without modifying existing acquisition records or the fixed trial schema.
+- **Local preset schema safety (proposed):** skip explicitly unsupported preset versions, preserve readable unversioned historical settings with a warning, refuse in-place updates to unversioned/unsupported files, and retain normal version-1 backups.\n- **No scientific protocol, calibration gate, acquisition writer or saved raw-data format changes.** Actual historical laboratory archives and end-to-end international extension compatibility remain separate tasks.
 
 
 
