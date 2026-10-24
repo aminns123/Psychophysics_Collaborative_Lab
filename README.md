@@ -73,8 +73,13 @@ on participant acquisition until qualified.
 
 ## Safe local research and updates
 
-Keep run values in named local TUI presets whenever possible. For independent
-laboratory-owned scientific Python, use the **opt-in external extensions** facility:
+Keep run values in named local TUI presets whenever possible. On the **first
+normal PsyCoLab launch**, a standalone `PsyCoLab_Extensions` teaching folder is
+created beside the checkout if that folder is not already occupied. The source
+is **not executed or marked Ready automatically**: explicitly trust and enable
+it through Build Experiments. Its location may be changed from the TUI and
+existing laboratory files are never overwritten.
+For independent laboratory-owned scientific Python, use the **opt-in external extensions** facility:
 [Windows setup and source-validation guide](docs/LABORATORY_EXTENSIONS.md).
 Keep the trusted extension folder outside the framework checkout, calibration
 configuration and participant data. Scientific source changes require retesting;
