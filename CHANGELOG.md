@@ -4,6 +4,8 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **First-run laboratory source onboarding (proposed PR):** supply an independent sibling `PsyCoLab_Extensions` starter on first normal TUI launch, with an editable root and a non-destructive `Create starter` action. Preserve previously configured/custom source paths and never overwrite existing source. No external Python is trusted or marked Ready automatically.
+- **No scientific acquisition or physical calibration changes.** This is an optional Windows-first researcher onboarding improvement.
 - **Issue #80 external laboratory extensions (merged in PR #93):** explicitly
   trusted independent source folder, namespaced stimulus and experiment
   registration, developer Test/Ready fingerprints, additive portable run
