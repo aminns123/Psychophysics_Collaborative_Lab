@@ -1,4 +1,5 @@
 """Read the experiment's own planning functions; no alternative scientific model."""
+import json
 import sys
 from pathlib import Path
 from ..researcher import RunContext
@@ -50,7 +51,7 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     values in Review. They need no new authoring interface or registry entry.
     """
     result = {"stimuli": {slot: selected["document"]["parameters"] for slot, selected in snapshots.items()},
-              "overrides": {}, "parameter_reads": {}, "conditions": [], "phases": [], "note": ""}
+              "overrides": {}, "parameter_reads": {}, "conditions": [], "phases": [], "resolution": {}, "note": ""}
     if spec.procedure is None or spec.historical:
         result["note"] = "Historical driver: selected parameters are shown; inspect its Python/shader for trial-dependent values."
         return result
@@ -69,7 +70,7 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
     timeline=module.make_trial(values, condition)
     result.update(stimuli={slot: dict(p) for slot,p in stimuli.items()}, overrides=run.overrides,
-                  parameter_reads=reads, conditions=conditions,
+                  parameter_reads=reads, conditions=conditions, resolution=getattr(run, "resolution", {}),
                   phases=timeline.resolve(values).to_dict()["phases"],
                   phase_inputs={phase.name:phase.duration_ms for phase in timeline.phases if phase.kind in {"show","response"}},
                   note="Trial-controlled values show one representative trial. Random choices and adaptive strengths vary during a run.")
@@ -90,10 +91,20 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     def origin(field):
         base = (saved["file_identity"] if saved and field.key in saved["document"]["values"] else "Python ConfigField default")
         return f"Selected value (TUI/saved setup); {base} = {defaults[field.key]!r}"
-    rows = [("Experiment", field.display_label, str(values[field.key]), origin(field)) for field in spec.fields]
+    controls = set(spec.adaptive.controls) if spec.adaptive else set()
+    rows = [("Experiment", field.display_label, str(values[field.key]), origin(field))
+            for field in spec.fields if field.key not in controls]
     rows.extend(probe_intensity_rows(spec, values, conditions=description.get("conditions")))
     if spec.adaptive:
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
+        rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
+                    for field in spec.fields if field.key in controls)
+        if spec.adaptive.step_parameterization:
+            rows.append(("Adaptive", "Step units / parameterization", spec.adaptive.step_parameterization,
+                         "Declared by experiment Python"))
+        if spec.adaptive.step_calculator:
+            rows.append(("Adaptive", "Optional step calculator", spec.adaptive.step_calculator,
+                         "Available calculator; selected step values above are used"))
     if spec.response_paradigm:
         rows.append(("Responses", "Alternative order", ", ".join(spec.response_paradigm.alternatives), "Keys follow the same order"))
     for slot, selected in snapshots.items():
@@ -135,6 +146,16 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                          f"x={placement['x_deg']}, y={placement['y_deg']}","degrees from fixation"))
         if phase.get("beep"):
             rows.append(("Audio",phase["name"],str(phase["beep"]),phase["beep_trigger"]))
+    # Display planning metadata without recomputing scientific rules in the UI.
+    def plan_rows(mapping, prefix=""):
+        for key, value in mapping.items():
+            label = f"{prefix} / {key}" if prefix else str(key)
+            if isinstance(value, dict):
+                yield from plan_rows(value, label)
+            else:
+                rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+                yield ("Run plan", label, rendered, "Resolved by experiment initialise_experiment")
+    rows.extend(plan_rows(description.get("resolution", {})))
     return rows
 
 

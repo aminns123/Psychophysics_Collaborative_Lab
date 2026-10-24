@@ -41,7 +41,12 @@ def check_shell(app, section):
     assert sidebar.region == Region(0, 2, side, h - 3)
     assert workspace.region == Region(side, 2, w - side, h - 3)
     assert screen.query_one('Footer').region == Region(0, h - 1, w, 1)
-    assert workspace.scrollable_content_region == Region(side + 2, 3, w - side - 5, h - 5)
+    assert workspace.scrollable_content_region == Region(side + 2, 3, w - side - 3, h - 5)
+    assert screen.query_one('#console-edge-top').region == Region(side, 2, w - side - 2, 1)
+    assert screen.query_one('#console-edge-bottom').region == Region(side, h - 2, w - side - 2, 1)
+    assert screen.query_one('#console-edge-right').region == Region(w - 3, 3, 1, h - 5)
+    assert screen.query_one('#console-edge-left').region == Region(side, 3, 1, h - 5)
+    assert screen.query_one('#console-content').region.width == w - side - 6
     assert workspace.styles.scrollbar_size_vertical == 1
     assert workspace.styles.scrollbar_gutter == 'stable'
     # Expanding the active path must not move the major navigation rows.
@@ -52,10 +57,12 @@ def check_shell(app, section):
             continue
         assert control.region.y == y
         assert control.region.height == 2
+        assert control.styles.text_align == 'left'
+        assert not control.styles.text_style.underline
         y += 4 if key == 'setup' else 2
 
     if workspace.show_vertical_scrollbar:
-        assert workspace.vertical_scrollbar.region == Region(w - 3, 3, 1, h - 5)
+        assert workspace.vertical_scrollbar.region == Region(w - 1, 3, 1, h - 5)
     for group in workspace.query('VerticalScroll'):
         assert group.styles.overflow_y == 'hidden'
 
