@@ -21,9 +21,9 @@ Read the proposed [v0.3.0 release notes](docs/releases/v0.3.0.md) before publish
 
 The first GitHub release is preserved at its historical commit `f2b981f`. The software at that commit identified internally as `0.2.2`; this inconsistency is not rewritten in an already-published archive. See the [original release](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases/tag/v0.0.1).
 
-## Historical development / governance notes
+## Historical development / governance notes (predating the next release)
 
-## Unreleased — international laboratory governance and documentation
+### International laboratory governance and documentation
 
 - Document the three-layer architectural direction: shared core, curated public experiments/stimuli, and proposed independent lab-local extensions.
 - Explain safe Git updates, local scientific edits, forks/branches, local TUI presets and external calibration/acquisition storage.
@@ -32,7 +32,7 @@ The first GitHub release is preserved at its historical commit `f2b981f`. The so
 - Introduce release evidence requirements, including licensing, package/environment reproducibility and laboratory hardware checks.
 - No scientific runner, stimulus, adaptive, calibration or participant-data-format change is part of this documentation update.
 
-## Recent merged changes (not formally tagged releases)
+### Earlier merged work
 
 - **PR #78 — Slate Precision (Design E):** visual palette, Setup context layout and researcher screen grouping, with TUI regression tests.
 - **PR #77 — Laboratory Control Console (Design B):** researcher-facing sidebar, shared header, responsive navigation and nested-page layout.
@@ -42,6 +42,6 @@ The first GitHub release is preserved at its historical commit `f2b981f`. The so
 
 The above are PR summaries, not separate version releases. For exact semantics and tests, inspect the corresponding PR diff and documented experiment configurations.
 
-## Version policy
+### Version policy
 
 See [Release policy](docs/RELEASE_POLICY.md), [schema compatibility](docs/SCHEMA_COMPATIBILITY.md) and [international roadmap](docs/INTERNATIONAL_LAB_ROADMAP.md). Historical runs must retain their own source and profile provenance independently of this text.
