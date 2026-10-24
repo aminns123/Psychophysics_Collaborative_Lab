@@ -161,3 +161,29 @@ def test_truncated_event_journal_is_detected_without_removing_complete_rows(tmp_
     with pytest.raises(ValueError, match="Incomplete final journal record"):
         list(read_json_records(journal))
     assert journal.read_bytes() == before
+
+
+def test_moved_run_uses_new_folder_not_saved_absolute_path(tmp_path):
+    """Readers must not follow a stale Windows data root or alter protocol ID."""
+    original = tmp_path / "machine_a" / "old protocol" / "run_001"
+    original.mkdir(parents=True)
+    shutil.copyfile(FIXTURES / "unversioned_trial_table.tsv", original / "trials.tsv")
+    (original / "manifest.json").write_text(
+        json.dumps({
+            "schema_version": 3,
+            "trial_schema_version": 1,
+            "run_uuid": "00000000-0000-4000-8000-000000000081",
+            "experiment_id": "historical_protocol_keep_id",
+            "data_root": r"C:\Users\OldResearcher\Obsolete\PsyCoLab_Data",
+        }), encoding="utf-8",
+    )
+    moved = tmp_path / "machine_b" / "archived lab" / "run_001"
+    moved.parent.mkdir(parents=True)
+    shutil.copytree(original, moved)
+    before = _bytes_under(moved)
+    loaded = load_run(moved)
+    assert loaded["run_directory"] == moved
+    assert loaded["manifest"]["experiment_id"] == "historical_protocol_keep_id"
+    assert loaded["manifest"]["run_uuid"] == "00000000-0000-4000-8000-000000000081"
+    assert loaded["trials"]["stimulus_condition"].tolist() == ["left", "right"]
+    assert _bytes_under(moved) == before
