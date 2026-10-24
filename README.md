@@ -79,6 +79,13 @@ See [safe updates](docs/SAFE_UPDATES_AND_LOCAL_WORK.md),
 [international development roadmap](docs/INTERNATIONAL_LAB_ROADMAP.md) and
 [release compatibility policy](docs/RELEASE_POLICY.md).
 
+## Analyse saved runs in Python
+
+The read-only [`load_run(path)` analysis helper](docs/ANALYSING_RUN_DATA.md) loads
+`trials.tsv` into a dictionary of NumPy arrays, alongside the saved run
+manifest and column definitions. It preserves additional named columns without
+altering previously acquired records. Learn / Help also opens the code example.
+
 ## Further reading
 
 - [Installation and moving computers](docs/INSTALLATION.md)
