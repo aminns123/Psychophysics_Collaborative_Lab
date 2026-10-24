@@ -56,7 +56,7 @@ for name, values in run["trials"].items():
 - `stimulus_condition`: experiment-specific; inspect `trial_data_dictionary.tsv` and `resolved_experiment.json` before assuming cycles/degree or any other units.
 - All recorded display contrast and intensity values are **digital quantities** unless a particular run contains actual verified photometric calibration. Do not label them measured luminance by default.
 
-For raw data layout, see [DATA_LAYOUT.md](DATA_LAYOUT.md). For definitions see [TRIAL_DATA_DICTIONARY.md](TRIAL_DATA_DICTIONARY.md). For rules about old saved formats and migrations, see [SCHEMA_COMPATIBILITY.md](SCHEMA_COMPATIBILITY.md). For derived threshold estimates, see [the threshold analysis guide](ANALYSIS_AND_THRESHOLDS.md) where available, or inspect `src/psychophysics_lab/analysis/thresholds.py`.
+For raw data layout, see [DATA_LAYOUT.md](DATA_LAYOUT.md). For definitions see [TRIAL_DATA_DICTIONARY.md](TRIAL_DATA_DICTIONARY.md). For rules about old saved formats and migrations, see [SCHEMA_COMPATIBILITY.md](SCHEMA_COMPATIBILITY.md). For derived threshold estimates, see [the threshold analysis guide](THRESHOLD_ANALYSIS.md) or inspect `src/psychophysics_lab/analysis/thresholds.py`.
 
 ## How this supports independent scientific analysis
 
