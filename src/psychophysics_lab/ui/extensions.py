@@ -49,7 +49,7 @@ class ExtensionsPanel(Vertical):
                 )
                 self.query_one('#extensions-status', Static).update(
                     ('Starter files created at: ' if created else 'Existing extension files preserved at: ')
-                    + str(path) + '\\nPython is NOT trusted/enabled yet; review it, '
+                    + str(path) + '\nPython is NOT trusted/enabled yet; review it, '
                     'then tick the trust checkbox and enable.'
                 )
                 return
