@@ -73,9 +73,13 @@ on participant acquisition until qualified.
 
 ## Safe local research and updates
 
-Keep run values in named local TUI presets whenever possible. If you edit
-scientific Python, save it on a private Git branch/fork before updating; an
-external lab-owned extension loader is proposed but **not available yet**.
+Keep run values in named local TUI presets whenever possible. For independent
+laboratory-owned scientific Python, use the **opt-in external extensions** facility:
+[Windows setup and source-validation guide](docs/LABORATORY_EXTENSIONS.md).
+Keep the trusted extension folder outside the framework checkout, calibration
+configuration and participant data. Scientific source changes require retesting;
+Ready status does not qualify a physical display. Official contributions still
+use reviewed Git branches and pull requests.
 Never overlay a new ZIP on an existing checkout or place participant data in Git.
 See [safe updates](docs/SAFE_UPDATES_AND_LOCAL_WORK.md),
 [contributor workflow](docs/CONTRIBUTING_EXPERIMENTS.md),
