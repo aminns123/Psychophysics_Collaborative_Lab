@@ -70,9 +70,26 @@ class AuthoringPanel(Vertical):
             folder = "stimuli" if self.kind == "stimulus" else "experiments"
             relative = (f"src/psychophysics_lab/{folder}/{name}.py" if identity == "author-python"
                         else f"configs/{folder}/{name}.json")
-            path = (self._external[name]["path"] if name in self._external and identity == "author-python"
-                    else self.app.repo_root / relative)
-            if not path.is_file():
+            if name in self._external:
+                if identity == "author-python":
+                    path = self._external[name]["path"]
+                else:
+                    # The laboratory's optional JSON is not a framework
+                    # configs/<kind>/<id>.json file. For Ready components,
+                    # use the registered source root and declared path.
+                    from ..extensions import source_path
+                    from ..experiments._internal.registry import get_experiment
+                    from ..stimuli.registry import get_stimulus
+                    try:
+                        spec = (get_experiment(name) if self.kind == "experiment"
+                                else get_stimulus(name))
+                        path = (source_path(self.app.repo_root, spec, spec.default_config)
+                                if spec.default_config else None)
+                    except (KeyError, ValueError, OSError):
+                        path = None  # Draft has no registered SPEC yet.
+            else:
+                path = self.app.repo_root / relative
+            if path is None or not path.is_file():
                 self.query_one("#author-result", Static).update("No optional preset: defaults are declared in the Python file.")
                 return
             self.app.inspect_source(path)

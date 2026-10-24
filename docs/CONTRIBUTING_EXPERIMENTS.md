@@ -51,6 +51,14 @@ A contribution does not need expensive NVIDIA hardware to **compile or simulate*
 
 No software licence is selected in the repository at the time this document was written. Public visibility does not automatically grant permission to redistribute code. The maintainer/institution must select an appropriate licence and consider consent for the bundled legacy renderer before accepting externally redistributed contributions. Contributor source ownership, permission to publish, acknowledgement and citations should be clarified in the PR. Do not add a guessed licence on behalf of the owner.
 
-## Current versus future local extensions
+## Local extensions versus official contributions
 
-Today, use branches/forks for custom Python and local configuration for reusable run values. A future explicitly approved external `PsyCoLab_Extensions/` workspace is planned, but is not yet wired into the official discovery and acquisition pipeline. Its acceptance requirements are in [the roadmap](INTERNATIONAL_LAB_ROADMAP.md).
+**Lab-owned scientific Python is supported as an opt-in external extension.**
+See [independent laboratory extensions](LABORATORY_EXTENSIONS.md) for the
+trusted-root setup, source layout, existing registration and validation paths,
+readiness fingerprints and source provenance. This is separate from a public
+framework contribution: to promote a reviewed study into official PsyCoLab,
+copy approved source into the established official locations on a Git branch,
+review identities, assumptions, tests and attribution, and open a PR. Promotion
+is never automatic. Hardware qualification remains a separate requirement.
+The original acceptance programme remains in [the roadmap](INTERNATIONAL_LAB_ROADMAP.md).

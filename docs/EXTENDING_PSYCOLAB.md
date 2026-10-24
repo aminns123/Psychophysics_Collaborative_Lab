@@ -2,12 +2,16 @@
 
 ## Local ownership and safe updates
 
-The instructions below describe the **currently supported public Python
-source locations**. A local scientist should normally change selected values
-in the TUI and save them as **local presets**, not edit official source defaults.
-To change the scientific procedure or add a class today, use a private branch
-or fork, test the exact source and submit a PR if appropriate. Automatic loading
-from a sibling `PsyCoLab_Extensions/` directory is **planned, not implemented**.
+These steps describe contribution to the **official** PsyCoLab source tree.
+A local scientist should normally change selected values in the TUI and save
+them as **local presets**, not edit official source defaults.
+
+**Independent laboratory experiments are now supported through an explicitly
+trusted external source folder**. Follow the separate
+[laboratory extensions guide](LABORATORY_EXTENSIONS.md) to author, preview,
+simulate, mark Ready and run lab-owned scientific Python without editing the
+framework checkout. The private-branch/fork steps below remain appropriate
+when proposing an **official repository contribution**.
 See [safe Git updates](SAFE_UPDATES_AND_LOCAL_WORK.md),
 [contributor policy](CONTRIBUTING_EXPERIMENTS.md) and
 [the architecture roadmap](INTERNATIONAL_LAB_ROADMAP.md).
@@ -29,9 +33,10 @@ See [safe Git updates](SAFE_UPDATES_AND_LOCAL_WORK.md),
 4. **Acquire:** use the normal TUI and physical calibration/review gates.
    Run data and historical source hashes live in a separate data repository.
 
-The supported public experiment catalogue now uses only the experiments in
-`src/psychophysics_lab/experiments/`, with names that match their Python
-source files. `contrast_sensitivity.py` is a general-purpose psychophysics
+The official experiment catalogue uses package-owned experiment files in
+`src/psychophysics_lab/experiments/`. Once a trusted laboratory root is enabled,
+validated local experiments also enter the **same** registry and runner; their
+IDs must be namespaced and their source filenames must match those IDs. `contrast_sensitivity.py` is a general-purpose psychophysics
 experiment, **not** a thesis-specific contract. Retired experiment engines,
 their renderer, and their executable adapters were removed in PR #73; they
 can be examined at older Git revisions if historical provenance is needed.
