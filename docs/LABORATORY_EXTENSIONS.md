@@ -103,7 +103,7 @@ prepared a complete external folder:
 ```
 
 **Existing installations are preserved.** If you previously copied the
-example under \`PsyCoLab_Extensions/laboratory_extensions/\`, keep using
+example under `PsyCoLab_Extensions/laboratory_extensions/`, keep using
 that inner manifest-containing folder until you deliberately reorganise
 your own source. PsyCoLab does not flatten/move it.
 
