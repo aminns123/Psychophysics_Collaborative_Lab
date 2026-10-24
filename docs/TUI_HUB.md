@@ -17,6 +17,8 @@ stimulus generator or separate per-stimulus file.
 `src/psychophysics_lab/experiments/` and their validated settings.
 No automatic experiment copy/generator.
 
+On first normal launch, PsyCoLab non-destructively prepares the default sibling `PsyCoLab_Extensions` folder and shows its location in **Build Experiments → Laboratory Extensions**. Researchers can create the starter at a different absolute location there. The files are not trusted, loaded or marked Ready merely because they were created.
+
 For independent laboratory science, enable one explicitly trusted external folder in **Build Experiments → Laboratory Extensions**. Its local classes and experiments use the same previews, authoring Test/Ready controls and normal workflow. See [the Windows extensions guide](LABORATORY_EXTENSIONS.md).
 
 **Calibrate**, **Scenarios** and **Data** are distinct operations, not

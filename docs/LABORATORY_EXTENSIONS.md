@@ -49,19 +49,68 @@ Each experiment defines its own normal `procedure` and exports `SPEC` from `expe
 
 The supported scientific dependency set is the library, the root manifest, and Python/JSON under `experiments/` and `presets/`. Symlinks and Windows junctions are rejected before traversal. Source dependencies outside that set are rejected. Arbitrary scientific resource files, additional external roots and external adaptive-plugin discovery are not supported in this initial boundary; reuse the existing adaptive API. Trusted code can of course call Python APIs, but unrecorded external inputs must not be treated as covered by this readiness/provenance contract.
 
-## Windows quick start
+## Windows first-run setup
 
-Use the supported Windows Python 3.11 environment. From the framework checkout, deliberately copy the supplied demonstration **once** into a new sibling folder. This command refuses to overwrite an existing laboratory folder:
+**Cloning alone cannot create a sibling folder**: Git only manages its repository.
+When the researcher **first launches the PsyCoLab TUI normally**, PsyCoLab
+prepares a usable starter source directory beside the checkout, independently
+of the default data and machine-local calibration directories:
+
+```text
+GitHub/
+  Psychophysics_Collaborative_Lab/    # framework updated with Git
+  PsyCoLab_Extensions/                # independent editable laboratory science
+    psycolab_extensions.json
+    stimulus_library.py
+    experiments/demolab__left_right.py
+    presets/left_right.json
+  local_psychophysics_config/
+  local_psychophysics_data/
+```
+
+No manual file copying or terminal setup is required to **prepare** this
+starter. The example is useful for learning and can be customised by the lab,
+but is **not automatically trusted or software Ready**. To enable execution,
+open **Build Experiments → Laboratory Extensions**, inspect the supplied
+source, tick the explicit trust checkbox and click **Enable trusted folder**.
+Refresh (F5) or restart to rebuild the catalogue.
+
+The user may choose any separate **absolute folder path** by editing the
+path field and clicking **Create starter at this location**. This creates the
+starter only in an absent or *empty* folder. Existing valid extension roots
+are reused without rewriting any files. A populated folder lacking the
+manifest is never silently modified or nested. The chosen path is retained
+in local preferences even after disabling extensions, and data/calibration
+remain separate.
+
+From a newly cloned Windows checkout, a normal startup is sufficient:
 
 ```powershell
-$labExtensions = Join-Path (Split-Path (Get-Location) -Parent) 'PsyCoLab_Extensions'
-if (Test-Path -LiteralPath $labExtensions) { throw 'Choose a new folder; do not overwrite laboratory source.' }
-Copy-Item -LiteralPath '.\examples\laboratory_extensions' -Destination $labExtensions -Recurse
-.\.venv\Scripts\python.exe -m psychophysics_lab --extensions-enable "$labExtensions" --trust-extension-code
+.\.venv\Scripts\python.exe -m psychophysics_lab
+```
+
+After explicit trust/enable, inspect discovered components:
+
+```powershell
 .\.venv\Scripts\python.exe -m psychophysics_lab --dev-list
 ```
 
-The copy contains a complete left/right line experiment, one self-contained line class and a complete ordinary settings preset. Read those files before changing them. For your own laboratory, deliberately rename the manifest namespace, component IDs, experiment filename and referenced stimulus IDs together; no tool silently migrates them.
+Existing CLI trust is also supported for researchers who have already
+prepared a complete external folder:
+
+```powershell
+.\.venv\Scripts\python.exe -m psychophysics_lab --extensions-enable "C:\your-lab\my-experiments" --trust-extension-code
+```
+
+**Existing installations are preserved.** If you previously copied the
+example under `PsyCoLab_Extensions/laboratory_extensions/`, keep using
+that inner manifest-containing folder until you deliberately reorganise
+your own source. PsyCoLab does not flatten/move it.
+
+The starter contains a complete left/right line study, one self-contained
+line class and one settings JSON. Before moving beyond the demonstration,
+select a stable institution-specific namespace and update the experiment
+and stimulus IDs consistently; no scientific code is silently renamed.
 
 Test and mark this exact source revision Ready:
 
