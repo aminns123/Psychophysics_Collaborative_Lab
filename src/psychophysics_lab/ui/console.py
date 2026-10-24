@@ -1,6 +1,6 @@
 """Researcher-only application chrome; delegates to the existing hub routes."""
 from textual import events
-from textual.containers import VerticalScroll
+from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Static
 
@@ -128,10 +128,29 @@ class LaboratoryNavigation(VerticalScroll):
             self.app.action_refresh_files()
 
 
+class ConsolePanel(Container):
+    """Four fixed edge widgets leave content and the external rail clickable."""
+    def on_resize(self, event: events.Resize):
+        width, height = event.size
+        for name, x, y, w, h in (
+            ('top', 0, 0, width - 2, 1),
+            ('bottom', 0, height - 1, width - 2, 1),
+            ('left', 0, 1, 1, height - 2),
+            ('right', width - 3, 1, 1, height - 2),
+        ):
+            edge = self.query_one('#console-edge-' + name)
+            edge.styles.offset = (x, y)
+            edge.styles.width, edge.styles.height = w, h
+
+
 def compose_workspace(content):
     """One scroll owner, one reserved rail, independent of the page's length."""
-    with VerticalScroll(id='console-workspace'):
-        yield from content
+    with ConsolePanel(id='console-panel'):
+        for edge in ('top', 'bottom', 'left', 'right'):
+            yield Static('', id='console-edge-' + edge, classes='console-edge')
+        with VerticalScroll(id='console-workspace'):
+            with Vertical(id='console-content'):
+                yield from content
     yield Footer()
 
 
@@ -175,23 +194,29 @@ Screen.console-compact { grid-columns: 17 1fr; }
 .console-compact #hub-nav { width: 17; padding: 0; }
 #laboratory-label { height: 1; color: #999999; }
 #hub-nav Button { width: 100%; height: 2; min-width: 0; padding: 0; margin: 0;
-    border: none; background: #080808; color: #cccccc; content-align: left middle; }
+    border: none; background: #080808; color: #cccccc; content-align: left middle; text-align: left; }
 #hub-nav Button.nav-child { height: 1; }
-#hub-nav Button.nav-selected { color: #ffffff; text-style: bold underline; }
+#hub-nav Button.nav-selected { color: #ffffff; text-style: bold; }
 #hub-nav Button:focus, #hub-nav Button:hover { background: #333333; color: #ffffff; }
 #nav-context { height: 2; color: #bbbbbb; }
 #hub-nav #refresh-psycolab { height: 1; margin: 0; color: #aaaaaa; }
 Screen.laboratory-console Footer { dock: none; column-span: 2; height: 1; background: #181818; color: #cccccc; }
 FooterKey > .footer-key--key { background: #303030; color: #ffffff; }
 FooterKey > .footer-key--description { background: #181818; color: #cccccc; }
-#console-workspace { width: 100%; height: 100%; border: solid #555555; padding: 0 1;
-    background: #080808; overflow-x: hidden; overflow-y: auto;
+#console-panel { width: 100%; height: 100%; layers: content frame; }
+.console-edge { layer: frame; position: absolute; background: transparent; }
+#console-edge-top, #console-edge-bottom { border-top: solid #555555; }
+#console-edge-left { border-left: solid #555555; }
+#console-edge-right { border-right: solid #555555; }
+#console-workspace { layer: content; width: 100%; height: 100%; border: none; padding: 1 0 1 2;
+    background: transparent; overflow-x: hidden; overflow-y: auto;
     scrollbar-gutter: stable; scrollbar-size: 1 1; scrollbar-background: #151515;
     scrollbar-color: #666666; scrollbar-color-hover: #999999; scrollbar-color-active: #cccccc; }
 /* Former per-page scrolling containers are now content-sized groups. Tables
    and text editors retain deliberate internal scrolling. */
 #console-workspace VerticalScroll { height: auto; width: 100%; overflow: hidden; padding: 0; border: none; }
 #console-workspace Vertical, #console-workspace ContentSwitcher { height: auto; width: 100%; }
+#console-workspace #console-content { width: 1fr; margin-right: 3; }
 #setup-columns { layout: vertical; height: auto; width: 100%; }
 #fixed-shell { dock: none; height: auto; width: 100%; padding: 0; margin: 0; }
 #console-workspace Static, #console-workspace Label { height: auto; }
