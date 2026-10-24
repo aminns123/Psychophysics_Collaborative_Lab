@@ -2,6 +2,32 @@
 from textual.widgets import DataTable
 
 
+REVIEW_TABLE_COLUMNS = (
+    ("Group", 12),
+    ("Parameter / units", 45),
+    ("Value", 28),
+    ("Source", 34),
+    ("File / saved location", 80),
+)
+
+
+def copy_review_table(source, destination):
+    """Mirror the current Review rows into a wider, temporary table view.
+
+    Values and source targets remain owned by ReviewScreen. A temporary view
+    never computes or edits a second scientific configuration.
+    """
+    coordinate = source.cursor_coordinate
+    destination.clear(columns=True)
+    for label, width in REVIEW_TABLE_COLUMNS:
+        destination.add_column(label, width=width)
+    for index in range(source.row_count):
+        destination.add_row(*source.get_row_at(index))
+    if source.row_count:
+        destination.move_cursor(row=min(coordinate.row, source.row_count - 1),
+                                column=min(coordinate.column, len(REVIEW_TABLE_COLUMNS) - 1))
+
+
 class ReviewSettingsTable(DataTable):
     async def _on_click(self, event):
         meta=event.style.meta
