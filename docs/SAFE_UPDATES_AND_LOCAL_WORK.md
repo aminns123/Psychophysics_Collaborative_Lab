@@ -10,7 +10,7 @@ This guide applies to the current source-based PsyCoLab installation. It protect
 | Experimental values/presets saved through TUI | Machine-local configuration root (outside checkout) | Not included in a normal Git pull; back up separately |
 | Local monitor/calibration measurements and history | Machine-local configuration root (outside checkout) | Not included in a normal Git pull; hardware identity/physical qualifications still must be checked |
 | Participant/synthetic run records | External data root (outside checkout) | Not included in a normal Git pull; archive/restore separately |
-| Draft Python studies not yet contributed | **Today:** a private Git branch or fork | Safest supported route; a separate external extension loader is still planned, not available |
+| Lab-owned Python experiments and stimuli | **Explicitly trusted external extensions root**, separate from the checkout | Normal framework Git pulls do not touch external files; keep independent backups and retest readiness after scientific changes |
 
 Do not edit the Python files to change a single experiment's declared *run values* when the TUI already exposes those controls. Save a named local preset. **Changing the scientific code itself** requires a source-controlled version, retesting and potentially protocol requalification.
 
@@ -75,6 +75,17 @@ For a fork, `origin` usually points to your fork and `upstream` to the official 
 5. For actual acquisition, repeat required physical display, photometry, signal-depth, and timing qualification. Real hardware tests cannot be inferred from headless CI.
 6. If unexpected behaviour occurs, preserve the old source tag/commit, test outputs and logs before troubleshooting. Revert through a reviewed branch rather than modifying historical data.
 
-## Future external extensions
+## Independent laboratory extensions (supported opt-in)
 
-The proposed sibling `PsyCoLab_Extensions/` directory is described in [the roadmap](INTERNATIONAL_LAB_ROADMAP.md). It is **not yet a runtime-supported experiment folder**. At present, maintain local scientific Python on a private branch/fork and use TUI presets for parameter changes. An eventual opt-in loader must resolve source identities and hashes properly before local scripts can be treated as normal TUI experiments.
+For lab-owned Python, use the [external extension guide](LABORATORY_EXTENSIONS.md).
+The researcher must deliberately authorise one trusted source root, separate
+from the framework, configuration and acquisition folders. PsyCoLab loads
+source into its existing registries and runner only when enabled; it never
+silently discovers or migrates scientists' code. Source fingerprints and
+software Ready are recorded independently of hardware qualification.
+
+A private branch/fork remains appropriate for editing **official** code or
+submitting a curated contribution. An external folder is not an off-machine
+backup: keep a separate copy or its own private Git repository. Preserve the
+exact experiment source associated with old run manifests and never overwrite
+laboratory files by unpacking an official source ZIP.
