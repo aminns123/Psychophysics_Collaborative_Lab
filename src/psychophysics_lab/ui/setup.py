@@ -40,8 +40,13 @@ from ..config.readiness import diagnostic_matches_profile
 
 
 def _report_ui_exception(app: App, exc: BaseException, *, phase: str) -> None:
-    """Best-effort logging for exceptions raised inside Textual message handlers."""
-    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    """Best-effort logging; a closed console must never mask the UI error.
+
+    Textual captures stderr during headless tests. On some Windows terminals
+    that captured stream raises WinError 6 when a driver/runtime exception is
+    printed. Preserve the on-screen feedback and the local diagnostic report.
+    """
+    report = None
     try:
         from ..diagnostics import write_crash_report
 
@@ -51,10 +56,18 @@ def _report_ui_exception(app: App, exc: BaseException, *, phase: str) -> None:
             data_root=getattr(app, "data_root", None),
             phase=phase,
         )
-        if report is not None:
-            print(f"PsyCoLab UI crash report saved to: {report}")
     except Exception:
         pass
+    try:
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
+    except (OSError, ValueError):
+        # Windows invalid console handle, closed stderr, or redirected stream.
+        pass
+    if report is not None:
+        try:
+            print(f"PsyCoLab UI crash report saved to: {report}")
+        except (OSError, ValueError):
+            pass
 
 
 def _field_widget_id(field: ConfigField) -> str:
