@@ -28,12 +28,14 @@ def open_source(repo_root: Path, source: Path, line: int = 1, executable: str | 
     return subprocess.Popen(editor_command(repo_root,source,line,executable),cwd=repo_root,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 
-def open_parameter_file(repo_root: Path, path: Path, config_root: Path, executable=None, *, allow_external_existing=False):
+def open_parameter_file(repo_root: Path, path: Path, config_root: Path, executable=None, *, allow_external_existing=False, line=1):
     """Open an actual local JSON file in Code or the configured text editor.
 
     These are working configuration files, outside source and participant data.
     Paths are arguments, never shell command text. No editor is embedded here.
     """
+    if isinstance(line, bool) or not isinstance(line, int) or line < 1:
+        raise ValueError("Source line must be a positive integer.")
     path, allowed = Path(path).resolve(), Path(config_root).resolve()
     if (not path.is_relative_to(allowed) and not allow_external_existing) or not path.is_file() or path.suffix.lower() != ".json":
         raise ValueError("Open an existing parameter JSON inside local configuration.")
@@ -47,6 +49,6 @@ def open_parameter_file(repo_root: Path, path: Path, config_root: Path, executab
     if not editor:
         raise FileNotFoundError(f"No external editor found. Open this file in your editor: {path}")
     is_code = Path(editor).stem.lower() in {"code", "code-insiders"}
-    command = [editor, str(Path(repo_root).resolve()), "--goto", f"{path}:1"] if is_code else [editor, str(path)]
+    command = [editor, str(Path(repo_root).resolve()), "--goto", f"{path}:{line}"] if is_code else [editor, str(path)]
     return subprocess.Popen(command, cwd=repo_root, stdin=subprocess.DEVNULL,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
