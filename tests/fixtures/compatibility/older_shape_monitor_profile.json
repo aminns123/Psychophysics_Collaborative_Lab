@@ -1,0 +1,11 @@
+{
+  "id": "compatibility_reference_example",
+  "display_name": "Synthetic old-shape monitor profile fixture",
+  "physical_width_m": 0.6,
+  "physical_height_m": 0.34,
+  "refresh_rate_hz": 60,
+  "viewing_distance_m": 1,
+  "calibration_status": "unverified",
+  "luminance_calibration": [],
+  "notes": "TEST ONLY: no physical calibration or human evidence"
+}

@@ -4,7 +4,12 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
-No changes beyond the proposed `v0.3.0` release have been recorded here.
+- **Issue #81 compatibility audit (proposed):** inventory current run, profile, photometry, preset, simulation and derived-analysis writers/readers, distinguishing known schema markers from profile and data revisions.
+- **Read-only historical-shape regressions (proposed):** exercise unversioned trial tables, older monitor metadata, legacy summary-only luminance, old workspace requests, moved archives, malformed/unknown formats and truncated journals. Fixtures are synthetic/non-identifying, not measured participant or hardware evidence.
+- **Small reader safeguard (proposed):** reject unknown newer `manifest.json` schema versions, without modifying existing acquisition records or the fixed trial schema.
+- **No scientific protocol, calibration gate, acquisition writer or saved raw-data format changes.** Actual historical laboratory archives and end-to-end international extension compatibility remain separate tasks.
+
+
 
 ## 0.3.0 — prepared pre-release (not tagged or published yet)
 
