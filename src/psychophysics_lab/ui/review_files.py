@@ -44,8 +44,8 @@ def json_value_line(path, key):
     # Generated and imported JSON can have different indentation. Match
     # the key under its data section, not a duplicate inside parameter_info.
     import re
-    section = re.compile(r'^\\s*"(?:values|parameters)"\\s*:\\s*\\{')
-    wanted = re.compile(r'^\\s*"' + re.escape(str(key)) + r'"\\s*:')
+    section = re.compile(r'^\s*"(?:values|parameters)"\s*:\s*\{')
+    wanted = re.compile(r'^\s*"' + re.escape(str(key)) + r'"\s*:')
     for index, line in enumerate(lines):
         if not section.search(line):
             continue
