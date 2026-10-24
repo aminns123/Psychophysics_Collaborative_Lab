@@ -1588,6 +1588,7 @@ class HelpScreen(HubPage):
             yield Static("START HERE", classes="section-title")
             yield Static("[b]Edit → Preview → Try → Check results[/b]\nUse Experiment to configure once, then choose Try the experiment, Simulate responses, or Collect participant data.")
             yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
+            yield Button("Analyse saved run data (Python example)", id="learn-data-reader")
             yield Static("SCIENTIFIC AUTHORING", classes="section-title")
             yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/.\nRestart after Python edits; parameter edits preview immediately.")
             yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
@@ -1606,6 +1607,12 @@ class HelpScreen(HubPage):
             self.app.push_screen(CodeViewScreen(
                 title="Learn PsyCoLab" if event.button.id == "learn-guide" else "Authoring contract",
                 path=self.app.repo_root / "docs" / path))
+            return
+        if event.button.id == "learn-data-reader":
+            event.stop()
+            self.app.push_screen(CodeViewScreen(
+                title="Analyse saved run data",
+                path=self.app.repo_root / "docs" / "ANALYSING_RUN_DATA.md"))
             return
         if event.button.id == "edit-contributions":
             event.stop()

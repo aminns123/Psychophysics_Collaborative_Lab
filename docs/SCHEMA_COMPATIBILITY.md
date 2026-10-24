@@ -47,3 +47,21 @@ A software version such as `0.2.2`, a Git commit, a monitor `revision` and a sch
 5. Update release notes for every intentional compatibility change. Do not claim all data schemas are now versioned from this documentation update.
 
 For acquisition semantics and layout, see [data layout](DATA_LAYOUT.md) and [trial dictionary](TRIAL_DATA_DICTIONARY.md).
+
+## Public read-only data access (trial schema 1)
+
+The supported analysis entrypoint is `psychophysics_lab.data.reader.load_run(path)`.
+It reads the run's actual `trials.tsv` header by **column name** into NumPy
+text arrays, preserving extra experiment-specific fields and allowing genuinely
+older runs to omit later optional fields. The saved dictionary remains the
+source for experiment-specific units and response-code meanings; no missing
+values are fabricated. The reader accepts known trial schema **1** and explicitly
+rejects unknown future numbered schemas until their scientific definitions have
+been reviewed. Unversioned archived TSVs can be inspected, but are not certified.
+
+This is **read-side tolerance**, not a change to the current acquisition writer:
+`TrialLog` and the strict `validate_run.py` currently use the exact 20-column
+trial-schema-1 format. Future appended acquisition fields require a separate
+planned schema/writer update, with correct per-run data dictionaries and old-run
+regression fixtures. Never rewrite completed canonical observations to add
+columns. See [analysing saved run data](ANALYSING_RUN_DATA.md).
