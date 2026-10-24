@@ -28,6 +28,9 @@ another researcher authoring mechanism. See [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.m
 
 Settings changed in the TUI may be saved as local presets in machine-local
 configuration, avoiding unnecessary edits to official Python defaults.
-Independent external lab-owned Python source roots are proposed but **not yet
-supported by normal acquisition**. See [safe updates](SAFE_UPDATES_AND_LOCAL_WORK.md)
-and [international roadmap](INTERNATIONAL_LAB_ROADMAP.md).
+Trusted, software-Ready external experiments use the **normal** configuration,
+Review, simulation and acquisition paths; the same physical preflight and
+researcher-override rules apply. Draft/untested extensions cannot silently
+enter human acquisition. See [external extensions](LABORATORY_EXTENSIONS.md),
+[safe updates](SAFE_UPDATES_AND_LOCAL_WORK.md) and the
+[international roadmap](INTERNATIONAL_LAB_ROADMAP.md).
