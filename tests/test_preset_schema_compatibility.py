@@ -14,9 +14,10 @@ from psychophysics_lab.config.local import (
 
 
 def _files(root: Path):
+    """Check persisted JSON bytes and mtimes; lock files are coordination only."""
     return {
         p.relative_to(root).as_posix(): (p.read_bytes(), p.stat().st_mtime_ns)
-        for p in root.rglob("*") if p.is_file()
+        for p in root.rglob("*.json") if p.is_file()
     }
 
 
