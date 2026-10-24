@@ -14,8 +14,6 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from .console import ConsoleScreen as Screen
 from textual.widgets import (
     Button,
-    Footer,
-    Header,
     Input,
     Label,
     Select,
@@ -32,7 +30,7 @@ from ..core.simulation_request import (
 )
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from ..paths import resolve_data_root
-from .setup import _nav_bar, _handle_nav, _is_blank_select_value
+from .setup import _handle_nav, _is_blank_select_value
 from simulations.controls import effective_observer_values
 from simulations.scenarios import list_scenarios
 from simulations.registry import get_simulation
@@ -54,11 +52,9 @@ class VirtualObserverOptionsScreen(Screen):
         pass  # Retired protocol branch removed.
         return values
 
-    def compose(self) -> ComposeResult:
+    def compose_content(self) -> ComposeResult:
         initial = self.scenarios[0] if self.scenarios else None
         with Vertical(id="fixed-shell"):
-            yield Header(show_clock=True)
-            yield _nav_bar()
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="virtual-back")
                 yield Button(
@@ -123,7 +119,6 @@ class VirtualObserverOptionsScreen(Screen):
                                 ),
                                 id=f"virtual-observer-{i}-{j}",
                             )
-        yield Footer()
 
     def on_mount(self) -> None:
         self._show_current()

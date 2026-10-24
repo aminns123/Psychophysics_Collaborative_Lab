@@ -2,7 +2,7 @@
 
 from .console import ConsoleScreen as Screen
 from textual.containers import VerticalScroll, Horizontal, Vertical
-from textual.widgets import Label, Input, Select, Button, Static, Header, Footer
+from textual.widgets import Label, Input, Select, Button, Static
 
 
 class StimulusValueEditor(Screen):
@@ -18,9 +18,8 @@ class StimulusValueEditor(Screen):
         except (ValueError, KeyError, TypeError):
             self.controlled, self.effective = set(), {}
 
-    def compose(self):
+    def compose_content(self):
         with Vertical(id="fixed-shell"):
-            yield Header()
             yield Label(self.panel.stimulus.display_name)
             with Horizontal(classes="buttons"):
                 yield Button("Preview", id="stimulus-values-preview")
@@ -57,7 +56,6 @@ class StimulusValueEditor(Screen):
                     yield Static(field.help_text)
             yield Label("Save as a new preset")
             yield Input(placeholder="Preset name", id="stimulus-value-name")
-        yield Footer()
 
     def values(self):
         values = {}

@@ -1,5 +1,7 @@
 # Slate Precision — Design E page refinement
 
+Historical design report. Superseded by the [fixed monochrome console](FIXED_CONSOLE.md).
+
 This is the visual follow-up to [Design B's Laboratory Control Console](laboratory_console.md). The **same permanent sidebar**, F6 navigation, existing page IDs, forms and callbacks are kept. This work changes researcher-facing spacing, contrast, grouping and content placement only.
 
 ## Visual tokens

@@ -8,7 +8,7 @@ class SourceView(Screen):
         super().__init__()
         self.path = path
 
-    def compose(self):
+    def compose_content(self):
         yield Label(str(self.path))
         yield Button("Back", id="source-close")
         yield TextArea(self.path.read_text(encoding="utf-8"), read_only=True, show_line_numbers=True)

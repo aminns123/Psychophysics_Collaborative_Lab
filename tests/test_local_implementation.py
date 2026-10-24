@@ -183,10 +183,12 @@ def test_config_draft_survives_help_and_returns_with_fixed_review_action(tmp_pat
             await pilot.click(app.screen.query_one('#configure',Button));await pilot.pause()
             assert app.screen.query_one('#field-max-trials',Input).value=='42'
             review=app.screen.query_one('#review',Button)
-            y=review.region.y
-            app.screen.query_one('#config-body').scroll_end(animate=False);await pilot.pause()
-            # At 80 columns the third action wraps onto the second fixed row.
-            assert review.region.y==y==app.screen.query_one('#console-heading').region.bottom+3
+            workspace=app.screen.query_one('#console-workspace')
+            bounds=workspace.region
+            workspace.scroll_end(animate=False);await pilot.pause()
+            review.focus();await pilot.pause(0.6)
+            assert workspace.region==bounds
+            assert bounds.contains_region(review.region)
     asyncio.run(scenario())
 
 def test_profile_editor_saves_locally_without_replacing_reference(tmp_path,monkeypatch):

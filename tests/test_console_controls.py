@@ -1,4 +1,4 @@
-"""Researcher-only coffee / forest layout checks; no renderer is opened."""
+"""Researcher-only shared control layout checks; no renderer is opened."""
 
 import asyncio
 from pathlib import Path

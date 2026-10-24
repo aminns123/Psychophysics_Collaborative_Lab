@@ -1,4 +1,4 @@
-"""Slate Precision presentation regressions; scientific execution is unchanged."""
+"""Shared content layout regressions; scientific execution is unchanged."""
 
 import asyncio
 from pathlib import Path
@@ -36,11 +36,10 @@ def test_setup_context_adapts_without_losing_editable_controls(tmp_path, monkeyp
             assert context.query_one("#monitor-summary", Static)
             assert app.screen.query_one("#configure", Button)
 
-            if size[0] >= 100:
-                assert editor.region.y == context.region.y
-                assert editor.region.right <= context.region.x
-            else:
-                assert context.region.y >= editor.region.bottom
+            assert context.region.y >= editor.region.bottom
+            assert context.region.x == editor.region.x
+            assert context.region.width == editor.region.width
+            assert editor.styles.overflow_y == context.styles.overflow_y == "hidden"
 
             participant.value = "LOCAL_DRAFT"
             await pilot.click(app.screen.query_one("#nav-data", Button))
@@ -53,7 +52,7 @@ def test_setup_context_adapts_without_losing_editable_controls(tmp_path, monkeyp
     asyncio.run(scenario())
 
 
-def test_slate_sections_keep_review_guidance_and_calibration_routes(tmp_path, monkeypatch):
+def test_sections_keep_review_guidance_and_calibration_routes(tmp_path, monkeypatch):
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "config"))
 
     async def scenario():

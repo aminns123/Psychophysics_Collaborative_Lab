@@ -33,15 +33,31 @@ def check_shell(app, section):
     assert app.get_widget_at(1, 0)[0] is header
     assert sidebar.region.width == (17 if app.size.width < 100 else 23)
     assert screen.query_one('#nav-' + section).has_class('nav-selected')
-    for widget in screen.children:
-        if not widget.display or widget.id in {'hub-nav', 'console-heading'}:
+    from textual.geometry import Region
+    w, h = app.size
+    side = 17 if w < 100 else 23
+    workspace = screen.query_one('#console-workspace')
+    assert header.region == Region(0, 0, w, 2)
+    assert sidebar.region == Region(0, 2, side, h - 3)
+    assert workspace.region == Region(side, 2, w - side, h - 3)
+    assert screen.query_one('Footer').region == Region(0, h - 1, w, 1)
+    assert workspace.scrollable_content_region == Region(side + 2, 3, w - side - 5, h - 5)
+    assert workspace.styles.scrollbar_size_vertical == 1
+    assert workspace.styles.scrollbar_gutter == 'stable'
+    # Expanding the active path must not move the major navigation rows.
+    y = 3
+    for key, _, _ in PAGES:
+        control = screen.query_one('#nav-' + key)
+        if not control.display:
             continue
-        if widget.styles.dock == 'bottom':
-            continue
-        assert widget.region.x >= sidebar.region.right
-        assert widget.region.right <= app.size.width
-        assert widget.region.height > 0 or (widget.id == "fixed-shell" and not any(child.display for child in widget.children))
-        assert widget.region.bottom <= app.size.height
+        assert control.region.y == y
+        assert control.region.height == 2
+        y += 4 if key == 'setup' else 2
+
+    if workspace.show_vertical_scrollbar:
+        assert workspace.vertical_scrollbar.region == Region(w - 3, 3, 1, h - 5)
+    for group in workspace.query('VerticalScroll'):
+        assert group.styles.overflow_y == 'hidden'
 
 
 @pytest.mark.parametrize('size', [(60, 24), (80, 24), (120, 40), (160, 55)])
@@ -83,18 +99,20 @@ def test_sidebar_preserves_default_routes_and_keyboard_focus_order(tmp_path, mon
         async with app.run_test(size=(100, 35)) as pilot:
             assert not app.screen.query_one('#nav-simulations').display
             await pilot.press('f6', 'tab')
+            assert app.focused.id == 'path-configure'
+            await pilot.press('tab')
             assert app.focused.id == 'nav-stimuli'
             await pilot.press('enter')
             await pilot.pause()
             check_shell(app, 'stimuli')
-            await pilot.press('f6', 'shift+tab', 'enter')
+            await pilot.press('f6', 'shift+tab', 'shift+tab', 'enter')
             await pilot.pause()
             check_shell(app, 'setup')
 
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize('size', [(60, 24), (120, 40)])
+@pytest.mark.parametrize('size', [(60, 24), (80, 24), (120, 40), (160, 55)])
 def test_nested_pages_keep_sidebar_back_actions_and_configuration(tmp_path, monkeypatch, size):
     monkeypatch.setenv('PSYCOLAB_CONFIG_DIR', str(tmp_path / 'config'))
 

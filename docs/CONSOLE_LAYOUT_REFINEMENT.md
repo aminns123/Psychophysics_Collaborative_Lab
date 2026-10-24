@@ -1,5 +1,7 @@
 # Console layout refinement — local verification
 
+Historical design report. Superseded by the [fixed monochrome console](FIXED_CONSOLE.md).
+
 This change refines the existing Coffee & Forest console. It does not change experiment definitions, calibration requirements, acquisition, participant rendering, simulations, or stored data.
 
 ## Problems found and changes
