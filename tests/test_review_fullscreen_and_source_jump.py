@@ -102,6 +102,15 @@ def test_fullscreen_mirrors_review_and_can_edit_from_selected_cell(tmp_path, mon
             # at the actual field (not line one).
             assert opened[-1][1]["line"] > 1
             assert table.row_count == review.query_one("#resolved-settings-table", DataTable).row_count
+            path = Path(opened[-1][0][1])
+            document = json.loads(path.read_text(encoding="utf-8"))
+            document["values"]["logUNIT_UP"] = 0.12
+            path.write_text(json.dumps(document, indent=2), encoding="utf-8")
+            expanded.query_one("#expanded-review-reload", Button).press()
+            await pilot.pause()
+            assert review.request.experiment_values["logUNIT_UP"] == 0.12
+            assert str(table.get_row_at(row)[2]) == "0.12"
+            assert str(original.get_row_at(row)[2]) == "0.12"
 
             expanded.query_one("#expanded-review-back", Button).press()
             await pilot.pause()
