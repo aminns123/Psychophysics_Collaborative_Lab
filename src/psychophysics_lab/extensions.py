@@ -172,7 +172,14 @@ def configured(repo_root=None, data_root=None):
 
 def configure(repo_root, root=None, *, trusted=False, data_root=None):
     if root is None:
-        save_preferences(config_root(Path(repo_root)), extensions={"enabled": False})
+        # Disabling stops code execution but keeps the researcher's chosen
+        # location visible for a future deliberate re-enable.
+        local = config_root(Path(repo_root))
+        old = preferences(local).get("extensions", {})
+        setting = {"enabled": False}
+        if isinstance(old, dict) and isinstance(old.get("root"), str):
+            setting["root"] = old["root"]
+        save_preferences(local, extensions=setting)
     else:
         if not trusted:
             raise ValueError("Explicitly trust this Python code: extensions can execute with your machine permissions; this is not a sandbox.")
