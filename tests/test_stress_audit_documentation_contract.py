@@ -30,3 +30,13 @@ def test_saved_csf_boundary_description_agrees_with_saturating_step_logic():
     assert "saturates" in exclusions
     assert "renderer" in exclusions and "rejected" in exclusions
     assert "without clipping" not in exclusions
+
+
+def test_simulation_documented_scenario_listing_is_runnable(capsys):
+    from simulations.__main__ import main, build_parser
+    assert main(["--list-scenarios", "--experiment", "all"]) == 0
+    help_text = build_parser().format_help().lower()
+    assert "threshold probability" in help_text
+    assert "midpoint" not in help_text
+    assert "csf_baseline" not in help_text
+    assert "csf_short_censored" not in help_text
