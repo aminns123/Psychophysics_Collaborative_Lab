@@ -77,7 +77,13 @@ def test_review_table_and_page_scrollbar_have_distinct_rails(tmp_path, monkeypat
                 "adaptive_rule / max_trials",
             ):
                 assert ("Run plan", key) not in resolved
-            assert ("Run plan", "threshold_rule") in resolved
+            # This is a post-acquisition estimator for human and synthetic
+            # responses, not the removed "threshold_rule" planning key.
+            from psychophysics_lab.experiments.line_position_baseline import primary_rule, make_conditions
+            expected = primary_rule(values, make_conditions(values))
+            assert resolved[("Threshold estimation", "Within-staircase method")] == expected["within_staircase"]
+            assert resolved[("Threshold estimation", "Across-staircase method")] == expected["across_staircases"]
+            assert resolved[("Threshold estimation", "Retained reversals")] == str(values["threshold_reversals"])
 
             editable = {label: value for group, label, value, *_ in rows
                         if group == "Adaptive"}
