@@ -20,21 +20,20 @@ The normal workflow requires **one shared stimulus file** and **one Python
 experiment per task**. It does not generate new stimulus modules. All
 framework internals are for engine maintenance, not researcher editing.
 
-## Working reference CSF boundary
+## Current public CSF path and historical reference boundary
 
-The CSF uses the same public registered experiment and calibration gateway.
-Its shader is defined by `CSFGrating` in the shared stimulus library.
-For actual human presentation it still enters an **internal** reference
-driver at `src/psychophysics_lab/_reference_csf/` rather than the generic
-NumPy Scene / `TrialTimeline` presenter. This is a *technical compatibility
-boundary*, not a competing authoring design. It exists because physical
-shader, temporal, response and adaptive equivalence remain incomplete.
+The current `contrast_sensitivity.py` experiment owns its chronological Python
+`TrialTimeline`, response interpretation and staircase update. It uses
+`CSFGrating` from the shared stimulus library and the **normal shared
+RunContext/runner** for synthetic and physical presentation. The retired
+`_reference_csf` shader/driver and `libC.py`/`packages.zip` are **not tracked
+runtime components** on this revision of `main`; do not install them or assume
+they are a second active scientific implementation.
 
-All former root folders `Events/`, `Experiments/`, `Functions/`,
-`Interface/` and `libC.py` have been removed from current source paths;
-the same trusted CSF routines are now bundled within the package. Work to
-remove the internal reference driver must satisfy the quantitative
-comparison checklist in [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md).
+Historical comparisons and migration notes are retained as dated evidence
+in [CSF action migration](CSF_ACTION_MIGRATION.md), not as present-day installation
+requirements. Physical display output, photometry and photon timing remain
+subject to independent apparatus qualification.
 
 ## Framework-only locations
 
@@ -46,7 +45,6 @@ comparison checklist in [CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md).
 | `src/psychophysics_lab/adaptive/` | Reusable staircase/state algorithms |
 | `src/psychophysics_lab/stimuli/` | Registry and geometry, NOT individual drawing modules |
 | `src/psychophysics_lab/ui/` | Researcher interface/inspection |
-| `src/psychophysics_lab/_reference_csf/` | Internal, still-active physical CSF reference implementation |
 | `simulations/` | Synthetic observers/scenarios and test visualisations |
 | `tests/`, `scripts/`, `docs/audit_evidence/` | Verification and preserved evidence |
 
@@ -61,12 +59,16 @@ gate. No companion JSON or authoring-list edit is required for a new definition.
 See [the authoring contract](AUTHORING_CONTRACT.md#scientific-decisions-retained-internally)
 for every shared-mechanism justification and the documented reference-CSF exception.
 
-## International ownership boundary (planned)
+## Independent laboratory ownership — implemented, opt-in
 
-The core and public experiment layers above are implemented. Machine-local
-presets, monitor calibration and external acquisition records already live
-outside the source checkout. A *third* layer for independently loadable
-`PsyCoLab_Extensions/` Python studies is a reviewed future change: current
-experiment discovery and registered source hashing assume repository-relative
-code. See [the international roadmap](INTERNATIONAL_LAB_ROADMAP.md) before
-changing discovery or experiment source-path semantics.
+The public science remains in one official `stimulus_library.py` and one Python
+file per experiment. Laboratories may separately maintain an explicitly trusted
+`PsyCoLab_Extensions/` source folder outside the checkout, calibration and
+data directories. The loader checks namespace identities, trusted-root
+containment, source fingerprints, Draft/Test/Ready state and portable run
+provenance; it does not introduce a second renderer or experiment language.
+
+See [laboratory extensions](LABORATORY_EXTENSIONS.md) and
+[Windows acceptance](ISSUE80_VALIDATION.md). The ability to load independently
+owned code is implemented and tested; software Ready and extension trust are
+**not** physical display/protocol qualification.
