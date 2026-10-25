@@ -123,7 +123,11 @@ def calibration_progress(profile, root: Path):
         'state': 'evidence_saved' if precision else 'not_checked',
         'message': 'Output format evidence saved; physical increments need explicit measurement review.' if precision else
                    'Output precision not checked. Reported depth is separate from measured distinguishable increments.',
-        'reports': [str(precision_path)] if precision_path else []}
+        # Geometry/spatial/timing evidence uses config-root-relative paths.
+        # Precision sessions must follow the same portable reference convention:
+        # an absolute local path would leak into each run's manifest and fail
+        # canonical metadata validation on a machine with saved precision data.
+        'reports': [precision_path.relative_to(root).as_posix()] if precision_path else []}
     setup_completed = all(result[key]["completed"] for key in ("bind", "geometry", "spatial", "luminance", "timing"))
     ready = setup_completed
     result["review"] = {"ready": ready, "completed": ready, "verified": False,
