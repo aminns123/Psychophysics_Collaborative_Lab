@@ -190,7 +190,12 @@ def test_calibration_researcher_workflow_persistence_and_revision_policy(tmp_pat
     assert calibration_progress(p,root)['geometry']['ready']
     spec=get_experiment('contrast_sensitivity')
     request=SetupRequest('test_subject','new',spec.id,p.id,spec.field_defaults())
-    with pytest.raises(ValueError,match='qualified'): validate_setup(request,spec,p,mode='human')
+    with pytest.raises(ValueError, match='Human acquisition blocked:') as blocked:
+        validate_setup(request, spec, p, mode='human')
+    # Maintain all independent science/photometry/timing gates rather than
+    # matching retired wording from an older qualification prompt.
+    reason = str(blocked.value).lower()
+    assert 'protocol' in reason and 'photometry' in reason and 'timing' in reason
     # Headless validation requires no instrument verification.
     validate_setup(request,spec,p,mode='simulation')
     readiness=profile_readiness(spec,p,repo_root=ROOT)
