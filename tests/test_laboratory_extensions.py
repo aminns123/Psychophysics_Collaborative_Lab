@@ -1,7 +1,8 @@
-"""Independent source integration, using only disposable Windows directories."""
+"""Independent source integration, using only disposable directories."""
 import asyncio
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path
 import pytest
@@ -110,9 +111,13 @@ def test_source_containment(lab,bad):
     with pytest.raises(ValueError): ext.source_at(lab,bad)
 
 
-def test_reject_nested_root_and_junction(lab,tmp_path):
+def test_reject_nested_root():
     with pytest.raises(ValueError,match='separate'):
         ext.validate_root(ROOT/'examples/laboratory_extensions',ROOT)
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows junctions require cmd /c mklink /J')
+def test_reject_windows_junction(lab,tmp_path):
     target=tmp_path/'other';target.mkdir()
     import subprocess
     link=lab/'experiments'/'linked'
@@ -124,6 +129,26 @@ def test_reject_nested_root_and_junction(lab,tmp_path):
         assert get_experiment('example_experiment')
     finally:
         link.rmdir()
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='Native POSIX symlink containment')
+def test_reject_posix_symlink(lab,tmp_path):
+    target=tmp_path/'other';target.mkdir()
+    outside=target/'outside.py'
+    original=b'raise AssertionError("External symlink source must not execute")\n'
+    outside.write_bytes(original)
+    link=lab/'experiments'/'linked'
+    link.symlink_to(target,target_is_directory=True)
+    try:
+        with pytest.raises(ValueError,match='Symlink/junction'):
+            ext.source_at(lab,'experiments/linked/outside.py')
+        ext.configure(ROOT,lab,trusted=True)
+        errors=ext.load(ROOT)
+        assert 'Symlink/junction' in errors['root']
+        assert get_experiment('example_experiment')
+        assert outside.read_bytes()==original
+    finally:
+        link.unlink()
 
 
 @pytest.mark.parametrize('replacement',[
