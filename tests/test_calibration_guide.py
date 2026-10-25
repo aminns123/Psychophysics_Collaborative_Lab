@@ -189,3 +189,37 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
             assert float(config.query_one("#field-starting-contrast",Input).value)==pytest.approx(.1)
             assert float(config.query_one("#field-background-intensity",Input).value)==pytest.approx(.25)
     asyncio.run(scenario())
+
+
+def test_contrast_guidance_from_standalone_review_opens_editor(tmp_path, monkeypatch):
+    """The selected science survives even when no config screen is beneath Review."""
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(tmp_path / "machine"))
+    profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
+    values = CSF_SPEC.normalise_values(CSF_SPEC.field_defaults() | {
+        "background_intensity": .25,
+        "starting_contrast": .1,
+        "frequencies_cpd": "2,4,8",
+    })
+    request = SetupRequest("P001", "new", CSF_SPEC.id, profile.id, values,
+                           str(tmp_path / "data"))
+
+    async def scenario():
+        app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT,
+                               data_root=tmp_path / "data")
+        async with app.run_test(size=(110, 34)) as pilot:
+            app.push_screen(ReviewScreen(request=request))
+            await pilot.pause()
+            app.screen.query_one("#review-calibration-guide", Button).press()
+            await pilot.pause()
+            guide = app.screen
+            guide.stage_index = next(i for i, item in enumerate(GUIDE_STEPS)
+                                     if item[0] == "contrast")
+            guide._render_stage()
+            guide.query_one("#guide-open", Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen, ExperimentConfigScreen)
+            assert app.screen.query_one("#field-frequencies-cpd", Input).value == "2,4,8"
+            assert float(app.screen.query_one("#field-background-intensity", Input).value) == pytest.approx(.25)
+            assert float(app.screen.query_one("#field-starting-contrast", Input).value) == pytest.approx(.1)
+
+    asyncio.run(scenario())
