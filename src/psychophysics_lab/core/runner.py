@@ -603,12 +603,24 @@ def run_request(
         # finalisation subsequently fails (for example display cleanup).
         primary_path = run_dir / "primary_thresholds.json"
         if payload["status"] == "error" and primary_path.exists():
-            from ..analysis.primary import from_run
-            resolved_path = run_dir / "resolved_experiment.json"
-            resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
-            result = from_run(run_dir, resolved["primary_estimator"], resolved["expected_staircases"], "error")
-            atomic_write_json(primary_path, result)
-            atomic_write_json(resolved_path, resolved | result)
+            # A failure while invalidating a derived threshold must not prevent
+            # the final error manifest, count and run index from being written.
+            # Preserve the original acquisition exception and mark any older
+            # primary file as unreliable if this secondary operation fails.
+            try:
+                from ..analysis.primary import from_run
+                resolved_path = run_dir / "resolved_experiment.json"
+                resolved = json.loads(resolved_path.read_text(encoding="utf-8"))
+                result = from_run(run_dir, resolved["primary_estimator"], resolved["expected_staircases"], "error")
+                atomic_write_json(primary_path, result)
+                atomic_write_json(resolved_path, resolved | result)
+            except Exception as exc:
+                payload["primary_result_invalid"] = True
+                payload.setdefault("finalisation_errors", []).append(
+                    {"operation": "invalidate primary result after error", "error": repr(exc)}
+                )
+                if primary_error is not None:
+                    primary_error.add_note(f"Primary-result invalidation also failed: {exc!r}")
         if trial_log_file.exists():
             convenience("readable_trials", lambda: write_readable_trial_table(trial_log_file, run_dir / READABLE_TRIALS_FILENAME))
         convenience("output_sha256", lambda: payload.update(output_sha256=_run_artifact_fingerprints(run_dir)))
