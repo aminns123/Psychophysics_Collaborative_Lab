@@ -12,14 +12,17 @@ The public experiment source is one Python file per task, in `src/psychophysics_
 
 ## Where to begin
 
-Read, in order: [short learning guide](LEARN_PSYCOLAB.md), [architecture](ARCHITECTURE.md), [authoring contract](AUTHORING_CONTRACT.md) and [experiment file guide](../src/psychophysics_lab/experiments/README.md).
+Read, in order: [short learning guide](LEARN_PSYCOLAB.md),
+[psychophysical paradigms and terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md),
+[architecture](ARCHITECTURE.md), [authoring contract](AUTHORING_CONTRACT.md)
+and [experiment file guide](../src/psychophysics_lab/experiments/README.md).
 
 Start from a known correct **example**, not an assumed formula. The code itself remains editable in an ordinary Python editor; the TUI is the hub for selecting, configuring, inspecting, calibrating and testing. New `SPEC`-declaring experiment files in the supported public directory are discovered automatically; manual calls to the internal registry are not normally required. Saved-design compatibility, managed Draft/Test/Ready status and legacy names have additional constraints.
 
 ## Submitting an experiment/stimulus PR
 
 1. Fork the repository, or obtain collaborator write access, and make a dedicated branch. Do not edit `main` directly.
-2. Write the study definition and stable unique ID. Document visual-angle units, digital contrast versus measured luminance, randomisation and timing, correct response/alternatives, adaptive method (if any), and a meaningful primary estimate.
+2. Write the study definition and stable unique ID. Document the number of stimulus intervals and spatial alternatives separately from the number of response keys; visual-angle units, digital contrast versus measured luminance, randomisation and timing, correct response/alternatives, adaptive method (if any), and the declared primary estimate. Avoid `2AFTC`; describe genuine first/second temporal tasks as 2IFC.
 3. For new stimuli, inspect more than a single nominal preview: check low/high values, backgrounds, cropping, both response alternatives, sampling and invalid inputs. Preserve digital precision and actual output requirements.
 4. For experiments, verify that `ConfigField` defaults/ranges/units match the code, that each selected value influences real trial presentation and saved metadata, and that no implicit scientific constant overrides the selected setting.
 5. Test a representative simulation when supported. `--dev-preview STIMULUS_ID` previews drawing; `--dev-stage experiment ID`, `--dev-test ID` and `--dev-ready experiment ID` govern declared Draft/Test/Ready stages. Some hardware-dependent results remain unqualified even when tests pass.
