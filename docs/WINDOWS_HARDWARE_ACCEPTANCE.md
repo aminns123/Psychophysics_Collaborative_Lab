@@ -1,5 +1,17 @@
 # Windows laboratory acceptance — profile revision and protocol specific
 
+> **Current-status warning (25 October 2026):** This document contains
+> dated October 14 apparatus examples and historical software/driver findings;
+> they are **not** newly measured or guaranteed to match another Windows
+> laboratory. Its 59 Hz, 1536×960 and legacy Pyglet/shader examples must not
+> be copied into a new monitor profile without measurement. For today's
+> acceptance status, consult the
+> [living Windows release/experiment checklist](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md).
+> A complete current Windows regression run passed **1505 tests** on 25 October,
+> but neither that result nor any archived CI claim establishes real photon
+> timing, luminance or protocol qualification. Follow the physical measurement
+> procedures below with **your own current hardware and saved evidence**.
+
 For the **14 October 2026 spatial-observation and fullscreen-return changes**, first follow the focused [interrupted-Work acceptance checklist](INTERRUPTED_SPATIAL_WORK_FOLLOWUP_2026-10-14.md). It covers the new requirement to record a researcher assessment after fullscreen presentation, preserving Calibrate navigation and selecting saved luminance pairs. Both Windows/Linux CI suites pass, but these manual monitor checks remain outstanding.
 
 This procedure separates software checks, ruler geometry, spatial frequency, photometry and physical timing. Record the actual result for each step. A saved/qualified flag is a laboratory declaration; software cannot supply missing measurement evidence.
