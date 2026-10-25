@@ -292,6 +292,14 @@ def create_run_figures(*, data_root: Path, run_directory: Path):
         report["errors"].append(f"Automatic analysis: {exc!r}")
     if report["errors"]:
         report["status"] = "partial" if report["plots"] else "error"
+    # Partial acquisition may contain scientifically eligible completed
+    # staircases and therefore usable *derived* figures. Their availability
+    # must not make an aborted/failed human run appear fully successful.
+    # Preserve the original manifest status and all estimates/plots as saved;
+    # this adjusts only the derived analysis_status.json summary category.
+    if (manifest.get("status") in {"aborted_by_user", "error"}
+            and report["status"] == "available"):
+        report["status"] = "partial"
     try:
         output.mkdir(exist_ok=True)
         atomic_write_json(output / "analysis_status.json", report)
