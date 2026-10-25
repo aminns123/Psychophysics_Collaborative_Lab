@@ -293,10 +293,33 @@ class CalibrationGuideScreen(ModalScreen[None]):
         key, _ = GUIDE_STEPS[self.stage_index]
         profile_id = self.request.monitor_profile_id
         self.app.pop_screen()
-        from .setup import ReviewScreen, DisplayCheckScreen
+        from .setup import ReviewScreen, DisplayCheckScreen, ExperimentConfigScreen
         if isinstance(self.app.screen, ReviewScreen):
             review=self.app.screen
-            mapped={"display":"binding","contrast":"contrast","qualification":"qualification"}.get(key,key)
+            if key == "contrast":
+                # This step edits the experiment, not the display. The generic
+                # "setup" readiness fallback below would otherwise open the
+                # Calibrate display screen and conceal the existing draft.
+                self.app.config_drafts[(
+                    self.request.participant_id, self.request.experiment_id,
+                    self.request.monitor_profile_id
+                )] = dict(self.request.experiment_values)
+                if (len(self.app.screen_stack) >= 2
+                        and isinstance(self.app.screen_stack[-2], ExperimentConfigScreen)):
+                    self.app.pop_screen()
+                else:
+                    from pathlib import Path
+                    self.app.push_screen(ExperimentConfigScreen(
+                        data_root=Path(self.request.data_root or self.app.data_root),
+                        participant_id=self.request.participant_id,
+                        session_mode=self.request.session_mode,
+                        experiment=get_experiment(self.request.experiment_id),
+                        monitor_profile_id=profile_id,
+                        defaults=self.request.experiment_values,
+                        review_return=review,
+                    ))
+                return
+            mapped={"display":"binding","qualification":"qualification"}.get(key,key)
             if any(row['key']==mapped and row.get('action') for row in review.readiness_report['requirements']):
                 review.resolve_requirement(mapped)
                 return
@@ -307,11 +330,8 @@ class CalibrationGuideScreen(ModalScreen[None]):
             save_preferences(self.app.local_config_root,calibration_active_stage={'display':'bind'}.get(key,key))
             return
         if key == "contrast":
-            # Review is normally above ExperimentConfigScreen. Return to
-            # editable contrast/adaptive controls with draft values intact.
-            from .setup import ReviewScreen, ExperimentConfigScreen
-            if isinstance(self.app.screen, ReviewScreen):
-                self.app.pop_screen()
+            # A guide opened independently of Review should still land on
+            # setup, but never turn an experiment-edit request into Calibrate.
             if not isinstance(self.app.screen, ExperimentConfigScreen):
                 self.app.open_hub_page("setup")
             return
