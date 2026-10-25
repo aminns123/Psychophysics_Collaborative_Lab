@@ -215,3 +215,16 @@ def test_old_manifest_without_extension_field_remains_readable(tmp_path):
     before = _files(run)
     assert load_run(run)["manifest"]["experiment_id"] == "demolab__left_right"
     assert _files(run) == before
+
+
+@pytest.mark.parametrize("field", ["schema_version", "trial_schema_version"])
+def test_explicit_null_run_schema_marker_is_not_legacy_missing(tmp_path, field):
+    run = _archive(tmp_path, _v1_provenance())
+    path = run / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest[field] = None
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    before = _files(run)
+    with pytest.raises(ValueError, match="Unsupported .*schema_version"):
+        load_run(run)
+    assert _files(run) == before
