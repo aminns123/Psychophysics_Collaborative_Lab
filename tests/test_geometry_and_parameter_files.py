@@ -66,8 +66,20 @@ def test_each_axis_and_frequency_use_real_pixel_pitch_and_distance():
     stimulus = get_stimulus('contrast_sensitivity_grating')
     params = document_for(stimulus)['parameters'] | {'spatial_frequency_cpd':3.,'contrast':.2}
     image = render_values(stimulus,params,pixels=pixels,coordinates=(x,y))
-    expected = .5+.1*np.exp(-(x*x+y*y)/2)*np.sin(2*np.pi*3*x)
+    # This stimulus deliberately has a *compact, C1-tapered* Gaussian
+    # envelope, not the old infinite-support Gaussian used by this test.
+    # Independently calculate the carrier from the physical degree grid and
+    # check the smooth fade against the documented sigma/cutoff parameters.
+    radius_sigmas = np.hypot(x, y) / params["sigma_deg"]
+    gaussian = np.exp(-.5 * radius_sigmas**2)
+    progress = np.clip(radius_sigmas - (params["cutoff_sigmas"] - 1.), 0., 1.)
+    taper = .5 * (1. + np.cos(np.pi * progress))
+    envelope = np.where(radius_sigmas >= params["cutoff_sigmas"], 0., gaussian * taper)
+    expected = (params["background"] +
+                params["contrast"] * envelope *
+                np.sin(2 * np.pi * params["spatial_frequency_cpd"] * x) / 2)
     np.testing.assert_allclose(image, expected, rtol=0, atol=1e-15)
+    assert np.all(image[radius_sigmas >= params["cutoff_sigmas"]] == params["background"])
     # Uniform texture degrees are detectably different at eccentricity.
     assert not np.allclose(np.diff(x[0]),np.diff(x[0])[0],rtol=1e-5,atol=0)
 
