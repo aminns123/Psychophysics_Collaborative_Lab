@@ -260,3 +260,46 @@ def test_step_accuracy_metadata_uses_a_stable_ratio_for_large_finite_steps(ident
     assert run.resolution['asymptotic_accuracy_target']==pytest.approx(.5**.25)
     from simulations.recovery import operating_point
     assert operating_point(4,1,1e308,1e308)==pytest.approx(.5**.25)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -float("inf"), 0.0, -0.1, True, "0.3"])
+@pytest.mark.parametrize("step_name", ["log_up", "log_down"])
+def test_recovery_operating_point_rejects_invalid_step_values(step_name, bad):
+    from simulations.recovery import operating_point
+    settings = {"n_down": 4, "n_up": 1, "log_up": .36, "log_down": .30294}
+    settings[step_name] = bad
+    with pytest.raises(ValueError, match="finite positive"):
+        operating_point(**settings)
+
+
+@pytest.mark.parametrize("n_down,n_up", [(True,1), (2,True), (2,1.0), (2,2), (0,1), (2.5,1)])
+def test_recovery_operating_point_requires_integer_n_down_one_up(n_down, n_up):
+    from simulations.recovery import operating_point
+    with pytest.raises(ValueError):
+        operating_point(n_down,n_up,.36,.30294)
+
+
+@pytest.mark.parametrize("invalid", [
+    {"seeds": True}, {"seeds": 2.5}, {"seeds": 1},
+    {"reversal_limit": 0}, {"reversal_limit": float("inf")},
+    {"retained": 0}, {"retained": 11}, {"retained": True},
+    {"repeats": 0}, {"repeats": 1.5},
+    {"ceiling": 0}, {"ceiling": float("nan")},
+    {"threshold": float("nan")}, {"threshold": float("inf")},
+    {"lapse": float("nan")}, {"lapse": 1.0},
+    {"maximum": float("inf")}, {"maximum": 0.0},
+])
+def test_recovery_rejects_invalid_settings_before_running_any_seed(invalid):
+    from simulations.recovery import recover
+    with pytest.raises(ValueError):
+        recover(**invalid)
+
+
+def test_recovery_operating_point_unchanged_for_normal_and_large_finite_steps():
+    from simulations.recovery import operating_point
+    import math
+    usual = operating_point(4,1,.36,.30294)
+    expected = (.36 / (.36 + .30294)) ** .25
+    assert usual == pytest.approx(expected)
+    assert operating_point(4,1,1e308,1e308) == pytest.approx(.5 ** .25)
+    assert math.isfinite(usual)
