@@ -105,30 +105,60 @@ def test_legacy_timeline_json_beep_is_explicit(tmp_path):
 
 
 def test_new_single_file_class_is_discoverable_and_needs_no_json(monkeypatch):
+    """Discovery is intentionally limited to classes authored in the library.
+
+    The old test declared MyNewLine inside this test module and expected it
+    to be discovered as though it were defined in stimulus_library.py.
+    Model an actual module-local class while leaving all production source
+    and stimulus registries unchanged after this test.
+    """
     from dataclasses import replace
-    from psychophysics_lab.stimulus_library import LibraryStimulus, library_stimulus_specs
+    import psychophysics_lab.stimulus_library as library
     from psychophysics_lab.experiments._internal.spec import ConfigField
     from psychophysics_lab.stimuli import registry as stimuli
     from psychophysics_lab.stimuli.registry import StimulusSpec
     from psychophysics_lab.experiments._internal.registry import get_experiment
     from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
 
-    class MyNewLine(LibraryStimulus):
-        PARAMETERS = (ConfigField("size_deg", "Patch diameter", "float",
-                                  1.0, minimum=0.1),)
-
-        @staticmethod
-        def render(parameters, x_deg, y_deg):
-            return np.full_like(x_deg, .5, dtype=float)
-
+    # A subclass declared in some other module must *not* become an official
+    # stimulus just because that module imported LibraryStimulus.
+    class ForeignLine(library.LibraryStimulus):
         SPEC = StimulusSpec(
-            "one_file_test_line", "My one-file line", "Test-only renderer",
-            "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
-            family="simple_line", render=render.__func__, default_config="",
-            calibration_requirements=("geometry",),
+            "foreign_test_line", "Foreign test line", "Not an official source",
+            "src/psychophysics_lab/stimulus_library.py",
         )
+    assert ForeignLine.SPEC not in library.library_stimulus_specs()
 
-    assert MyNewLine.SPEC in library_stimulus_specs()
+    # Model adding exactly one class directly to stimulus_library.py, where
+    # researchers actually author their shared official stimuli. Its __module__
+    # is assigned by Python from the definition namespace, not patched later.
+    namespace = {
+        "__name__": library.__name__,
+        "LibraryStimulus": library.LibraryStimulus,
+        "ConfigField": ConfigField,
+        "StimulusSpec": StimulusSpec,
+        "np": np,
+    }
+    exec("""
+class MyNewLine(LibraryStimulus):
+    PARAMETERS = (ConfigField("size_deg", "Patch diameter", "float",
+                              1.0, minimum=0.1),)
+
+    @staticmethod
+    def render(parameters, x_deg, y_deg):
+        return np.full_like(x_deg, .5, dtype=float)
+
+    SPEC = StimulusSpec(
+        "one_file_test_line", "My one-file line", "Test-only renderer",
+        "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
+        family="simple_line", render=render.__func__, default_config="",
+        calibration_requirements=("geometry",),
+    )
+""", namespace)
+    MyNewLine = namespace["MyNewLine"]
+    assert MyNewLine.__module__ == library.__name__
+    assert MyNewLine.SPEC in library.library_stimulus_specs()
+
     monkeypatch.setitem(stimuli._REGISTRY, MyNewLine.SPEC.id, MyNewLine.SPEC)
     experiment = replace(get_experiment("example_experiment"),
                          stimulus_defaults={"target": MyNewLine.SPEC.id})
