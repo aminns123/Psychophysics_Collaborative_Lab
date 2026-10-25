@@ -2,8 +2,8 @@
 
 Examples:
     python -m simulations --list-scenarios
-    python -m simulations --scenario csf_baseline
-    python -m simulations --scenario csf_short_censored
+    # Use --experiment ID --scenario NAME only for scenarios printed above.
+    # The retired csf_baseline / csf_short_censored names are not registered.
     python -m simulations --thresholds .05,.1,.2 --seeds 1,2,3
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ def main(argv=None) -> int:
     parser.add_argument("--scenario", help="Run a named, experiment-specific scenario through the full pipeline")
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--seeds", help="Comma-separated seeds for direct CSF sweeps")
-    parser.add_argument("--thresholds", default="0.1", help="CSF midpoint contrasts, comma-separated")
+    parser.add_argument("--thresholds", default="0.1", help="CSF virtual-observer threshold strengths at its declared threshold probability, comma-separated")
     parser.add_argument("--slope", type=float, default=3.)
     parser.add_argument("--lapse", type=float, default=0.02)
     parser.add_argument("--max-trials", type=int, default=400)
@@ -76,7 +76,7 @@ def main(argv=None) -> int:
                 observer=PsychometricObserver(threshold=threshold, slope=args.slope, lapse=args.lapse),
                 values={"max_trials": args.max_trials},
             )
-            print(f"SYNTHETIC seed={seed} midpoint={threshold}: "
+            print(f"SYNTHETIC seed={seed} observer_threshold={threshold} (P(correct)={PsychometricObserver().threshold_probability}): "
                   f"{artifacts.status}; {artifacts.accepted_trials} responses")
             print(artifacts.run_directory)
             print(analysis.summary_json if analysis else "No reversal estimate available.")
