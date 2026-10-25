@@ -151,6 +151,9 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
         elif group in {"Intensity","Contrast","Adaptive scale"}:
             path=Path(__file__).with_name("settings_review.py")
             targets.append(python(path,function="probe_intensity_rows",note="Derived display value; this function calculates it from the experiment settings above"))
+        elif group=="Threshold estimation":
+            targets.append(python(function="primary_rule",
+                                  note="Thresholds are estimated from recorded responses; this is the experiment's declared analysis rule"))
         elif group=="Run plan":
             targets.append(python(function="initialise_experiment",note="Resolved from the experiment planning code and selected settings"))
         elif group=="Adaptive":
