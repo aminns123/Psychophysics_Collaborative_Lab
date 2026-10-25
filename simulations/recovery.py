@@ -5,6 +5,7 @@ cycle: p**n * down = (1-p**n)*up. Other n-up settings require separate validatio
 Intervals below describe the distribution of repeated estimates, not human CIs.
 """
 
+import math
 import random
 from statistics import median
 import numpy as np
@@ -13,9 +14,14 @@ from .psychometric import PsychometricObserver
 
 
 def operating_point(n_down, n_up, log_up, log_down):
-    if type(n_down) is not int or n_down < 1 or n_up != 1 or min(log_up, log_down) <= 0:
+    if (
+        type(n_down) is not int or n_down < 1
+        or type(n_up) is not int or n_up != 1
+        or any(type(step) not in (int, float) or not math.isfinite(step) or step <= 0
+               for step in (log_up, log_down))
+    ):
         raise ValueError(
-            "Recovery operating point currently supports positive fixed steps, n-down/one-up only."
+            "Recovery operating point requires finite positive numeric steps and n-down/one-up counts."
         )
     scale = max(log_up, log_down)
     up, down = log_up / scale, log_down / scale
@@ -38,14 +44,16 @@ def recover(
     maximum=1.0,
     estimator="median",
 ):
+    counts = (seeds, reversal_limit, retained, repeats, ceiling)
     if (
-        seeds < 2
-        or retained < 1
-        or retained > reversal_limit
-        or repeats < 1
-        or maximum <= 0
+        any(type(count) is not int for count in counts)
+        or seeds < 2 or reversal_limit < 1 or retained < 1
+        or retained > reversal_limit or repeats < 1 or ceiling < 1
+        or any(type(value) not in (float, int) or not math.isfinite(value)
+               for value in (threshold, lapse, maximum))
+        or threshold <= 0 or not 0 <= lapse < 1 or maximum <= 0
     ):
-        raise ValueError("Invalid recovery replication/retention/gamut.")
+        raise ValueError("Invalid finite recovery replication, retention, observer or gamut settings.")
     from psychophysics_lab.experiments.contrast_sensitivity import change_contrast
     from psychophysics_lab.analysis.primary import estimate
 
