@@ -11,8 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize('identity', ['contrast_sensitivity', 'line_position_baseline', 'ellipse_centre'])
 def test_review_adaptive_settings_and_resolved_rules_follow_selected_values(identity):
     spec = get_experiment(identity)
+    # Preserve the required study-specific selections and the scientific
+    # constraint that retained reversals cannot exceed those collected.
+    # These are synthetic review-only selections, not human-run defaults.
     values = spec.normalise_values({'n_down': 3, 'n_up': 2, 'logUNIT_UP': .21,
-        'logUNIT_DW': .07, 'reversal_termination': 6, 'initial_one_down_limit': 2})
+        'logUNIT_DW': .07, 'reversal_termination': 6, 'threshold_reversals': 4,
+        'initial_one_down_limit': 2, 'probe_vertical_offset_deg': .2,
+        'positions_deg': '0', 'ring_increment': .1})
     snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
     description = describe_settings(spec, values, snapshots)
     rows = review_rows(spec, values, snapshots, description)
@@ -38,15 +43,20 @@ def test_review_adaptive_settings_and_resolved_rules_follow_selected_values(iden
                    for group, label, *_ in rows)
     assert not any(group == 'Adaptive scale' and label == 'Response rule'
                    for group, label, *_ in rows)
-    assert any(group == 'Run plan' and 'threshold' in label for group, label, *_ in rows)
+    estimator = description['resolution']['primary_estimator']
+    threshold_rows = {(group, label): value for group, label, value, _ in rows}
+    assert threshold_rows[('Threshold estimation', 'Within-staircase method')] == estimator['within_staircase']
+    assert threshold_rows[('Threshold estimation', 'Across-staircase method')] == estimator['across_staircases']
+    assert threshold_rows[('Threshold estimation', 'Retained reversals')] == str(values['threshold_reversals'])
     targets = targets_for_rows(spec, snapshots, description, rows,
                               {'experiment': None, 'stimuli': {}}, ROOT)
     step_row = next(i for i, row in enumerate(rows) if row[:2] == ('Adaptive', fields['logUNIT_UP'].display_label))
     assert targets[step_row]['kind'] == 'experiment_json'
     assert targets[step_row]['key'] == 'logUNIT_UP'
-    resolved_row = next(i for i, row in enumerate(rows) if row[:2] == ('Run plan', 'threshold_rule'))
+    resolved_row = next(i for i, row in enumerate(rows)
+                        if row[:2] == ('Threshold estimation', 'Within-staircase method'))
     assert targets[resolved_row]['kind'] == 'python'
-    assert 'initialise_experiment' in targets[resolved_row]['path'].read_text(encoding='utf-8').splitlines()[targets[resolved_row]['line']-1]
+    assert 'def primary_rule' in targets[resolved_row]['path'].read_text(encoding='utf-8').splitlines()[targets[resolved_row]['line']-1]
 
 
 def test_review_handles_procedures_without_planning_metadata():
