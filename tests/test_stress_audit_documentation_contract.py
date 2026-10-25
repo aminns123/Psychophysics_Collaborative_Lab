@@ -5,6 +5,8 @@ participant data or scientific formulas are exercised by these checks.
 """
 from pathlib import Path
 
+import pytest
+
 from psychophysics_lab.experiments.contrast_sensitivity import SCIENTIFIC_SPEC
 
 
@@ -33,9 +35,21 @@ def test_saved_csf_boundary_description_agrees_with_saturating_step_logic():
 
 
 def test_simulation_documented_scenario_listing_is_runnable(capsys):
-    from simulations.__main__ import main, build_parser
+    from simulations.__main__ import main
+
     assert main(["--list-scenarios", "--experiment", "all"]) == 0
-    help_text = build_parser().format_help().lower()
+    listing = capsys.readouterr()
+    assert "contrast_sensitivity\tteaching_demo\t" in listing.out
+    assert not listing.err
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(["--help"])
+    assert exit_info.value.code == 0
+    captured = capsys.readouterr()
+    assert not captured.err
+    # argparse wraps help to the terminal width; test wording independently
+    # of line breaks through the same entry point researchers actually use.
+    help_text = " ".join(captured.out.lower().split())
     assert "threshold probability" in help_text
     assert "midpoint" not in help_text
     assert "csf_baseline" not in help_text
