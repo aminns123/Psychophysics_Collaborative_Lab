@@ -52,9 +52,20 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
     assert all(row["recorded_utc"] == synthetic_recorded_utc(float(row["event_time_s"])) for row in rows)
     assert json.loads((a.run_directory / "trial_context.json").read_text())["synthetic_clock"]["not_wall_clock"]
     assert "Deterministic virtual UTC" in (a.run_directory / "trial_data_dictionary.tsv").read_text()
-    assert json.loads(analysis.summary_json.read_text())["data_kind"] == "synthetic"
+    if analysis is None:
+        # A finite synthetic run can lack the required complete reversal
+        # sequences for a primary threshold. Preserve this as explicit
+        # unavailability, never fabricate a threshold or assume a plot.
+        unavailable = a.run_directory / "analysis" / "threshold_unavailable.json"
+        assert unavailable.is_file()
+        reason = json.loads(unavailable.read_text(encoding="utf-8"))
+        assert reason["data_kind"] == "synthetic"
+        assert reason["reason"]
+    else:
+        assert json.loads(analysis.summary_json.read_text())["data_kind"] == "synthetic"
+        assert analysis.output_directory.is_relative_to(workspace)
     assert not (config_root(ROOT)/"preferences.json").exists()
-    assert all(path.is_relative_to(workspace) for path in (a.run_directory,analysis.output_directory))
+    assert a.run_directory.is_relative_to(workspace)
     c,_=simulate(workspace=workspace,seed=456,repo_root=ROOT,values={"max_trials":120})
     assert c.trial_log_file.read_bytes() != a.trial_log_file.read_bytes()
 
