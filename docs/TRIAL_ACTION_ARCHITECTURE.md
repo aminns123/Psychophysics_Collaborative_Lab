@@ -1,5 +1,7 @@
 # Trial actions: architecture decision and migration audit
 
+> **Historical architecture decision (16 October 2026):** this report describes the baseline and migration at that date. For the current public seven-section experiment authoring contract, use [the experiment guide](../src/psychophysics_lab/experiments/README.md) and [trial timelines](EXPERIMENT_TIMELINES.md). In the current code, new public experiments use `RunContext.trial()` for explicit interpretation/scientific updates; `play_trial()` is a compatibility helper. Do not treat old recommendations in this audit as newer development instructions.
+
 Baseline: main ad7c132 (PR #42 merged), inspected 2026-10-16 in
 C:/Users/alexz/Personal_Folder/Git_Folder/Psychophysics_Shanghi.
 Git status was clean, including untracked files. The tracked researcher drafts
