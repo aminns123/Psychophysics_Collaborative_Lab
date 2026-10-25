@@ -146,9 +146,13 @@ def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
             screen.query_one("#field-n-down",Input).value="3"
             await pilot.pause(.2)
             assert down.value == initial
+            up = float(screen.query_one("#field-logUNIT-UP",Input).value)
+            from psychophysics_lab.adaptive.steps import RATIOS
             screen.query_one("#calculate-down",Button).press()
             await pilot.pause(.2)
-            assert float(down.value) == pytest.approx(.35*.7393)
+            # Use the actual selected up-step, not the retired 0.35
+            # assumed by the old test. 3-down/1-up ratio = 0.7393.
+            assert float(down.value) == pytest.approx(up * RATIOS[3])
             screen.query_one("#field-n-up",Input).value="2"
             await pilot.pause(.2)
             saved=down.value
