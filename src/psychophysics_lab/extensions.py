@@ -242,14 +242,44 @@ def source_hashes(repo_root):
     return {name: hashlib.sha256(source_at(root, name).read_bytes()).hexdigest() for name in sorted(paths)}
 
 
+# An extension's Tested/Ready status certifies a specific *execution path*,
+# not just its Python source and stimulus classes. Updating any of these shared
+# scientific mechanisms requires retesting the local study. This deliberately
+# excludes UI themes, docs, packaging and other non-scientific changes.
+_SCIENCE_DEPENDENCY_VERSION = 2
+_SCIENCE_EXECUTION_FILES = (
+    "analysis/primary.py",
+    "analysis/previews.py",
+    "config/background_mapping.py",
+    "config/preflight.py",
+    "config/stimulus_parameters.py",
+    "core/presentation.py",
+    "core/scene_primitives.py",
+    "core/runner.py",
+    "core/synthetic.py",
+    "core/timeline.py",
+    "core/trial_execution.py",
+    "data/trials.py",
+)
+
+
 def fingerprint(repo_root):
-    framework = Path(repo_root) / 'src/psychophysics_lab'
+    repo_root = Path(repo_root)
+    framework = repo_root / 'src/psychophysics_lab'
     shared = [framework/'stimulus_library.py', framework/'researcher.py']
     shared += list((framework/'adaptive').glob('*.py'))
     shared += list((framework/'stimuli').glob('*.py'))
-    payload = {'laboratory': source_hashes(repo_root), 'framework_science': {
-        path.relative_to(repo_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in shared if path.is_file()}}
+    shared += [framework / relative for relative in _SCIENCE_EXECUTION_FILES]
+    payload = {
+        'dependency_contract_version': _SCIENCE_DEPENDENCY_VERSION,
+        'laboratory': source_hashes(repo_root),
+        'framework_science': {
+            path.relative_to(repo_root).as_posix(): (
+                hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+            )
+            for path in sorted(set(shared))
+        },
+    }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
