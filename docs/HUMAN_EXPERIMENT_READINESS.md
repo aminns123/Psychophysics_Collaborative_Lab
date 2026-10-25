@@ -1,5 +1,7 @@
 # Preparing an experiment for human acquisition
 
+> **Historical implementation audit:** this document includes baseline counts, prior PR/branch commands and past calibration/contrast descriptions. It is not a current qualification of any monitor or experimental protocol. For the current Windows software baseline and outstanding release requirements, consult [Windows release acceptance](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md) and the [human experiment readiness checklist](HUMAN_EXPERIMENT_READINESS_CHECKLIST.md). Never copy historical monitor values into a new profile without measurement.
+
 Open **Experiment → Configure Experiment → Review**. The **Human Experiment Readiness** panel shows the selected experiment and display requirements, their status, and a direct action for each. Human acquisition and simulation have separate statuses. Required failures block human acquisition; recommended setup records do not become physical certificates. Expand **Technical preflight details** for the full error.
 
 ## What the statuses mean
