@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 from typing import Any
 
 import numpy as np
@@ -21,6 +22,64 @@ SUPPORTED_TRIAL_SCHEMA_VERSIONS = frozenset({1})
 # historical positive versions, but cannot safely accept an unknown NEWER
 # format as though its fields still had current meanings.
 LATEST_KNOWN_MANIFEST_SCHEMA_VERSION = 3
+
+
+def _check_laboratory_provenance(manifest: dict[str, Any]) -> None:
+    """Check only the known v1 *format*, without fetching or trusting source.
+
+    This is not a certificate that the saved hashes match any present-day
+    experiment or that an original laboratory display was calibrated.
+    """
+    if "laboratory_extensions" not in manifest:
+        return  # Runs before Issue #80 have no such metadata.
+    evidence = manifest["laboratory_extensions"]
+    if not isinstance(evidence, dict) or (
+        type(evidence.get("schema_version")) is not int
+        or evidence["schema_version"] != 1
+    ):
+        version = evidence.get("schema_version") if isinstance(evidence, dict) else None
+        raise ValueError(
+            f"Unsupported laboratory_extensions schema_version {version!r}; "
+            "read with the matching PsyCoLab provenance format."
+        )
+    identity = evidence.get("experiment_identity")
+    components = evidence.get("components")
+    hashes = evidence.get("source_sha256")
+    if (
+        evidence.get("origin") != "laboratory"
+        or not isinstance(evidence.get("namespace"), str)
+        or not evidence["namespace"]
+        or not isinstance(evidence.get("fingerprint"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", evidence["fingerprint"])
+        or not isinstance(identity, dict)
+        or not all(isinstance(identity.get(key), str) and identity[key]
+                   for key in ("namespace", "id"))
+        or not isinstance(components, list) or not components
+        or not all(
+            isinstance(item, dict)
+            and item.get("kind") in {"experiment", "stimulus"}
+            and all(isinstance(item.get(key), str) and item[key]
+                    for key in ("id", "namespace", "software_status"))
+            for item in components
+        )
+        or not isinstance(hashes, dict) or not hashes
+    ):
+        raise ValueError(
+            "Malformed laboratory_extensions schema 1 provenance; "
+            "original recorded metadata must be inspected, not reconstructed."
+        )
+    for name, digest in hashes.items():
+        if (
+            not isinstance(name, str) or not name or "\\" in name
+            or ":" in name or name.startswith("/")
+            or ".." in PurePosixPath(name).parts
+            or not isinstance(digest, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        ):
+            raise ValueError(
+                "Malformed laboratory_extensions source_sha256 path or digest; "
+                "do not infer source identity from installed files."
+            )
 
 
 def _read_table(path: Path, *, require_column: str | None = None) -> tuple[list[str], list[dict[str, str]]]:
@@ -71,6 +130,7 @@ def load_run(path: str | Path) -> dict[str, Any]:
             f"Unsupported manifest schema_version {manifest_version!r}; "
             "inspect the newer format with its corresponding PsyCoLab version."
         )
+    _check_laboratory_provenance(manifest)
     version = manifest.get("trial_schema_version")
     if version is not None and (
         type(version) is not int or version not in SUPPORTED_TRIAL_SCHEMA_VERSIONS
