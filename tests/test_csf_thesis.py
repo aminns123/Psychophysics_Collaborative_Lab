@@ -118,8 +118,10 @@ def test_response_safety_ceiling_does_not_fabricate_a_completed_csf(tmp_path):
 
 def test_direct_human_call_is_blocked_before_opening_a_display(tmp_path):
     run = RunContext(SPEC.field_defaults(), SimpleNamespace(id="unused"), SPEC, tmp_path)
-    with pytest.raises(ValueError, match="qualified before human acquisition"):
+    with pytest.raises(ValueError, match="Scientific acquisition requires") as blocked:
         procedure(run)
+    assert "protocol qualification" in str(blocked.value)
+    assert run.status == "created"  # no human acquisition was started
 
 
 @pytest.mark.parametrize("value", [float("nan"), -1, 2, True])
