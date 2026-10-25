@@ -122,7 +122,7 @@ def load_run(path: str | Path) -> dict[str, Any]:
     if not isinstance(manifest, dict):
         raise ValueError("manifest.json must contain a JSON object.")
     manifest_version = manifest.get("schema_version")
-    if manifest_version is not None and (
+    if "schema_version" in manifest and (
         type(manifest_version) is not int
         or not 1 <= manifest_version <= LATEST_KNOWN_MANIFEST_SCHEMA_VERSION
     ):
@@ -132,7 +132,7 @@ def load_run(path: str | Path) -> dict[str, Any]:
         )
     _check_laboratory_provenance(manifest)
     version = manifest.get("trial_schema_version")
-    if version is not None and (
+    if "trial_schema_version" in manifest and (
         type(version) is not int or version not in SUPPORTED_TRIAL_SCHEMA_VERSIONS
     ):
         raise ValueError(
