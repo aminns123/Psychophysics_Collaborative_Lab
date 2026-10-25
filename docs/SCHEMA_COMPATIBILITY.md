@@ -45,6 +45,32 @@ Ordinary version-1 updates continue to archive their previous document
 before writing. None of this upgrades files during read, changes scientific
 parameter defaults or affects saved trial observations.
 
+## Read-only archived extension and workspace compatibility (Issue #81 Stage 3)
+
+New schema-3 manifests can include a separate `laboratory_extensions`
+provenance object with its own `schema_version: 1`. The public `load_run`
+reader does **not** import the original experiment, trust external Python,
+look up source by an absolute user path or change saved data. For this
+optional *known* metadata family, Stage 3 checks the structural types of
+namespace, identity, component list, relative source SHA-256 paths and
+fingerprint; an explicit newer/corrupt version is rejected instead of being
+silently treated as an ordinary verified v1 record. These checks are
+**structural only**: they do not prove that saved hashes match physical source
+files or that acquisition was calibrated. Missing extension metadata remains
+legal for pre-Issue-#80 archives.
+
+The workspace convenience loader separately recognises **versions 1–3** when
+the `schema_version` marker is supplied, and data-layout marker **1** when
+present. A missing marker remains accepted for older saved workspaces. Explicit
+invalid, null or newer markers are refused without updating the file or
+restoring an old researcher override. Similarly, an explicitly present null
+run manifest/trial schema marker is **not** the same as a historically missing
+marker. Preserve the original file and open it with a matching software
+version if necessary.
+
+See the [detailed inventory and targeted Windows test instructions](PERSISTED_FORMAT_INVENTORY.md).
+Real de-identified laboratory records have not yet been independently checked.
+
 ## Migration contract
 
 - Migration is **opt-in**, not a side effect of launching PsyCoLab or pulling Git changes.

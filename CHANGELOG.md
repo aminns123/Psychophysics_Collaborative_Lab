@@ -4,6 +4,14 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **Issue #81 Stage 3 (proposed PR):** read-only archived extension provenance
+  v1 structural checks; reject explicitly newer/malformed nested metadata
+  without requiring the original laboratory extension to be installed. Refuse
+  unknown/null workspace and data-layout schema markers instead of treating
+  them as existing formats. Distinguish missing historical manifest markers
+  from explicit null. Add anonymous relocated-archive and no-write fixtures.
+  No migration, experiment execution, scientific value inference or new
+  acquisition fields. Windows maintainer tests pending.
 - **First-run laboratory source onboarding (proposed PR):** supply an independent sibling `PsyCoLab_Extensions` starter on first normal TUI launch, with an editable root and a non-destructive `Create starter` action. Preserve previously configured/custom source paths and never overwrite existing source. No external Python is trusted or marked Ready automatically.
 - **No scientific acquisition or physical calibration changes.** This is an optional Windows-first researcher onboarding improvement.
 - **Issue #80 external laboratory extensions (merged in PR #93):** explicitly
