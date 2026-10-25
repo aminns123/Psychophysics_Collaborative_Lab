@@ -20,13 +20,18 @@ class _ParameterReads(dict):
 
 
 class _PlanningContext(RunContext):
-    def __post_init__(self):
-        # Direct construction (also used by regression tests) needs the same
-        # read-tracking state as describe_settings().
+    """RunContext's real parameter/adaptive machinery, with saving disabled.
+
+    RunContext is a dataclass without its own __post_init__ at decoration time.
+    Its generated __init__ therefore does not call a subclass __post_init__.
+    Initialise the read-tracking members explicitly, including for direct
+    construction by auditors and scientist-facing planning tools.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.overrides = {}
         self.parameter_reads = {}
-
-    """RunContext's actual parameter/adaptive machinery, with saving disabled."""
     def initialise(self, *, expected_trials, resolution, **kwargs):
         self.expected_trials = expected_trials
         self.resolution = resolution
@@ -61,7 +66,6 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
-    run.overrides, run.parameter_reads = {}, {}
     conditions = module.make_conditions(values)
     state = module.initialise_experiment(run, conditions)
     condition = module.choose_condition(run, conditions, state)
