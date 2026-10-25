@@ -77,7 +77,10 @@ def test_raw_trials_remain_unchanged_by_exploratory_analysis(tmp_path):
 
 def test_simulation_tui_exposes_selected_public_csf_adaptive_fields(tmp_path):
     async def scenario():
-        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        # Modern default navigation intentionally routes simulations through
+        # Experiment -> Configure -> Review. The standalone advanced legacy
+        # SimulationsScreen is available only when explicitly opted in.
+        app=PsyCoLabSetupApp(include_historical=True,repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,30)) as pilot:
             app.query_one("#nav-simulations",Button).press()
             await pilot.pause(.2)
