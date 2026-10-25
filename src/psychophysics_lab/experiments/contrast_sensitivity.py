@@ -194,7 +194,7 @@ SCIENTIFIC_SPEC = {
     "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
     "adaptive": "TUI-selected consecutive n-down/n-up log10 changes, initial phase and reversal limit. No guaranteed target probability for arbitrary settings.",
     "stopping": "Each staircase completes at its reversal limit; global response ceiling is incomplete termination.",
-    "exclusions": "No post-hoc response exclusion. Timeout/abort/errors stop and preserve accepted input; out-of-gamut changes fail without clipping.",
+    "exclusions": "No post-hoc response exclusion. Timeout/abort/errors preserve accepted input. Adaptive strength saturates at the declared digital bound (flat holds are not reversals); invalid physical renderer commands are rejected without silent clipping.",
     "estimator": "Median final TUI-selected presented reversal contrasts per complete staircase; mean across all configured staircases of a complete frequency.",
 }
 
