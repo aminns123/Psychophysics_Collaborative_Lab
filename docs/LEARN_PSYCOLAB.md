@@ -43,14 +43,18 @@ inspect all relevant conditions with previews and **Try the experiment**.
 Open one file in `src/psychophysics_lab/experiments/`:
 
 - `orientation_task.py`: fixed-trial orientation judgement.
-- `contrast_sensitivity.py`: adaptive left/right grating detection.
-- `ellipse_major_axis.py`: first/second interval line detection.
+- `contrast_sensitivity.py`: adaptive spatial 2AFC left/right grating-location task.
+- `line_position_baseline.py`: single-interval, binary above/below line judgment.
+- `ellipse_major_axis.py`: two-interval forced-choice (2IFC) line detection.
 
 Read settings → conditions/order → stimulus preparation → one trial → responses
 and adaptation → run/finish → framework connection. `TrialTimeline` states the
 display order. Keep the participant's alternatives, units, adaptive change,
 stopping rule and primary estimator explicit. The TUI supplies the chosen values.
 Do not copy an example's scientific choices unless they fit your study.
+Use [psychophysical terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md)
+to distinguish two-response judgments from two-interval stimulus sequences;
+`2AFTC` is not the name of the temporal paradigm.
 
 For a new file, export `SPEC` with its matching experiment ID. Discovery needs no
 registry edit. Fixed-trial and adaptive loops may differ. Repeated recording
