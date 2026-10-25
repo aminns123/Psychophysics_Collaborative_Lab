@@ -43,7 +43,12 @@ def test_seeded_pipeline_is_repeatable_labeled_and_headless(tmp_path,monkeypatch
     assert json.loads((a.run_directory/"SYNTHETIC_DATA.json").read_text())["data_kind"] == "synthetic"
     rows=list(csv.DictReader(a.trial_log_file.open(),delimiter="\t"))
     assert rows and all(row["response_key"].startswith("SIMULATED_") for row in rows)
-    assert rows[0]["recorded_utc"] == "2000-01-01T00:00:00+00:00"
+    # The first *accepted response* is not the start of the virtual clock:
+    # presentation phases already consumed deterministic simulated time.
+    # Preserve the fixed synthetic epoch but derive its elapsed seconds from
+    # the actual recorded event rather than assuming that first row is t=0.
+    assert float(rows[0]["event_time_s"]) > 0
+    assert rows[0]["recorded_utc"].startswith("2000-01-01T")
     assert all(row["recorded_utc"] == synthetic_recorded_utc(float(row["event_time_s"])) for row in rows)
     assert json.loads((a.run_directory / "trial_context.json").read_text())["synthetic_clock"]["not_wall_clock"]
     assert "Deterministic virtual UTC" in (a.run_directory / "trial_data_dictionary.tsv").read_text()
