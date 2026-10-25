@@ -76,3 +76,49 @@ def test_readable_writer_rejects_noncanonical_header():
             assert "do not match" in str(exc)
         else:
             raise AssertionError("Expected ValueError for a noncanonical TSV header.")
+
+
+def test_readable_export_rejects_same_canonical_path_and_relative_alias(tmp_path):
+    import pytest
+    source = tmp_path / "trials.tsv"
+    log = TrialLog(source)
+    log.append(_row(1, "F", 0.04))
+    original = source.read_bytes()
+    for destination in (source, tmp_path / "." / "trials.tsv"):
+        with pytest.raises(ValueError, match="canonical"):
+            write_readable_trial_table(source, destination)
+        assert source.read_bytes() == original
+        assert not (tmp_path / "trials.tsv.tmp").exists()
+    # Normal export remains available after a rejected alias.
+    derived = write_readable_trial_table(source)
+    assert derived.is_file()
+    assert source.read_bytes() == original
+
+
+def test_readable_export_rejects_hardlink_alias(tmp_path):
+    import os
+    import pytest
+    source = tmp_path / "trials.tsv"
+    TrialLog(source).append(_row(1, "J", 0.03))
+    original = source.read_bytes()
+    alias = tmp_path / "other_name.tsv"
+    try:
+        os.link(source, alias)
+    except (NotImplementedError, OSError):
+        pytest.skip("This filesystem cannot create hard links")
+    with pytest.raises(ValueError, match="canonical"):
+        write_readable_trial_table(source, alias)
+    assert source.read_bytes() == alias.read_bytes() == original
+
+
+def test_readable_export_rejects_windows_case_alias(tmp_path):
+    import os
+    import pytest
+    if os.name != "nt":
+        pytest.skip("Windows file system case-alias check")
+    source = tmp_path / "trials.tsv"
+    TrialLog(source).append(_row(1, "F", 0.05))
+    before = source.read_bytes()
+    with pytest.raises(ValueError, match="canonical"):
+        write_readable_trial_table(source, tmp_path / "TRIALS.TSV")
+    assert source.read_bytes() == before

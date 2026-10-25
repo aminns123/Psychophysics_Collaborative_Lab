@@ -260,10 +260,17 @@ def write_readable_trial_table(
         if output_path is not None
         else trials_path.with_name(READABLE_TRIALS_FILENAME)
     )
-    output.parent.mkdir(parents=True, exist_ok=True)
-
     if not trials_path.exists():
         raise FileNotFoundError(f"Canonical trial table does not exist: {trials_path}")
+    # A readable table is DERIVED data. Never let a custom destination replace
+    # the canonical TSV, including Windows case variants, relative paths,
+    # symlinks and existing hard links to the same underlying file.
+    same_path = os.path.normcase(str(trials_path.resolve())) == os.path.normcase(str(output.resolve()))
+    if not same_path and output.exists():
+        same_path = os.path.samefile(trials_path, output)
+    if same_path:
+        raise ValueError("Readable output must not overwrite its canonical trial-table input.")
+    output.parent.mkdir(parents=True, exist_ok=True)
 
     with trials_path.open("r", newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
