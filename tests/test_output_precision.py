@@ -429,3 +429,45 @@ def test_invalid_enum_during_format_enumeration_uses_default(monkeypatch):
     assert len(windows) == 1
     assert 'config' not in window.options
     assert report['fallback'] is False
+
+
+def test_precision_evidence_stays_portable_in_synthetic_run_manifest(tmp_path, monkeypatch):
+    """Real saved local precision evidence must not leak absolute machine paths.
+
+    The precision report is independently saved under the machine-local config
+    root; the acquisition manifest records a relative reference without
+    rewriting or certifying that physical evidence.
+    """
+    from psychophysics_lab.config.calibration_progress import calibration_progress
+    from scripts.validate_run import validate_run
+    from simulations.run import simulate
+
+    config = tmp_path / "machine_config"
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(config))
+    p = profile()
+    session = PrecisionSession(config, p, PrecisionSessionRequest(p.id))
+    session.set_output(evidence(10))
+    session.finish()
+    source_bytes = session.session_file.read_bytes()
+    relative = session.session_file.relative_to(config).as_posix()
+
+    stage = calibration_progress(p, config)["precision"]
+    assert stage["completed"]
+    assert not stage["verified"]  # a software inspection is not photometry
+    assert stage["reports"] == [relative]
+    assert (config / stage["reports"][0]).resolve() == session.session_file.resolve()
+
+    artifacts, _ = simulate(
+        repo_root=ROOT, data_root=tmp_path / "external_synthetic_data",
+        seed=19, monitor_profile_id=p.id,
+        values={"max_trials": 1}, analyse=False,
+    )
+    manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
+    recorded = manifest["display_readiness"]["calibration_stages"]["precision"]
+    assert recorded["reports"] == [relative]
+    assert not recorded["verified"]
+    checks = validate_run(artifacts.run_directory)
+    assert all(check.passed for check in checks), [
+        (check.name, check.detail) for check in checks if not check.passed
+    ]
+    assert session.session_file.read_bytes() == source_bytes
