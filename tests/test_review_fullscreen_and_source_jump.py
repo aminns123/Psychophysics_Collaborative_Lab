@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from textual.widgets import Button, DataTable, Input
+from textual.widgets import Button, DataTable, Input, Select
 
 from psychophysics_lab.ui.review_files import json_value_line
 from psychophysics_lab.ui.review_fullscreen import ReviewTableFullscreen
@@ -65,6 +65,11 @@ def test_fullscreen_mirrors_review_and_can_edit_from_selected_cell(tmp_path, mon
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=size) as pilot:
             app.query_one("#participant", Input).value = "EXPANDED"
+            # The default teaching task does not have a logUNIT_UP field.
+            # Select the actual CSF study before testing its adaptive field
+            # editor; do not add meaningless parameters to teaching science.
+            app.query_one("#experiment", Select).value = "contrast_sensitivity"
+            await pilot.pause()
             app.screen.query_one("#configure", Button).press()
             await pilot.pause()
             app.screen.query_one("#review", Button).press()
