@@ -14,10 +14,21 @@ def test_review_adaptive_settings_and_resolved_rules_follow_selected_values(iden
     # Preserve the required study-specific selections and the scientific
     # constraint that retained reversals cannot exceed those collected.
     # These are synthetic review-only selections, not human-run defaults.
-    values = spec.normalise_values({'n_down': 3, 'n_up': 2, 'logUNIT_UP': .21,
-        'logUNIT_DW': .07, 'reversal_termination': 6, 'threshold_reversals': 4,
-        'initial_one_down_limit': 2, 'probe_vertical_offset_deg': .2,
-        'positions_deg': '0', 'ring_increment': .1})
+    selected = {'n_down': 3, 'n_up': 2, 'logUNIT_UP': .21,
+                'logUNIT_DW': .07, 'reversal_termination': 6,
+                'threshold_reversals': 4, 'initial_one_down_limit': 2}
+    study_inputs = {
+        'contrast_sensitivity': {},
+        'line_position_baseline': {
+            'probe_vertical_offset_deg': .2, 'positions_deg': '0',
+        },
+        'ellipse_centre': {'ring_increment': .1},
+    }
+    selected.update(study_inputs[identity])
+    # Each study receives only fields it actually declares. Do not weaken
+    # the spec's rejection of unknown inputs or invent required study defaults.
+    assert set(selected) <= {field.key for field in spec.fields}
+    values = spec.normalise_values(selected)
     snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
     description = describe_settings(spec, values, snapshots)
     rows = review_rows(spec, values, snapshots, description)
