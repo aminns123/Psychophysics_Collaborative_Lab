@@ -193,7 +193,24 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             if label == "adaptive_rule / algorithm" and spec.adaptive and value == spec.adaptive.algorithm_id:
                 continue
             rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
-            if selected_key in field_keys:
+            # The authoritative primary_estimator describes analysis of
+            # *recorded human or simulated* responses, not a simulation-only
+            # setting and not a second threshold algorithm invented by Review.
+            # Keep its reported values and provenance distinct from editable
+            # adaptive step rules and experiment trial timing.
+            if label.startswith("primary_estimator / "):
+                key = label.removeprefix("primary_estimator / ")
+                readable = {
+                    "within_staircase": "Within-staircase method",
+                    "across_staircases": "Across-staircase method",
+                    "retained_reversals": "Retained reversals",
+                    "value_column": "Recorded strength column",
+                    "completion": "Completion requirement",
+                    "units": "Strength units",
+                }.get(key, key.replace("_", " "))
+                yield ("Threshold estimation", readable, rendered,
+                       "Resolved by the experiment's primary_rule; analysis after acquisition")
+            elif selected_key in field_keys:
                 yield ("Run plan", "Effective " + label, rendered,
                        "Resolved by experiment; differs from selected " + selected_key)
             else:
