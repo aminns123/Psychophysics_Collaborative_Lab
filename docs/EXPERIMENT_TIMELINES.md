@@ -1,8 +1,13 @@
 # Trial timelines and scientific actions
 
 Start with [the chronological beginner guide](LEARN_PSYCOLAB.md).
-TrialTimeline and RunContext.play_trial are the authoritative public sequence;
-Phase and load_timeline keep earlier visual-only JSON experiments compatible.
+New public Python experiments build a `TrialTimeline` with `make_trial()`
+and normally execute it using the **`RunContext.trial()` context manager**:
+accepted responses are explicitly interpreted and scientific state updated
+inside the trial boundary. `RunContext.play_trial()` remains a compatibility
+helper for an entire declared action plan; it is **not** the required
+seven-section researcher pattern. Earlier `Phase` and `load_timeline`
+support compatible older visual-only JSON designs.
 
 | Action | Input | Effect / automatic record |
 |---|---|---|
@@ -58,8 +63,10 @@ and TUI overrides; resolved configuration and source JSON/hash are saved.
 
 Earlier timeline JSON with schema_version=1 and phases continues to use
 load_timeline, including explicit {"field":"timing_name"} duration references.
-No Python expression is evaluated. Existing CSF five-phase JSON remains active
-through its legacy adapter; this is not evidence of full migration.
+No Python expression is evaluated. Historical five-phase CSF JSON is retained through its legacy
+compatibility adapter. The **current public** `contrast_sensitivity.py`
+experiment builds its own Python trial timeline and must not be described
+as depending on that old JSON for its scientific sequence.
 
 See [architecture audit](TRIAL_ACTION_ARCHITECTURE.md) and
 [CSF migration evidence](CSF_ACTION_MIGRATION.md).

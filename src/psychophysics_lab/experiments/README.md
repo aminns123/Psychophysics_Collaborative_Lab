@@ -2,9 +2,14 @@
 
 Edit one experiment here and its stimulus class in `../stimulus_library.py`.
 Experiments share section order, units and response conventions. They may use
-different scientifically justified loops. Purpose and `PARADIGM` identify the participant's two alternatives:
-spatial/property 2AFC, or first/second interval (two-interval forced choice,
-also called 2AFTC here).
+different scientifically justified loops. The response alternatives and the
+presentation structure must both be explicit: a left/right **spatial 2AFC**
+location task, a single-interval binary position/orientation judgment, or a
+**2IFC** (two-interval forced-choice) task with first/second interval responses.
+The term **2AFTC** is not used. See
+[psychophysical terminology](../../../docs/PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
+The code's `PARADIGM` identifier does not alone establish the number of
+stimulus intervals or the applicable signal-detection model.
 
 ## Read every file in this order
 

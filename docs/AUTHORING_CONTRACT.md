@@ -38,8 +38,11 @@ scientific termination. TUI-selected adaptive values remain authoritative.
 
 The seven sections are settings/stimuli; conditions/order; stimulus preparation;
 one trial; responses/updates/measurement fields; run/finish; framework connection.
-Spatial/property 2AFC and two-interval forced choice use the same contracts;
-their stimuli, interval sequences, response meanings and estimators stay explicit.
+Spatial 2AFC location tasks, single-interval binary judgment tasks and
+**2IFC** (two-interval forced-choice) tasks use the same software contracts,
+while stimulus presentations, response meanings and estimators remain explicit.
+The two-response label alone is not evidence that two stimuli were presented;
+see [scientific terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
 
 Only researcher experiment definitions belong at the top level of `experiments/`
 (plus its required `__init__.py` and README). Framework machinery and saved-design

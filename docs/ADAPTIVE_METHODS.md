@@ -2,8 +2,11 @@
 
 The response paradigm, the adaptive algorithm, and the experiment are distinct.
 
-- **Response paradigm:** e.g. left/right spatial 2AFC or first/second interval
-  2AFC. Both can encode whether a response was correct.
+- **Response paradigm:** e.g. a left/right spatial 2AFC target-location task,
+  a single-interval binary above/below judgment, or first/second **2IFC**
+  (two-interval forced choice). Each task defines its actual interval count,
+  alternatives and response keys, not just an acronym. See
+  [psychophysical terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
 - **Adaptive algorithm:** how accepted observations change future conditions.
   The working legacy `consecutive_up_down` algorithm is registered under
   `src/psychophysics_lab/adaptive/`. Its `AdaptiveRun` supports independent
@@ -51,8 +54,14 @@ Changing response counts does not automatically change any step magnitude.
 Unsupported settings (for example 2-up or 4AFC) must be entered manually or
 implemented with separately validated theory.
 
-The retained reference CSF defaults remain exactly `logUNIT_UP = 0.35`
-and `logUNIT_DW = 0.5488 * 0.35`; calculator use is explicit and optional.
+The **current public CSF experiment's** code defaults are
+`logUNIT_UP = 0.36` and `logUNIT_DW = 0.30294` (see
+`src/psychophysics_lab/experiments/contrast_sensitivity.py`). Its default
+response counts are `n_down = 4` and `n_up = 1`; `0.30294 / 0.36 = 0.8415`,
+the listed **4-down/1-up** ratio. These are editable protocol defaults, not
+measured optimal values; calculator use is explicit and optional.
+Historical scripts and archived runs may have different defaults and must
+be interpreted using their own saved configuration.
 
 Never silently change stored thresholds, reversal basis or response encoding
 when introducing additional algorithms. Prefer unit-tested, registered
