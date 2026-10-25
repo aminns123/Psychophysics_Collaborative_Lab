@@ -52,7 +52,11 @@ After editing Python source, restart PsyCoLab to load it. Parameter edits previe
 immediately; Python code is not hot-reloaded.
 
 Use [the short walkthrough](docs/LEARN_PSYCOLAB.md) for editing, testing and finding
-results. Historical reconstructions and framework helpers are internal.
+results. The [psychophysical terminology guide](docs/PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md)
+distinguishes spatial 2AFC, temporal 2IFC and single-interval binary judgments.
+The [living Windows acceptance and future stress-test plan](docs/WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md)
+records what has been verified and what still needs laboratory evidence.
+Historical reconstructions and framework helpers are internal.
 
 ## Data and laboratory setup
 

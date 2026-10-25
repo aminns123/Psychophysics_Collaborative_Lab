@@ -1,5 +1,17 @@
 # Issue #80 — implementation and validation handoff
 
+**Updated status notice — 25 October 2026:** This report is a dated
+handoff and contains historically accurate failures and partial suites;
+those failures should **not** be interpreted as the latest Windows baseline.
+The maintainer's later complete `main` regression at `98f4119` has
+**1505 passed, 0 failed, four warnings (exit 0)**. The separate official
+`new_probe_vertical_line_stimulus` subsequently completed `--dev-test`
+and `--dev-ready` (software only). Manual acceptance of an independent
+**lab-owned extension** on the actual Windows workstation is **still pending**;
+see the
+[living acceptance checklist](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md).
+Issue #80 remains open. No physical display qualification was produced.
+
 **Recorded 24 October 2026.** This report reconstructs the interrupted Work session
 from its user-provided execution summary and the reviewed GitHub `main` tree. It
 does **not** present console transcripts that are unavailable here, and it does
