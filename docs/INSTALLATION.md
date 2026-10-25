@@ -36,11 +36,12 @@ requirements and imports. A valid environment is reused; a changed
 open for inspection. No global package environment is modified.
 
 Keep the complete checkout: runtime resources include root `configs/`,
-`simulations/`, `scripts/` and the retained renderer under
-`src/psychophysics_lab/_reference_csf/`, including its `packages.zip`.
-The supported deployment is the launcher's editable source installation.
-An isolated wheel is not a standalone PsyCoLab application; building a wheel
-successfully does not verify that the runtime resources are present.
+`simulations/`, `scripts/` and current `src/psychophysics_lab/` modules.
+The historical `_reference_csf/` driver and `packages.zip` are **not part
+of the tracked current application**. Do not copy old renderer archives into a
+new installation. The supported deployment is the launcher's editable source
+installation. An isolated wheel is not a standalone PsyCoLab application;
+building a wheel successfully does not verify runtime resources or a display.
 
 ## Source, local configuration and scientific records
 
@@ -88,33 +89,25 @@ automatically. These ranges do not provide a fully locked environment: clean
 installs on different dates may resolve different compatible versions, and the
 launcher upgrades packaging tools during initial setup/configuration changes.
 
-`packages.zip` is a retained legacy runtime resource, not an installer or a
-backup of PsyCoLab's own source. Static inspection found 196 files (233 entries
-including directories): 195 beneath `pyglet/` and one `wmi.py`; five are Python
-3.7 bytecode caches. Its Pyglet source declares **1.5.19**. `libC.py` prepends the
-archive to `sys.path`; thus import order can select that bundled implementation
-instead of installed 1.5.27. `pip check` and ordinary imports cannot establish
-which graphics implementation every legacy entry path will use. The archive is
-retained byte-for-byte to avoid altering renderer behavior. Removing its caches,
-replacing it, or eliminating it requires a separate dependency/provenance and
-renderer-equivalence review. Header notices exist in source files; this audit
-does not establish complete licensing or upstream equivalence.
+The current Windows runtime uses installed Pyglet from the environment;
+no tracked `libC.py` or bundled Pyglet archive overrides it. Earlier
+archive-version and import-precedence findings referred to a **retired tree**,
+not this checkout. Retain those audit records for history rather than treating
+their paths as current dependencies.
 
-New run manifests record `software.pyglet_runtime`: the version and portable
-source identity of the Pyglet module actually loaded by the end of the run,
-separately from installed distribution metadata. A headless run can correctly
-report `loaded: false`. The archive hash remains in source provenance. These
-records expose the dependency route; they do not qualify either graphics path.
+New run manifests record `software.pyglet_runtime`, distinguishing the
+version and source identity of the module actually loaded from installed
+distribution metadata. A headless run may report `loaded: false`. This is
+software provenance, not proof of graphics-buffer bit depth or physical
+photon output.
 
 For a future release, use a reviewed **Windows x64 / CPython 3.11 constraints or
 lock file** containing exact runtime and transitive versions, with hashes where
-the chosen installer supports them. Keep the source commit, Python version and
-archive hash alongside validation evidence. Generate it from a fresh approved
+the chosen installer supports them. Keep the source commit, Python version and current dependency versions alongside validation evidence. Generate it from a fresh approved
 environment and test a second clean installation before adopting it. Maintain
 separate platform locks if Linux support is released. Do not freeze this
 computer's editable absolute checkout path into a shared lock. No new package
-manager or mandatory lock was introduced by this audit; archive import
-precedence must also be resolved before claiming one locked graphics stack.
+manager or mandatory lock was introduced by this audit; a clean second-machine graphics/runtime check remains necessary before claiming a verified installation.
 
 ## Validation and updates
 
