@@ -78,7 +78,9 @@ equations, data acquisition headers, raw photometer measurements or TUI layout.
 - The wider manifest, resolved procedure, profile/current projections, all analysis products and many optional diagnostic JSONs do **not** share a universal schema; their formats need separate family-specific tests where active readers depend on them.
 - The preset loader now prevents newer/invalid schema markers from being used; read-only legacy unversioned files remain inspectable, with a warning. Genuine old preset parameters still require scientist review against the current experiment definition; the loader does not infer scientific equivalence.
 - Some luminance pilot metadata records an **absolute** `source_session_file` path. This is provenance/context, not portable file identity; future portable exports should store a relative reference without rewriting historical files.
-- Issue **#80** adds optional `laboratory_extensions` metadata to new schema-3 manifests; existing readers remain independent of installed source. See [laboratory extensions](LABORATORY_EXTENSIONS.md).
+- Issue **#80** adds optional `laboratory_extensions` metadata to new schema-3 manifests; existing readers remain independent of installed source. See [laboratory extensions](LABORATORY_EXTENSIONS.md). The proposed **Issue #81 Stage 3** read-only guard recognises v1 of this *nested* provenance format, rejects explicit newer/malformed metadata, and still reads a relocated archived run without installed scientific Python. It checks **structure**, not the truth of source hashes or laboratory calibration.
+- **Workspace schema guard (Stage 3 proposed):** `psycolab_data_config.json` accepts missing/older positive workspace schema markers up to version 3 and rejects explicit future, null or malformed markers. It independently checks the known `data_layout_schema_version=1` when present, preserving original bytes and preventing outdated software from rewriting an unknown workspace. This is a convenience file, not physical or acquisition evidence.
+- **Explicit versus absent schema markers (Stage 3 proposed):** unversioned historical manifests remain readable, while an explicitly present `null` in either `schema_version` or `trial_schema_version` is now rejected rather than treated as omitted.
 - Physical display validation, luminance calibration and timing verification remain separate from parser compatibility. A successful test says nothing about photons or hardware.
 - No migration is necessary for the formats tested here. If a demonstrated old format cannot be used safely, implement **explicit opt-in, backup + hash, write-new** conversion as a different scoped PR. Never rewrite originals on `load_run`, `load_active` or ordinary TUI startup.
 
@@ -107,3 +109,33 @@ Review results **before merging**. This audit does not assume that GitHub Action
 - The laboratory-owned `psycolab_extensions.json` has `schema_version=1` and `namespace`; PsyCoLab reads it, never generates or migrates it at runtime.
 - New schema-3 run manifests may contain `laboratory_extensions` with its own `schema_version=1`, namespace, experiment/component identities, source SHA-256 and readiness fingerprint. Paths are relative to the named laboratory root. The existing exact parameter snapshots, software provenance and 20-column trial-schema-1 records remain authoritative.
 - No historical record is modified. `load_run()` still reads archived data without importing any installed experiment or extension.
+
+
+## Issue #81 Stage 3 — Windows acceptance (proposed PR)
+
+New non-identifying fixtures exercise copied/relocated archives containing
+Issue #80's laboratory provenance, without installing their external Python.
+Tests also verify that newer or damaged provenance, workspace and data-layout
+versions raise actionable errors **without any write, mtime change or scientific
+parameter conversion**. See
+`tests/test_issue_81_extension_archive_compatibility.py`.
+
+```powershell
+$testRoot = Join-Path $env:LOCALAPPDATA "PsyCoLab_Test_Temp"
+New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
+.\.venv\Scripts\python.exe -m pytest `
+  --basetemp="$testRoot\pytest_issue81_stage3" `
+  -p no:cacheprovider -q `
+  tests\test_issue_81_extension_archive_compatibility.py `
+  tests\test_issue_81_read_compatibility.py `
+  tests\test_public_run_reader.py `
+  tests\test_laboratory_extensions.py `
+  tests\test_tui_save_persistence.py `
+  tests\test_preset_schema_compatibility.py
+```
+
+**Status:** code and tests are in review; this specific new suite has **not**
+yet been run on the maintainer's Windows machine. Do not describe the change
+as independently verified until that output is supplied. Prior Issue #80
+tests and virtual-run provenance are valuable evidence but not a replacement
+for genuine owner-approved historical lab records.
