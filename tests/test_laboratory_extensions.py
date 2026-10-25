@@ -362,3 +362,55 @@ def test_framework_update_and_relocation_preserve_science_config_and_data(lab,tm
     assert ext.configured(relocated)==ext.configured(ROOT)
     assert snapshot()==before
 
+
+
+@pytest.mark.parametrize("relative", [
+    "core/presentation.py",
+    "core/scene_primitives.py",
+    "core/trial_execution.py",
+    "core/timeline.py",
+    "core/runner.py",
+    "analysis/primary.py",
+    "data/trials.py",
+])
+def test_shared_execution_update_invalidates_lab_ready_status_without_touching_real_code(
+    tmp_path, monkeypatch, relative
+):
+    """Fingerprints include scientific execution dependencies, not just library code."""
+    # Use a complete isolated COPY of the framework tree: no real source,
+    # local preferences or acquired data can be modified by this test.
+    checkout = tmp_path / "copied_checkout"
+    framework = checkout / "src" / "psychophysics_lab"
+    shutil.copytree(ROOT / "src" / "psychophysics_lab", framework)
+    monkeypatch.setattr(ext, "source_hashes", lambda _: {"stimulus_library.py": "test-copy"})
+    readiness = tmp_path / "isolated_config" / "extension_readiness.json"
+    readiness.parent.mkdir(parents=True)
+    monkeypatch.setattr(ext, "_records_path", lambda _: readiness)
+
+    previous = ext.fingerprint(checkout)
+    key = "experiment:demolab__left_right"
+    readiness.write_text(json.dumps({
+        "schema_version": 1,
+        "components": {key: {"fingerprint": previous, "ready": True}},
+    }), encoding="utf-8")
+    assert ext.status(checkout, "experiment", EXPERIMENT) == "ready"
+
+    copied_file = framework / relative
+    copied_file.write_bytes(copied_file.read_bytes() + b"\n# copied-source-change\n")
+
+    assert ext.fingerprint(checkout) != previous
+    assert ext.status(checkout, "experiment", EXPERIMENT) == "draft"
+    with pytest.raises(ValueError, match="successful --dev-preview or --dev-test"):
+        ext.publish(checkout, "experiment", EXPERIMENT)
+
+
+def test_framework_fingerprint_ignores_location_and_docs(tmp_path, monkeypatch):
+    """Moving identical source or editing prose cannot silently change scientific bytes."""
+    first = tmp_path / "first_checkout" / "src" / "psychophysics_lab"
+    second = tmp_path / "second_checkout" / "src" / "psychophysics_lab"
+    shutil.copytree(ROOT / "src" / "psychophysics_lab", first)
+    shutil.copytree(first, second)
+    monkeypatch.setattr(ext, "source_hashes", lambda _: {"manifest": "identical"})
+    assert ext.fingerprint(first.parents[2]) == ext.fingerprint(second.parents[2])
+    (second.parents[2] / "README.md").write_text("Changed prose only", encoding="utf-8")
+    assert ext.fingerprint(first.parents[2]) == ext.fingerprint(second.parents[2])
