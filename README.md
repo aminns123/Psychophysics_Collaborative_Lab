@@ -110,5 +110,9 @@ altering previously acquired records. Learn / Help also opens the code example.
 - [Scientific specifications and validation limits](docs/SCIENTIFIC_REDESIGN.md)
 - [Researcher workflow implementation](docs/RESEARCHER_TEST_WORKFLOW.md)
 
-Older command-line simulation defaults retain historical CSF behaviour for existing
-scripts. Use the normal interface or an explicit modern experiment ID for new work.
+The command-line simulation defaults now use the **current public**
+`contrast_sensitivity` experiment and its registered observer. The current
+CLI has no built-in `csf_baseline` or `csf_short_censored` scenario; list
+actual registered scenarios with `python -m simulations --list-scenarios
+--experiment all`. Simulation validates software/provenance, not physical
+stimulus output or human psychometric performance.
