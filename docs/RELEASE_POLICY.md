@@ -8,31 +8,28 @@ Use `vMAJOR.MINOR.PATCH` tags when released: breaking API/format changes require
 
 Never claim that a new software version automatically qualifies hardware. A lab should report **software version and Git/source hashes**, experiment identity, selected scientific values, monitor identity/profile revision and physical qualification status.
 
-## Publishing the next reviewed research pre-release
+## Published research pre-release and next decision
 
-For the proposed `v0.3.0` release, the prepared notes live in [`releases/v0.3.0.md`](releases/v0.3.0.md). **Do not publish it before merging the preparation PR.**
+**PsyCoLab `v0.3.0` was already published as a research pre-release on 24 October 2026**:
+[GitHub Release v0.3.0](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases/tag/v0.3.0).
+Its source tag identifies its original release commit, not the current `main`
+tree. **Do not recreate, move or republish that tag** to incorporate later fixes.
+The pre-release was not a physical laboratory or human-acquisition certificate.
 
-1. Review and merge the small release-preparation PR into `main`. Do not create the release tag from a temporary feature branch.
-2. On the Windows laboratory machine, inspect `git status`, `git fetch origin`, `git switch main`, then `git pull --ff-only origin main`. Do not discard local scientific edits.
-3. Run the focused checks below using a **writable temporary directory** (not the acquisition data root):
-   
-   ```powershell
-   $testRoot = Join-Path $env:LOCALAPPDATA "PsyCoLab_Test_Temp"
-   New-Item -ItemType Directory -Force -Path $testRoot | Out-Null
-   .\.venv\Scripts\python.exe -m pytest `
-     --basetemp="$testRoot\pytest_release" `
-     -p no:cacheprovider -q `
-     tests\test_release_metadata.py tests\test_public_run_reader.py tests\test_validate_run.py
-   .\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'src'); import psychophysics_lab; print(psychophysics_lab.__version__)"
-   git rev-parse HEAD
-   ```
+The Windows maintainer ran the complete regression suite on `main`
+(`98f4119`) on 25 October 2026: **1505 passed, 0 failed, four repeated
+source-readiness warnings, pytest exit 0**. Subsequently the changed
+`new_probe_vertical_line_stimulus` experiment passed its virtual `--dev-test`
+and was marked software Ready at its current source revision. These facts
+do not retroactively apply to the prior `v0.3.0` tag or certify hardware.
 
-   Confirm that the printed package version is `0.3.0`, the focused tests have no unexpected failures, and the commit corresponds to the reviewed PR. Record any unrelated readiness warnings honestly.
-4. On the repository's **GitHub → Releases → Draft a new release**, choose **Choose a tag → Create new tag `v0.3.0` on `main`**, after verifying the commit. Title the release `PsyCoLab v0.3.0 — Research preview`.
-5. Copy the reviewed text from `docs/releases/v0.3.0.md` as release notes. **Mark as a pre-release** and publish only when the intended source commit is confirmed.
-6. Verify GitHub shows the matching tag and **Source code (zip)** / **Source code (tar.gz)** automatically. Do **not** upload laboratory data, virtual environments or calibration records.
-
-GitHub's ordinary repository homepage continues to show source code; the new release is surfaced under **Releases** and through the prominently linked README. Once published, do not move or silently retag `v0.3.0`; make a new patch release for fixes.
+For any **future** proposed release, review all changes and their scientific
+impact, use an independently reproduced clean installation, record exact
+`main` commit and test/hardware evidence, and create a **new** approved
+version/tag only after owner sign-off. Never silently retag a published
+source snapshot. Use
+[Windows release and documentation acceptance](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md)
+for the living evidence matrix; Issue #82 remains the stable release gate.
 
 ## Before a stable release
 
