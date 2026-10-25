@@ -363,3 +363,63 @@ def test_display_cleanup_is_attempted_even_if_all_summaries_fail(tmp_path, monke
     with pytest.raises(OSError, match="summary fault"):
         context.close()
     assert closed == [True] and len(context._persistence_errors) == 3
+
+
+@pytest.mark.parametrize("secondary", ("write", "malformed_resolved"))
+def test_error_manifest_survives_secondary_primary_finalisation_fault(tmp_path, monkeypatch, secondary):
+    """A second fault may not strand a configured manifest after saved trials."""
+    from psychophysics_lab import researcher
+    from psychophysics_lab.core import runner
+    from simulations.run import simulate
+
+    # Force an error only after an otherwise valid procedure and raw recording.
+    original_close = researcher.RunContext.close
+
+    def cleanup_failure(context):
+        original_close(context)
+        raise OSError("first failure: simulated post-run cleanup")
+
+    monkeypatch.setattr(researcher.RunContext, "close", cleanup_failure)
+
+    if secondary == "write":
+        original_write = runner.atomic_write_json
+
+        def primary_failure(path, value):
+            if Path(path).name == "primary_thresholds.json" and value.get("run_status") == "error":
+                raise OSError("second failure: primary result write")
+            return original_write(path, value)
+
+        monkeypatch.setattr(runner, "atomic_write_json", primary_failure)
+    else:
+        original_close_with_corruption = researcher.RunContext.close
+
+        def malformed_primary_source(context):
+            # Called after close recorded the legitimate results. Deliberately
+            # corrupt *only* synthetic scratch metadata in this test.
+            try:
+                original_close_with_corruption(context)
+            finally:
+                (context.run_directory / "resolved_experiment.json").write_text(
+                    "malformed test-only JSON", encoding="utf-8"
+                )
+
+        monkeypatch.setattr(researcher.RunContext, "close", malformed_primary_source)
+
+    artifacts, _ = simulate(
+        repo_root=ROOT, data_root=tmp_path / "synthetic_data",
+        experiment_id="contrast_sensitivity", seed=47,
+        values={"max_trials": 2, "staircases_per_condition": 1},
+        analyse=False,
+    )
+    assert artifacts.status == "error"
+    canonical = artifacts.trial_log_file.read_bytes()
+    rows = list(csv.DictReader(artifacts.trial_log_file.open(encoding="utf-8"), delimiter="\t"))
+    assert len(rows) == 2
+    manifest = json.loads(artifacts.manifest_file.read_text(encoding="utf-8"))
+    assert manifest["status"] == "error"
+    assert manifest["accepted_trials"] == len(rows)
+    assert manifest["primary_result_invalid"] is True
+    assert any(entry["operation"] == "invalidate primary result after error"
+               for entry in manifest["finalisation_errors"])
+    assert "first failure" in manifest["error"]
+    assert artifacts.trial_log_file.read_bytes() == canonical
