@@ -20,12 +20,31 @@ DATA_CONFIG_FILENAME = "psycolab_data_config.json"
 RUNS_INDEX_FILENAME = "runs_index.csv"
 LOCAL_PREFERENCES_FILENAME = ".psycolab_local.json"
 DATA_LAYOUT_SCHEMA_VERSION = 1
+LATEST_WORKSPACE_SCHEMA_VERSION = 3
 
 _RUN_RE = re.compile(r"^run_(\d+)$")
 
 
 def data_config_path(data_root: Path) -> Path:
     return data_root / DATA_CONFIG_FILENAME
+
+
+def _validate_workspace_schema(payload: dict[str, Any]) -> None:
+    """Accept older/missing markers; do not reinterpret a future workspace."""
+    if "schema_version" in payload:
+        version = payload["schema_version"]
+        if type(version) is not int or not 1 <= version <= LATEST_WORKSPACE_SCHEMA_VERSION:
+            raise ValueError(
+                f"Unsupported workspace schema_version {version!r}; "
+                "the original workspace configuration was preserved."
+            )
+    if "data_layout_schema_version" in payload:
+        version = payload["data_layout_schema_version"]
+        if type(version) is not int or version != DATA_LAYOUT_SCHEMA_VERSION:
+            raise ValueError(
+                f"Unsupported data_layout_schema_version {version!r}; "
+                "choose a compatible PsyCoLab version before interpreting saved paths."
+            )
 
 
 def load_workspace_state(data_root: Path) -> dict[str, Any] | None:
@@ -38,12 +57,14 @@ def load_workspace_state(data_root: Path) -> dict[str, Any] | None:
         raise ValueError(f"Could not read PsyCoLab data configuration: {path}: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError(f"PsyCoLab data configuration must contain a JSON object: {path}")
+    _validate_workspace_schema(payload)
     return payload
 
 
 def request_from_workspace_state(state: dict[str, Any] | None) -> SetupRequest | None:
     if not state:
         return None
+    _validate_workspace_schema(state)
     raw = state.get("last_request")
     if not isinstance(raw, dict):
         return None
