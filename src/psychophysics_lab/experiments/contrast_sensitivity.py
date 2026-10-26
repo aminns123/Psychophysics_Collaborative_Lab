@@ -392,7 +392,7 @@ def trial_record(run, condition, state):
 
 
 # 6. RUN AND FINISH
-def initialise_experiment(run, conditions):
+def initialise_experiment(run, conditions, *, grating_resolution=None):
     settings = run.values
     frequencies = list(dict.fromkeys(c["frequency_cpd"] for c in conditions))
     staircase = run.adaptive(
@@ -441,10 +441,12 @@ def initialise_experiment(run, conditions):
         "frequencies_cpd": frequencies,
         "staircases_per_condition": settings["staircases_per_condition"],
         "target_offset_deg": settings["grating_offset_deg"],
-        "gaussian_sigma_deg": settings["grating_sigma_deg"],
-        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
-        "grating_taper": "raised cosine over outer 1 Gaussian sigma; zero modulation outside cutoff radius",
-        "grating_support_radius_deg": settings["grating_sigma_deg"] * settings["grating_cutoff_sigmas"],
+        **({
+            "gaussian_sigma_deg": settings["grating_sigma_deg"],
+            "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+            "grating_taper": "raised cosine over outer 1 Gaussian sigma; zero modulation outside cutoff radius",
+            "grating_support_radius_deg": settings["grating_sigma_deg"] * settings["grating_cutoff_sigmas"],
+        } if grating_resolution is None else grating_resolution),
         "background_digital_intensity": background,
         "random_seed": run.seed,
         "adaptive_rule": {
@@ -524,7 +526,7 @@ def fixed_trial_record(run, condition):
     }
 
 
-def fixed_contrast_method(run):
+def fixed_contrast_method(run, *, grating_resolution=None):
     """Select an experiment-independent fixed-level policy for this CSF design."""
     settings = run.values
     schedule = make_fixed_schedule(settings, run.seed)
@@ -548,10 +550,15 @@ def fixed_contrast_method(run):
             for i, trial in enumerate(schedule, 1)
         ],
         "contrast_units": "digital peak-to-peak sinusoidal modulation; not optical Michelson contrast",
-        "intensity_mapping": "I(x,y)=background+(contrast/2)*GaussianTaper(x,y)*sin(2*pi*frequency*x)",
-        "background_digital_intensity": settings["background_intensity"],
-        "grating_sigma_deg": settings["grating_sigma_deg"],
-        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        **({
+            "intensity_mapping": "I(x,y)=background+(contrast/2)*GaussianTaper(x,y)*sin(2*pi*frequency*x)",
+            "background_digital_intensity": settings["background_intensity"],
+            "grating_sigma_deg": settings["grating_sigma_deg"],
+            "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        } if grating_resolution is None else (
+            {"background_digital_intensity": settings["background_intensity"]}
+            | grating_resolution
+        )),
         "response_analysis": "Per-frequency/per-level counts and accuracy; no adaptive reversals or staircase threshold estimator",
         "hardware_equivalence": False,
     }
@@ -563,12 +570,17 @@ def fixed_contrast_method(run):
     )
 
 
-def adaptive_contrast_method(run):
-    """Wrap the tested CSF adaptive functions without changing their calculations."""
+def adaptive_contrast_method(run, *, initialise=None):
+    """Wrap the tested CSF adaptive functions without changing their calculations.
+
+    An alternate windowed CSF variant may supply only an envelope-aware
+    initialisation function; all update/reversal and trial-count logic remains
+    identical to the reference procedure.
+    """
     return AdaptiveContrastMethod(
         run,
         make_conditions=make_conditions,
-        initialise=initialise_experiment,
+        initialise=initialise_experiment if initialise is None else initialise,
         select=choose_condition,
         record=trial_record,
         update=update_experiment,
