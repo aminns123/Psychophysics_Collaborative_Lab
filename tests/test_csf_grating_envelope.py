@@ -155,3 +155,38 @@ def test_exported_csf_preview_expands_to_full_scientific_support(tmp_path, monke
     assert np.max(np.abs(pixels[:, 0, :3] - .5)) <= 2/255
     assert np.max(np.abs(pixels[:, -1, :3] - .5)) <= 2/255
     assert np.max(pixels[:, :, 0]) - np.min(pixels[:, :, 0]) > .1
+
+
+@pytest.mark.parametrize("cutoff", [1.0, 1.5, 2.0, 3.0])
+def test_small_sigma_multipliers_have_consistent_experiment_stimulus_geometry(cutoff):
+    """Allow any one-or-more-sigma support without reinterpreting sigma."""
+    from psychophysics_lab.core.viewport import stimulus_geometry
+    values = csf.SPEC.normalise_values({
+        "grating_sigma_deg": 1.,
+        "grating_cutoff_sigmas": cutoff,
+    })
+    assert values["grating_cutoff_sigmas"] == cutoff
+    params = ContrastSensitivityGrating.SPEC.validate_parameters(
+        default_parameters(sigma_deg=1., cutoff_sigmas=cutoff)
+    )
+    geom = stimulus_geometry(ContrastSensitivityGrating.SPEC, params)
+    assert geom["support_radius_deg"] == cutoff
+    assert geom["support_diameter_deg"] == 2 * cutoff
+    assert geom["taper_start_radius_deg"] == cutoff - 1
+    x = np.array([.1, .5, (cutoff + .5) / 2, cutoff, cutoff + .1])
+    y = np.zeros_like(x)
+    rendered = ContrastSensitivityGrating.render(params, x, y)
+    assert rendered[-1] == params["background"]
+    assert rendered[-2] == params["background"]
+    assert np.isfinite(rendered).all()
+
+
+def test_sub_one_sigma_cutoff_rejected_without_silently_changing_equation():
+    # A cutoff <1 would place the one-sigma taper start at a negative radius
+    # and attenuate the central peak. Keep that scientifically invalid.
+    with pytest.raises(ValueError, match="permitted range"):
+        csf.SPEC.normalise_values({"grating_cutoff_sigmas": 0.99})
+    with pytest.raises(ValueError, match="permitted range"):
+        ContrastSensitivityGrating.SPEC.validate_parameters(
+            default_parameters(cutoff_sigmas=0.99)
+        )
