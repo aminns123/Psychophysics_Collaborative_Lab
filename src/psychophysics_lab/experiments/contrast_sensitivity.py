@@ -441,10 +441,12 @@ def initialise_experiment(run, conditions, *, grating_resolution=None):
         "frequencies_cpd": frequencies,
         "staircases_per_condition": settings["staircases_per_condition"],
         "target_offset_deg": settings["grating_offset_deg"],
-        "gaussian_sigma_deg": settings["grating_sigma_deg"],
-        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
-        "grating_taper": "raised cosine over outer 1 Gaussian sigma; zero modulation outside cutoff radius",
-        "grating_support_radius_deg": settings["grating_sigma_deg"] * settings["grating_cutoff_sigmas"],
+        **({
+            "gaussian_sigma_deg": settings["grating_sigma_deg"],
+            "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+            "grating_taper": "raised cosine over outer 1 Gaussian sigma; zero modulation outside cutoff radius",
+            "grating_support_radius_deg": settings["grating_sigma_deg"] * settings["grating_cutoff_sigmas"],
+        } if grating_resolution is None else grating_resolution),
         "background_digital_intensity": background,
         "random_seed": run.seed,
         "adaptive_rule": {
@@ -463,13 +465,6 @@ def initialise_experiment(run, conditions, *, grating_resolution=None):
         "threshold_reversals": settings["threshold_reversals"],
         "hardware_equivalence": False,
     }
-    if grating_resolution is not None:
-        # A second CSF envelope uses the same staircase calculation and
-        # timeline but must never write Gaussian metadata about its stimulus.
-        for name in ("gaussian_sigma_deg", "grating_cutoff_sigmas",
-                     "grating_taper", "grating_support_radius_deg"):
-            description.pop(name, None)
-        description.update(grating_resolution)
     run.initialise(
         expected_trials=settings["max_trials"],
         resolution=description | {"primary_estimator": primary_rule(settings, conditions),
@@ -555,18 +550,18 @@ def fixed_contrast_method(run, *, grating_resolution=None):
             for i, trial in enumerate(schedule, 1)
         ],
         "contrast_units": "digital peak-to-peak sinusoidal modulation; not optical Michelson contrast",
-        "intensity_mapping": "I(x,y)=background+(contrast/2)*GaussianTaper(x,y)*sin(2*pi*frequency*x)",
-        "background_digital_intensity": settings["background_intensity"],
-        "grating_sigma_deg": settings["grating_sigma_deg"],
-        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        **({
+            "intensity_mapping": "I(x,y)=background+(contrast/2)*GaussianTaper(x,y)*sin(2*pi*frequency*x)",
+            "background_digital_intensity": settings["background_intensity"],
+            "grating_sigma_deg": settings["grating_sigma_deg"],
+            "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        } if grating_resolution is None else (
+            {"background_digital_intensity": settings["background_intensity"]}
+            | grating_resolution
+        )),
         "response_analysis": "Per-frequency/per-level counts and accuracy; no adaptive reversals or staircase threshold estimator",
         "hardware_equivalence": False,
     }
-    if grating_resolution is not None:
-        for name in ("grating_sigma_deg", "grating_cutoff_sigmas",
-                     "intensity_mapping"):
-            description.pop(name, None)
-        description.update(grating_resolution)
     return ConstantContrastMethod(
         run,
         schedule=schedule,
