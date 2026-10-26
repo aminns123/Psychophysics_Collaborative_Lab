@@ -118,6 +118,42 @@ def fixed_level_schedule(
     return schedule
 
 
+def run_contrast_experiment(
+    run,
+    *,
+    methods: Mapping[str, Callable[[], Any]],
+    prepare_stimuli: Callable,
+    make_trial: Callable,
+    interpret_response: Callable,
+):
+    """One scientific trial sequence for every registered contrast method.
+
+    The experiment still declares its conditions, stimuli, timings and
+    correctness. Only the strength-selection method has interchangeable
+    state/next-trial/update/stop behavior. The same RunContext writes every
+    response to the established canonical trial schema.
+
+    Explicit mapping of supported method factories prevents changing another
+    experiment's protocol merely because a new method exists in the package.
+    """
+    method = select_contrast_method(
+        run.values.get("contrast_method", "adaptive"), methods
+    )
+    while not method.is_finished:
+        condition = method.next_trial()
+        stimuli = prepare_stimuli(run, condition, method.state)
+        with run.trial(
+            make_trial(run.values, condition),
+            target=condition["target"],
+            condition=condition["value"],
+            parameters_by_slot=stimuli,
+            **method.trial_record(condition),
+        ) as trial:
+            response = interpret_response(condition, trial.response)
+            method.accept_response(condition, response, trial)
+    method.complete()
+
+
 class AdaptiveContrastMethod:
     """Thin adapter around a *study's existing* adaptive functions.
 
