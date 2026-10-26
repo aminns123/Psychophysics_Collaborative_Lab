@@ -148,7 +148,12 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     defaults = saved["values"] if saved else {f.key: f.default for f in spec.fields}
     def origin(field):
         base = (saved["file_identity"] if saved and field.key in saved["document"]["values"] else "Python ConfigField default")
-        return f"Selected value (TUI/saved setup); {base} = {defaults[field.key]!r}"
+        meaning = field.help_text.strip() or (
+            f"Researcher-selected {field.section.lower()} parameter in "
+            f"{spec.display_name}; see its experiment Python declaration."
+        )
+        return (f"Meaning: {meaning} | Setting: {field.key} "
+                f"| Selected in TUI/saved setup; original {base} = {defaults[field.key]!r}")
     controls = set(spec.adaptive.controls) if spec.adaptive else set()
     rows = [("Experiment", field.display_label, str(values[field.key]), origin(field))
             for field in spec.fields if field.key not in controls]
@@ -184,9 +189,17 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         stimulus = get_stimulus(identity)
         effective = description["stimuli"].get(slot, selected["document"]["parameters"])
         for field in stimulus.parameters:
-            source = f"Selected stimulus: {selected['file_identity']} (Python defaults fill missing keys)"
+            explanation = field.help_text.strip() or (
+                f"Parameter {field.key} controls the {stimulus.display_name} "
+                f"stimulus in slot {slot}; units are shown in the parameter column."
+            )
+            source = (f"{explanation} | Stimulus slot: {slot}, "
+                      f"renderer: {identity}, source: {selected['file_identity']}")
             if field.key in description["overrides"].get(slot, {}):
-                source = "Experiment-controlled; sample" if field.key in parameter_sources(description, slot) else "Base parameter used by experiment; sample"
+                usage = ("Trial-controlled; value shown for one representative trial"
+                         if field.key in parameter_sources(description, slot)
+                         else "Selected base parameter read by the experiment")
+                source = f"{usage}. {source}"
             rows.append((slot, field.display_label, str(effective[field.key]), source))
     from ..core.viewport import stimulus_geometry
     for slot, selected in snapshots.items():
