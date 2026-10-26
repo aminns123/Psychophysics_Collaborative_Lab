@@ -21,14 +21,14 @@ class Response:
 def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, coordinates=None, pixel_steps=None):
     """Scientific floating-point command image, before any display encoding."""
     parameters = stimulus.validate_parameters(parameters)
-    extent = extent_deg if extent_deg is not None else stimulus_geometry(stimulus, parameters)["raster_extent_deg"]
+    extent = extent_deg if extent_deg is not None else parameters[stimulus.extent_parameter]
     width, height = pixels
     x = (np.arange(width) + .5 - width / 2) * extent / width
     y = (np.arange(height) + .5 - height / 2) * extent / height
     xx, yy = np.meshgrid(x, y) if coordinates is None else coordinates
     if xx.shape != (height, width) or yy.shape != (height, width):
         raise ValueError("Degree coordinates must match the supplied raster shape.")
-    kwargs = {"pixel_steps": pixel_steps} if stimulus.pixel_coverage and pixel_steps is not None else {}
+    kwargs = {"pixel_steps": pixel_steps} if getattr(stimulus, "pixel_coverage", False) and pixel_steps is not None else {}
     result = np.asarray(stimulus.render(parameters, xx, yy, **kwargs), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
         raise ValueError(f"Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape; "
@@ -82,13 +82,14 @@ def plan_visible_stimulus(profile, resolution, stimulus, parameters, placement):
     view = angular_viewport(profile, resolution, support["raster_extent_deg"], placement)
     coordinates = display_degree_coordinates(profile, resolution, view["raster_px"], view["origin_px"], placement)
     steps = (clipped_pixel_steps(profile, resolution, view, placement)
-             if stimulus.pixel_coverage and view["clipped"] else None)
-    if stimulus.required_support is not None and not np.any(
-            stimulus.required_support(parameters, *coordinates, steps)):
+             if getattr(stimulus, "pixel_coverage", False) and view["clipped"] else None)
+    required_support = getattr(stimulus, "required_support", None)
+    if required_support is not None and not np.any(
+            required_support(parameters, *coordinates, steps)):
         raise ValueError(f"{stimulus.display_name}: required stimulus support has no visible display samples. "
                          "Change its position/size or display geometry; an invisible target cannot be acquired.")
     return view | support | {"slot": placement.slot,
-                            "support_visibility_checked": stimulus.required_support is not None}, coordinates, steps
+                            "support_visibility_checked": required_support is not None}, coordinates, steps
 
 
 def display_degree_coordinates(profile, resolution, pixels, origin, placement):
