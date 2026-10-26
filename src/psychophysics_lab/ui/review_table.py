@@ -6,7 +6,7 @@ REVIEW_TABLE_COLUMNS = (
     ("Group", 12),
     ("Parameter / units", 45),
     ("Value", 28),
-    ("Source", 34),
+    ("Scientific meaning / origin", 58),
     ("File / saved location", 80),
 )
 
