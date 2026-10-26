@@ -11,6 +11,38 @@ The term **2AFTC** is not used. See
 The code's `PARADIGM` identifier does not alone establish the number of
 stimulus intervals or the applicable signal-detection model.
 
+## Universal contrast-method design
+
+**Contrast-method selection belongs to the shared framework, not to duplicate
+versions of every experiment.** See
+[the method API, experiment inventory and adoption criteria](../../../docs/CONTRAST_METHODS.md)
+and the reference implementation in `contrast_sensitivity.py`.
+The public `psychophysics_lab.methods.contrast` API offers
+`select_contrast_method`, `AdaptiveContrastMethod`,
+`ConstantContrastMethod`, `parse_fixed_strengths`,
+`fixed_level_schedule` and `run_contrast_experiment`.
+
+- A researcher defines the **conditions first** (e.g. frequency, target
+  position, ring/ellipse geometry), then selects adaptive or constant stimuli
+  from TUI controls when the experiment has declared and connected both.
+- Every method consumes the same experiment-defined timeline, stimulus
+  preparation and correctness rule, and writes to the existing canonical
+  `trials.tsv` contract. Only strength selection, updates, stopping and
+  method-specific metadata vary.
+- The experiment must explicitly declare its strength units and mapping:
+  CSF digital peak-to-peak modulation is not probe increment above background
+  or absolute line intensity, and none alone establishes optical luminance
+  contrast.
+- The original default and scientific adaptive equations stay untouched.
+  Do not silently enable a new method for an existing experiment without
+  documented parameter controls and method-specific regression tests.
+
+**Implementation status:** the shared API is generic, and CSF is its first
+integrated user. Other built-in experiments and laboratory extensions remain
+eligible for this interface, but they have **not yet been automatically
+converted to both methods**. Their scientifically distinct intensity mappings
+and stopping/analysis contracts must be connected and accepted individually.
+
 ## Read every file in this order
 
 1. **Settings and stimuli:** `FIELDS`, `RESPONSES`, stimulus slots/defaults and

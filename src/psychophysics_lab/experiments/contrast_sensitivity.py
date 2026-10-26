@@ -12,6 +12,13 @@ import random
 import sys
 import math
 from psychophysics_lab.adaptive.steps import bounded_log_step
+from psychophysics_lab.methods.contrast import (
+    AdaptiveContrastMethod,
+    ConstantContrastMethod,
+    fixed_level_schedule,
+    parse_fixed_strengths,
+    run_contrast_experiment,
+)
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -236,24 +243,19 @@ def make_conditions(settings):
 
 def fixed_contrast_levels(settings):
     """Parse experiment-selected digital grating modulation, not physical luminance contrast."""
-    entries = str(settings["fixed_contrasts"]).split(",")
-    if not entries or any(not text.strip() for text in entries):
-        raise ValueError("Enter one or more comma-separated fixed contrast levels.")
-    try:
-        levels = tuple(float(text.strip()) for text in entries)
-    except ValueError as exc:
-        raise ValueError("Fixed contrasts must be comma-separated numbers.") from exc
-    if any(not math.isfinite(value) for value in levels):
-        raise ValueError("Fixed contrast levels must be finite.")
-    if len(set(levels)) != len(levels):
-        raise ValueError("Fixed contrast levels must be distinct; use repetitions for repeated presentations.")
     maximum = 2 * min(settings["background_intensity"], 1-settings["background_intensity"])
-    if any(value < 0 or value > maximum for value in levels):
-        raise ValueError(
-            f"Fixed digital peak-to-peak contrasts must be between 0 and {maximum:g} "
-            f"at background intensity {settings['background_intensity']:g}. No silent clipping."
+    try:
+        return parse_fixed_strengths(
+            settings["fixed_contrasts"], minimum=0, maximum=maximum
         )
-    return levels
+    except ValueError as exc:
+        if "between" in str(exc):
+            raise ValueError(
+                f"Fixed digital peak-to-peak contrasts must be between 0 and {maximum:g} "
+                f"at background intensity {settings['background_intensity']:g}. No silent clipping."
+            ) from exc
+        raise
+
 
 
 def make_fixed_schedule(settings, seed):
@@ -273,24 +275,8 @@ def make_fixed_schedule(settings, seed):
             f"max_trials safety ceiling ({settings['max_trials']}). Increase the "
             "ceiling deliberately or reduce conditions/levels/repetitions."
         )
-    rng = random.Random(f"{seed}:constant-stimuli")
-    schedule = []
-    for frequency in frequencies:
-        for contrast in levels:
-            targets = [0, 1] * (repetitions // 2)
-            if repetitions % 2:
-                targets.append(rng.randrange(2))
-            rng.shuffle(targets)
-            for repeat, target in enumerate(targets, 1):
-                schedule.append({
-                    "frequency_cpd": frequency,
-                    "contrast": contrast,
-                    "repeat": repeat,
-                    "target": target,
-                    "value": frequency,
-                })
-    rng.shuffle(schedule)
-    return schedule
+    return fixed_level_schedule(frequencies, levels, repetitions, seed=seed)
+
 
 
 def choose_condition(run, conditions, state):
@@ -524,8 +510,22 @@ def finish_experiment(run, conditions, state):
     run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
-def constant_stimuli_procedure(run):
-    """Non-adaptive CSF using the same timeline, renderer and canonical trial log."""
+def fixed_trial_record(run, condition):
+    """Only the strength source differs; the canonical 20-column log is shared."""
+    return {
+        "state": {"contrast": condition["contrast"]},
+        "record_from_state": {"presented_display_contrast": "contrast"},
+        "measurements": {
+            "spatial_frequency_cpd": condition["frequency_cpd"],
+            "fixed_repeat": condition["repeat"],
+            "presented_display_contrast": condition["contrast"],
+        },
+        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
+    }
+
+
+def fixed_contrast_method(run):
+    """Select an experiment-independent fixed-level policy for this CSF design."""
     settings = run.values
     schedule = make_fixed_schedule(settings, run.seed)
     frequencies = [float(item.strip()) for item in settings["frequencies_cpd"].split(",")]
@@ -555,57 +555,42 @@ def constant_stimuli_procedure(run):
         "response_analysis": "Per-frequency/per-level counts and accuracy; no adaptive reversals or staircase threshold estimator",
         "hardware_equivalence": False,
     }
-    run.initialise(expected_trials=len(schedule), resolution=description,
-                   background_intensity=settings["background_intensity"])
-    # Descriptive detection accuracy is defined independently of any adaptive
-    # reversal/threshold rule; each accepted response increments its cell.
-    cell_counts = {}
-    for condition in schedule:
-        stimuli = prepare_stimuli(run, condition, {})
-        with run.trial(
-            make_trial(settings, condition),
-            target=condition["target"],
-            condition=condition["frequency_cpd"],
-            parameters_by_slot=stimuli,
-            state={"contrast": condition["contrast"]},
-            record_from_state={"presented_display_contrast": "contrast"},
-            measurements={"spatial_frequency_cpd": condition["frequency_cpd"],
-                          "fixed_repeat": condition["repeat"],
-                          "presented_display_contrast": condition["contrast"]},
-            instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-        ) as trial:
-            answer = interpret_response(condition, trial.response)
-            key = (condition["frequency_cpd"], condition["contrast"])
-            count, correct = cell_counts.get(key, (0, 0))
-            cell_counts[key] = (count + 1, correct + int(answer["correct"]))
-    description["observed_level_accuracy"] = [
-        {"frequency_cpd": frequency, "presented_display_contrast": contrast,
-         "accepted_trials": count, "correct_trials": correct,
-         "proportion_correct": correct / count}
-        for (frequency, contrast), (count, correct) in sorted(cell_counts.items())
-    ]
-    run.save_resolution(**description)
-    run.complete()
+    return ConstantContrastMethod(
+        run,
+        schedule=schedule,
+        resolution=description,
+        record=fixed_trial_record,
+    )
+
+
+def adaptive_contrast_method(run):
+    """Wrap the tested CSF adaptive functions without changing their calculations."""
+    return AdaptiveContrastMethod(
+        run,
+        make_conditions=make_conditions,
+        initialise=initialise_experiment,
+        select=choose_condition,
+        record=trial_record,
+        update=update_experiment,
+        finished=is_finished,
+        finish=finish_experiment,
+    )
 
 
 def procedure(run):
-    if run.values.get("contrast_method", "adaptive") == "constant_stimuli":
-        return constant_stimuli_procedure(run)
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
-    finish_experiment(run, conditions, state)
+    # The researcher edits conditions, stimulus and timing here; the common
+    # policy interface handles strength selection and response-dependent state.
+    # The adaptive strategy delegates to the exact tested historical callbacks.
+    return run_contrast_experiment(
+        run,
+        methods={
+            "adaptive": lambda: adaptive_contrast_method(run),
+            "constant_stimuli": lambda: fixed_contrast_method(run),
+        },
+        prepare_stimuli=prepare_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
 
 
 # 7. FRAMEWORK CONNECTION
