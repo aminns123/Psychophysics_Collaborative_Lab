@@ -15,6 +15,9 @@ from uuid import uuid4
 
 STATE_ENV = "PSYCOLAB_REFRESH_STATE"
 REFRESH_EXIT = 75
+# The fresh-process checker must separate fatal source/parameter errors from
+# non-blocking warnings about unrelated, retired or stale experiments.
+CHECK_ERROR_PREFIX = "PSYCOLAB_REFRESH_CHECK_ERROR: "
 
 
 @dataclass(frozen=True)
@@ -169,7 +172,22 @@ def check_refresh(state, root):
                                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=45,
                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if result.returncode:
-            raise ValueError((result.stderr or result.stdout or "File check failed").strip()[-4000:])
+            output = result.stderr or result.stdout or "File check failed"
+            marked = next(
+                (line[len(CHECK_ERROR_PREFIX):] for line in reversed(output.splitlines())
+                 if line.startswith(CHECK_ERROR_PREFIX)),
+                None,
+            )
+            if marked is not None:
+                try:
+                    detail = json.loads(marked)
+                except json.JSONDecodeError:
+                    detail = marked
+            else:
+                # Preserve diagnostics for unexpected subprocess exceptions
+                # and interpreter crashes where no structured error was sent.
+                detail = output.strip()[-4000:]
+            raise ValueError(detail)
 
 
 def read_refresh_state(root):
@@ -271,5 +289,9 @@ if __name__ == "__main__":
         from psychophysics_lab.ui.setup import PsyCoLabSetupApp
         prepare_state(payload, Path(payload["repo_root"]))
     except Exception as exc:
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        # Warnings about independently invalid published/local contributions
+        # are printed on stderr but are NOT themselves fatal to refreshing a
+        # valid selected study. Return the precise failure independently.
+        detail = f"{type(exc).__name__}: {exc}"
+        print(CHECK_ERROR_PREFIX + json.dumps(detail, ensure_ascii=True), file=sys.stderr)
         raise SystemExit(1)

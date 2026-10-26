@@ -101,10 +101,10 @@ FIELDS = (
         "Grating outer edge (multiples of sigma)",
         "float",
         3.0,
-        minimum=2.0,
+        minimum=1.0,
         maximum=5.0,
         units="multiples of sigma",
-        help_text="Full Gaussian through (cutoff - 1) × sigma, then smooth fade. Exact background outside cutoff × sigma. Default 3 gives a 1.5° radius at sigma 0.5°.",
+        help_text="Support radius = sigma × cutoff; diameter = 2 × sigma × cutoff. The taper occupies the outer one sigma, so 1.5 is valid (radius 1.5° and width 3° at sigma 1°). Exact background outside support.",
     ),
     ConfigField(
         "staircases_per_condition",
