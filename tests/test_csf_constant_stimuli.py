@@ -175,3 +175,22 @@ def test_real_synthetic_fixed_csf_preserves_canonical_schema_and_saved_method(tm
     assert all(cell["accepted_trials"] == 3 for cell in resolved["observed_level_accuracy"])
     failures = [check for check in validate_run(a.run_directory) if not check.passed]
     assert not failures, [(check.name, check.detail) for check in failures]
+
+
+def test_fixed_review_reports_active_method_not_inactive_adaptive_controls():
+    from pathlib import Path
+    from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
+    from psychophysics_lab.ui.settings_review import describe_settings, review_rows
+    root = Path(__file__).resolve().parents[1]
+    selected = values(frequencies_cpd="2,4", fixed_contrasts=".05,.1",
+                      fixed_repetitions=3)
+    snapshots = resolve_stimuli(csf.SPEC, selected, repo_root=root)
+    description = describe_settings(csf.SPEC, selected, snapshots)
+    assert description["resolution"]["trial_selection_method"] == "constant_stimuli"
+    assert description["resolution"]["planned_trials"] == 12
+    rows = review_rows(csf.SPEC, selected, snapshots, description)
+    assert not any(row[0] == "Adaptive" for row in rows)
+    assert any(row[:3] == ("Conditions", "Number of spatial-frequency conditions", "2")
+               for row in rows)
+    assert any(row[:3] == ("Run plan", "planned_trials", "12")
+               for row in rows)
