@@ -3,7 +3,7 @@
 Target 0 = negative tilt, 1 = positive tilt; F/J by default (TUI can remap).
 Correctness compares the target and response alternative indices. Conditions
 are balanced, shuffled with random_seed, and stop after trial_count responses.
-No adaptation or audio in this task. Digital contrast is not optical contrast.
+The original task has no adaptation or audio; optional teaching methods can now be selected explicitly. Digital contrast is not optical contrast.
 Stimulus maths/defaults are in TeachingGabor in stimulus_library.py; optional
 saved stimulus presets override appearance, never trial sequence or meanings.
 RunContext supplies the same presentation/response/data path for live and virtual
@@ -21,6 +21,7 @@ from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
     ResponseParadigm,
+    AdaptiveSelection,
     TrialTimeline,
     Show,
     CollectResponse,
