@@ -82,13 +82,14 @@ def plan_visible_stimulus(profile, resolution, stimulus, parameters, placement):
     view = angular_viewport(profile, resolution, support["raster_extent_deg"], placement)
     coordinates = display_degree_coordinates(profile, resolution, view["raster_px"], view["origin_px"], placement)
     steps = (clipped_pixel_steps(profile, resolution, view, placement)
-             if stimulus.pixel_coverage and view["clipped"] else None)
-    if stimulus.required_support is not None and not np.any(
-            stimulus.required_support(parameters, *coordinates, steps)):
+             if getattr(stimulus, "pixel_coverage", False) and view["clipped"] else None)
+    required_support = getattr(stimulus, "required_support", None)
+    if required_support is not None and not np.any(
+            required_support(parameters, *coordinates, steps)):
         raise ValueError(f"{stimulus.display_name}: required stimulus support has no visible display samples. "
                          "Change its position/size or display geometry; an invisible target cannot be acquired.")
     return view | support | {"slot": placement.slot,
-                            "support_visibility_checked": stimulus.required_support is not None}, coordinates, steps
+                            "support_visibility_checked": required_support is not None}, coordinates, steps
 
 
 def display_degree_coordinates(profile, resolution, pixels, origin, placement):
