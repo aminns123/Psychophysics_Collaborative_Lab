@@ -204,7 +204,7 @@ class TeachingAdaptiveMethod:
         self.algorithm = run.adaptive(
             {0: StaircaseConfig(run.values["n_down"], run.values["n_up"],
                                 len(self.conditions) + 1)},
-            len(self.conditions), starting_values={0: start},
+            run.values["max_trials"], starting_values={0: start},
         )
         self.maximum = maximum
         self.state = {"contrast": start}
