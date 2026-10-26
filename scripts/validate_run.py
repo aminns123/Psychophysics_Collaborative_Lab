@@ -382,9 +382,32 @@ def validate_run(run_directory: Path) -> list[Check]:
     def ceiling_check():
         found = []
         for name, payload in metadata.items():
+            if name == "resolved_experiment.json" and "experiment_settings" in payload:
+                # This is the unchanged source preset, not the selected run.
+                # Validate its provenance before distinguishing these two exact
+                # source-value locations from active configuration/state.
+                source = payload["experiment_settings"]
+                require(isinstance(source, dict) and set(source) == {"file_identity", "sha256", "document", "values"},
+                        "invalid source preset provenance")
+                require(isinstance(source["file_identity"], str) and source["file_identity"].endswith(".json")
+                        and ".." not in Path(source["file_identity"]).parts,
+                        "invalid source preset file identity")
+                require(isinstance(source["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", source["sha256"]),
+                        "invalid source preset hash")
+                document = source["document"]
+                require(isinstance(document, dict) and set(document) == {"schema_version", "experiment_id", "values"}
+                        and document["schema_version"] == 1 and document["experiment_id"] == manifest["experiment_id"]
+                        and isinstance(document["values"], dict) and isinstance(source["values"], dict),
+                        "invalid source preset document")
             for location, value in leaves(payload):
                 if location.rsplit(".", 1)[-1] in {"max_trials", "number_trials", "max_accepted_responses"}:
                     require(type(value) is int and value > 0, f"invalid response ceiling: {name}{location}")
+                    if name == "resolved_experiment.json" and location in {
+                        ".experiment_settings.document.values.max_trials", ".experiment_settings.values.max_trials",
+                        ".experiment_settings.document.values.number_trials", ".experiment_settings.values.number_trials",
+                        ".experiment_settings.document.values.max_accepted_responses", ".experiment_settings.values.max_accepted_responses",
+                    }:
+                        continue
                     found.append((name + location, value))
         if adaptive_needed:
             require(bool(found), "no saved response ceiling")

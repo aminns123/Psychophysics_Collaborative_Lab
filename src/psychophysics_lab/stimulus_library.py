@@ -304,11 +304,11 @@ class GaborPatch(LibraryStimulus):
     PARAMETERS = (
         ConfigField("size_deg", "Square aperture width", "float", 5., units="degrees", minimum=.1, maximum=45, help_text="For flat or fade edge modes, exactly the square aperture width in visual degrees. Legacy Gaussian mode retains its original bounded patch."),
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
-        ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20),
+        ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20, help_text="Used only in legacy_gaussian mode; flat and edge-fade modes use the explicit square aperture instead."),
         ConfigField(
             "envelope_mode", "Envelope / edge behavior", "choice", "legacy_gaussian",
             choices=("legacy_gaussian", "flat_hard_edge", "edge_fade"),
-            help_text="Legacy Gaussian preserves historic data. Flat hard edge gives full carrier modulation inside the square aperture; edge fade uses a raised cosine."
+            help_text="Legacy Gaussian preserves historic data. Flat hard edge gives full carrier modulation inside the square aperture; edge fade uses a raised cosine. Hard edges add high spatial frequencies: the carrier Nyquist check alone does not qualify edge sampling on the actual display."
         ),
         ConfigField(
             "fade_width_deg", "Edge fade width", "float", .1, units="degrees",
@@ -449,7 +449,7 @@ class TeachingGabor(LibraryStimulus):
         ConfigField(
             "envelope_mode", "Envelope / edge behavior", "choice", "legacy_gaussian",
             choices=("legacy_gaussian", "flat_hard_edge", "edge_fade"),
-            help_text="Legacy Gaussian is the exact historic teaching appearance. Flat hard edge means full modulation in the chosen square aperture and exact background outside."
+            help_text="Legacy Gaussian is the exact historic teaching appearance. Flat hard edge means full modulation in the chosen square aperture and exact background outside. Hard edges add high spatial frequencies: the carrier Nyquist check alone does not qualify edge sampling on the actual display."
         ),
         ConfigField(
             "fade_width_deg", "Edge fade width", "float", .1, units="degrees",

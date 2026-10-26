@@ -7,6 +7,7 @@ from textual.app import ComposeResult
 from .console import ConsoleScreen as Screen
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from textual.widgets import Button, Static, Input, Label, Select, Checkbox
+from .checkbox import ExplicitCheckbox as Checkbox
 from ..config.local import save_profile
 from ..config.calibration_templates import (
     write_luminance_example, read_luminance_measurements

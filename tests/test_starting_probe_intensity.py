@@ -129,9 +129,8 @@ def test_live_tui_and_review_show_absolute_input_and_derived_step_scale(tmp_path
             screen.query_one('#field-logUNIT-DW', Input).value = str(np.log10(2))
             await pilot.pause()
             message = str(screen.query_one('#contrast-live-validation', Static).render())
-            assert 'Starting difference from background: 0.5' in message
-            assert 'intensity 0.75; difference 0.25' in message
-            assert 'No finite number' in message
+            assert 'Review displays' in message
+            assert 'Starting difference from background' not in message
             assert screen._collect()['starting_probe_intensity'] == 1.
             screen.query_one('#review', Button).press()
             await pilot.pause()
@@ -139,6 +138,7 @@ def test_live_tui_and_review_show_absolute_input_and_derived_step_scale(tmp_path
             table = app.screen.query_one('#resolved-settings-table', DataTable)
             rendered = str([table.get_row_at(i) for i in range(table.row_count)])
             assert 'Relative digital contrast' in rendered
+            assert 'intensity 0.75; difference 0.25' in rendered
             assert 'Decreases to <= 1%' in rendered and 'No finite number' in rendered
             assert app.screen.request.experiment_values['starting_probe_intensity'] == 1.
     asyncio.run(scenario())

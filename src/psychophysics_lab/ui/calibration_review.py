@@ -3,6 +3,7 @@ from textual.app import ComposeResult
 from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, VerticalScroll, Horizontal
 from textual.widgets import Button, Checkbox, Input, Select, Static, Label, Collapsible
+from .checkbox import ExplicitCheckbox as Checkbox
 
 from ..config.calibration_review import save_verification, save_one_verification, qualify_experiment
 from ..config.preflight import qualification_checks

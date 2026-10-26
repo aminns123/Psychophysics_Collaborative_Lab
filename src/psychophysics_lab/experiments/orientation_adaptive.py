@@ -4,7 +4,9 @@ Target 0 = negative tilt, 1 = positive tilt; F/J by default (TUI can remap).
 Correctness compares the target and response alternative indices. Conditions
 are balanced, shuffled with random_seed, and stop after trial_count responses.
 Adaptation defaults (editable in the TUI): independent 2-down/1-up staircase; two correct answers multiply
-contrast by .8, one incorrect by 1.25, hold otherwise, clamp to [.001, 1].
+contrast by .8, one incorrect by 1.25, hold otherwise, saturate at 1.
+Only representable-number underflow protection is applied at the lower bound;
+there is no scientific .001 contrast floor.
 Stop at trial_count accepted responses, not reversals (limit is count + 1).
 No audio in this task. Digital contrast is not optical contrast.
 Stimulus maths/defaults are in TeachingGabor in stimulus_library.py; optional

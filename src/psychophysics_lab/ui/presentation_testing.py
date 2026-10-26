@@ -3,6 +3,7 @@
 from textual.screen import ModalScreen
 from textual.containers import Vertical
 from textual.widgets import Static, Checkbox, Button, Input, Label
+from .checkbox import ExplicitCheckbox as Checkbox
 
 
 class PresentationTestScreen(ModalScreen):

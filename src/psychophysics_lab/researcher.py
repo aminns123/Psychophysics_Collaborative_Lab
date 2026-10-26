@@ -112,6 +112,7 @@ class RunContext:
             runtime_display = self._presentation.metadata
         self.expected_trials = expected_trials
         settings = self.spec.settings_snapshot()
+        self._experiment_settings = settings
         self.save_resolution(**({"scientific_specification":dict(self.spec.scientific_spec), "random_seed":self.seed} | dict(resolution) | ({"experiment_settings": settings} if settings else {})))
         atomic_write_json(self.run_directory / "runtime_display.json", dict(runtime_display or {
             "physical_display_used": False, "mode": "simulation",
@@ -565,6 +566,10 @@ class RunContext:
 
     def save_resolution(self, **details):
         """Record experiment-owned stimulus/timing definitions for later review."""
+        # A final method summary must retain the source preset captured at
+        # initialisation, even if the researcher selected different run values.
+        if getattr(self, "_experiment_settings", None):
+            details["experiment_settings"] = self._experiment_settings
         atomic_write_json(self.run_directory / "resolved_experiment.json",
                           {"experiment_id": self.spec.id, **details})
 
