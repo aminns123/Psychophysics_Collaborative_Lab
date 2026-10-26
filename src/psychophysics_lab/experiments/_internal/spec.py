@@ -158,7 +158,7 @@ class ExperimentSpec:
 
     def field_defaults(self) -> dict[str, Any]:
         saved = self.settings_snapshot()
-        return saved["values"] if saved else {item.key: item.default for item in self.fields}
+        return {item.key: saved["values"].get(item.key, item.default) for item in self.fields} if saved else {item.key: item.default for item in self.fields}
 
     def normalise_input_keys(self, values: Mapping[str, Any]) -> dict[str, Any]:
         """Apply only the experiment's declared compatibility migration."""
