@@ -1716,7 +1716,7 @@ class ExperimentConfigScreen(Screen):
                     yield StimulusParametersPanel(self, slot)
             controls = set(self.experiment.adaptive.controls) if self.experiment.adaptive else set()
             for field in self.experiment.fields:
-                group = "Adaptive settings" if field.key in controls else field.section
+                group = ("Experiment" if field.key == "max_trials" and any(f.key == "contrast_method" for f in self.experiment.fields) else "Adaptive settings" if field.key in controls else field.section)
                 groups.setdefault(group, []).append(field)
             for group, fields in groups.items():
                 with Collapsible(title=group,
