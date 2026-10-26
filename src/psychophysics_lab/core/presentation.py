@@ -21,14 +21,14 @@ class Response:
 def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, coordinates=None, pixel_steps=None):
     """Scientific floating-point command image, before any display encoding."""
     parameters = stimulus.validate_parameters(parameters)
-    extent = extent_deg if extent_deg is not None else stimulus_geometry(stimulus, parameters)["raster_extent_deg"]
+    extent = extent_deg if extent_deg is not None else parameters[stimulus.extent_parameter]
     width, height = pixels
     x = (np.arange(width) + .5 - width / 2) * extent / width
     y = (np.arange(height) + .5 - height / 2) * extent / height
     xx, yy = np.meshgrid(x, y) if coordinates is None else coordinates
     if xx.shape != (height, width) or yy.shape != (height, width):
         raise ValueError("Degree coordinates must match the supplied raster shape.")
-    kwargs = {"pixel_steps": pixel_steps} if stimulus.pixel_coverage and pixel_steps is not None else {}
+    kwargs = {"pixel_steps": pixel_steps} if getattr(stimulus, "pixel_coverage", False) and pixel_steps is not None else {}
     result = np.asarray(stimulus.render(parameters, xx, yy, **kwargs), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
         raise ValueError(f"Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape; "
