@@ -1856,7 +1856,26 @@ class ExperimentConfigScreen(Screen):
             widget.set_class(bool(report['error']),"invalid-input")
             widget.tooltip=report['domain']+"\n"+report['error']
             self.query_one("#domain-"+field.key.replace('_','-'),Static).update(report['domain']+("\nINVALID: "+report['error'] if report['error'] else ""))
-        self.query_one('#constraint-summary',Static).update("\n".join(errors))
+        summary = "\n".join(errors)
+        if self.experiment.id == "contrast_sensitivity":
+            try:
+                sigma = float(raw["grating_sigma_deg"])
+                cutoff = float(raw["grating_cutoff_sigmas"])
+                import math
+                if math.isfinite(sigma) and math.isfinite(cutoff) and sigma > 0 and cutoff > 0:
+                    diameter = 2 * sigma * cutoff
+                    size_note = (
+                        f"CSF geometry: Gaussian sigma {sigma:g} degrees, outer-edge multiplier {cutoff:g}; "
+                        f"signal support radius {diameter/2:g} degrees, diameter {diameter:g} degrees. "
+                        "Outside this radius, grating modulation is exactly zero (the selected digital background). "
+                        "The software raster expands to contain the requested support. "
+                        "The monitor displays only visible pixels without resizing the grating. "
+                        "Partially clipped stimuli may affect the intended experiment; inspect Review."
+                    )
+                    summary = (summary + "\n" if summary else "") + size_note
+            except (KeyError, TypeError, ValueError):
+                pass  # Invalid/incomplete inputs are reported by their fields above.
+        self.query_one('#constraint-summary',Static).update(summary)
         # Shader range affects human/test launch, but does not block numerical simulation Review.
         # Submission runs the same validator again; retaining an enabled button
         # avoids stale disabled state between the last keystroke and its event.
