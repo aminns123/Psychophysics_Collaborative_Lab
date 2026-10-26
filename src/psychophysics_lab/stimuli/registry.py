@@ -25,6 +25,10 @@ class StimulusSpec:
     legacy_parameter_defaults: dict | None = None
     # Appended to preserve existing positional constructor arguments.
     origin_namespace: str = ""
+    # Optional geometry declarations; old independent stimuli retain their aperture.
+    geometry: Callable | None = None
+    required_support: Callable | None = None
+    pixel_coverage: bool = False
 
     def validate_parameters(self, values):
         if not isinstance(values, dict):

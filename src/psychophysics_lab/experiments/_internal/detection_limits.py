@@ -6,11 +6,11 @@ grid, including rectangular pixel coverage and the fixation blend.
 import numpy as np
 
 
-def probe_limit(parameters, coordinates):
+def probe_limit(parameters, coordinates, pixel_steps=None):
     from psychophysics_lab.stimulus_library import DetectionScene
     x, y = coordinates
-    base = DetectionScene.render(parameters | {"contrast": 0.0}, x, y)
-    unit = DetectionScene.render(parameters | {"contrast": 1.0}, x, y) - base
+    base = DetectionScene.render(parameters | {"contrast": 0.0}, x, y, pixel_steps=pixel_steps)
+    unit = DetectionScene.render(parameters | {"contrast": 1.0}, x, y, pixel_steps=pixel_steps) - base
     if not np.isfinite(base).all() or base.min() < 0 or base.max() > 1:
         raise ValueError(f"Scene without probe exceeds digital gamut: min={base.min():g}, max={base.max():g}; allowed [0, 1].")
     active = unit > 0
@@ -34,7 +34,7 @@ def resolve_probe_limits(run, conditions, prepare_stimuli):
     actual resolution against the profile; its final pixel check remains active.
     """
     from psychophysics_lab.core.presentation import (
-        validate_geometry, placement_pixels, display_degree_coordinates,
+        plan_visible_stimulus, stimulus_geometry,
     )
     from psychophysics_lab.core.timeline import Stimulus
     from psychophysics_lab.stimuli.registry import get_stimulus
@@ -49,22 +49,21 @@ def resolve_probe_limits(run, conditions, prepare_stimuli):
                 for slot, p in parameters.items():
                     if not p["probe_present"]:
                         continue
-                    extent = p["size_deg"]
+                    stimulus = get_stimulus("detection_scene")
+                    extent = stimulus_geometry(stimulus, p)["raster_extent_deg"]
                     if extent not in grids:
                         profile = run.display
                         resolution = getattr(profile, "expected_resolution_px", None)
                         if resolution:
                             placement = Stimulus(slot)
-                            stimulus = get_stimulus("detection_scene")
-                            pixels = validate_geometry(profile, resolution, stimulus, p, placement=placement)
-                            origin = placement_pixels(profile, resolution, pixels, placement, extent_deg=extent)
-                            grids[extent] = display_degree_coordinates(profile, resolution, pixels, origin, placement)
+                            _, coordinates, steps = plan_visible_stimulus(profile, resolution, stimulus, p, placement)
+                            grids[extent] = (coordinates, steps)
                         else:
                             if not run.synthetic:
                                 raise ValueError("Probe headroom requires the selected display resolution.")
                             axis = (np.arange(256)+.5-128)*extent/256
-                            grids[extent] = np.meshgrid(axis, axis)
-                    bound, position = probe_limit(p, grids[extent])
+                            grids[extent] = (np.meshgrid(axis, axis), None)
+                    bound, position = probe_limit(p, *grids[extent])
                     if bound < maximum:
                         maximum, limiting_position = bound, position
             cache[key] = (maximum, limiting_position)

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import time
 import numpy as np
 from ..stimuli.registry import get_stimulus
-from ..stimuli.geometry import physical_length_for_visual_angle
+from .viewport import stimulus_geometry, angular_viewport, clipped_pixel_steps
 from ..stimuli.spatial_calibration import resolve_spatial_geometry
 
 
@@ -18,17 +18,18 @@ class Response:
     reaction_time_s: float
 
 
-def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, coordinates=None):
+def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, coordinates=None, pixel_steps=None):
     """Scientific floating-point command image, before any display encoding."""
     parameters = stimulus.validate_parameters(parameters)
-    extent = extent_deg or parameters[stimulus.extent_parameter]
+    extent = extent_deg if extent_deg is not None else stimulus_geometry(stimulus, parameters)["raster_extent_deg"]
     width, height = pixels
     x = (np.arange(width) + .5 - width / 2) * extent / width
     y = (np.arange(height) + .5 - height / 2) * extent / height
     xx, yy = np.meshgrid(x, y) if coordinates is None else coordinates
     if xx.shape != (height, width) or yy.shape != (height, width):
         raise ValueError("Degree coordinates must match the supplied raster shape.")
-    result = np.asarray(stimulus.render(parameters, xx, yy), dtype=float)
+    kwargs = {"pixel_steps": pixel_steps} if stimulus.pixel_coverage and pixel_steps is not None else {}
+    result = np.asarray(stimulus.render(parameters, xx, yy, **kwargs), dtype=float)
     if result.shape != (height, width) or not np.isfinite(result).all() or result.min() < 0 or result.max() > 1:
         raise ValueError(f"Stimulus renderer must return finite grayscale pixels in [0,1] with the supplied grid shape; "
                          f"actual shape {result.shape}, min={result.min():g}, max={result.max():g}. "
@@ -36,9 +37,9 @@ def render_values(stimulus, parameters, *, pixels=(256, 256), extent_deg=None, c
     return result
 
 
-def render_pixels(stimulus, parameters, *, pixels=(256,256), extent_deg=None, coordinates=None):
+def render_pixels(stimulus, parameters, *, pixels=(256,256), extent_deg=None, coordinates=None, pixel_steps=None):
     """Explicit 8-bit teaching/PNG preview; not a precision-qualified stimulus."""
-    return np.rint(render_values(stimulus,parameters,pixels=pixels,extent_deg=extent_deg,coordinates=coordinates)*255).astype(np.uint8)
+    return np.rint(render_values(stimulus,parameters,pixels=pixels,extent_deg=extent_deg,coordinates=coordinates,pixel_steps=pixel_steps)*255).astype(np.uint8)
 
 
 def preview_stimulus(identity, parameters, output):
@@ -55,45 +56,39 @@ def preview_stimulus(identity, parameters, output):
 
 
 def angular_patch_bounds(profile, resolution, extent_deg, placement):
-    """Pixel corners for a square ANGULAR aperture around the requested centre.
-
-    Flat-screen metres per degree increase with eccentricity. Translating a
-    centre-sized rectangle silently shrinks/skews an off-axis aperture.
-    Round the independently transformed edges, rather than its centre width.
-    """
-    import math
-    geometry = resolve_spatial_geometry(profile, resolution)
-    extent = float(extent_deg)
-    centres = (float(placement.x_deg), float(placement.y_deg))
-    if not math.isfinite(extent) or not 0 < extent < 180 or any(
-            not math.isfinite(c) or abs(c) + extent/2 >= 90 for c in centres):
-        raise ValueError("Angular patch edges must be finite and within the forward display field.")
-    origin, pixels = [], []
-    for centre, pitch, limit in zip(centres, geometry.pixel_pitch_m, resolution):
-        lower, upper = (round(limit/2 + geometry.viewing_distance_m * math.tan(math.radians(edge)) / pitch)
-                        for edge in (centre-extent/2, centre+extent/2))
-        if upper-lower < 2 or lower < 0 or upper > limit:
-            raise ValueError("Positioned stimulus does not fit the calibrated display.")
-        origin.append(lower)
-        pixels.append(upper-lower)
-    return tuple(origin), tuple(pixels)
+    """Visible intersection of the original angular aperture; never rescale it."""
+    view = angular_viewport(profile, resolution, extent_deg, placement)
+    return tuple(view["origin_px"]), tuple(view["raster_px"])
 
 
 def validate_geometry(profile, resolution, stimulus, parameters, *, placement=None):
-    extent = parameters[stimulus.extent_parameter]
-    metres = physical_length_for_visual_angle(extent, profile.viewing_distance_m)
-    pixels = (round(metres / profile.physical_width_m * resolution[0]),
-              round(metres / profile.physical_height_m * resolution[1]))
-    if placement is not None:
-        _, pixels = angular_patch_bounds(profile, resolution, extent, placement)
-    if min(pixels) < 2 or any(p > limit for p, limit in zip(pixels, resolution)):
-        raise ValueError("Stimulus size does not fit the calibrated display.")
+    from .timeline import Stimulus
+    placement = placement or Stimulus("target")
+    extent = stimulus_geometry(stimulus, parameters)["raster_extent_deg"]
+    _, pixels = angular_patch_bounds(profile, resolution, extent, placement)
     geometry = resolve_spatial_geometry(profile, resolution)
     frequencies = (stimulus.spatial_frequencies(parameters) if stimulus.spatial_frequencies
                    else (parameters.get(stimulus.frequency_parameter, 0),))
-    if any(f >= min(geometry.nyquist_cpd_at_centre) for f in frequencies):
-        raise ValueError("Stimulus spatial frequency reaches/exceeds the display Nyquist limit.")
+    if any(not np.isfinite(f) or f < 0 or f >= min(geometry.nyquist_cpd_at_centre) for f in frequencies):
+        raise ValueError("Stimulus spatial frequency reaches/exceeds the display Nyquist limit or is invalid.")
     return pixels
+
+
+def plan_visible_stimulus(profile, resolution, stimulus, parameters, placement):
+    """Shared Review/presentation plan, bounded by the monitor pixel dimensions."""
+    parameters = stimulus.validate_parameters(parameters)
+    validate_geometry(profile, resolution, stimulus, parameters, placement=placement)
+    support = stimulus_geometry(stimulus, parameters)
+    view = angular_viewport(profile, resolution, support["raster_extent_deg"], placement)
+    coordinates = display_degree_coordinates(profile, resolution, view["raster_px"], view["origin_px"], placement)
+    steps = (clipped_pixel_steps(profile, resolution, view, placement)
+             if stimulus.pixel_coverage and view["clipped"] else None)
+    if stimulus.required_support is not None and not np.any(
+            stimulus.required_support(parameters, *coordinates, steps)):
+        raise ValueError(f"{stimulus.display_name}: required stimulus support has no visible display samples. "
+                         "Change its position/size or display geometry; an invisible target cannot be acquired.")
+    return view | support | {"slot": placement.slot,
+                            "support_visibility_checked": stimulus.required_support is not None}, coordinates, steps
 
 
 def display_degree_coordinates(profile, resolution, pixels, origin, placement):
@@ -178,19 +173,16 @@ class Presentation:
                 for placement in phase.placements:
                     stimulus_id, params = parameters_by_slot[placement.slot]
                     stimulus = get_stimulus(stimulus_id)
-                    pixels = validate_geometry(self.profile, self.resolution, stimulus, params, placement=placement)
-                    x, y = placement_pixels(self.profile, self.resolution, pixels, placement,
-                                            extent_deg=params[stimulus.extent_parameter])
-                    coordinates = display_degree_coordinates(self.profile, self.resolution, pixels, (x,y), placement)
-                    geometries.append({"slot": placement.slot, "origin_px": [x,y], "raster_px": list(pixels),
-                        "requested_centre_deg": [placement.x_deg, placement.y_deg],
-                        "requested_extent_deg": params[stimulus.extent_parameter],
-                        "geometry_basis": "per-pixel flat-screen angular coordinates"})
+                    geometry, coordinates, steps = plan_visible_stimulus(
+                        self.profile, self.resolution, stimulus, params, placement)
+                    pixels = tuple(geometry["raster_px"])
+                    x, y = geometry["origin_px"]
+                    geometries.append(geometry)
                     if stimulus.floating_raster:
-                        array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates),dtype=np.float32)
+                        array = np.ascontiguousarray(render_values(stimulus,params,pixels=pixels,coordinates=coordinates,pixel_steps=steps),dtype=np.float32)
                         picture = FloatingTexture(array)
                     else:
-                        array = render_pixels(stimulus,params,pixels=pixels,coordinates=coordinates)
+                        array = render_pixels(stimulus,params,pixels=pixels,coordinates=coordinates,pixel_steps=steps)
                         picture = pyglet.image.ImageData(*pixels,"L",array.tobytes(),pitch=pixels[0])
                     if isinstance(picture, FloatingTexture):
                         allocated.append(picture)

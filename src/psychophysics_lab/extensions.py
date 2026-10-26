@@ -254,6 +254,7 @@ _SCIENCE_EXECUTION_FILES = (
     "config/preflight.py",
     "config/stimulus_parameters.py",
     "core/presentation.py",
+    "core/viewport.py",
     "core/scene_primitives.py",
     "core/runner.py",
     "core/synthetic.py",
