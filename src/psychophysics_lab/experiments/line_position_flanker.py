@@ -451,7 +451,9 @@ def validate_settings(values):
     # Local overlap is checked on the resolved stimulus grid before acquisition.
 
 
+    # Validate selected fixed strengths without disturbing monitor sampling checks.
     yield from validate_probe_fixed_settings(values, make_conditions)
+
 
 def validate_monitor(settings, profile):
     """Check the selected inducing frequency on the physical display, not a preset default."""
