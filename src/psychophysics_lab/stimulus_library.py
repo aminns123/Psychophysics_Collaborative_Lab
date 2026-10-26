@@ -589,6 +589,96 @@ class ResearcherVerticalLine(LibraryStimulus):
 
 
 
+class CircularWindowedSinusoidalGrating(LibraryStimulus):
+    """Circular flat-centre sine grating with optional *outer-edge-only* fade.
+
+    Scientific support is a circle whose DIAMETER is size_deg. Digital contrast
+    is peak-to-peak grating modulation, identical to the reference CSF command.
+    The window is precisely 1 through the interior, a raised cosine only in
+    the specified outer annulus, and precisely 0 at/outside the circular edge.
+    A zero fade or hard_edge mode gives an abrupt boundary (more high-frequency
+    edge energy); only the carrier's spatial frequency is checked by the
+    existing simple spatial-sampling validator.
+    """
+    PARAMETERS = (
+        ConfigField("size_deg", "Circular aperture diameter", "float", 3.,
+                    minimum=.1, maximum=45., units="degrees",
+                    help_text="Exact diameter of the circular support in visual degrees, not Gaussian sigma."),
+        ConfigField("edge_mode", "Circular edge style", "choice", "soft_edge",
+                    choices=("soft_edge", "hard_edge"),
+                    help_text="soft_edge: full carrier amplitude inside, cosine fade in only the final annulus. hard_edge: immediate cutoff at the circle boundary."),
+        ConfigField("fade_width_deg", "Outer-edge fade width", "float", .15,
+                    minimum=0., maximum=20., units="degrees",
+                    help_text="Radial thickness of the outer annulus in degrees; active in soft_edge only. Zero means a hard cutoff."),
+        ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2.,
+                    minimum=.01, maximum=64., units="cycles/degree"),
+        ConfigField("contrast", "Digital peak-to-peak modulation", "float", .1,
+                    minimum=0, maximum=1., units="digital peak-to-peak modulation"),
+        ConfigField("background", "Digital background", "float", .5,
+                    minimum=0, maximum=1., units="digital intensity, 0 to 1"),
+    )
+
+    @staticmethod
+    def validate(p):
+        radius = p["size_deg"] / 2
+        if p["edge_mode"] == "soft_edge" and p["fade_width_deg"] > radius:
+            raise ValueError(
+                "Outer-edge fade width cannot exceed the circular aperture radius. "
+                "Reduce fade_width_deg or increase size_deg."
+            )
+        if p["contrast"] > 2 * min(p["background"], 1-p["background"]):
+            raise ValueError(
+                "Requested grating modulation exceeds the available digital "
+                "range at this background; no silent clipping."
+            )
+
+    @staticmethod
+    def render(p, x_deg, y_deg):
+        r = np.hypot(x_deg, y_deg)
+        radius = p["size_deg"] / 2
+        fade = p["fade_width_deg"] if p["edge_mode"] == "soft_edge" else 0.
+        if fade > 0:
+            # Flat central disk r <= radius-fade, C1-continuous raised cosine
+            # to exact background at r=radius, with zero modulation outside.
+            progress = np.clip((r - (radius - fade)) / fade, 0, 1)
+            edge = .5 * (1 + np.cos(np.pi * progress))
+        else:
+            edge = np.asarray(r < radius, dtype=float)
+        edge = np.where(r >= radius, 0., edge)
+        wave = np.sin(2*np.pi*p["spatial_frequency_cpd"]*x_deg)
+        return p["background"] + (p["contrast"]/2) * edge * wave
+
+    @staticmethod
+    def geometry(p):
+        radius = p["size_deg"] / 2
+        fade = p["fade_width_deg"] if p["edge_mode"] == "soft_edge" else 0.
+        return {
+            "raster_extent_deg": p["size_deg"],
+            "support_radius_deg": radius,
+            "support_diameter_deg": p["size_deg"],
+            "taper_start_radius_deg": radius - fade,
+            "background_outside_support": p["background"],
+            "edge_style": p["edge_mode"],
+            "edge_fade_width_deg": fade,
+        }
+
+    @staticmethod
+    def visible(p, x_deg, y_deg, steps):
+        return np.hypot(x_deg, y_deg) < p["size_deg"] / 2
+
+    SPEC = StimulusSpec(
+        id="circular_windowed_sinusoidal_grating",
+        display_name="Circular windowed sinusoidal grating",
+        description="Circular sine grating with full central amplitude and optional radial raised-cosine outer edge; no Gaussian attenuation from the centre.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="grating",
+        render=render, validator=validate.__func__,
+        floating_raster=True, geometry=geometry.__func__,
+        required_support=visible.__func__,
+        calibration_requirements=("geometry", "luminance"),
+    )
+
+
 class ContrastSensitivityGrating(LibraryStimulus):
     """Gaussian-windowed grating with a finite, smoothly tapered support.
 
