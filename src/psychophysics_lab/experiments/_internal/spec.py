@@ -120,6 +120,7 @@ class ExperimentSpec:
     # Appended to preserve existing positional constructor arguments.
     origin_namespace: str = ""
     method_planner: Callable | None = None
+    method_reviewer: Callable | None = None
 
     def __post_init__(self):
         if self.procedure is not None:
@@ -142,6 +143,8 @@ class ExperimentSpec:
             raise ValueError("Experiment fields must have unique keys.")
         if self.adaptive is not None:
             self.adaptive.validate({item.key for item in self.fields})
+        if self.method_reviewer is not None and not callable(self.method_reviewer):
+            raise TypeError('Experiment method reviewer must be callable.')
         if self.method_planner is not None and not callable(self.method_planner):
             raise TypeError("Experiment method planner must be callable.")
         if self.procedure is not None and not callable(self.procedure):
