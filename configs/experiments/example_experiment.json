@@ -7,6 +7,15 @@
     "stimulus_ms": 200,
     "interval_ms": 150,
     "response_timeout_ms": 0,
-    "response_keys": "F,J"
+    "response_keys": "F,J",
+    "contrast_method": "original",
+    "fixed_contrasts": "0,0.1,0.2",
+    "fixed_repetitions": 5,
+    "starting_strength": 0.2,
+    "max_trials": 1000,
+    "n_down": 2,
+    "n_up": 1,
+    "down_factor": 0.8,
+    "up_factor": 1.25
   }
 }
