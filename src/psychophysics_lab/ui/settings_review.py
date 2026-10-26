@@ -66,10 +66,10 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
-    if values.get("contrast_method") == "constant_stimuli" and callable(getattr(module, "make_fixed_schedule", None)):
+    if values.get("contrast_method") == "constant_stimuli" and callable(spec.method_planner):
         # Review must inspect the selected fixed-level schedule, not invent a
         # staircase just because this CSF experiment supports adaptive trials.
-        schedule = module.make_fixed_schedule(values, run.seed)
+        schedule = spec.method_planner(values, run.seed)
         unique = list(dict.fromkeys(row["value"] for row in schedule))
         conditions = [{"id": i, "value": value} for i, value in enumerate(unique, 1)]
         condition = schedule[0]
@@ -77,7 +77,7 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         run.initialise(expected_trials=len(schedule),
                        resolution={"trial_selection_method": "constant_stimuli",
                                    "planned_trials": len(schedule),
-                                   "fixed_contrast_levels": list(module.fixed_contrast_levels(values)) if callable(getattr(module, "fixed_contrast_levels", None)) else list(dict.fromkeys(row["contrast"] for row in schedule)),
+                                   "fixed_contrast_levels": list(dict.fromkeys(row["contrast"] for row in schedule)),
                                    "fixed_repetitions_per_level_per_condition": values["fixed_repetitions"]})
         representative_note = ("Constant stimuli: scientific conditions remain unchanged; "
                                f"{len(schedule)} planned presentations at the selected fixed levels. "
