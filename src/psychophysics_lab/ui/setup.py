@@ -1719,9 +1719,13 @@ class ExperimentConfigScreen(Screen):
                 group = "Adaptive settings" if field.key in controls else field.section
                 groups.setdefault(group, []).append(field)
             for group, fields in groups.items():
-                with Collapsible(title=group, collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"}):
+                with Collapsible(title=group,
+                                 collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"},
+                                 id="csf-fixed-level-settings" if group == "Constant stimuli" and self.experiment.id == "contrast_sensitivity" else None):
                     if group == "Adaptive settings":
-                        yield Static("The experiment declares its adaptive method; these settings control this run.")
+                        yield Static("Adaptive staircase settings. Ignored when Contrast selection method is constant_stimuli.")
+                    elif group == "Constant stimuli":
+                        yield Static("Used only with Method of constant stimuli. Spatial frequencies remain the conditions; levels are digital peak-to-peak grating modulation, not measured optical contrast.")
                     elif group == "Stimulus conditions":
                         yield Static(
                             "Enter the number of conditions and their comma-separated values. "
@@ -1755,6 +1759,7 @@ class ExperimentConfigScreen(Screen):
         self._refresh_contrast_help()
         self._refresh_constraints()
         self._refresh_mapping_choices()
+        self._sync_csf_contrast_method()
         if self.focus_field:
             field = next(item for item in self.experiment.fields if item.key == self.focus_field)
             widget = self.query_one("#" + _field_widget_id(field))
@@ -1988,7 +1993,20 @@ class ExperimentConfigScreen(Screen):
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
+    def _sync_csf_contrast_method(self):
+        if self.experiment.id != "contrast_sensitivity":
+            return
+        try:
+            selected = self.query_one("#field-contrast-method", Select).value
+            panel = self.query_one("#csf-fixed-level-settings", Collapsible)
+        except Exception:
+            return
+        if not _is_blank_select_value(selected):
+            panel.collapsed = selected != "constant_stimuli"
+
     def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "field-contrast-method":
+            self._sync_csf_contrast_method()
         if event.select.id == 'background-mapping':
             if event.value != event.select.value:
                 return  # Ignore queued events from a replaced option list.
