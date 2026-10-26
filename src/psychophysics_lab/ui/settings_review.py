@@ -146,7 +146,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         or (row[:2] == ("Adaptive scale", "Response rule")
             and {"n_down", "n_up"} <= field_keys)
     ))
-    if spec.adaptive:
+    if spec.adaptive and not (spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli"):
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
                     for field in spec.fields if field.key in controls)
@@ -187,7 +187,11 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                      str(view["origin_px"]) + " + " + str(view["raster_px"]) + " pixels",
                      "Clipped: " + ", ".join(view["clipped_edges"]) if view["clipped"] else "Entire requested raster visible"))
     if description["conditions"]:
-        rows.append(("Conditions", "Number of condition/staircase entries",str(len(description["conditions"])),"Experiment's make_conditions"))
+        label = ("Number of spatial-frequency conditions"
+                 if spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli"
+                 else "Number of condition/staircase entries")
+        rows.append(("Conditions", label, str(len(description["conditions"])),
+                     "Experiment's selected condition values"))
         keys = dict.fromkeys(key for c in description["conditions"] for key in c if key not in {"id","repeat"})
         for key in keys:
             distinct = list(dict.fromkeys(str(c[key]) for c in description["conditions"] if key in c))
