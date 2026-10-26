@@ -111,7 +111,58 @@ def _write_state(pyproject_hash: str, requirements_hash: str | None = None) -> N
     STATE.write_text(json.dumps(values, indent=2), encoding="utf-8")
 
 
+class InstallationIdentityError(subprocess.CalledProcessError):
+    """The environment does not identify this editable source checkout."""
+
+
+def _validate_installation_identity(python: Path) -> None:
+    # -I excludes cwd/PYTHONPATH/user-site masking; the selected environment's
+    # editable installation must supply both the import and its metadata.
+    code = """
+import ast
+from importlib.metadata import distribution
+import json
+from pathlib import Path
+import sys
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
+import psychophysics_lab as package
+
+root = Path(sys.argv[1]).resolve()
+source = root / 'src' / 'psychophysics_lab' / '__init__.py'
+if Path(package.__file__).resolve() != source.resolve():
+    raise RuntimeError(f'PsyCoLab imported from unexpected checkout: {package.__file__}')
+# The project's dynamic version is a literal in this file. Read it independently
+# of cached imports, without executing any scientific modules.
+tree = ast.parse(source.read_text(encoding='utf-8'), filename=str(source))
+version = next(ast.literal_eval(node.value) for node in tree.body
+               if isinstance(node, ast.Assign)
+               and any(isinstance(target, ast.Name) and target.id == '__version__'
+                       for target in node.targets))
+dist = distribution('psychophysics-lab')
+if package.__version__ != version or dist.version != version:
+    raise RuntimeError(f'PsyCoLab version mismatch: source={version}, '
+                       f'import={package.__version__}, metadata={dist.version}')
+if sys.flags.isolated:
+    origin = json.loads(dist.read_text('direct_url.json') or '{}')
+    url = urlsplit(origin.get('url', ''))
+    origin_path = url2pathname(('//' + url.netloc if url.netloc else '') + url.path)
+    if (url.scheme != 'file' or origin.get('dir_info', {}).get('editable') is not True
+            or Path(origin_path).resolve() != root):
+        raise RuntimeError(f'PsyCoLab metadata is not editable from {root}: {origin}')
+print(f'PsyCoLab editable identity OK: {version} from {root}')
+"""
+    try:
+        _run([str(python), "-I", "-c", code, str(ROOT)])
+        # Also check ordinary launch semantics: inherited PYTHONPATH/user-site
+        # must not redirect an otherwise correct editable install at runtime.
+        _run([str(python), "-c", code, str(ROOT)])
+    except subprocess.CalledProcessError as error:
+        raise InstallationIdentityError(error.returncode, error.cmd) from error
+
+
 def _validate_environment(python: Path) -> None:
+    _validate_installation_identity(python)
     _run([str(python), "-m", "pip", "check"])
     code = (
         "import psychophysics_lab, numpy, pyglet, textual; "
@@ -214,8 +265,12 @@ def main() -> int:
         print(f"Dependency configuration is unchanged; reusing {VENV.name}.")
         try:
             _validate_environment(venv_python)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as error:
+            identity_only = isinstance(error, InstallationIdentityError)
             print("Environment validation failed; reinstalling the editable project...")
+            # Identity repair must not resolve lab/runtime dependencies or upgrade
+            # build tools. If existing build tools cannot refresh it, fail safely.
+            refresh_options = ["--no-deps", "--no-build-isolation"] if identity_only else []
             try:
                 _run(
                     [
@@ -224,14 +279,18 @@ def main() -> int:
                         "pip",
                         "install",
                         "--disable-pip-version-check",
+                        *refresh_options,
                         "--editable",
                         str(ROOT),
                     ]
                 )
-                _install_extra_requirements(venv_python, extra)
+                if not identity_only:
+                    _install_extra_requirements(venv_python, extra)
                 _validate_environment(venv_python)
                 _write_state(pyproject_hash, extra_hash)
             except subprocess.CalledProcessError:
+                print("Editable refresh/validation failed; no script was started. "
+                      "Review the error above and retry setup after correcting it.")
                 return 1
 
     return 0
