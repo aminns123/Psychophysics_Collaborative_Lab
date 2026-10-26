@@ -244,6 +244,16 @@ class SinusoidalGrating(LibraryStimulus):
         ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
         ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=-360, maximum=360),
         ConfigField("contrast", "Digital modulation", "float", .2, units="0â€“1", minimum=0, maximum=1),
+        ConfigField(
+            "envelope_mode", "Envelope / edge behavior", "choice", "legacy_gaussian",
+            choices=("legacy_gaussian", "flat_hard_edge", "edge_fade"),
+            help_text="Legacy Gaussian preserves historic data. Flat hard edge gives full carrier contrast throughout the exact square aperture and background outside; edge fade uses a raised cosine."
+        ),
+        ConfigField(
+            "fade_width_deg", "Edge fade width", "float", .1, units="degrees",
+            minimum=0, maximum=10,
+            help_text="Used only when envelope_mode=edge_fade. For a 1 degree aperture, 0.1 gives a 0.1 degree taper at every square edge. Set envelope_mode=flat_hard_edge for no fade."
+        ),
     )
 
     def render(parameters, x_deg, y_deg):
@@ -264,10 +274,45 @@ class SinusoidalGrating(LibraryStimulus):
     )
 
 
+
+def _validate_gabor_aperture(parameters):
+    """Only opt-in edge fades constrain the interior plateau in degrees."""
+    if (parameters["envelope_mode"] == "edge_fade"
+            and parameters["fade_width_deg"] > parameters["size_deg"] / 2):
+        raise ValueError(
+            "Edge fade width must be at most half the square aperture width. "
+            "Reduce fade_width_deg or enlarge size_deg; digital contrasts are not rescaled."
+        )
+
+
+def _explicit_square_grating_envelope(parameters, x_deg, y_deg):
+    """One spatial envelope used by both Gabor classes in opt-in edge modes.
+
+    The square aperture has exact width size_deg in calibrated visual degrees.
+    The carrier's angular frequency, orientation, phase and contrast remain
+    independent of the edge envelope. No off-aperture pixels are modulated.
+    """
+    mode = parameters.get("envelope_mode", "legacy_gaussian")
+    half = parameters["size_deg"] / 2
+    edge = np.maximum(np.abs(x_deg), np.abs(y_deg))
+    if mode == "flat_hard_edge":
+        return np.asarray(edge <= half, dtype=float)
+    if mode == "edge_fade":
+        _validate_gabor_aperture(parameters)
+        fade = parameters["fade_width_deg"]
+        if fade == 0:
+            return np.asarray(edge <= half, dtype=float)
+        # Full modulation within half-fade degrees; raised cosine falls to
+        # exactly zero at the requested square support edge.
+        progress = np.clip((half - edge) / fade, 0, 1)
+        return (1 - np.cos(np.pi * progress)) / 2
+    raise ValueError(f"Unsupported explicit grating envelope: {mode!r}")
+
+
 class GaborPatch(LibraryStimulus):
     """A Gaussian-windowed grating in degrees, independent of CSF's GLSL."""
     PARAMETERS = (
-        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=45),
+        ConfigField("size_deg", "Square aperture width", "float", 5., units="degrees", minimum=.1, maximum=45, help_text="For flat or fade edge modes, exactly the square aperture width in visual degrees. Legacy Gaussian mode retains its original bounded patch."),
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
         ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20),
         ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
@@ -282,17 +327,22 @@ class GaborPatch(LibraryStimulus):
                          + np.deg2rad(parameters["phase_deg"]))
         r2 = x_deg*x_deg + y_deg*y_deg
         sigma = parameters["sigma_deg"]
-        envelope = np.exp(-r2/(2*sigma*sigma))
+        if parameters.get("envelope_mode", "legacy_gaussian") == "legacy_gaussian":
+            envelope = np.exp(-r2/(2*sigma*sigma))
+        else:
+            envelope = _explicit_square_grating_envelope(parameters, x_deg, y_deg)
         inside = (np.abs(x_deg) <= parameters["size_deg"]/2) & (np.abs(y_deg) <= parameters["size_deg"]/2)
         image = np.where(inside, .5 + .5*parameters["contrast"]*envelope*carrier, .5)
         return image
 
     SPEC = StimulusSpec(
         id="gabor_patch", display_name="Gabor patch",
-        description="Gaussian-windowed cosine carrier in cycles per degree.",
+        description="Cosine grating with selectable legacy Gaussian, full-aperture hard edge or raised-cosine edge fade.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="gabor", render=render,
         calibration_requirements=("geometry",),
+        validator=_validate_gabor_aperture,
+        legacy_parameter_defaults={"envelope_mode": "legacy_gaussian", "fade_width_deg": 0.1},
     )
 
 
@@ -393,9 +443,19 @@ class TeachingGabor(LibraryStimulus):
     PARAMETERS = (
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.05, maximum=30),
         ConfigField("orientation_deg", "Orientation", "float", 30., units="degrees", minimum=-90, maximum=90),
-        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=20),
+        ConfigField("size_deg", "Square aperture width / legacy scale", "float", 5., units="degrees", minimum=.1, maximum=20, help_text="Flat/edge-fade modes use this exact square aperture width. Legacy mode preserves the historic Gaussian sigma = size_deg/6."),
         ConfigField("contrast", "Digital Michelson modulation", "float", .2, units="fraction", minimum=0, maximum=1),
         ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=0, maximum=360),
+        ConfigField(
+            "envelope_mode", "Envelope / edge behavior", "choice", "legacy_gaussian",
+            choices=("legacy_gaussian", "flat_hard_edge", "edge_fade"),
+            help_text="Legacy Gaussian is the exact historic teaching appearance. Flat hard edge means full modulation in the chosen square aperture and exact background outside."
+        ),
+        ConfigField(
+            "fade_width_deg", "Edge fade width", "float", .1, units="degrees",
+            minimum=0, maximum=10,
+            help_text="Only active for edge_fade; width of the raised-cosine taper on each side of the square aperture."
+        ),
     )
     
     
@@ -405,7 +465,11 @@ class TeachingGabor(LibraryStimulus):
         coordinate  = x_deg * np.cos(angle) + y_deg * np.sin(angle)
         carrier     = np.cos(2 * np.pi * parameters["spatial_frequency_cpd"] * coordinate + np.deg2rad(parameters["phase_deg"]))
         sigma       = parameters["size_deg"] / 6
-        envelope    = np.exp(-(x_deg*x_deg + y_deg*y_deg) / (2*sigma*sigma))
+        if parameters.get("envelope_mode", "legacy_gaussian") == "legacy_gaussian":
+            # Exact historical teaching raster: do not introduce a mask.
+            envelope = np.exp(-(x_deg*x_deg + y_deg*y_deg) / (2*sigma*sigma))
+        else:
+            envelope = _explicit_square_grating_envelope(parameters, x_deg, y_deg)
         image = .5 + .5 * parameters["contrast"] * envelope * carrier
         return image
     
@@ -413,7 +477,9 @@ class TeachingGabor(LibraryStimulus):
     SPEC = StimulusSpec("teaching_gabor", "Teaching Gabor", "Gaussian-windowed grating; degrees and digital contrast.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
         default_config="configs/stimuli/teaching_gabor.json", family="orientation_patch", render=render,
-        calibration_requirements=("geometry",))
+        calibration_requirements=("geometry",),
+        validator=_validate_gabor_aperture,
+        legacy_parameter_defaults={"envelope_mode": "legacy_gaussian", "fade_width_deg": 0.1})
 
 
 class ComposedScene(LibraryStimulus):
