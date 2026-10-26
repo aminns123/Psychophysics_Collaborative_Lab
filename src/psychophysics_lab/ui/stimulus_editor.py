@@ -6,14 +6,18 @@ from textual.widgets import Label, Input, Select, Button, Static
 
 
 class StimulusValueEditor(Screen):
-    def __init__(self, panel):
+    def __init__(self, panel, focus_key=None):
         super().__init__()
         self.panel = panel
+        self.focus_key = focus_key
         self.document = panel.current()["document"]
         from .settings_review import parameter_sources
         try:
             description = panel.configuration.describe_current_settings()
             self.controlled = parameter_sources(description, panel.slot)
+            from .settings_review import parameter_controller
+            self.controlled |= {f.key for f in panel.stimulus.parameters
+                                if parameter_controller(panel.configuration.experiment, panel.slot, f.key)}
             self.effective = description["stimuli"].get(panel.slot, {})
         except (ValueError, KeyError, TypeError):
             self.controlled, self.effective = set(), {}
@@ -37,7 +41,10 @@ class StimulusValueEditor(Screen):
                 value = (self.effective.get(field.key, self.document["parameters"][field.key])
                          if field.key in self.controlled else self.document["parameters"][field.key])
                 if field.key in self.controlled:
-                    yield Static("Set by the experiment each trial. Change its settings or Python; this is a sample value.")
+                    from .settings_review import parameter_controller
+                    key = parameter_controller(self.panel.configuration.experiment, self.panel.slot, field.key)
+                    yield Static(f"Experiment-controlled: change {key} in Configure; this is a resolved value."
+                                 if key else "Trial-controlled: change the experiment's conditions or strength method in Configure.")
                 if field.kind == "choice":
                     yield Select(
                         [(str(v), v) for v in field.choices],
@@ -56,6 +63,14 @@ class StimulusValueEditor(Screen):
                     yield Static(field.help_text)
             yield Label("Save as a new preset")
             yield Input(placeholder="Preset name", id="stimulus-value-name")
+
+    def on_mount(self):
+        if self.focus_key:
+            index = next((i for i, f in enumerate(self.panel.stimulus.parameters) if f.key == self.focus_key), None)
+            if index is not None:
+                widget = self.query_one(f"#stimulus-value-{index}")
+                widget.scroll_visible()
+                widget.focus()
 
     def values(self):
         values = {}

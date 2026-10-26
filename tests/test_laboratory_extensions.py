@@ -32,6 +32,62 @@ def enable(lab):
     assert not ext.load(ROOT)
 
 
+def test_new_local_parameter_has_generic_review_edit_route_and_both_methods(lab,tmp_path):
+    """Create a local study by extending the documented shared-method example."""
+    from textual.widgets import Button,DataTable,Input,Select
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ReviewScreen,ExperimentConfigScreen
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+    identity="demolab__line_strength"
+    source=lab/"experiments"/(identity+".py")
+    text=source.read_text(encoding="utf-8")
+    text=text.replace('FIELDS = (', 'FIELDS = (\n    ConfigField("audit_length_deg", "Audit line length", "float", .8, minimum=.1, maximum=3., units="degrees", section="Stimulus conditions", help_text="Full visible line length; changes the vertical extent."),',1)
+    text=text.replace('run.stimulus_parameters(intensity=', 'run.stimulus_parameters(length_deg=run.values["audit_length_deg"], intensity=',1)
+    text=text.replace('supports_simulation=True,', 'stimulus_parameter_controls={"target":{"length_deg":"audit_length_deg"}}, supports_simulation=True,',1)
+    source.write_text(text,encoding="utf-8")
+    enable(lab)
+    assert execute_user_action(ROOT,"test",identity,{"trial_count":3}) == 0
+    ext.publish(ROOT,"experiment",identity)
+    assert ext.status(ROOT,"experiment",identity)=="ready"
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"novice_data")
+        async with app.run_test(size=(120,45)) as pilot:
+            app.query_one("#participant",Input).value="LOCAL_AUDIT"
+            app.query_one("#experiment",Select).value=identity
+            await pilot.pause()
+            app.screen.query_one("#configure",Button).press()
+            await pilot.pause()
+            app.screen.query_one("#review",Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,ReviewScreen)
+            review=app.screen
+            row=next(i for i,a in enumerate(review._row_authorities)
+                     if a["status"]=="Experiment-controlled" and a["field"]=="audit_length_deg")
+            review.query_one("#resolved-settings-table",DataTable).move_cursor(row=row)
+            review.query_one("#review-edit-value",Button).press()
+            await pilot.pause()
+            assert isinstance(app.screen,ExperimentConfigScreen)
+            widget=app.screen.query_one("#field-audit-length-deg",Input)
+            assert widget.has_focus
+            widget.value="1.4"
+            app.screen.query_one("#review",Button).press()
+            await pilot.pause()
+            assert float(review.query_one("#resolved-settings-table",DataTable).get_row_at(row)[2])==1.4
+    asyncio.run(scenario())
+    for method in ("adaptive","constant_stimuli"):
+        artifact,_=simulate(repo_root=ROOT,data_root=tmp_path/"synthetic",experiment_id=identity,
+            values={"audit_length_deg":1.4,"contrast_method":method,"trial_count":4,
+                    "fixed_contrasts":"0,.1","fixed_repetitions":2},analyse=False)
+        assert artifact.status=="completed"
+        assert not [(c.name,c.detail) for c in validate_run(artifact.run_directory) if not c.passed]
+        manifest=json.loads((artifact.run_directory/"manifest.json").read_text(encoding="utf-8"))
+        assert manifest["experiment_values"]["audit_length_deg"]==1.4
+    old=ext.fingerprint(ROOT)
+    source.write_bytes(source.read_bytes()+b"\n# local scientific revision\n")
+    assert ext.fingerprint(ROOT)!=old
+    assert ext.status(ROOT,"experiment",identity)=="draft"
+
+
 def ready(lab):
     enable(lab)
     assert execute_user_action(ROOT, 'preview', STIMULUS, {}) == 0

@@ -3,11 +3,11 @@ from textual.widgets import DataTable
 
 
 REVIEW_TABLE_COLUMNS = (
-    ("Group", 12),
-    ("Parameter / units", 45),
-    ("Value", 28),
-    ("Scientific meaning / origin", 58),
-    ("File / saved location", 80),
+    ("Group", 8),
+    ("Parameter / units", 28),
+    ("Effective value", 16),
+    ("Status / authority", 24),
+    ("Advanced source", 28),
 )
 
 

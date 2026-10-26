@@ -1670,6 +1670,7 @@ class ExperimentConfigScreen(Screen):
         defaults: dict[str, Any],
         review_return=None,
         focus_field: str | None = None,
+        focus_stimulus=None,
     ) -> None:
         super().__init__()
         self.data_root = data_root
@@ -1680,6 +1681,7 @@ class ExperimentConfigScreen(Screen):
         self.defaults = experiment.normalise_input_keys(defaults)
         self.review_return = review_return
         self.focus_field = focus_field
+        self.focus_stimulus = focus_stimulus
         # Preserve historical pre-cpd workspaces explicitly when reusing.
         pass  # Retired protocol branch removed.
 
@@ -1771,6 +1773,14 @@ class ExperimentConfigScreen(Screen):
         self._refresh_contrast_help()
         self._refresh_constraints()
         self._sync_contrast_method()
+        if self.focus_stimulus:
+            def edit_stimulus():
+                from .stimulus_parameters import StimulusParametersPanel
+                from .stimulus_editor import StimulusValueEditor
+                slot, key = self.focus_stimulus
+                panel = next(p for p in self.query(StimulusParametersPanel) if p.slot == slot)
+                self.app.push_screen(StimulusValueEditor(panel, focus_key=key))
+            self.call_after_refresh(edit_stimulus)
         if self.focus_field:
             field = next(item for item in self.experiment.fields if item.key == self.focus_field)
             widget = self.query_one("#" + _field_widget_id(field))
@@ -2282,20 +2292,25 @@ class ReviewScreen(Screen):
             yield Static(
                 f"STUDY: {experiment.display_name} [{experiment.id}]\n"
                 f"{experiment.description}\n"
-                "Parameter names and units describe the setting; the Meaning / origin "
-                "column explains its scientific role, and the selected-row details below "
+                "Parameter names and units describe the setting; the selected-row details below explain its scientific role and "
                 "identify the exact experiment or stimulus slot. "
-                "Use Back to change a field, or open a listed source/JSON file.",
+                "Use Edit selected value to reach the controlling input. Resolved experiment-controlled "
+                "rows are not independent inputs. Advanced source files remain available for inspection.",
                 id="review-experiment-context", markup=False, classes="info-card",
             )
             from .review_table import ReviewSettingsTable
-            yield Static("Select a cell to inspect its value, scientific meaning, and source. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
+            yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens Configure. Enter/double-click and source links are advanced file actions.",markup=False)
             with Horizontal(classes="buttons"):
+                yield Button("Edit selected value",id="review-edit-value",variant="primary")
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
                 yield Button("Reload files and review",id="review-reload-files")
             yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell")
             yield Static("",id="review-file-location",markup=False)
+            yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
+                         "while retaining selected settings and stimulus snapshots. To adopt a new stimulus Python "
+                         "default, explicitly choose Stimulus class defaults in Configure. Experiment-controlled values "
+                         "still come from the experiment inputs.", id="review-refresh-help",markup=False)
             yield Static("",id="resolved-settings-note",markup=False)
             with Vertical(id="human-review-checks"):
                 yield Static("[b]Human Experiment Readiness[/b]", classes="section-title")
@@ -2373,6 +2388,10 @@ class ReviewScreen(Screen):
         rows=review_rows(spec,self.request.experiment_values,snapshots,description,
             refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz)
         self._file_targets=targets_for_rows(spec,snapshots,description,rows,self._file_sources,self.app.repo_root)
+        from .review_authority import authority_for_row
+        self._review_rows = rows
+        self._row_authorities = [authority_for_row(spec,self.request.experiment_values,snapshots,description,row,target,self._file_sources)
+                                 for row,target in zip(rows,self._file_targets)]
         tracked=self.app.review_parameter_files.setdefault(key,{})
         for path in [self._file_sources["experiment"],*self._file_sources["stimuli"].values()]:
             if path is not None and str(path) not in tracked:
@@ -2383,10 +2402,10 @@ class ReviewScreen(Screen):
         from .review_table import REVIEW_TABLE_COLUMNS
         for label,width in REVIEW_TABLE_COLUMNS:
             table.add_column(label,width=width)
-        for row,target in zip(rows,self._file_targets):
+        for row,target,authority in zip(rows,self._file_targets,self._row_authorities):
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
                      else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
-            table.add_row(*row,Text(address,style="underline bright_cyan"))
+            table.add_row(*row[:3],authority["status"],Text(address,style="underline bright_cyan"))
         table.move_cursor(row=min(cursor.row,max(0,len(rows)-1)),column=min(cursor.column,4))
         self.query_one("#resolved-settings-note",Static).update(description["note"])
         self._show_file_location(table.cursor_row)
@@ -2396,14 +2415,30 @@ class ReviewScreen(Screen):
             return
         target=self._file_targets[row]
         spec=get_experiment(self.request.experiment_id)
-        record=self.query_one("#resolved-settings-table",DataTable).get_row_at(row)
+        record=self._review_rows[row]
+        authority=self._row_authorities[row]
         self.query_one("#review-file-location",Static).update(
-            f"STUDY: {spec.display_name} [{spec.id}]\n"
-            f"PART: {record[0]}   PARAMETER: {record[1]}\n"
-            f"VALUE: {record[2]}\n"
+            f"STATUS: {authority['status']}\nWHERE TO CHANGE: {authority['route']}\n"
+            f"PART: {record[0]}   PARAMETER: {record[1]}\nVALUE: {record[2]}\n"
             f"SCIENTIFIC MEANING / ORIGIN: {record[3]}\n"
+            f"STUDY: {spec.display_name} [{spec.id}]\n"
+            f"{authority['explanation']}\n"
             f"FILE / SAVED LOCATION: {target['path'] or 'Unsaved TUI values'}\n"
             +target["note"])
+
+    def _edit_review_parameter(self, row=None):
+        row = self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
+        authority = self._row_authorities[row]
+        if not authority["edit_kind"]:
+            self.query_one("#review-status",Static).update(authority["route"])
+            return
+        spec = get_experiment(self.request.experiment_id)
+        self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,
+            participant_id=self.request.participant_id, session_mode=self.request.session_mode,
+            experiment=spec, monitor_profile_id=self.request.monitor_profile_id,
+            defaults=dict(self.request.experiment_values), review_return=self,
+            focus_field=authority["field"] if authority["edit_kind"] == "experiment" else None,
+            focus_stimulus=(authority["slot"],authority["field"]) if authority["edit_kind"] == "stimulus" else None))
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
@@ -2708,6 +2743,10 @@ class ReviewScreen(Screen):
         if button_id and button_id.startswith("resolve-"):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
+            return
+        if button_id == "review-edit-value":
+            event.stop()
+            self._edit_review_parameter()
             return
         if button_id == "review-expand-table":
             event.stop()

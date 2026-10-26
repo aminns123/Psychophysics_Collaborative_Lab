@@ -1,5 +1,5 @@
 """Fullscreen view of the existing Review table, not a second settings editor."""
-from textual.containers import Horizontal, Vertical
+from textual.containers import Grid, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Static
 
@@ -25,8 +25,10 @@ class ReviewTableFullscreen(Screen):
         height: 100%;
     }
     #expanded-review-toolbar {
-        layout: horizontal;
-        height: 3;
+        layout: grid;
+        grid-size: 2;
+        grid-rows: 3 3;
+        height: 6;
         width: 100%;
         padding: 0 1;
         background: #111111;
@@ -48,7 +50,8 @@ class ReviewTableFullscreen(Screen):
     }
     #expanded-review-note {
         width: 100%;
-        height: 2;
+        height: auto;
+        max-height: 10;
         padding: 0 1;
         color: #cccccc;
     }
@@ -62,7 +65,9 @@ class ReviewTableFullscreen(Screen):
     }
     #expanded-review-location {
         width: 100%;
-        height: 2;
+        height: auto;
+        max-height: 10;
+        overflow-y: auto;
         padding: 0 1;
         background: #111111;
         color: #eeeeee;
@@ -80,8 +85,9 @@ class ReviewTableFullscreen(Screen):
 
     def compose(self):
         with Vertical():
-            with Horizontal(id="expanded-review-toolbar"):
+            with Grid(id="expanded-review-toolbar"):
                 yield Button("Back to Review", id="expanded-review-back")
+                yield Button("Edit selected value", id="expanded-review-edit")
                 yield Button("Open selected file", id="expanded-review-open")
                 yield Button("Reload saved files", id="expanded-review-reload")
             yield Static(
@@ -110,9 +116,12 @@ class ReviewTableFullscreen(Screen):
         if not 0 <= row < len(getattr(self.review, "_file_targets", ())):
             return
         target = self.review._file_targets[row]
+        authority = self.review._row_authorities[row]
         path = target.get("path")
         self.query_one("#expanded-review-location", Static).update(
-            f"{path or 'Unsaved values'} : {target.get('line', 1)}  ·  {target.get('note', '')}"
+            f"{authority['status']} · {authority['route']}\n"
+            f"{authority['meaning']}\n{authority['explanation']}\n"
+            f"{path or 'Selected run snapshot'} : {target.get('line', 1)}  ·  {target.get('note', '')}"
         )
 
     def on_data_table_cell_highlighted(self, event):
@@ -143,6 +152,11 @@ class ReviewTableFullscreen(Screen):
         if identity == "expanded-review-back":
             event.stop()
             self.action_close_table()
+        elif identity == "expanded-review-edit":
+            event.stop()
+            row = self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row
+            self.app.pop_screen()
+            self.review._edit_review_parameter(row)
         elif identity == "expanded-review-open":
             event.stop()
             self._open()

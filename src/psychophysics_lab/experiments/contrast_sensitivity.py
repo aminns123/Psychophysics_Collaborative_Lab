@@ -657,6 +657,11 @@ def definition(identity="contrast_sensitivity"):
         procedure=procedure,
         description="Fixation then grating at a researcher-selected left/right angular offset; timing, position and adaptation are editable in the TUI.",
         fields=FIELDS,
+        stimulus_parameter_controls={
+            "grating": {"sigma_deg": "grating_sigma_deg", "cutoff_sigmas": "grating_cutoff_sigmas",
+                        "background": "background_intensity"},
+            "fixation": {"background": "background_intensity"},
+        },
         scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         adaptive=AdaptiveSelection(

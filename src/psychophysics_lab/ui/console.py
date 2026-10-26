@@ -249,6 +249,8 @@ SelectOverlay > .option-list--highlighted { background: #dddddd; color: #080808;
 #console-workspace Checkbox { background: #080808; color: #eeeeee; border: none; }
 Checkbox > .toggle--button { color: #aaaaaa; background: #080808; }
 #console-workspace DataTable { height: 22; width: 100%; background: #080808; color: #eeeeee; scrollbar-size: 1 1; scrollbar-background: #151515; scrollbar-color: #666666; }
+#console-workspace #resolved-settings-table { height: 14; }
+.console-compact #console-workspace #resolved-settings-table { height: 8; }
 DataTable > .datatable--header { background: #333333; color: #ffffff; }
 DataTable > .datatable--cursor { background: #cccccc; color: #080808; }
 #console-workspace TextArea { height: 20; width: 100%; border: solid #444444; }
