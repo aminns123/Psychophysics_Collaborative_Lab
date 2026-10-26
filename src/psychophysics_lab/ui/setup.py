@@ -2398,8 +2398,17 @@ class ReviewScreen(Screen):
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             yield Static("CONFIGURATION & SOURCE FILES", classes="section-title")
             yield Label("Parameters used by this experiment")
+            yield Static(
+                f"STUDY: {experiment.display_name} [{experiment.id}]\n"
+                f"{experiment.description}\n"
+                "Parameter names and units describe the setting; the Meaning / origin "
+                "column explains its scientific role, and the selected-row details below "
+                "identify the exact experiment or stimulus slot. "
+                "Use Back to change a field, or open a listed source/JSON file.",
+                id="review-experiment-context", markup=False, classes="info-card",
+            )
             from .review_table import ReviewSettingsTable
-            yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
+            yield Static("Select a cell to inspect its value, scientific meaning, and source. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
             with Horizontal(classes="buttons"):
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
@@ -2505,8 +2514,15 @@ class ReviewScreen(Screen):
         if not getattr(self,"_file_targets",None) or row>=len(self._file_targets):
             return
         target=self._file_targets[row]
+        spec=get_experiment(self.request.experiment_id)
+        record=self.query_one("#resolved-settings-table",DataTable).get_row_at(row)
         self.query_one("#review-file-location",Static).update(
-            str(target["path"] or "Unsaved TUI values")+"\n"+target["note"])
+            f"STUDY: {spec.display_name} [{spec.id}]\n"
+            f"PART: {record[0]}   PARAMETER: {record[1]}\n"
+            f"VALUE: {record[2]}\n"
+            f"SCIENTIFIC MEANING / ORIGIN: {record[3]}\n"
+            f"FILE / SAVED LOCATION: {target['path'] or 'Unsaved TUI values'}\n"
+            +target["note"])
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
