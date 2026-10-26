@@ -14,6 +14,7 @@ from psychophysics_lab.experiments._internal.parameter_compatibility import migr
 from psychophysics_lab.methods.contrast import AdaptiveContrastMethod, run_contrast_experiment
 from psychophysics_lab.methods.probe import (
     probe_contrast_fields, probe_constant_method, validate_probe_fixed_settings,
+    make_probe_fixed_schedule,
 )
 from psychophysics_lab.researcher import (
     ConfigField,
@@ -450,6 +451,8 @@ def validate_settings(values):
     # Local overlap is checked on the resolved stimulus grid before acquisition.
 
 
+    yield from validate_probe_fixed_settings(values, make_conditions)
+
 def validate_monitor(settings, profile):
     """Check the selected inducing frequency on the physical display, not a preset default."""
     if profile.expected_resolution_px:
@@ -458,10 +461,6 @@ def validate_monitor(settings, profile):
         geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
         validate_requested_cpd([settings["flanker_cpd"]], geometry)
         validate_requested_cpd([settings["flanker_cpd"]], geometry, orientation_rad=math.pi / 2)
-
-    # Fixed levels use the same scientific conditions but no staircase IDs.
-    yield from validate_probe_fixed_settings(values, make_conditions)
-
 
 
 def definition(identity="line_position_flanker"):
