@@ -43,7 +43,10 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
     # Both human and synthetic runs already get a per-condition staircase
     # figure during shared run finalisation; avoid generating it twice here.
     analysis = None
-    if analyse and spec.analysis_factory is not None:
+    # Fixed-level CSF reports observed accuracy by level in resolved_experiment;
+    # its procedure deliberately declares no staircase threshold estimator.
+    # Never feed it to the adaptive analysis factory.
+    if analyse and spec.analysis_factory is not None and selected_values.get("contrast_method") != "constant_stimuli":
         try:
             analysis = spec.analysis_factory(
                 data_root=test_root, run_directory=artifacts.run_directory, create_plot=True
