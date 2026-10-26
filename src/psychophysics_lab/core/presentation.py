@@ -48,7 +48,13 @@ def preview_stimulus(identity, parameters, output):
     stimulus = get_stimulus(identity)
     if stimulus.render is None:
         raise ValueError("This legacy/diagnostic stimulus uses its existing preview page.")
-    pixels = render_pixels(stimulus, parameters)
+    # Physical presentation already uses the full declared scientific
+    # support when it exceeds the minimum raster. The headless appearance
+    # preview must depict that same support, not a silent central crop.
+    # Explicit render_values()/render_pixels() aperture arguments remain
+    # unchanged for callers deliberately previewing a subregion.
+    extent = stimulus_geometry(stimulus, stimulus.validate_parameters(parameters))["raster_extent_deg"]
+    pixels = render_pixels(stimulus, parameters, extent_deg=extent)
     # Supplied grids and OpenGL use positive y upwards. PNG row zero is at
     # the top, so export with a lower origin rather than invert the stimulus.
     imsave(output, pixels, cmap="gray", vmin=0, vmax=255, origin="lower")
