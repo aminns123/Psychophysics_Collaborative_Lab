@@ -85,8 +85,18 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         for phase in timeline.resolve(values).phases:
             for placement in getattr(phase, "placements", ()):
                 selected = snapshots[placement.slot]["document"]
-                geometry, _, _ = plan_visible_stimulus(profile, profile.expected_resolution_px,
-                    get_stimulus(selected["stimulus_id"]), stimuli[placement.slot], placement)
+                try:
+                    geometry, _, _ = plan_visible_stimulus(profile, profile.expected_resolution_px,
+                        get_stimulus(selected["stimulus_id"]), stimuli[placement.slot], placement)
+                except ValueError as exc:
+                    # Physical sampling/visibility can be invalid on this monitor
+                    # while editing and synthetic simulation remain available.
+                    # Human acquisition still uses its own strict preflight.
+                    result["note"] += (
+                        f" Physical presentation preflight for {phase.name}/{placement.slot}: "
+                        f"{exc} Correct the setting or select a suitable monitor before human acquisition."
+                    )
+                    continue
                 result["viewport"].append(geometry | {"phase": phase.name})
         clipped = [view for view in result["viewport"] if view["clipped"]]
         if clipped:
