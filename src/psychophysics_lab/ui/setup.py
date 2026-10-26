@@ -1877,28 +1877,17 @@ class ExperimentConfigScreen(Screen):
         # Invalid values cannot be committed by _collect/validate_setup.
 
     def _refresh_contrast_help(self):
+        """Validate inputs in Setup; explain derived probe science in Review."""
         if not self.is_mounted:
             return
-        if {"starting_probe_intensity", "background_intensity"} <= {field.key for field in self.experiment.fields}:
-            from .settings_review import probe_intensity_rows
-            try:
-                rows = probe_intensity_rows(self.experiment, self._field_values(allow_incomplete=True))
-                message = "\n".join(f"{label}: {value}" for _, label, value, _ in rows)
-                message += "\nDigital values, not measured luminance contrast. Decrease counts are updates, not trials."
-            except (ValueError, TypeError, OverflowError) as exc:
-                message = f"Intensity/step summary needs valid numeric inputs: {exc}"
-            self.query_one("#contrast-live-validation", Static).update(message)
-            return
-        return
-        try:
-            from ..stimuli.contrast_validation import contrast_limit_text
-            fields = {field.key:field for field in self.experiment.fields}
-            def value(key):
-                return float(self.query_one("#" + _field_widget_id(fields[key]), Input).value)
-            message = contrast_limit_text(value("Background_Screen_intensity"), value("starting_probe_intensity"), value("logUNIT_UP"))
-        except (ValueError, TypeError) as exc:
-            message = f"Contrast range requires valid numeric inputs: {exc}"
-        self.query_one("#contrast-live-validation", Static).update(message)
+        if {"starting_probe_intensity", "background_intensity"} <= {
+            field.key for field in self.experiment.fields
+        }:
+            self.query_one("#contrast-live-validation", Static).update(
+                "Digital probe inputs are checked above. Review displays the "
+                "effective experiment-specific intensity range, contrast "
+                "mapping and local overlap constraints."
+            )
 
     def _refresh_unit_help(self):
         return
