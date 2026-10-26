@@ -84,7 +84,9 @@ def fixed_level_schedule(
         raise ValueError("Fixed repetitions must be a positive whole number.")
     if not condition_field.isidentifier() or not strength_field.isidentifier():
         raise ValueError("Fixed trial field names must be identifiers.")
-    if condition_field == strength_field or {condition_field, strength_field} & {"target", "repeat", "value"}:
+    if (condition_field == strength_field
+            or condition_field in {"target", "repeat"}
+            or strength_field in {"target", "repeat", "value"}):
         raise ValueError("Fixed trial fields cannot overwrite schedule keys.")
     rng = random.Random(f"{seed}:constant-stimuli")
     schedule: list[dict] = []
