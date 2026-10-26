@@ -16,6 +16,7 @@ from psychophysics_lab.methods.contrast import (
     AdaptiveContrastMethod,
     ConstantContrastMethod,
     fixed_level_schedule,
+    parse_fixed_strengths,
     select_contrast_method,
 )
 from psychophysics_lab.researcher import (
@@ -242,24 +243,19 @@ def make_conditions(settings):
 
 def fixed_contrast_levels(settings):
     """Parse experiment-selected digital grating modulation, not physical luminance contrast."""
-    entries = str(settings["fixed_contrasts"]).split(",")
-    if not entries or any(not text.strip() for text in entries):
-        raise ValueError("Enter one or more comma-separated fixed contrast levels.")
-    try:
-        levels = tuple(float(text.strip()) for text in entries)
-    except ValueError as exc:
-        raise ValueError("Fixed contrasts must be comma-separated numbers.") from exc
-    if any(not math.isfinite(value) for value in levels):
-        raise ValueError("Fixed contrast levels must be finite.")
-    if len(set(levels)) != len(levels):
-        raise ValueError("Fixed contrast levels must be distinct; use repetitions for repeated presentations.")
     maximum = 2 * min(settings["background_intensity"], 1-settings["background_intensity"])
-    if any(value < 0 or value > maximum for value in levels):
-        raise ValueError(
-            f"Fixed digital peak-to-peak contrasts must be between 0 and {maximum:g} "
-            f"at background intensity {settings['background_intensity']:g}. No silent clipping."
+    try:
+        return parse_fixed_strengths(
+            settings["fixed_contrasts"], minimum=0, maximum=maximum
         )
-    return levels
+    except ValueError as exc:
+        if "between" in str(exc):
+            raise ValueError(
+                f"Fixed digital peak-to-peak contrasts must be between 0 and {maximum:g} "
+                f"at background intensity {settings['background_intensity']:g}. No silent clipping."
+            ) from exc
+        raise
+
 
 
 def make_fixed_schedule(settings, seed):
