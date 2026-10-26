@@ -11,6 +11,8 @@ every relevant target/condition, including ring or flanker overlap.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from psychophysics_lab.experiments._internal.spec import ConfigField
 from .contrast import (
     ConstantContrastMethod,
@@ -128,11 +130,24 @@ def fixed_probe_trial_record(run, selection):
     }
 
 
-def probe_constant_method(run, make_conditions, *, scientific_spec=None):
+def probe_constant_method(run, make_conditions, prepare_stimuli, *, scientific_spec=None):
     """Construct a nonadaptive method for a specific scene-based experiment."""
     conditions = unique_probe_conditions(make_conditions(run.values))
     schedule = make_probe_fixed_schedule(run.values, run.seed, make_conditions)
     settings = run.values
+    # Same screen-grid and local pixel-overlap headroom as adaptive detection.
+    # Validate at the highest selected fixed strength on a temporary settings
+    # view; the actual saved settings and scientific source remain unchanged.
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+    check_values = dict(settings)
+    check_values["starting_probe_intensity"] = (
+        settings["background_intensity"] + max(fixed_contrast_levels(settings))
+    )
+    preflight = SimpleNamespace(
+        values=check_values, display=run.display,
+        synthetic=run.synthetic, stimulus_parameters=run.stimulus_parameters,
+    )
+    resolve_probe_limits(preflight, schedule, prepare_stimuli)
     resolution = {
         "trial_selection_method": "constant_stimuli",
         "scientific_quantity": "digital_probe_increment",
