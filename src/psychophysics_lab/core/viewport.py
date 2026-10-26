@@ -11,7 +11,8 @@ from ..stimuli.spatial_calibration import resolve_spatial_geometry
 def stimulus_geometry(stimulus, parameters):
     """Scientific support may enlarge a minimum software raster, never shrink it."""
     selected = float(parameters[stimulus.extent_parameter])
-    result = dict(stimulus.geometry(parameters)) if stimulus.geometry else {}
+    geometry = getattr(stimulus, "geometry", None)
+    result = dict(geometry(parameters)) if geometry else {}
     extent = max(selected, float(result.get("raster_extent_deg", selected)))
     if not math.isfinite(extent) or not 0 < extent < 180:
         raise ValueError("Stimulus raster extent must be finite and between 0 and 180 degrees.")
