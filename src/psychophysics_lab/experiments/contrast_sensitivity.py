@@ -392,7 +392,7 @@ def trial_record(run, condition, state):
 
 
 # 6. RUN AND FINISH
-def initialise_experiment(run, conditions):
+def initialise_experiment(run, conditions, *, grating_resolution=None):
     settings = run.values
     frequencies = list(dict.fromkeys(c["frequency_cpd"] for c in conditions))
     staircase = run.adaptive(
@@ -463,6 +463,13 @@ def initialise_experiment(run, conditions):
         "threshold_reversals": settings["threshold_reversals"],
         "hardware_equivalence": False,
     }
+    if grating_resolution is not None:
+        # A second CSF envelope uses the same staircase calculation and
+        # timeline but must never write Gaussian metadata about its stimulus.
+        for name in ("gaussian_sigma_deg", "grating_cutoff_sigmas",
+                     "grating_taper", "grating_support_radius_deg"):
+            description.pop(name, None)
+        description.update(grating_resolution)
     run.initialise(
         expected_trials=settings["max_trials"],
         resolution=description | {"primary_estimator": primary_rule(settings, conditions),
@@ -524,7 +531,7 @@ def fixed_trial_record(run, condition):
     }
 
 
-def fixed_contrast_method(run):
+def fixed_contrast_method(run, *, grating_resolution=None):
     """Select an experiment-independent fixed-level policy for this CSF design."""
     settings = run.values
     schedule = make_fixed_schedule(settings, run.seed)
@@ -555,6 +562,11 @@ def fixed_contrast_method(run):
         "response_analysis": "Per-frequency/per-level counts and accuracy; no adaptive reversals or staircase threshold estimator",
         "hardware_equivalence": False,
     }
+    if grating_resolution is not None:
+        for name in ("grating_sigma_deg", "grating_cutoff_sigmas",
+                     "intensity_mapping"):
+            description.pop(name, None)
+        description.update(grating_resolution)
     return ConstantContrastMethod(
         run,
         schedule=schedule,
@@ -563,12 +575,17 @@ def fixed_contrast_method(run):
     )
 
 
-def adaptive_contrast_method(run):
-    """Wrap the tested CSF adaptive functions without changing their calculations."""
+def adaptive_contrast_method(run, *, initialise=None):
+    """Wrap the tested CSF adaptive functions without changing their calculations.
+
+    An alternate windowed CSF variant may supply only an envelope-aware
+    initialisation function; all update/reversal and trial-count logic remains
+    identical to the reference procedure.
+    """
     return AdaptiveContrastMethod(
         run,
         make_conditions=make_conditions,
-        initialise=initialise_experiment,
+        initialise=initialise_experiment if initialise is None else initialise,
         select=choose_condition,
         record=trial_record,
         update=update_experiment,
