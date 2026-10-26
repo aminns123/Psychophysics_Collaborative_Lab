@@ -671,7 +671,7 @@ class CircularWindowedSinusoidalGrating(LibraryStimulus):
         display_name="Circular windowed sinusoidal grating",
         description="Circular sine grating with full central amplitude and optional radial raised-cosine outer edge; no Gaussian attenuation from the centre.",
         source_path="src/psychophysics_lab/stimulus_library.py",
-        parameters=PARAMETERS, family="grating",
+        parameters=PARAMETERS, family="circular_windowed_sinusoidal_grating",
         render=render, validator=validate.__func__,
         floating_raster=True, geometry=geometry.__func__,
         required_support=visible.__func__,
