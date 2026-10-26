@@ -604,7 +604,7 @@ class ContrastSensitivityGrating(LibraryStimulus):
     PARAMETERS = (
         ConfigField("size_deg", "Minimum raster extent", "float", 8., minimum=.1, maximum=30, units="degrees"),
         ConfigField("sigma_deg", "Gaussian standard deviation", "float", 1., minimum=.001, maximum=5, units="degrees"),
-        ConfigField("cutoff_sigmas", "Smooth grating cutoff radius", "float", 3., minimum=2., maximum=5.,
+        ConfigField("cutoff_sigmas", "Smooth grating cutoff radius", "float", 3., minimum=1., maximum=5.,
                     units="multiples of sigma",
                     help_text="Gaussian unchanged to (cutoff - 1) sigma, smoothly fades to exact background at cutoff sigma."),
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., minimum=.01, maximum=64, units="cycles/degree"),
