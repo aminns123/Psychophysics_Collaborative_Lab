@@ -10,6 +10,7 @@ The software protocol is implemented; raster/photometric equivalence is unverifi
 from psychophysics_lab.analysis.primary import expected_staircases
 import random
 import sys
+import math
 from psychophysics_lab.adaptive.steps import bounded_log_step
 from psychophysics_lab.researcher import (
     ConfigField,
@@ -44,6 +45,24 @@ FIELDS = (
         "text",
         "2,8",
         units='cycles/degree',
+    ),
+    ConfigField(
+        "contrast_method", "Contrast selection method", "choice", "adaptive",
+        choices=("adaptive", "constant_stimuli"),
+        help_text="Select adaptive staircases (unchanged) or fixed contrast levels. Both use the same spatial-frequency conditions and saved trial table.",
+        section="Experiment",
+    ),
+    ConfigField(
+        "fixed_contrasts", "Fixed digital peak-to-peak contrast levels", "text",
+        "0.02,0.04,0.08,0.16",
+        help_text="Constant stimuli only. Comma-separated digital grating modulation (not calibrated luminance contrast). Zero is an intentional catch level; levels must be distinct and within the selected background's digital gamut.",
+        section="Constant stimuli",
+    ),
+    ConfigField(
+        "fixed_repetitions", "Presentations per contrast per spatial frequency",
+        "int", 10, minimum=1, section="Constant stimuli",
+        help_text="Each spatial frequency is a condition. For each frequency and contrast pair, this many trials will be interleaved in reproducible random order. The max_trials field is a configurable safety ceiling.",
+        units="trials",
     ),
     ConfigField(
         "fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"
@@ -213,6 +232,65 @@ def make_conditions(settings):
             1,
         )
     ]
+
+
+def fixed_contrast_levels(settings):
+    """Parse experiment-selected digital grating modulation, not physical luminance contrast."""
+    entries = str(settings["fixed_contrasts"]).split(",")
+    if not entries or any(not text.strip() for text in entries):
+        raise ValueError("Enter one or more comma-separated fixed contrast levels.")
+    try:
+        levels = tuple(float(text.strip()) for text in entries)
+    except ValueError as exc:
+        raise ValueError("Fixed contrasts must be comma-separated numbers.") from exc
+    if any(not math.isfinite(value) for value in levels):
+        raise ValueError("Fixed contrast levels must be finite.")
+    if len(set(levels)) != len(levels):
+        raise ValueError("Fixed contrast levels must be distinct; use repetitions for repeated presentations.")
+    maximum = 2 * min(settings["background_intensity"], 1-settings["background_intensity"])
+    if any(value < 0 or value > maximum for value in levels):
+        raise ValueError(
+            f"Fixed digital peak-to-peak contrasts must be between 0 and {maximum:g} "
+            f"at background intensity {settings['background_intensity']:g}. No silent clipping."
+        )
+    return levels
+
+
+def make_fixed_schedule(settings, seed):
+    """Deterministic condition x contrast x repeat schedule; independent of responses.
+
+    Condition is spatial frequency, exactly as for adaptive CSF. Within each
+    frequency/contrast cell, targets are balanced for even repeats and differ
+    by at most one for odd repeats. Shuffle before presenting any trial.
+    """
+    frequencies = [float(item.strip()) for item in settings["frequencies_cpd"].split(",")]
+    levels = fixed_contrast_levels(settings)
+    repetitions = settings["fixed_repetitions"]
+    count = len(frequencies) * len(levels) * repetitions
+    if count > settings["max_trials"]:
+        raise ValueError(
+            f"Constant stimuli plans {count} trials, exceeding the selected "
+            f"max_trials safety ceiling ({settings['max_trials']}). Increase the "
+            "ceiling deliberately or reduce conditions/levels/repetitions."
+        )
+    rng = random.Random(f"{seed}:constant-stimuli")
+    schedule = []
+    for frequency in frequencies:
+        for contrast in levels:
+            targets = [0, 1] * (repetitions // 2)
+            if repetitions % 2:
+                targets.append(rng.randrange(2))
+            rng.shuffle(targets)
+            for repeat, target in enumerate(targets, 1):
+                schedule.append({
+                    "frequency_cpd": frequency,
+                    "contrast": contrast,
+                    "repeat": repeat,
+                    "target": target,
+                    "value": frequency,
+                })
+    rng.shuffle(schedule)
+    return schedule
 
 
 def choose_condition(run, conditions, state):
@@ -446,7 +524,61 @@ def finish_experiment(run, conditions, state):
     run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
+def constant_stimuli_procedure(run):
+    """Non-adaptive CSF using the same timeline, renderer and canonical trial log."""
+    settings = run.values
+    schedule = make_fixed_schedule(settings, run.seed)
+    frequencies = [float(item.strip()) for item in settings["frequencies_cpd"].split(",")]
+    levels = fixed_contrast_levels(settings)
+    description = {
+        "trial_selection_method": "constant_stimuli",
+        "protocol": "fixation -> grating -> self-paced spatial response",
+        "timings_ms": {"fixation": settings["fixation_ms"],
+                       "grating": settings["grating_ms"], "response": 0},
+        "frequencies_cpd": frequencies,
+        "fixed_contrast_levels": list(levels),
+        "fixed_repetitions_per_level_per_condition": settings["fixed_repetitions"],
+        "planned_trials": len(schedule),
+        "random_seed": run.seed,
+        "schedule_algorithm": "Python random MT19937; seed+constant-stimuli; independent condition/level target balance then full interleaving",
+        "schedule": [
+            {"trial_index": i, "frequency_cpd": trial["frequency_cpd"],
+             "presented_display_contrast": trial["contrast"],
+             "repeat": trial["repeat"], "target_alternative": trial["target"]}
+            for i, trial in enumerate(schedule, 1)
+        ],
+        "contrast_units": "digital peak-to-peak sinusoidal modulation; not optical Michelson contrast",
+        "intensity_mapping": "I(x,y)=background+(contrast/2)*GaussianTaper(x,y)*sin(2*pi*frequency*x)",
+        "background_digital_intensity": settings["background_intensity"],
+        "grating_sigma_deg": settings["grating_sigma_deg"],
+        "grating_cutoff_sigmas": settings["grating_cutoff_sigmas"],
+        "response_analysis": "Per-frequency/per-level counts and accuracy; no adaptive reversals or staircase threshold estimator",
+        "hardware_equivalence": False,
+    }
+    run.initialise(expected_trials=len(schedule), resolution=description,
+                   background_intensity=settings["background_intensity"])
+    for condition in schedule:
+        stimuli = prepare_stimuli(run, condition, {})
+        with run.trial(
+            make_trial(settings, condition),
+            target=condition["target"],
+            condition=condition["frequency_cpd"],
+            parameters_by_slot=stimuli,
+            state={"contrast": condition["contrast"]},
+            record_from_state={"presented_display_contrast": "contrast"},
+            measurements={"spatial_frequency_cpd": condition["frequency_cpd"],
+                          "fixed_repeat": condition["repeat"],
+                          "presented_display_contrast": condition["contrast"]},
+            instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
+        ) as trial:
+            interpret_response(condition, trial.response)
+    run.save_resolution(**description)
+    run.complete()
+
+
 def procedure(run):
+    if run.values.get("contrast_method", "adaptive") == "constant_stimuli":
+        return constant_stimuli_procedure(run)
     conditions = make_conditions(run.values)
     state = initialise_experiment(run, conditions)
     while not is_finished(run, conditions, state):
@@ -478,12 +610,19 @@ def validate_settings(values):
             yield "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
     except ValueError:
         yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
-    if values["threshold_reversals"] > values["reversal_termination"]:
-        yield "Threshold reversal count must not exceed the staircase reversal limit."
-    if values["starting_contrast"] > 2 * min(
-        values["background_intensity"], 1 - values["background_intensity"]
-    ):
-        yield "Starting contrast exceeds the available digital range."
+    if values.get("contrast_method", "adaptive") == "constant_stimuli":
+        try:
+            # Seed-independent validation; scheduling uses the recorded run seed.
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+    else:
+        if values["threshold_reversals"] > values["reversal_termination"]:
+            yield "Threshold reversal count must not exceed the staircase reversal limit."
+        if values["starting_contrast"] > 2 * min(
+            values["background_intensity"], 1 - values["background_intensity"]
+        ):
+            yield "Starting contrast exceeds the available digital range."
 
 
 def validate_monitor(settings, profile):
