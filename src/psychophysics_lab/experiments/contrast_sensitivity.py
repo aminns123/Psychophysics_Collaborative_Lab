@@ -17,7 +17,7 @@ from psychophysics_lab.methods.contrast import (
     ConstantContrastMethod,
     fixed_level_schedule,
     parse_fixed_strengths,
-    select_contrast_method,
+    run_contrast_experiment,
 )
 from psychophysics_lab.researcher import (
     ConfigField,
@@ -578,29 +578,19 @@ def adaptive_contrast_method(run):
 
 
 def procedure(run):
-    # The experiment describes the single scientific trial; the method owns
-    # strength scheduling, response updates and stopping. Local experiments
-    # can use this same small public interface without copying method loops.
-    method = select_contrast_method(
-        run.values.get("contrast_method", "adaptive"),
-        {
+    # The researcher edits conditions, stimulus and timing here; the common
+    # policy interface handles strength selection and response-dependent state.
+    # The adaptive strategy delegates to the exact tested historical callbacks.
+    return run_contrast_experiment(
+        run,
+        methods={
             "adaptive": lambda: adaptive_contrast_method(run),
             "constant_stimuli": lambda: fixed_contrast_method(run),
         },
+        prepare_stimuli=prepare_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
     )
-    while not method.is_finished:
-        condition = method.next_trial()
-        stimuli = prepare_stimuli(run, condition, method.state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **method.trial_record(condition),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            method.accept_response(condition, response, trial)
-    method.complete()
 
 
 # 7. FRAMEWORK CONNECTION
