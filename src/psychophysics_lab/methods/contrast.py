@@ -17,8 +17,34 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
+import math
 import random
 from typing import Any
+
+
+
+def parse_fixed_strengths(raw: str, *, minimum: float = 0., maximum: float = 1.) -> tuple[float, ...]:
+    """Scientific units/bounds are supplied by the experiment, never assumed.
+
+    E.g. CSF supplies digital peak-to-peak modulation with a symmetric gamut
+    limit; a bright probe supplies digital increment and one-sided headroom.
+    """
+    if not math.isfinite(minimum) or not math.isfinite(maximum) or minimum > maximum:
+        raise ValueError("Invalid scientific strength bounds.")
+    parts = str(raw).split(",")
+    if not parts or any(not part.strip() for part in parts):
+        raise ValueError("Enter one or more comma-separated strength values.")
+    try:
+        levels = tuple(float(part.strip()) for part in parts)
+    except ValueError as exc:
+        raise ValueError("Strength levels must be comma-separated numbers.") from exc
+    if any(not math.isfinite(v) for v in levels):
+        raise ValueError("Strength levels must be finite.")
+    if len(set(levels)) != len(levels):
+        raise ValueError("Strength levels must be distinct; repeat using the repetition count.")
+    if any(v < minimum or v > maximum for v in levels):
+        raise ValueError(f"Fixed strengths must be between {minimum:g} and {maximum:g}.")
+    return levels
 
 
 def select_contrast_method(name: str, factories: Mapping[str, Callable[[], Any]]):
@@ -51,6 +77,9 @@ def fixed_level_schedule(
     """
     if not conditions or not levels:
         raise ValueError("Fixed levels require at least one condition and strength.")
+    if any(isinstance(v, bool) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in levels):
+        raise ValueError("Fixed strengths must be finite numeric quantities.")
     if type(repetitions) is not int or repetitions < 1:
         raise ValueError("Fixed repetitions must be a positive whole number.")
     if not condition_field.isidentifier() or not strength_field.isidentifier():
@@ -60,6 +89,18 @@ def fixed_level_schedule(
     rng = random.Random(f"{seed}:constant-stimuli")
     schedule: list[dict] = []
     for condition in conditions:
+        if isinstance(condition, Mapping):
+            if "value" not in condition:
+                raise ValueError("Scientific condition mappings must include a saved 'value'.")
+            # Generic experiments may require x_deg, aspect_ratio, ring, etc.
+            # Preserve that scientific description in each scheduled trial.
+            scientific = dict(condition)
+            scientific.pop("id", None)
+            scientific.pop("repeat", None)
+            value = scientific["value"]
+        else:
+            scientific = {condition_field: condition}
+            value = condition
         for level in levels:
             targets = [0, 1] * (repetitions // 2)
             if repetitions % 2:
@@ -67,11 +108,11 @@ def fixed_level_schedule(
             rng.shuffle(targets)
             for repeat, target in enumerate(targets, 1):
                 schedule.append({
-                    condition_field: condition,
+                    **scientific,
                     strength_field: level,
                     "repeat": repeat,
                     "target": target,
-                    "value": condition,
+                    "value": value,
                 })
     rng.shuffle(schedule)
     return schedule
@@ -156,7 +197,8 @@ class ConstantContrastMethod:
         run.initialise(
             expected_trials=len(schedule),
             resolution=self._resolution,
-            background_intensity=run.values["background_intensity"],
+            **({"background_intensity": run.values["background_intensity"]}
+           if "background_intensity" in run.values else {}),
         )
 
     @property
