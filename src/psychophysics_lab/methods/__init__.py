@@ -7,6 +7,7 @@ from .contrast import (
     AdaptiveContrastMethod,
     ConstantContrastMethod,
     fixed_level_schedule,
+    parse_fixed_strengths,
     select_contrast_method,
 )
 
@@ -14,5 +15,6 @@ __all__ = [
     "AdaptiveContrastMethod",
     "ConstantContrastMethod",
     "fixed_level_schedule",
+    "parse_fixed_strengths",
     "select_contrast_method",
 ]
