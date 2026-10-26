@@ -14,6 +14,11 @@ observers. Display calibration and staircase algorithms are shared mechanisms.
 """
 
 import random
+from psychophysics_lab.methods.contrast import AdaptiveContrastMethod, run_contrast_experiment
+from psychophysics_lab.methods.teaching import (
+    teaching_method_fields, fixed_teaching_schedule, constant_teaching_method,
+)
+
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -87,6 +92,12 @@ FIELDS = (
 )
 
 
+FIELDS += teaching_method_fields(
+    default="adaptive", strengths="0.05,0.1,0.2",
+    label="Gabor digital contrast modulation",
+)
+
+
 RESPONSES = ResponseParadigm("tilt", ("negative", "positive"), ("F", "J"))
 STIMULUS_SLOTS = {"target": "orientation_patch"}
 STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
@@ -116,9 +127,18 @@ def choose_condition(run, conditions, state):
 
 # 3. PREPARE STIMULI
 def prepare_stimuli(run, condition, state):
+    # Fixed strengths arrive as a selected trial value. Adaptive continues to
+    # read the historically tested state['contrast'] and original orientation.
+    strength = condition["contrast"] if "contrast" in condition else state["contrast"]
+    orientation = (
+        (-1 if condition["target"] == 0 else 1)
+        * abs(run.stimulus_parameters()["orientation_deg"])
+        if "orientation_deg" not in condition
+        else condition["orientation_deg"]
+    )
     return {
         "target": run.stimulus_parameters(
-            orientation_deg=condition["orientation_deg"], contrast=state["contrast"]
+            orientation_deg=orientation, contrast=strength
         )
     }
 
@@ -225,22 +245,49 @@ def finish_experiment(run, conditions, state):
     run.complete()
 
 
+def make_fixed_schedule(settings, seed):
+    return fixed_teaching_schedule(
+        settings, seed, maximum=1.0, condition="tilt_sign"
+    )
+
+
+def fixed_method(run):
+    return constant_teaching_method(
+        run, make_fixed_schedule,
+        units="teaching_gabor_digital_modulation",
+        display_mapping="Gabor: I=0.5+0.5*C*envelope*cos(orientation phase); not measured optical contrast.",
+    )
+
+
+def adaptive_method(run):
+    # Delegate to the original n-down/n-up teaching callbacks and step rule.
+    return AdaptiveContrastMethod(
+        run, make_conditions=make_conditions,
+        initialise=initialise_experiment, select=choose_condition,
+        record=trial_record, update=update_experiment,
+        finished=is_finished, finish=finish_experiment,
+    )
+
+
+def validate_method_settings(values):
+    if values.get("contrast_method", "adaptive") == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+
+
 def procedure(run):
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
-    finish_experiment(run, conditions, state)
+    return run_contrast_experiment(
+        run,
+        methods={
+            "adaptive": lambda: adaptive_method(run),
+            "constant_stimuli": lambda: fixed_method(run),
+        },
+        prepare_stimuli=prepare_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
 
 
 # 7. FRAMEWORK CONNECTION
@@ -259,6 +306,7 @@ def definition(
         description="Self-paced tilt discrimination with a registered visual stimulus.",
         procedure=procedure,
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
+        method_planner=make_fixed_schedule, validator=validate_method_settings,
         responses=RESPONSES,
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),
