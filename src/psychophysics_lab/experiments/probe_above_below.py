@@ -16,6 +16,7 @@ from psychophysics_lab.methods.contrast import run_contrast_experiment
 from psychophysics_lab.methods.teaching import (
     teaching_method_fields, teaching_adaptive_fields, fixed_teaching_schedule,
     constant_teaching_method, OriginalTeachingMethod, TeachingAdaptiveMethod,
+    review_teaching_adaptive,
 )
 
 from psychophysics_lab.researcher import (
@@ -281,6 +282,7 @@ def definition(identity="probe_above_below"):
         procedure=procedure,
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         method_planner=make_fixed_schedule, validator=validate_method_settings,
+        method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
         adaptive=AdaptiveSelection('consecutive_up_down',
             controls=('n_down','n_up','down_factor','up_factor','max_trials')),
 
