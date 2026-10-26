@@ -56,6 +56,8 @@ class StimulusParametersPanel(Vertical):
         yield Select([], id="stimulus-preset-" + self.slot, prompt="Choose default or named preset")
         with Horizontal(classes="buttons"):
             yield Button("Edit in TUI", id="stimulus-values-" + self.slot)
+            yield Button("Adopt current class defaults", id="stimulus-defaults-" + self.slot,
+                         tooltip="Replace this selected stimulus snapshot with the currently loaded Python defaults. Experiment-controlled values still come from Configure.")
             yield Button("Edit JSON in editor", id="stimulus-file-" + self.slot)
             yield Button("Reload saved JSON", id="stimulus-file-reload-" + self.slot)
             yield Button("Preview", id="stimulus-preview-" + self.slot)
@@ -94,8 +96,7 @@ class StimulusParametersPanel(Vertical):
         selector = self.query_one("#stimulus-preset-" + self.slot, Select)
         with self.prevent(Select.Changed):
             options = [(p.name, str(p)) for p in paths]
-            if not self.stimulus.default_config:
-                options.insert(0, ("Stimulus class defaults", "library_defaults"))
+            options.insert(0, ("Stimulus class defaults", "library_defaults"))
             selector.set_options(options)
             selector.value = str(self.path) if self.path in paths else (
                 "library_defaults" if self.loaded and self.loaded["file_identity"] == "library_defaults" else Select.BLANK)
@@ -123,8 +124,13 @@ class StimulusParametersPanel(Vertical):
         if self.stimulus.default_config:
             self.load(source_path(self.app.repo_root, self.stimulus, self.stimulus.default_config))
             return
+        self.load_class_defaults()
+
+    def load_class_defaults(self):
+        """Explicitly replace even an already-selected retained defaults snapshot."""
         self.loaded = snapshot(document_for(self.stimulus), file_identity="library_defaults")
         self.path, self.error = None, None
+        self.external_json_pending = False
         self.app.stimulus_drafts[self.cache_key] = (self.loaded, None)
         with self.prevent(Input.Changed):
             self.query_one("#stimulus-path-" + self.slot, Input).value = ""
@@ -185,7 +191,7 @@ class StimulusParametersPanel(Vertical):
             self.refresh_presets()
         elif event.select.id == "stimulus-preset-" + self.slot:
             if event.value == "library_defaults":
-                self.load_default()
+                self.load_class_defaults()
             else:
                 self.load(Path(str(event.value)))
 
@@ -231,6 +237,9 @@ class StimulusParametersPanel(Vertical):
             elif event.button.id == "stimulus-values-" + self.slot:
                 from .stimulus_editor import StimulusValueEditor
                 self.app.push_screen(StimulusValueEditor(self))
+            elif event.button.id == "stimulus-defaults-" + self.slot:
+                self.load_class_defaults()
+                self.refresh_presets()
             elif event.button.id == "stimulus-reload-" + self.slot:
                 self.load(Path(self.query_one("#stimulus-path-" + self.slot, Input).value))
             elif event.button.id == "stimulus-edit-" + self.slot:

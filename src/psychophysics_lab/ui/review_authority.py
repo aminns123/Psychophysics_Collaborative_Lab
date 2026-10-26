@@ -37,8 +37,8 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                                     f"Current Python default: {parameter.default!r}. Source: "
                                     f"{snapshots[group]['file_identity']}. "
                                     "The selected snapshot/preset takes precedence over later Python default edits. "
-                                    "Use Edit selected value for this run, or explicitly choose Stimulus class defaults "
-                                    "in Configure to adopt refreshed defaults.")
+                                    "Use Edit selected value for this run, or press Adopt current class defaults "
+                                    "in Configure to replace the retained snapshot with refreshed defaults.")
                     if parameter.key in description["overrides"].get(group, {}):
                         result["explanation"] += " The experiment reads this base and transforms it during trials."
                 return result

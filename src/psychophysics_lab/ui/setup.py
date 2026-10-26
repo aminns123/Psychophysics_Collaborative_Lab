@@ -2311,7 +2311,7 @@ class ReviewScreen(Screen):
             yield Static("",id="review-file-location",markup=False)
             yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
                          "while retaining selected settings and stimulus snapshots. To adopt a new stimulus Python "
-                         "default, explicitly choose Stimulus class defaults in Configure. Experiment-controlled values "
+                         "default, press Adopt current class defaults in Configure. Experiment-controlled values "
                          "still come from the experiment inputs.", id="review-refresh-help",markup=False)
             yield Static("",id="resolved-settings-note",markup=False)
             with Vertical(id="human-review-checks"):

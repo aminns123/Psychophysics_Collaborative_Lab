@@ -27,7 +27,9 @@ through the stimulus TUI editor, including line dimensions and teaching geometry
 validates the complete replacement before applying anything. **Refresh (F5)**
 starts a fresh process with updated Python definitions while preserving selected
 experiment settings and stimulus snapshots. To adopt a new stimulus class
-default, explicitly choose **Stimulus class defaults** in Configure. An already
+default, press **Adopt current class defaults** in Configure. This explicit action
+also replaces a retained defaults snapshot when the selector already says
+Stimulus class defaults. An already
 selected run value is not silently overwritten by a changed Python default.
 
 An extension can declare review-only links alongside its scientific definition:

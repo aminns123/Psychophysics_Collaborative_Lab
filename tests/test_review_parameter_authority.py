@@ -16,6 +16,50 @@ from psychophysics_lab.stimuli.registry import get_stimulus
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize("identity,slot",[("orientation_task","target"),("contrast_sensitivity_windowed","grating")])
+def test_adopt_refreshed_defaults_replaces_retained_snapshot_without_overwriting_experiment(tmp_path,monkeypatch,identity,slot):
+    from psychophysics_lab.stimuli import registry
+    from psychophysics_lab.config.stimulus_parameters import snapshot
+    experiment=get_experiment(identity)
+    original=get_stimulus(experiment.stimulus_defaults[slot])
+    old=next(f.default for f in original.parameters if f.key=="size_deg")
+    updated=replace(original,parameters=tuple(replace(f,default=old*1.2) if f.key=="size_deg" else f for f in original.parameters))
+    monkeypatch.setitem(registry._REGISTRY,original.id,updated)
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        async with app.run_test(size=(120,45)) as pilot:
+            config,review=await enter_review(app,pilot,identity,
+                {"aperture_diameter_deg":1.,"fade_width_deg":.1} if identity.endswith("windowed") else {})
+            review.query_one("#back",Button).press()
+            await pilot.pause()
+            panel=next(p for p in config.query(StimulusParametersPanel) if p.slot==slot)
+            if updated.default_config:
+                panel.query_one("#stimulus-preset-"+slot,Select).value="library_defaults"
+                await pilot.pause()
+                assert panel.current()["file_identity"]=="library_defaults"
+                assert panel.current()["document"]["parameters"]["size_deg"]==old*1.2
+            retained=document_for(updated)
+            retained["parameters"]["size_deg"]=old
+            panel.loaded=snapshot(retained,file_identity="library_defaults")
+            panel.path=None
+            app.stimulus_drafts[panel.cache_key]=(panel.loaded,None)
+            panel.refresh_presets()
+            assert panel.query_one("#stimulus-preset-"+slot,Select).value=="library_defaults"
+            before=config._collect()
+            panel.query_one("#stimulus-defaults-"+slot,Button).press()
+            await pilot.pause()
+            assert panel.current()["document"]["parameters"]["size_deg"]==old*1.2
+            assert config._collect()==before
+            config.query_one("#review",Button).press()
+            await pilot.pause()
+            review=app.screen
+            row=next(i for i,r in enumerate(review._review_rows) if r[0]==slot
+                     and r[1]==next(f.display_label for f in updated.parameters if f.key=="size_deg"))
+            expected=1. if identity.endswith("windowed") else old*1.2
+            assert float(review._review_rows[row][2])==expected
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("size", [(80,24),(120,40)])
 @pytest.mark.parametrize("entry", ["2,4","2,nan"])
 def test_sidebar_review_applies_or_rejects_current_draft_instead_of_discarding_it(tmp_path,size,entry):
