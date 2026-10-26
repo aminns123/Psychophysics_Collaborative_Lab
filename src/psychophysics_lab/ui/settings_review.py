@@ -66,21 +66,20 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
-    if spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli":
+    if values.get("contrast_method") == "constant_stimuli" and callable(getattr(module, "make_fixed_schedule", None)):
         # Review must inspect the selected fixed-level schedule, not invent a
         # staircase just because this CSF experiment supports adaptive trials.
         schedule = module.make_fixed_schedule(values, run.seed)
-        frequencies = list(dict.fromkeys(row["frequency_cpd"] for row in schedule))
-        conditions = [{"id": i, "frequency_cpd": frequency}
-                      for i, frequency in enumerate(frequencies, 1)]
+        unique = list(dict.fromkeys(row["value"] for row in schedule))
+        conditions = [{"id": i, "value": value} for i, value in enumerate(unique, 1)]
         condition = schedule[0]
         state = {}
         run.initialise(expected_trials=len(schedule),
                        resolution={"trial_selection_method": "constant_stimuli",
                                    "planned_trials": len(schedule),
-                                   "fixed_contrast_levels": list(module.fixed_contrast_levels(values)),
+                                   "fixed_contrast_levels": list(module.fixed_contrast_levels(values)) if callable(getattr(module, "fixed_contrast_levels", None)) else list(dict.fromkeys(row["contrast"] for row in schedule)),
                                    "fixed_repetitions_per_level_per_condition": values["fixed_repetitions"]})
-        representative_note = ("Constant stimuli: condition is spatial frequency; "
+        representative_note = ("Constant stimuli: scientific conditions remain unchanged; "
                                f"{len(schedule)} planned presentations at the selected fixed levels. "
                                "This is one seeded sample; no adaptive staircase or threshold estimate.")
     else:
@@ -156,7 +155,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         or (row[:2] == ("Adaptive scale", "Response rule")
             and {"n_down", "n_up"} <= field_keys)
     ))
-    if spec.adaptive and not (spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli"):
+    if spec.adaptive and values.get("contrast_method", "adaptive") != "constant_stimuli":
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
                     for field in spec.fields if field.key in controls)
@@ -197,8 +196,8 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                      str(view["origin_px"]) + " + " + str(view["raster_px"]) + " pixels",
                      "Clipped: " + ", ".join(view["clipped_edges"]) if view["clipped"] else "Entire requested raster visible"))
     if description["conditions"]:
-        label = ("Number of spatial-frequency conditions"
-                 if spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli"
+        label = ("Number of distinct scientific conditions"
+                 if values.get("contrast_method") == "constant_stimuli"
                  else "Number of condition/staircase entries")
         rows.append(("Conditions", label, str(len(description["conditions"])),
                      "Experiment's selected condition values"))
