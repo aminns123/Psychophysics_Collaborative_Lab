@@ -5,6 +5,14 @@ operating systems are useful regression checks, not a promise of physical-displa
 or audio support there. The installation and qualification workflow below targets
 Windows and Python 3.11.
 
+The [accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
+`5fec547ecf3f86cd6bbd202a9e463637deca07d3`, with passing Windows and Ubuntu
+headless CI. This is separate from the earlier `v0.3.0` research pre-release
+and does not yet certify a reproducible fresh laboratory installation.
+The [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) tracks the approved
+installation identity, dependency, fresh-install and rollback stages; they
+are planned work, not new installer capabilities in this documentation update.
+
 Git contains the shared software. Each computer creates its own Python environment
 and physical-display configuration. Scientific records live in an external data
 workspace. Never copy another computer's `.venv` or treat its calibration as valid
@@ -100,6 +108,12 @@ version and source identity of the module actually loaded from installed
 distribution metadata. A headless run may report `loaded: false`. This is
 software provenance, not proof of graphics-buffer bit depth or physical
 photon output.
+
+The tested principal versions and local/CI environment differences are recorded
+in the [baseline](ACCEPTED_SOFTWARE_BASELINE.md). Local read-only inspection
+also found source version `0.3.0` with installed editable metadata `0.2.2`;
+Issue #82 stage 2 will address identity validation separately. No automatic
+reinstall, metadata repair or dependency change is introduced here.
 
 For a future release, use a reviewed **Windows x64 / CPython 3.11 constraints or
 lock file** containing exact runtime and transitive versions, with hashes where

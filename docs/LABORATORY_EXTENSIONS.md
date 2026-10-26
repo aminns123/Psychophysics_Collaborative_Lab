@@ -175,4 +175,15 @@ To propose official inclusion, deliberately open a framework feature branch, rev
 
 ## Validation and remaining acceptance
 
-See [Issue #80 implementation evidence and Windows verification checklist](ISSUE80_VALIDATION.md) for the reported tests, changed components, pre-existing failures and required Windows acceptance. Linux/macOS work and GitHub Actions are deferred. Native fullscreen presentation on real laboratory hardware still needs researcher acceptance with the chosen display, photometer and timing equipment. The local headless TUI tests cover selection, Review, source navigation and geometry; they do not certify photons or replace that hardware check.
+See [Issue #80's reconciled evidence and remaining handoff](ISSUE80_VALIDATION.md).
+Core Windows manual trust, simulation, provenance, disabled-extension archive
+reading and source-invalidation checks have been recorded. Both Windows and
+Ubuntu headless suites pass at the [accepted baseline](ACCEPTED_SOFTWARE_BASELINE.md);
+the former headless-CI deferral is superseded. Remaining Issue #80 manual work
+is current fingerprint-v2 readiness and native source-editor/preset navigation
+on the intended workstation. Do not automatically requalify real lab sources.
+
+Native fullscreen presentation still requires the laboratory's own apparatus
+and experiment qualification; Ubuntu headless success does not establish
+physical Linux or macOS acquisition support. Installation/update/rollback
+acceptance belongs to the [Issue #82 stages](ISSUE82_RELEASE_ROADMAP.md).

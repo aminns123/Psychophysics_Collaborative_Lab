@@ -1,6 +1,6 @@
 # PsyCoLab: international laboratory roadmap and operating model
 
-**Status:** planning and contributor/user guidance, reviewed against `main` after Design E (PR #78), 23 October 2026. This document distinguishes existing behaviour from proposed changes. A checked item is not evidence of measured display calibration.
+**Current status — 26 October 2026:** contributor/user guidance reconciled with the [accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md). Independent extensions and Windows/Ubuntu headless validation are implemented. The original programme below began on 23 October; its P0–P4 labels are historical programme names, not the five new [Issue #82 PR stages](ISSUE82_RELEASE_ROADMAP.md). A checked item is not measured display calibration.
 
 ## Why this separation matters
 
@@ -12,9 +12,9 @@ PsyCoLab should remain understandable to a scientist reading **one stimulus clas
 |---|---|---|---|
 | 1: Core | TUI, calibration, run/simulation engines, adaptive and storage services, registries | `src/psychophysics_lab/{ui,config,core,adaptive,data,stimuli}` | Implemented; maintain as protected framework code |
 | 2: Curated science | Shared stimulus classes and published experiments (CSF, flanker, ellipse, teaching tasks) | `src/psychophysics_lab/stimulus_library.py` and `src/psychophysics_lab/experiments/*.py` | Implemented, automatic experiment discovery; curated contributions need review |
-| 3: Lab-local studies | Locally written, pilot, unpublished or institution-specific science and presets | Current work can be kept on branches/forks; settings presets and calibration live in local configuration | Opt-in implementation: [laboratory extensions](LABORATORY_EXTENSIONS.md); software readiness remains separate from hardware qualification |
+| 3: Lab-local studies | Locally written, pilot, unpublished or institution-specific science and presets | Explicitly trusted external source root; settings presets and calibration in separate local configuration; branches/forks remain for official-code edits | Opt-in implementation: [laboratory extensions](LABORATORY_EXTENSIONS.md); software readiness remains separate from hardware qualification |
 
-**Issue #80 implementation update (24 October 2026):** independent trusted roots now enter the existing registries and runner through a shared source resolver. See [architecture, Windows workflow and limitations](LABORATORY_EXTENSIONS.md) and [local evidence](ISSUE80_VALIDATION.md). The milestone plan below records the original acceptance criteria; Windows evidence does not imply Linux or physical qualification.
+**Issue #80 implementation update (26 October 2026):** independent trusted roots now enter the existing registries and runner through a shared source resolver. See [architecture, Windows workflow and limitations](LABORATORY_EXTENSIONS.md) and [local evidence](ISSUE80_VALIDATION.md). The milestone plan below records the original acceptance criteria. Both Windows and Ubuntu headless tests now pass; neither establishes physical qualification.
 
 ## Decisions for routine researcher use — available now
 
@@ -28,7 +28,7 @@ See [Safe updates and local work](SAFE_UPDATES_AND_LOCAL_WORK.md) and [Contribut
 
 ## Change programme: separate reviewable PRs
 
-### P0 — preserve existing behaviour and document it (this first PR)
+### P0 — preserve existing behaviour and document it (original documentation milestone)
 
 - [x] Write an international researcher/contributor narrative.
 - [x] Document safe Git clone/fork/branch/update versus unsafe ZIP overlays.
@@ -43,7 +43,7 @@ Acceptance: this PR changes documentation only. Existing scientific/runtime code
 
 ### P1 — independent local extensions (implemented in the Issue #80 code PR)
 
-Proposed sibling layout:
+Supported sibling layout:
 
 ```text
 Laboratory/
@@ -93,9 +93,9 @@ No P2 migration is authorised until the inventory and acceptance tests are revie
 - Maintain clear contribution rules: scientific intent, supported task and source location, unique ID, parameter units/ranges, stimulus preview, simulation where supported, response/adaptive/timing assumptions, run-provenance validation, no changes to existing protocol defaults without explicit scientific review.
 - Require separate PRs for scientific changes, UI, data/schema changes and dependency upgrades; review/fingerprint source, avoid merging broken hardware-independent tests without documenting the reason.
 - Select a software licence and verify permissions for bundled third-party sources **with repository-owner/institutional review**. There is no selected licence in the repository as of this review; a public GitHub repository is not automatically open-licensed.
-- Start a maintained changelog and publish **tagged releases** with release notes, supported Python/OS/runtime stack, known limitations and reviewed Windows lab-acceptance evidence. The current Python package declares version `0.2.2`; a release tag is not implied.
+- Start a maintained changelog and publish **tagged releases** with release notes, supported Python/OS/runtime stack, known limitations and reviewed Windows lab-acceptance evidence. The current source declares `0.3.0`; the existing published pre-release identifies its older source snapshot, not the accepted development baseline.
 - Use reproducible, reviewed dependency constraints for supported hardware platforms. Do not claim general Linux acquisition support from headless tests.
-- First stable release must be a deliberate decision after resolving/blocking and documenting the existing 12 pytest failures, confirming source and schema compatibility and completing hardware/photometry/timing acceptance on designated setups.
+- Earlier 12/23-failure reports describe historical revisions. The accepted baseline has zero failures in Windows/Ubuntu CI. A future stable laboratory release still requires the five Issue #82 stages, compatibility review and the claimed hardware/photometry/timing acceptance on designated setups.
 - CI quotas may prevent immediate cloud test completion; local Python 3.11 test results and Windows acceptance evidence should still accompany release proposals.
 
 ### P4 — long-term exchange and institutional support
