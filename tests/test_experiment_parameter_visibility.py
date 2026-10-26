@@ -11,7 +11,6 @@ import pytest
 from psychophysics_lab.experiments import (
     contrast_sensitivity as csf,
     probe_above_below as probe,
-    new_probe_vertical_line_stimulus as new_probe,
     ellipse_centre as centre,
     ellipse_major_axis as axis,
 )
@@ -31,7 +30,7 @@ class StubRun:
         self.initialisation = kwargs
 
 
-@pytest.mark.parametrize("module", [probe, new_probe])
+@pytest.mark.parametrize("module", [probe])
 @pytest.mark.parametrize("distance_deg", [0.5, 1.25, 3.0])
 def test_above_below_probes_follow_selected_offset_in_conditions_and_timeline(module, distance_deg):
     values = module.SPEC.normalise_values(
@@ -58,19 +57,19 @@ def test_above_below_probes_follow_selected_offset_in_conditions_and_timeline(mo
 
 @pytest.mark.parametrize("bad", [-1.0, 0.0, float("nan"), float("inf")])
 def test_above_below_rejects_invalid_offsets(bad):
-    for module in (probe, new_probe):
+    for module in (probe,):
         with pytest.raises(ValueError):
             module.SPEC.normalise_values(
                 module.SPEC.field_defaults() | {"probe_vertical_offset_deg": bad}
             )
 
 
-def test_new_probe_companion_json_mirrors_field_default():
+def test_retired_probe_settings_remain_readable_without_importing_removed_source():
     import json
     path = Path(__file__).resolve().parents[1] / "configs/experiments/new_probe_vertical_line_stimulus.json"
     source = json.loads(path.read_text(encoding="utf-8"))
-    field = next(f for f in new_probe.SPEC.fields if f.key == "probe_vertical_offset_deg")
-    assert source["values"]["probe_vertical_offset_deg"] == field.default
+    # The researcher removed this independent source; keep its saved settings
+    # readable without making active experiment tests import the retired module.
     assert source["values"]["probe_vertical_offset_deg"] == 2.0
 
 
@@ -131,7 +130,7 @@ from psychophysics_lab.experiments import (
 )
 
 PUBLIC_FILES = (
-    csf, probe, new_probe, centre, axis, example_experiment,
+    csf, probe, centre, axis, example_experiment,
     line_position_baseline, line_position_flanker, orientation_task,
     orientation_adaptive,
 )
