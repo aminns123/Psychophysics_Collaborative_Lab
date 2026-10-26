@@ -37,7 +37,7 @@ def simulate(*, workspace=None, data_root=None, seed=123, experiment_id="contras
         selected_root = preferred_data_root(root, default_data_root(root))
     test_root = simulation_workspace(Path(selected_root), root)
     request = SetupRequest(f"synthetic_{seed}", "new", experiment_id, monitor_profile_id or spec.monitor_profile_id, selected_values, monitor_profile_hash=monitor_profile_hash, stimulus_snapshots=stimulus_snapshots or {})
-    algorithm_id = experiment.adaptive.algorithm_id if experiment.adaptive else None
+    algorithm_id = (experiment.adaptive.algorithm_id if experiment.adaptive and selected_values.get("contrast_method", "adaptive") == "adaptive" else None)
     simulation = SimulationRun(test_root, metadata, spec.runtime_factory(observer, seed, algorithm_id), response_probability=getattr(observer,"probability_correct",None))
     artifacts = run_request(request, repo_root=root, data_root=test_root, simulation=simulation)
     # Both human and synthetic runs already get a per-condition staircase

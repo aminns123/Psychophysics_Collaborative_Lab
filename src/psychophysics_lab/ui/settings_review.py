@@ -82,13 +82,23 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         representative_note = ("Constant stimuli: scientific conditions remain unchanged; "
                                f"{len(schedule)} planned presentations at the selected fixed levels. "
                                "This is one seeded sample; no adaptive staircase or threshold estimate.")
+    elif values.get("contrast_method") == "adaptive" and callable(spec.method_reviewer):
+        # New teaching methods declare their own execution-free preview.
+        conditions, condition, state = spec.method_reviewer(run)
+        representative_note = (
+            "Adaptive teaching method: illustrative selected trial with "
+            "current starting digital strength; no threshold claim."
+        )
     else:
         conditions = module.make_conditions(values)
         state = module.initialise_experiment(run, conditions)
         condition = module.choose_condition(run, conditions, state)
         representative_note = ("Trial-controlled values show one representative trial. "
                                "Random choices and adaptive strengths vary during a run.")
-    stimuli = module.prepare_stimuli(run, condition, state)
+    if callable(getattr(module, "prepare_selection", None)):
+        module.prepare_selection(run, condition)
+    prepare = getattr(module, "prepare_method_stimuli", module.prepare_stimuli)
+    stimuli = prepare(run, condition, state)
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
     timeline=module.make_trial(values, condition)
@@ -155,7 +165,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         or (row[:2] == ("Adaptive scale", "Response rule")
             and {"n_down", "n_up"} <= field_keys)
     ))
-    if spec.adaptive and values.get("contrast_method", "adaptive") != "constant_stimuli":
+    if spec.adaptive and values.get("contrast_method", "adaptive") == "adaptive":
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
                     for field in spec.fields if field.key in controls)

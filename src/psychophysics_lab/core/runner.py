@@ -444,6 +444,8 @@ def run_request(
         if values.get("contrast_method") == "constant_stimuli":
             payload["trial_selection_method"] = "constant_stimuli"
             payload["adaptive_algorithm"] = None
+        if values.get("contrast_method") == "original":
+            payload["adaptive_algorithm"] = None
         payload["response_paradigm"] = asdict(spec.response_paradigm) if spec.response_paradigm else None
         payload["random_provenance"] = {"algorithm": "python.random MT19937", "initial_state": random.getstate()}
         payload["trial_schema_version"] = TRIAL_SCHEMA_VERSION

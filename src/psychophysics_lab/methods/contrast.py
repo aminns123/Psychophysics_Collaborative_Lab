@@ -127,6 +127,7 @@ def run_contrast_experiment(
     prepare_stimuli: Callable,
     make_trial: Callable,
     interpret_response: Callable,
+    prepare_selection: Callable | None = None,
 ):
     """One scientific trial sequence for every registered contrast method.
 
@@ -143,6 +144,10 @@ def run_contrast_experiment(
     )
     while not method.is_finished:
         condition = method.next_trial()
+        if prepare_selection is not None:
+            # Enrich the same scheduled object with target-dependent geometry;
+            # preserve policy identity, deterministic ordering and provenance.
+            prepare_selection(run, condition)
         stimuli = prepare_stimuli(run, condition, method.state)
         with run.trial(
             make_trial(run.values, condition),

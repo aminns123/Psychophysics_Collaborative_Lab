@@ -3,7 +3,7 @@
 Target 0 = negative tilt, 1 = positive tilt; F/J by default (TUI can remap).
 Correctness compares the target and response alternative indices. Conditions
 are balanced, shuffled with random_seed, and stop after trial_count responses.
-No adaptation or audio in this task. Digital contrast is not optical contrast.
+The original task has no adaptation or audio; optional teaching methods can now be selected explicitly. Digital contrast is not optical contrast.
 Stimulus maths/defaults are in TeachingGabor in stimulus_library.py; optional
 saved stimulus presets override appearance, never trial sequence or meanings.
 RunContext supplies the same presentation/response/data path for live and virtual
@@ -11,10 +11,18 @@ observers. Display calibration and staircase algorithms are shared mechanisms.
 """
 
 import random
+from psychophysics_lab.methods.contrast import run_contrast_experiment
+from psychophysics_lab.methods.teaching import (
+    teaching_method_fields, teaching_adaptive_fields, fixed_teaching_schedule,
+    constant_teaching_method, OriginalTeachingMethod, TeachingAdaptiveMethod,
+    review_teaching_adaptive,
+)
+
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
     ResponseParadigm,
+    AdaptiveSelection,
     TrialTimeline,
     Show,
     CollectResponse,
@@ -63,6 +71,11 @@ FIELDS = (
     ),
 )
 
+
+FIELDS += teaching_method_fields(
+    default="original", strengths="0.05,0.1,0.2",
+    label="Gabor digital contrast modulation",
+) + teaching_adaptive_fields()
 
 RESPONSES = ResponseParadigm("tilt", ("negative", "positive"), ("F", "J"))
 STIMULUS_SLOTS = {"target": "orientation_patch"}
@@ -168,22 +181,68 @@ def finish_experiment(run, conditions, state):
     run.complete()
 
 
+def make_fixed_schedule(settings, seed):
+    return fixed_teaching_schedule(settings, seed, maximum=1.0, condition="tilt_sign")
+
+
+def prepare_method_stimuli(run, condition, state):
+    if run.values.get("contrast_method", "original") == "original":
+        return prepare_stimuli(run, condition, state)
+    base = run.stimulus_parameters()
+    angle = (-1 if condition["target"] == 0 else 1) * abs(base["orientation_deg"])
+    return {"target": run.stimulus_parameters(
+        orientation_deg=angle, contrast=condition["contrast"]
+    )}
+
+
+def original_method(run):
+    return OriginalTeachingMethod(
+        run, make_conditions=make_conditions,
+        initialise=initialise_experiment, choose=choose_condition,
+        record=trial_record, update=None, finish=finish_experiment,
+    )
+
+
+def adaptive_method(run):
+    return TeachingAdaptiveMethod(
+        run, make_conditions=make_conditions,
+        choose=choose_condition, maximum=1.0,
+    )
+
+
+def fixed_method(run):
+    return constant_teaching_method(
+        run, make_fixed_schedule,
+        units="teaching_gabor_digital_modulation",
+        display_mapping="I=0.5+0.5*C*envelope*cos(orientation phase); not measured optical contrast.",
+    )
+
+
+def validate_method_settings(values):
+    if values.get("contrast_method", "original") == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+    elif values.get("contrast_method") == "adaptive":
+        if not 0 <= values["starting_strength"] <= 1:
+            yield "Adaptive starting strength must be between 0 and 1."
+        if values["trial_count"] > values["max_trials"]:
+            yield "Adaptive trial count exceeds the max_trials safety ceiling."
+
+
 def procedure(run):
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    for _ in conditions:
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            # Fixed stimulus; no artificial adaptive update stage.
-    finish_experiment(run, conditions, state)
+    return run_contrast_experiment(
+        run,
+        methods={
+            "original": lambda: original_method(run),
+            "adaptive": lambda: adaptive_method(run),
+            "constant_stimuli": lambda: fixed_method(run),
+        },
+        prepare_stimuli=prepare_method_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
 
 
 # 7. FRAMEWORK CONNECTION
@@ -201,6 +260,10 @@ def definition(
         description="Self-paced tilt discrimination with a registered visual stimulus.",
         procedure=procedure,
         fields=FIELDS,
+        method_planner=make_fixed_schedule, validator=validate_method_settings,
+        method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
+        adaptive=AdaptiveSelection('consecutive_up_down', controls=('n_down','n_up','down_factor','up_factor','max_trials')),
+
         scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
         calibration_requirements=("geometry",),
