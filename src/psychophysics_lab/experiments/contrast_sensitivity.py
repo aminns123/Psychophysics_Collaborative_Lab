@@ -66,9 +66,9 @@ FIELDS = (
         section="Constant stimuli",
     ),
     ConfigField(
-        "fixed_repetitions", "Presentations per contrast per spatial frequency",
+        "fixed_repetitions", "Presentations per contrast level per scientific condition",
         "int", 10, minimum=1, section="Constant stimuli",
-        help_text="Each spatial frequency is a condition. For each frequency and contrast pair, this many trials will be interleaved in reproducible random order. The max_trials field is a configurable safety ceiling.",
+        help_text="Each selected spatial frequency is a scientific condition. Each condition and contrast-level pair receives this many presentations; conditions can mean something else in other experiments. The max_trials field is a configurable safety ceiling.",
         units="trials",
     ),
     ConfigField(
