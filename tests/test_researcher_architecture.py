@@ -134,12 +134,15 @@ def test_spatial_python_migration_matches_legacy_design_for_every_phase_and_posi
 
 
 def test_researcher_probe_instructions_follow_remapped_response_keys():
-    from psychophysics_lab.experiments.new_probe_vertical_line_stimulus import procedure, SPEC
+    # The independent vertical-line experiment was deliberately retired;
+    # the retained public above/below task uses the same response contract.
+    from psychophysics_lab.experiments.probe_above_below import procedure, SPEC
     from contextlib import contextmanager
     captured = []
     run = SimpleNamespace(values=SPEC.field_defaults() | {"trial_count":1}, accepted_trials=0,
         synthetic=True, responses=SimpleNamespace(keys=("UP", "DOWN"), alternatives=("above", "below")),
-        initialise=lambda **kwargs: None, complete=lambda: None, stimulus_parameters=lambda *a, **k: {})
+        initialise=lambda **kwargs: None, complete=lambda: None, stimulus_parameters=lambda *a, **k: {},
+        stimulus_snapshots={})
     @contextmanager
     def trial(plan, **kwargs):
         captured.append(kwargs)
@@ -148,7 +151,7 @@ def test_researcher_probe_instructions_follow_remapped_response_keys():
         run.accepted_trials += 1
     run.trial = trial
     procedure(run)
-    assert captured[0]["instructions"] == "Above: UP   Below: DOWN"
+    assert captured[0]["instructions"] == "above: UP  below: DOWN"
     assert captured[0]["target"] == 0 and captured[0]["condition"] == "above"
 
 
