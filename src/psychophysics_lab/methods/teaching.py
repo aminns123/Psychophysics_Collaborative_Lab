@@ -149,6 +149,24 @@ class OriginalTeachingMethod:
         self._finish(self.run, self.conditions, self.state)
 
 
+def review_teaching_adaptive(run, make_conditions, choose):
+    """Describe a future trial without creating a live staircase or response."""
+    conditions = make_conditions(run.values)
+    state = {"contrast": run.values["starting_strength"]}
+    condition = choose(run, conditions, state)
+    condition = dict(condition, contrast=state["contrast"])
+    run.initialise(expected_trials=len(conditions), resolution={
+        "trial_selection_method": "adaptive",
+        "planned_trials": len(conditions),
+        "starting_strength": state["contrast"],
+        "scientific_estimator": None,
+        "note": "Illustrative finite-response teaching adaptation. No threshold estimator.",
+    })
+    return conditions, condition, state
+
+
+
+
 class TeachingAdaptiveMethod:
     """Finite-trial n-down/n-up teaching rule using the owned adaptive engine.
 
