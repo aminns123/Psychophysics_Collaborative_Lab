@@ -4,10 +4,12 @@
 an adaptive strategy or the method of constant stimuli without copying
 staircase algorithms or duplicating trial acquisition and saved-data logic.
 
-This describes the shared API, **not a claim that all registered experiments
-already expose both choices**. CSF is the first integrated example in PR #135.
-Other studies must declare their controlled scientific quantity and explicitly
-connect both strategy factories before the TUI can safely offer the choice.
+This describes the shared API. PR #135 integrated CSF, draft PR #137 adds
+line-position/flanker/ellipse studies, and draft PR #138 adds the four
+orientation/teaching studies. The last two PRs are **not merged or scientifically
+accepted until their CI and Windows TUI/simulation checks pass**.
+A new local experiment can use the same public strategies after declaring its
+actual digital strength units, valid ranges and trial interpretation.
 
 ## Researcher-facing architecture
 
@@ -137,6 +139,67 @@ Note: `line_position_flanker` differs from baseline in scene composition.
 Do not use a global `1-background` cap as a replacement for its local
 probe-overlap validation. Similarly, an absolute brightness is *not*
 automatically the same quantity as a digital increment.
+
+## The reusable family adapters
+
+- **Grating CSF:** `contrast_sensitivity.py` is the first full reference.
+  Its selected value is digital peak-to-peak grating modulation.
+- **DetectionScene probes:** import `probe_contrast_fields()`,
+  `probe_constant_method()`, `make_probe_fixed_schedule()` and
+  `validate_probe_fixed_settings()` from `methods.probe`.
+  Conditions and target positions remain in the experiment. The probe
+  *increment* must pass the real pixel-composition headroom test for both
+  targets. See `line_position_baseline.py` and `ellipse_major_axis.py`.
+- **Gabor and bright-line teaching:** import
+  `teaching_method_fields()`, `constant_teaching_method()`,
+  `OriginalTeachingMethod` and `TeachingAdaptiveMethod` from
+  `methods.teaching`. Gabor modulation and bright-line increments have
+  different digital ranges. The original fixed-count teaching code stays
+  selectable as **Original experiment** (the unchanged default).
+  The optional teaching adaptive mode stops after the selected accepted
+  responses and claims no threshold; a genuine threshold protocol must
+  be separately declared and validated.
+
+For every study, the common experiment procedure should be small:
+
+```python
+def procedure(run):
+    return run_contrast_experiment(
+        run,
+        methods={
+            "adaptive": lambda: adaptive_method(run),
+            "constant_stimuli": lambda: fixed_method(run),
+        },
+        prepare_stimuli=prepare_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
+```
+
+Some teaching examples include an additional `original` factory to preserve
+their exact old finite-trial protocol. Experiments with target-dependent
+geometry may supply `prepare_selection` to the runner: it enriches the
+selected trial object **in place** with physical positions while preserving
+method identity and condition scheduling.
+
+**Local experiment template principle:** import these public helpers; do not
+copy the staircase algorithm, fixed-level schedule, data-writer or main run
+loop. Keep scientific condition creation, physical display mapping, response
+interpretation, timing and calibration restrictions readable in your own
+experiment file. Prefer a small declared `method_planner` (and optional
+`method_reviewer`) on the `ExperimentSpec` so the generic TUI/Review can
+show active method settings without hardcoded experiment IDs.
+
+### Canonical local data is unchanged
+
+Both methods use the same local external data root, experiment folders,
+manifest and **existing schema-v1 20-column `trials.tsv`**. With fixed
+strengths, write actual `presented_display_contrast` in the scientifically
+declared digital units. `staircase_id`, reversal fields,
+`next_display_contrast`, etc. remain present as **empty/not applicable**
+columns. Do **not** delete columns or invent a staircase estimate. Record
+the method, full seeded trial plan, displayed/intensity convention and
+per-level counts and accuracy in `resolved_experiment.json`.
 
 ## Compatibility and acceptance
 
