@@ -1958,6 +1958,8 @@ class ExperimentConfigScreen(Screen):
         widget_id = _field_widget_id(field)
         if field.kind == "choice":
             options = (
+                ([("Original experiment (unchanged)", "original")]
+                 if "original" in field.choices else []) +
                 [("Adaptive staircase", "adaptive"),
                  ("Method of constant stimuli", "constant_stimuli")]
                 if field.key == "contrast_method" and {"adaptive", "constant_stimuli"} <= set(field.choices)
