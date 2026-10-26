@@ -11,6 +11,10 @@ import random
 import sys
 from psychophysics_lab.adaptive.steps import bounded_log_step
 from psychophysics_lab.experiments._internal.parameter_compatibility import migrate_probe_intensity
+from psychophysics_lab.methods.contrast import AdaptiveContrastMethod, run_contrast_experiment
+from psychophysics_lab.methods.probe import (
+    probe_contrast_fields, probe_constant_method, validate_probe_fixed_settings,
+)
 from psychophysics_lab.researcher import (
     ConfigField,
     experiment,
@@ -137,6 +141,8 @@ RESPONSES = ResponseParadigm(
 STIMULUS_SLOTS = {"fixation": "detection_scene", "first": "detection_scene"}
 STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_alternative_forced_choice"
+FIELDS += probe_contrast_fields()
+
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
     "version": "line_position_flanker-5",
@@ -378,22 +384,40 @@ def finish_experiment(run, conditions, state):
     run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
+def adaptive_contrast_method(run):
+    """Use this study's original staircase rules; no algorithm or RNG change."""
+    return AdaptiveContrastMethod(
+        run,
+        make_conditions=make_conditions,
+        initialise=initialise_experiment,
+        select=choose_condition,
+        record=trial_record,
+        update=update_experiment,
+        finished=is_finished,
+        finish=finish_experiment,
+    )
+
+
+def constant_contrast_method(run):
+    """Use shared level scheduling; retain our scientific conditions and trials."""
+    return probe_constant_method(
+        run, make_conditions, prepare_stimuli, scientific_spec=SCIENTIFIC_SPEC,
+    )
+
+
 def procedure(run):
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
-    finish_experiment(run, conditions, state)
+    # Scientific timeline and stimulus conversion stay above. The method
+    # chooses the probe increment; RunContext still records the same TSV.
+    return run_contrast_experiment(
+        run,
+        methods={
+            "adaptive": lambda: adaptive_contrast_method(run),
+            "constant_stimuli": lambda: constant_contrast_method(run),
+        },
+        prepare_stimuli=prepare_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
 
 
 # 7. FRAMEWORK CONNECTION
@@ -434,6 +458,10 @@ def validate_monitor(settings, profile):
         geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
         validate_requested_cpd([settings["flanker_cpd"]], geometry)
         validate_requested_cpd([settings["flanker_cpd"]], geometry, orientation_rad=math.pi / 2)
+
+    # Fixed levels use the same scientific conditions but no staircase IDs.
+    yield from validate_probe_fixed_settings(values, make_conditions)
+
 
 
 def definition(identity="line_position_flanker"):
