@@ -172,11 +172,11 @@ SCIENTIFIC_SPEC = dict(csf.SCIENTIFIC_SPEC) | {
 # The metadata and calibration requirements are preserved exactly, while a
 # unique experiment ID/data directory prevents confusing the two stimulus
 # conditions or accidentally overwriting legacy CSF runs.
-TRIAL_COLUMNS = {
+TRIAL_COLUMN_OVERRIDES = {
     key: dict(value) for key, value in csf.SPEC.trial_column_overrides.items()
 }
 for column in ("presented_display_contrast", "next_display_contrast"):
-    details = TRIAL_COLUMNS[column]
+    details = TRIAL_COLUMN_OVERRIDES[column]
     details["notes"] = (
         "Strength before circular edge weighting; "
         "background + (strength/2) * sin(2*pi*f*x) * circular_window. "
@@ -202,7 +202,7 @@ SPEC = replace(
     validator=validate_settings,
     monitor_validator=validate_monitor,
     method_planner=make_fixed_schedule,
-    trial_column_overrides=TRIAL_COLUMNS,
+    trial_column_overrides=TRIAL_COLUMN_OVERRIDES,
     scientific_spec=SCIENTIFIC_SPEC,
     source_paths=(
         "src/psychophysics_lab/experiments/contrast_sensitivity_windowed.py",
