@@ -4,15 +4,35 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
-- **Issue #81 Stage 3 (proposed PR):** read-only archived extension provenance
+- **Accepted development baseline (26 October 2026):** commit
+  `5fec547ecf3f86cd6bbd202a9e463637deca07d3`, after PRs #114–#120;
+  **1,562 Windows / 1,560 Ubuntu tests passed**, zero failures and both
+  portability checks passed. See [exact evidence and limits](docs/ACCEPTED_SOFTWARE_BASELINE.md).
+  This is not a new tag, reproducible laboratory release or physical certificate.
+- **Reliability corrections (merged PRs #114–#117):** preserve the final error
+  manifest/raw rows under cascading cleanup failures; fingerprint-v2 scientific
+  dependencies invalidate obsolete Ready records without requalification;
+  reject readable-export aliases of raw trials; reject malformed recovery inputs
+  while preserving valid calculations. Scientific trial-output preservation is
+  recorded in the baseline evidence.
+- **Acceptance corrections (merged PRs #118–#120):** active documentation/source
+  descriptions aligned; CLI help regression uses the existing public entry point;
+  nested-root checks remain cross-platform, with Windows junction and POSIX symlink
+  tests running on their native platforms. No UI layout fix is claimed.
+- **Issue #82 stage 1 (this documentation PR):** reconcile baseline, release and
+  Issue #80 evidence; record [five approved stages](docs/ISSUE82_RELEASE_ROADMAP.md).
+  Editable-install identity, exact environment, clean installation and rollback
+  work remain separate future PRs. No runtime implementation changes here.
+
+- **Issue #81 Stage 3 (merged PR #97):** read-only archived extension provenance
   v1 structural checks; reject explicitly newer/malformed nested metadata
   without requiring the original laboratory extension to be installed. Refuse
   unknown/null workspace and data-layout schema markers instead of treating
   them as existing formats. Distinguish missing historical manifest markers
   from explicit null. Add anonymous relocated-archive and no-write fixtures.
   No migration, experiment execution, scientific value inference or new
-  acquisition fields. Windows maintainer tests pending.
-- **First-run laboratory source onboarding (proposed PR):** supply an independent sibling `PsyCoLab_Extensions` starter on first normal TUI launch, with an editable root and a non-destructive `Create starter` action. Preserve previously configured/custom source paths and never overwrite existing source. No external Python is trusted or marked Ready automatically.
+  acquisition fields. Targeted historical acceptance and current complete Windows/Ubuntu regressions passed; see the baseline for their separate scopes.
+- **First-run laboratory source onboarding (merged PR #96):** supply an independent sibling `PsyCoLab_Extensions` starter on first normal TUI launch, with an editable root and a non-destructive `Create starter` action. Preserve previously configured/custom source paths and never overwrite existing source. No external Python is trusted or marked Ready automatically.
 - **No scientific acquisition or physical calibration changes.** This is an optional Windows-first researcher onboarding improvement.
 - **Issue #80 external laboratory extensions (merged in PR #93):** explicitly
   trusted independent source folder, namespaced stimulus and experiment
@@ -20,15 +40,15 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
   provenance, existing TUI/runner reuse, and Windows example. See
   [the extension guide](docs/LABORATORY_EXTENSIONS.md) and
   [implementation evidence and remaining acceptance](docs/ISSUE80_VALIDATION.md).
-- **Follow-up (proposed):** restore the interrupted evidence report, correct
-  outdated guidance and resolve the external experiment JSON preset in the
-  existing Build Experiments authoring panel. Windows smoke/combined regression
-  verification remains required before closing Issue #80.
+- **Issue #80 follow-up (merged PR #94):** restored the interrupted evidence
+  report, corrected outdated guidance and resolved external JSON presets in
+  Build Experiments. Core manual acceptance is recorded; only the current
+  readiness/native-editor handoff remains before maintainer review of Issue #80.
 - **Issue #81 compatibility audit (merged):** inventory current run, profile, photometry, preset, simulation and derived-analysis writers/readers, distinguishing known schema markers from profile and data revisions.
 - **Read-only historical-shape regressions (merged):** exercise unversioned trial tables, older monitor metadata, legacy summary-only luminance, old workspace requests, moved archives, malformed/unknown formats and truncated journals. Fixtures are synthetic/non-identifying, not measured participant or hardware evidence.
 - **Small reader safeguard (merged):** reject unknown newer `manifest.json` schema versions, without modifying existing acquisition records or the fixed trial schema.
 - **Local preset schema safety (merged in PR #92):** skip explicitly unsupported preset versions, preserve readable unversioned historical settings with a warning, refuse in-place updates to unversioned/unsupported files, and retain normal version-1 backups.
-- **No scientific protocol, calibration gate, acquisition writer or saved raw-data format changes.** Actual historical laboratory archives and historical laboratory compatibility and physical qualification remain separate tasks.
+- **Scientific scope:** the reliability repairs do not change experiment equations, stimulus calculations or experimental defaults. Canonical raw-trial schema remains unchanged. Historical archive support and physical qualification retain their documented limits.
 
 
 

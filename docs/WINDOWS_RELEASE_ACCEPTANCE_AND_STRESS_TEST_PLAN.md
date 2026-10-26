@@ -1,4 +1,31 @@
-# PsyCoLab — Windows acceptance, documentation accuracy and future stress audit
+# PsyCoLab — Windows acceptance and historical stress-audit plan
+
+## Current disposition — 26 October 2026
+
+The reliability-repair phase is complete at the
+[accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md),
+`5fec547ecf3f86cd6bbd202a9e463637deca07d3`: post-merge Windows CI has
+**1,562 passed**, Ubuntu CI **1,560 passed**, zero failures and both
+portability checks passed. The earlier audit and its repairs are recorded
+evidence, not an instruction to repeat a broad audit without a new failure.
+
+Issue #80's trust, simulation, provenance, archive and source-invalidation
+acceptance is recorded in its [reconciled handoff](ISSUE80_VALIDATION.md).
+Only current readiness and native source-editor/preset handoff remain there.
+The [five Issue #82 stages](ISSUE82_RELEASE_ROADMAP.md) now govern fresh
+installation, constraints, update/rollback and release evidence. Physical
+measurement and licensing/owner decisions remain separate release gates.
+The terminology guide and current installed-Pyglet documentation are already
+available; older references below to forthcoming guides or bundled graphics
+import precedence describe the original planning state.
+
+## Historical plan opened 25 October 2026 — preserved verbatim
+
+The remaining sections preserve the original evidence table, pending items
+and audit instructions for their dated revisions. Their historical
+"PENDING", "future" and baseline failure statements are superseded by the
+current disposition above; they are not current work orders. Do not erase
+or relabel earlier test results as passes.
 
 **Opened:** 25 October 2026. **Status:** software regression passed; independent
 lab acceptance remains open. This is a living evidence checklist, **not** a

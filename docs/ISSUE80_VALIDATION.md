@@ -1,5 +1,58 @@
 # Issue #80 — implementation and validation handoff
 
+## Current acceptance reconciliation — 26 October 2026
+
+Issue #80's external-source implementation is present at the
+[accepted baseline](ACCEPTED_SOFTWARE_BASELINE.md). The original package-only
+source-resolution blockers are historical, not current defects. Merged PRs
+#93–#96 supplied the loader, source navigation, diagnostics and safe starter
+onboarding; fingerprint version 2 and platform containment coverage were
+subsequently verified in the accepted baseline.
+
+The maintainer's [25 October manual evidence](https://github.com/aminns123/Psychophysics_Collaborative_Lab/issues/80#issuecomment-6394511355)
+and preceding issue comments record Preview/Test/Ready, a **20/20** synthetic
+scenario, disabled-extension archive reading (four rows, twenty dictionary
+columns, unchanged trial checksum), re-enable/discovery, and source-change
+invalidation in a disposable copy. These are observed workstation results,
+not newly executed checks in this documentation task.
+
+| Original requirement | Reconciled evidence/status |
+|---|---|
+| Explicit trust and one independent source root | Implemented in `extensions.configure`/`validate_root`; manually observed opt-in/discovery. Starter creation does not trust or execute code. |
+| One local library and experiment Python files; same procedure | Implemented through ordinary registries/development/runner; preview and completed synthetic execution observed. |
+| Stable IDs, collisions, containment, import/dependency errors | Regression coverage in `tests/test_laboratory_extensions.py`; Windows junction and POSIX symlink cases run on their respective CI platforms; nested-root checks run on both. |
+| Exact-source Draft/Test/Ready | Manual copied-source invalidation passed; fingerprint-v2 dependency invalidation and no silent requalification pass automated acceptance. Current real-study v2 handoff remains below. |
+| TUI source navigation and configuration | External Python/preset resolution and Review paths have passing TUI tests; native editor association/path handoff remains below. |
+| Portable manifest and source-independent archive reading | Manual scenario/provenance and disabled-extension checksum checks passed; current reader/validator regressions pass. |
+| Framework update preserves lab-owned files | External-root separation and byte-preservation/relocation regressions implemented. Deliberate source copying/PR promotion is documented; no automatic study bundler is implied. Full installation/update/rollback rehearsal is Issue #82 stage 5. |
+| Windows/Linux focused regressions | Both platforms pass at the accepted commit. This supersedes the historical headless-CI deferral; physical Linux/macOS qualification is not claimed. |
+| Human gates remain distinct from software readiness | Import never grants Ready or physical verification. Existing explicit researcher override may waive outstanding calibration/protocol requirements with provenance; essential validity/hardware checks remain. The extension feature adds no independent bypass. |
+
+### Only remaining Issue #80 manual handoff
+
+1. Restart on the accepted revision, confirm the intended external root and
+   current fingerprint-v2 readiness. If unchanged source is Draft after the
+   v2 update, the researcher deliberately performs normal Preview/Test/Ready
+   and a short synthetic check. Do not edit readiness JSON or automatically
+   requalify real studies. Earlier pre-v2 Ready evidence does not establish
+   the current real study's status.
+2. Open that study's Python file and optional preset from the TUI using the
+   configured native editor; confirm the intended external paths and their
+   association with Review. Record date, commit/source identity and outcome
+   without publishing private paths or participant information.
+
+Keep Issue #80 open pending this handoff and maintainer review. Do not repeat
+completed trust/archive/invalidation work solely because old checkboxes were
+unchecked. Physical apparatus qualification is separate; installation and
+rollback acceptance follow the [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md).
+
+## Historical handoff — 24–25 October 2026
+
+The remainder is preserved as the dated record of earlier failures, partial
+suites and instructions. Its pending/future-tense statements are superseded
+by the reconciliation above and are **not current work orders or baseline
+failure claims**. Do not erase those results or relabel them as passes.
+
 **Updated status notice — 25 October 2026:** This report is a dated
 handoff and contains historically accurate failures and partial suites;
 those failures should **not** be interpreted as the latest Windows baseline.

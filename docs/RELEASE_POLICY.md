@@ -16,26 +16,37 @@ Its source tag identifies its original release commit, not the current `main`
 tree. **Do not recreate, move or republish that tag** to incorporate later fixes.
 The pre-release was not a physical laboratory or human-acquisition certificate.
 
-The Windows maintainer ran the complete regression suite on `main`
-(`98f4119`) on 25 October 2026: **1505 passed, 0 failed, four repeated
-source-readiness warnings, pytest exit 0**. Subsequently the changed
-`new_probe_vertical_line_stimulus` experiment passed its virtual `--dev-test`
-and was marked software Ready at its current source revision. These facts
-do not retroactively apply to the prior `v0.3.0` tag or certify hardware.
+The accepted **stable software development baseline** is
+`5fec547ecf3f86cd6bbd202a9e463637deca07d3`: post-merge main CI has
+**1,562 Windows passes** and **1,560 Ubuntu passes**, zero failures, and
+passing portability checks. See the [baseline evidence and limitations](ACCEPTED_SOFTWARE_BASELINE.md)
+for exact Python/dependency versions, skips, warnings and scientific-output
+preservation. This is not a new release or physical qualification.
+
+The earlier **1,505-pass** Windows result at `98f4119` on 25 October remains
+historical evidence for that earlier revision; it is superseded as the current
+baseline, not erased or applied retroactively to `v0.3.0`.
+
+The [five approved Issue #82 stages](ISSUE82_RELEASE_ROADMAP.md) separate
+baseline documentation, editable-install identity, exact Windows environment,
+fresh-install acceptance, and safe update/rollback guidance. Only the first
+stage is implemented by this documentation PR. Source version `0.3.0` alone
+does not identify an accepted environment or authorize a release.
 
 For any **future** proposed release, review all changes and their scientific
 impact, use an independently reproduced clean installation, record exact
 `main` commit and test/hardware evidence, and create a **new** approved
 version/tag only after owner sign-off. Never silently retag a published
-source snapshot. Use
-[Windows release and documentation acceptance](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md)
-for the living evidence matrix; Issue #82 remains the stable release gate.
+source snapshot. Use the [accepted baseline](ACCEPTED_SOFTWARE_BASELINE.md)
+for current evidence and the [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md)
+for remaining stages. The [original Windows acceptance plan](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md)
+retains the historical evidence matrix; Issue #82 remains the stable release gate.
 
 ## Before a stable release
 
 - [ ] Repo owner/institution selects a **software licence**, checks ownership and bundled third-party graphics/runtime licences, and documents citation/attribution requirements.
 - [ ] Scientific core, official experiments and external/local extension boundary are clear. No duplicate active authoring systems.
-- [ ] Windows and Linux headless tests reviewed. Pre-existing failures are fixed or independently justified with a release decision; do not silently mark red CI green.
+- [x] Windows and Ubuntu headless regression reviewed at the accepted commit; prior baseline failures repaired. See the exact [test evidence](ACCEPTED_SOFTWARE_BASELINE.md). This does not certify other commits, installation paths or hardware.
 - [ ] Installation documented for supported OS, Python version, dependency constraints and reproducible clean environment.
 - [ ] Source provenance records every executable scientific file, including supported local extensions where applicable.
 - [ ] Canonical data formats, old-version readers and any migrations are tested against preserved fixtures.

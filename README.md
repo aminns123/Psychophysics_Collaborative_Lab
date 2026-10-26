@@ -3,6 +3,8 @@
 **Download a version:** [GitHub Releases](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases) — select a tagged snapshot to see release notes and obtain the automatic **Source code (zip)** / **Source code (tar.gz)** archives. A source ZIP is not an installer or a validated laboratory configuration; do not extract it over an existing Git checkout. See the [changelog](CHANGELOG.md) and [safe update guide](docs/SAFE_UPDATES_AND_LOCAL_WORK.md).
 
 
+**Development baseline:** [accepted commit `5fec547`](docs/ACCEPTED_SOFTWARE_BASELINE.md) has passing Windows and Ubuntu headless CI. It is distinct from the older published `v0.3.0` pre-release and from a future reproducible laboratory release; follow the [Issue #82 stages](docs/ISSUE82_RELEASE_ROADMAP.md).
+
 Build a visual stimulus, describe an experiment, and try it before collecting data.
 
 ## Start
