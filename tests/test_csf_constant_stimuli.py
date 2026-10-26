@@ -129,3 +129,49 @@ def test_fixed_procedure_uses_original_timeline_and_canonical_contrast_column():
     assert "presented_display_contrast" in TRIAL_COLUMNS
     assert "staircase_id" in TRIAL_COLUMNS
     assert "target_alternative" in TRIAL_COLUMNS
+
+
+def test_real_synthetic_fixed_csf_preserves_canonical_schema_and_saved_method(tmp_path):
+    import csv
+    import json
+    from pathlib import Path
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+
+    root = Path(__file__).resolve().parents[1]
+    opts = {
+        "contrast_method": "constant_stimuli",
+        "frequencies_cpd": "2,4",
+        "fixed_contrasts": "0.05,0.1",
+        "fixed_repetitions": 3,
+        "max_trials": 12,
+    }
+    a, analysis = simulate(data_root=tmp_path / "synthetic", repo_root=root,
+                           seed=19, values=opts, analyse=True)
+    b, _ = simulate(data_root=tmp_path / "synthetic", repo_root=root,
+                    seed=19, values=opts, analyse=False)
+    assert a.status == b.status == "completed"
+    assert a.accepted_trials == b.accepted_trials == 12
+    assert analysis is None
+    assert a.trial_log_file.read_bytes() == b.trial_log_file.read_bytes()
+    with a.trial_log_file.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    assert len(rows) == 12
+    assert tuple(rows[0]) == TRIAL_COLUMNS
+    assert {float(row["stimulus_condition"]) for row in rows} == {2., 4.}
+    assert {float(row["presented_display_contrast"]) for row in rows} == {.05, .1}
+    for row in rows:
+        for key in ("staircase_id", "staircase_trial_index", "step", "reversal",
+                    "reversal_count", "next_display_contrast", "staircase_complete"):
+            assert row[key] == ""
+    manifest = json.loads((a.run_directory / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["trial_selection_method"] == "constant_stimuli"
+    assert manifest["adaptive_algorithm"] is None
+    assert not (a.run_directory / "adaptive_session.json").exists()
+    resolved = json.loads((a.run_directory / "resolved_experiment.json").read_text(encoding="utf-8"))
+    assert resolved["trial_selection_method"] == "constant_stimuli"
+    assert len(resolved["schedule"]) == 12
+    assert len(resolved["observed_level_accuracy"]) == 4
+    assert all(cell["accepted_trials"] == 3 for cell in resolved["observed_level_accuracy"])
+    failures = [check for check in validate_run(a.run_directory) if not check.passed]
+    assert not failures, [(check.name, check.detail) for check in failures]
