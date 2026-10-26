@@ -9,6 +9,7 @@ from .contrast import (
     fixed_level_schedule,
     parse_fixed_strengths,
     select_contrast_method,
+    run_contrast_experiment,
 )
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "fixed_level_schedule",
     "parse_fixed_strengths",
     "select_contrast_method",
+    "run_contrast_experiment",
 ]
