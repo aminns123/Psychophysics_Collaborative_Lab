@@ -14,6 +14,7 @@ from psychophysics_lab.experiments._internal.parameter_compatibility import migr
 from psychophysics_lab.methods.contrast import AdaptiveContrastMethod, run_contrast_experiment
 from psychophysics_lab.methods.probe import (
     probe_contrast_fields, probe_constant_method, validate_probe_fixed_settings,
+    make_probe_fixed_schedule,
 )
 from psychophysics_lab.researcher import (
     ConfigField,
