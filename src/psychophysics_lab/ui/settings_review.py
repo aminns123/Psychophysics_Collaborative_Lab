@@ -155,7 +155,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         or (row[:2] == ("Adaptive scale", "Response rule")
             and {"n_down", "n_up"} <= field_keys)
     ))
-    if spec.adaptive and values.get("contrast_method", "adaptive") != "constant_stimuli":
+    if spec.adaptive and values.get("contrast_method", "adaptive") == "adaptive":
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
                     for field in spec.fields if field.key in controls)
