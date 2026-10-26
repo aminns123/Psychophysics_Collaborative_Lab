@@ -120,3 +120,38 @@ def test_experiment_selected_sigma_and_cutoff_reach_actual_grating():
     assert params["spatial_frequency_cpd"] == 2.25
     assert params["contrast"] == .25
     assert csf.SPEC.field_defaults()["grating_cutoff_sigmas"] == 3.0
+
+
+def test_exported_csf_preview_expands_to_full_scientific_support(tmp_path, monkeypatch):
+    """Preview and physical presentation must use the same support extent.
+
+    Direct render_values still permits intentionally requested cropped rasters;
+    preview_stimulus's default appearance image depicts the complete support.
+    """
+    from psychophysics_lab.core import presentation
+    from matplotlib.image import imread
+
+    params = default_parameters(size_deg=8., sigma_deg=5., cutoff_sigmas=2.,
+                                contrast=.8, background=.5,
+                                spatial_frequency_cpd=1.25)
+    observed = []
+    actual = presentation.render_pixels
+
+    def record(stimulus, parameters, **kwargs):
+        observed.append(kwargs.get("extent_deg"))
+        return actual(stimulus, parameters, **kwargs)
+
+    monkeypatch.setattr(presentation, "render_pixels", record)
+    target = tmp_path / "full_scientific_support.png"
+    presentation.preview_stimulus("contrast_sensitivity_grating", params, target)
+
+    assert observed == [20.]
+    pixels = imread(target)
+    # A full-radius circular cutoff returns to exact background at all
+    # boundaries, rather than showing the nonzero central 8-degree crop.
+    assert pixels.shape[:2] == (256, 256)
+    assert np.max(np.abs(pixels[0, :, :3] - .5)) <= 2/255
+    assert np.max(np.abs(pixels[-1, :, :3] - .5)) <= 2/255
+    assert np.max(np.abs(pixels[:, 0, :3] - .5)) <= 2/255
+    assert np.max(np.abs(pixels[:, -1, :3] - .5)) <= 2/255
+    assert np.max(pixels[:, :, 0]) - np.min(pixels[:, :, 0]) > .1
