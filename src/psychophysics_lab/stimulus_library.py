@@ -312,7 +312,7 @@ def _explicit_square_grating_envelope(parameters, x_deg, y_deg):
 class GaborPatch(LibraryStimulus):
     """A Gaussian-windowed grating in degrees, independent of CSF's GLSL."""
     PARAMETERS = (
-        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=45),
+        ConfigField("size_deg", "Square aperture width", "float", 5., units="degrees", minimum=.1, maximum=45, help_text="For flat or fade edge modes, exactly the square aperture width in visual degrees. Legacy Gaussian mode retains its original bounded patch."),
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.01, maximum=50),
         ConfigField("sigma_deg", "Gaussian SD", "float", .8, units="degrees", minimum=.001, maximum=20),
         ConfigField("orientation_deg", "Carrier orientation", "float", 0., units="degrees", minimum=-360, maximum=360),
@@ -443,7 +443,7 @@ class TeachingGabor(LibraryStimulus):
     PARAMETERS = (
         ConfigField("spatial_frequency_cpd", "Spatial frequency", "float", 2., units="cycles/degree", minimum=.05, maximum=30),
         ConfigField("orientation_deg", "Orientation", "float", 30., units="degrees", minimum=-90, maximum=90),
-        ConfigField("size_deg", "Patch diameter", "float", 5., units="degrees", minimum=.1, maximum=20),
+        ConfigField("size_deg", "Square aperture width / legacy scale", "float", 5., units="degrees", minimum=.1, maximum=20, help_text="Flat/edge-fade modes use this exact square aperture width. Legacy mode preserves the historic Gaussian sigma = size_deg/6."),
         ConfigField("contrast", "Digital Michelson modulation", "float", .2, units="fraction", minimum=0, maximum=1),
         ConfigField("phase_deg", "Phase", "float", 0., units="degrees", minimum=0, maximum=360),
         ConfigField(
