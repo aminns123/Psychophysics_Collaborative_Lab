@@ -1708,40 +1708,55 @@ class ExperimentConfigScreen(Screen):
                 + _monitor_summary(profile),
                 id="experiment-description",
             )
-            groups = {}
+            from .config_sections import grouped_config_fields
             from .stimulus_parameters import StimulusParametersPanel
-            if self.experiment.stimulus_slots:
-                yield Label("Stimulus Parameters")
-                for slot in self.experiment.stimulus_slots:
-                    yield StimulusParametersPanel(self, slot)
-            controls = set(self.experiment.adaptive.controls) if self.experiment.adaptive else set()
-            for field in self.experiment.fields:
-                group = ("Experiment" if field.key == "max_trials" and any(f.key == "contrast_method" for f in self.experiment.fields) else "Adaptive settings" if field.key in controls else field.section)
-                groups.setdefault(group, []).append(field)
-            for group, fields in groups.items():
-                with Collapsible(title=group,
-                                 collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"},
-                                 id="method-fixed-level-settings" if group == "Constant stimuli" and any(f.key == "contrast_method" for f in self.experiment.fields) else None):
+            yield Static(
+                "GENERAL SETUP — choose the method and run limits here. "
+                "Open experiment-specific sections to edit scientific inputs. "
+                "Review explains every parameter in the context of this experiment "
+                "and shows derived geometry, conditions, timing and clipping.",
+                classes="field-help",
+            )
+            for group, fields in grouped_config_fields(self.experiment):
+                with Collapsible(
+                    title=group,
+                    collapsed=group != "Universal setup",
+                    id="method-fixed-level-settings" if group == "Constant stimuli"
+                       and any(f.key == "contrast_method" for f in self.experiment.fields) else None,
+                ):
                     if group == "Adaptive settings":
-                        yield Static("Adaptive staircase settings. Ignored when Contrast selection method is constant_stimuli.")
+                        yield Static("Adaptive settings apply only when the adaptive method is selected.", classes="field-help")
                     elif group == "Constant stimuli":
-                        yield Static("Used only with Method of constant stimuli. Scientific conditions remain as declared above; strength units and digital limits depend on this experiment, not on a universal contrast equation.")
-                    elif group == "Stimulus conditions":
                         yield Static(
-                            "Enter the number of conditions and their comma-separated values. "
-                            "They must match. Units are shown below and follow your selected mode.",
-                            id="condition-unit-help", classes="field-help",
+                            "Fixed levels and presentations are specified per scientific condition, "
+                            "not per frequency unless frequency is this experiment's condition. "
+                            "The contrast/strength units are declared by this experiment.",
+                            classes="field-help",
+                        )
+                    elif group == "Experiment-specific parameters":
+                        yield Static(
+                            "Edit the selected study's scientific conditions, stimulus geometry and "
+                            "other inputs here. Their resolved meanings and consequences appear in Review.",
+                            classes="field-help",
                         )
                     for field in fields:
-                        pass  # Retired protocol branch removed.
                         yield from self._compose_field(field)
                         yield Static("", id="domain-"+field.key.replace('_','-'), markup=False, classes="field-help")
                         if field.key == "starting_probe_intensity":
                             yield Static("", id="contrast-live-validation", markup=False, classes="field-help")
-                    if group == "Adaptive settings" and self.experiment.adaptive.step_calculator:
+                    if group == "Adaptive settings" and self.experiment.adaptive and self.experiment.adaptive.step_calculator:
                         from ..adaptive.steps import NOTICE
                         yield Static(NOTICE, classes="field-help")
                         yield Static("", id="step-status", markup=False)
+            if self.experiment.stimulus_slots:
+                with Collapsible(title="Experiment-specific stimulus parameters", collapsed=True):
+                    yield Static(
+                        "These controls modify the selected stimulus library definitions. "
+                        "Review shows their actual stimulus slot, support and derived display properties.",
+                        classes="field-help",
+                    )
+                    for slot in self.experiment.stimulus_slots:
+                        yield StimulusParametersPanel(self, slot)
             with Collapsible(title="Local presets", collapsed=True):
                 yield Label("Saved local preset")
                 presets = load_presets(self.app.local_config_root, self.experiment.id)
@@ -1752,9 +1767,6 @@ class ExperimentConfigScreen(Screen):
                 yield Button("Update selected preset", id="update-preset")
 
     def on_mount(self):
-        for group in self.query(Collapsible):
-            if group.title == "Stimulus conditions":
-                group.display = False  # Values remain the CSF adapter's authoritative fields.
         self._refresh_unit_help()
         self._refresh_contrast_help()
         self._refresh_constraints()
@@ -1856,54 +1868,26 @@ class ExperimentConfigScreen(Screen):
             widget.set_class(bool(report['error']),"invalid-input")
             widget.tooltip=report['domain']+"\n"+report['error']
             self.query_one("#domain-"+field.key.replace('_','-'),Static).update(report['domain']+("\nINVALID: "+report['error'] if report['error'] else ""))
-        summary = "\n".join(errors)
-        if self.experiment.id == "contrast_sensitivity":
-            try:
-                sigma = float(raw["grating_sigma_deg"])
-                cutoff = float(raw["grating_cutoff_sigmas"])
-                import math
-                if math.isfinite(sigma) and math.isfinite(cutoff) and sigma > 0 and cutoff > 0:
-                    diameter = 2 * sigma * cutoff
-                    size_note = (
-                        f"CSF geometry: Gaussian sigma {sigma:g} degrees, outer-edge multiplier {cutoff:g}; "
-                        f"signal support radius {diameter/2:g} degrees, diameter {diameter:g} degrees. "
-                        "Outside this radius, grating modulation is exactly zero (the selected digital background). "
-                        "The software raster expands to contain the requested support. "
-                        "The monitor displays only visible pixels without resizing the grating. "
-                        "Partially clipped stimuli may affect the intended experiment; inspect Review."
-                    )
-                    summary = (summary + "\n" if summary else "") + size_note
-            except (KeyError, TypeError, ValueError):
-                pass  # Invalid/incomplete inputs are reported by their fields above.
-        self.query_one('#constraint-summary',Static).update(summary)
+        # Keep this universal field/error summary free of per-experiment geometry
+        # prose. The same science is resolved from the chosen stimulus in Review.
+        self.query_one('#constraint-summary',Static).update("\n".join(errors))
         # Shader range affects human/test launch, but does not block numerical simulation Review.
         # Submission runs the same validator again; retaining an enabled button
         # avoids stale disabled state between the last keystroke and its event.
         # Invalid values cannot be committed by _collect/validate_setup.
 
     def _refresh_contrast_help(self):
+        """Validate inputs in Setup; explain derived probe science in Review."""
         if not self.is_mounted:
             return
-        if {"starting_probe_intensity", "background_intensity"} <= {field.key for field in self.experiment.fields}:
-            from .settings_review import probe_intensity_rows
-            try:
-                rows = probe_intensity_rows(self.experiment, self._field_values(allow_incomplete=True))
-                message = "\n".join(f"{label}: {value}" for _, label, value, _ in rows)
-                message += "\nDigital values, not measured luminance contrast. Decrease counts are updates, not trials."
-            except (ValueError, TypeError, OverflowError) as exc:
-                message = f"Intensity/step summary needs valid numeric inputs: {exc}"
-            self.query_one("#contrast-live-validation", Static).update(message)
-            return
-        return
-        try:
-            from ..stimuli.contrast_validation import contrast_limit_text
-            fields = {field.key:field for field in self.experiment.fields}
-            def value(key):
-                return float(self.query_one("#" + _field_widget_id(fields[key]), Input).value)
-            message = contrast_limit_text(value("Background_Screen_intensity"), value("starting_probe_intensity"), value("logUNIT_UP"))
-        except (ValueError, TypeError) as exc:
-            message = f"Contrast range requires valid numeric inputs: {exc}"
-        self.query_one("#contrast-live-validation", Static).update(message)
+        if {"starting_probe_intensity", "background_intensity"} <= {
+            field.key for field in self.experiment.fields
+        }:
+            self.query_one("#contrast-live-validation", Static).update(
+                "Digital probe inputs are checked above. Review displays the "
+                "effective experiment-specific intensity range, contrast "
+                "mapping and local overlap constraints."
+            )
 
     def _refresh_unit_help(self):
         return
@@ -2403,8 +2387,17 @@ class ReviewScreen(Screen):
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             yield Static("CONFIGURATION & SOURCE FILES", classes="section-title")
             yield Label("Parameters used by this experiment")
+            yield Static(
+                f"STUDY: {experiment.display_name} [{experiment.id}]\n"
+                f"{experiment.description}\n"
+                "Parameter names and units describe the setting; the Meaning / origin "
+                "column explains its scientific role, and the selected-row details below "
+                "identify the exact experiment or stimulus slot. "
+                "Use Back to change a field, or open a listed source/JSON file.",
+                id="review-experiment-context", markup=False, classes="info-card",
+            )
             from .review_table import ReviewSettingsTable
-            yield Static("Select a cell. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
+            yield Static("Select a cell to inspect its value, scientific meaning, and source. Enter or double-click opens its file; click a file address once. Save JSON, then Reload files.",markup=False)
             with Horizontal(classes="buttons"):
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
@@ -2510,8 +2503,15 @@ class ReviewScreen(Screen):
         if not getattr(self,"_file_targets",None) or row>=len(self._file_targets):
             return
         target=self._file_targets[row]
+        spec=get_experiment(self.request.experiment_id)
+        record=self.query_one("#resolved-settings-table",DataTable).get_row_at(row)
         self.query_one("#review-file-location",Static).update(
-            str(target["path"] or "Unsaved TUI values")+"\n"+target["note"])
+            f"STUDY: {spec.display_name} [{spec.id}]\n"
+            f"PART: {record[0]}   PARAMETER: {record[1]}\n"
+            f"VALUE: {record[2]}\n"
+            f"SCIENTIFIC MEANING / ORIGIN: {record[3]}\n"
+            f"FILE / SAVED LOCATION: {target['path'] or 'Unsaved TUI values'}\n"
+            +target["note"])
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
@@ -2713,7 +2713,7 @@ class ReviewScreen(Screen):
         panel = self.query_one("#display-configuration-notes", Static)
         panel.display = bool(notes)
         panel.update("Physical display limitations: " + "; ".join(notes) +
-                     " Editing, previews and simulation remain available. Physical presentation must fit the display.")
+                     " Editing, previews and simulation remain available. Physical presentation must pass sampling and visibility preflight; partial viewport clipping may be valid.")
         count = len(report["blockers"])
         self.query_one("#review-text", Static).update(self._summary_text(get_experiment(self.request.experiment_id), profile))
         self.query_one("#human-readiness-summary", Static).update(
