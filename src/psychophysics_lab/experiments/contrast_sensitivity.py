@@ -52,6 +52,7 @@ FIELDS = (
         "text",
         "2,8",
         units='cycles/degree',
+        help_text='Carrier spatial frequencies to test, in cycles per visual degree. Each selected frequency is a scientific condition; larger values require finer display sampling.',
     ),
     ConfigField(
         "contrast_method", "Contrast selection method", "choice", "adaptive", allow_legacy_default=True,
@@ -72,10 +73,12 @@ FIELDS = (
         units="trials",
     ),
     ConfigField(
-        "fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms"
+        "fixation_ms", "Fixation duration", "int", FIXATION_MS, minimum=1, units="ms",
+        help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.',
     ),
     ConfigField(
-        "grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms"
+        "grating_ms", "Grating duration", "int", GRATING_MS, minimum=1, units="ms",
+        help_text='Scheduled grating exposure duration in milliseconds; changing it changes the stimulus phase, not measured photon timing.',
     ),
     ConfigField(
         "grating_offset_deg",
@@ -113,6 +116,7 @@ FIELDS = (
         STAIRCASES_PER_FREQUENCY,
         minimum=1,
         units='staircases',
+        help_text='Number of independently updated adaptive staircases in each scientific condition. More staircases divide accepted responses across more adaptive tracks.',
     ),
     ConfigField(
         "starting_contrast",
@@ -122,6 +126,7 @@ FIELDS = (
         minimum=sys.float_info.min,
         maximum=1,
         units='digital peak-to-peak modulation',
+        help_text='Initial digital peak-to-peak grating modulation for adaptive tracks. The carrier amplitude before its envelope is half this value; it is not measured optical contrast.',
     ),
     ConfigField(
         "background_intensity",
@@ -131,6 +136,7 @@ FIELDS = (
         minimum=0.001,
         maximum=0.999,
         units='digital intensity, 0 to 1',
+        help_text='Digital background command on the normalized zero-to-one scale. It changes available stimulus headroom; photometric calibration is required to interpret emitted luminance.',
     ),
     ConfigField(
         "n_down",
@@ -139,6 +145,7 @@ FIELDS = (
         CORRECT_BEFORE_DECREASE,
         minimum=1,
         units='consecutive correct responses',
+        help_text='Consecutive correct responses required before a downward strength step. Increasing this count delays downward steps; it does not change the selected step magnitude.',
     ),
     ConfigField(
         "n_up",
@@ -147,6 +154,7 @@ FIELDS = (
         CORRECT_BEFORE_INCREASE,
         minimum=1,
         units='consecutive incorrect responses',
+        help_text='Consecutive incorrect responses required before an upward strength step. Increasing this count delays upward steps; it does not change the selected step magnitude.',
     ),
     ConfigField(
         "logUNIT_UP",
@@ -155,6 +163,7 @@ FIELDS = (
         LOG_INCREASE,
         minimum=0.000001,
         units='log10 units',
+        help_text='Upward step in base-10 logarithmic strength units: multiply the controlled strength by 10 raised to this value, subject to the method bounds.',
     ),
     ConfigField(
         "logUNIT_DW",
@@ -163,6 +172,7 @@ FIELDS = (
         LOG_DECREASE,
         minimum=0.000001,
         units='log10 units',
+        help_text='Downward step in base-10 logarithmic strength units: divide the controlled strength by 10 raised to this value, subject to the method bounds.',
     ),
     ConfigField(
         "initial_one_down_limit",
@@ -172,6 +182,7 @@ FIELDS = (
         minimum=0,
         maximum=1000,
         units='responses',
+        help_text='Maximum initial accepted responses per staircase using a one-correct downward rule. The first incorrect response ends this phase early; subsequent responses use the selected consecutive-correct rule. Zero disables the initial phase.',
     ),
     ConfigField(
         "reversal_termination",
@@ -180,6 +191,7 @@ FIELDS = (
         REVERSALS_TO_FINISH,
         minimum=1,
         units='reversals',
+        help_text='Reversal count required to complete each adaptive staircase. A reversal is a change of step direction; the safety ceiling can stop the run before this goal.',
     ),
     ConfigField(
         "threshold_reversals",
@@ -188,6 +200,7 @@ FIELDS = (
         8,
         minimum=1,
         units='reversals',
+        help_text='Number of final eligible reversal values included in the declared threshold summary. Too few eligible reversals makes that estimator unavailable.',
     ),
     ConfigField(
         "max_trials",
@@ -196,6 +209,7 @@ FIELDS = (
         10000,
         minimum=1,
         units='responses',
+        help_text='Accepted-response safety ceiling used by the selected adaptive/fixed method. Fixed plans exceeding it are rejected; adaptive stopping at this ceiling does not establish threshold convergence.',
     ),
 )
 

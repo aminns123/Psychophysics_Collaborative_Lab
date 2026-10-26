@@ -39,13 +39,17 @@ def teaching_method_fields(*, default="adaptive", strengths="0.05,0.1,0.2",
                     section="Constant stimuli", allow_legacy_default=True,
                     help_text="Comma-separated digital modulation/increment levels, not measured optical luminance contrast."),
         ConfigField("fixed_repetitions", "Presentations per strength level per scientific condition",
-                    "int", 5, minimum=1, section="Constant stimuli", allow_legacy_default=True),
+                    "int", 5, minimum=1, section="Constant stimuli", allow_legacy_default=True,
+            help_text='Presentations of each selected strength level in each scientific condition. Total planned responses also multiply by the number of conditions and levels.',
+        ),
         ConfigField("starting_strength", "Starting adaptive digital strength",
                     "float", 0.2, minimum=0, maximum=1,
                     section="Adaptive settings", allow_legacy_default=True,
                     help_text="Digital modulation or increment as declared by the experiment."),
         ConfigField("max_trials", "Maximum planned responses (safety ceiling)",
-                    "int", 1000, minimum=1, section="Experiment", allow_legacy_default=True),
+                    "int", 1000, minimum=1, section="Experiment", allow_legacy_default=True,
+            help_text='Accepted-response safety ceiling used by the selected adaptive/fixed method. Fixed plans exceeding it are rejected; adaptive stopping at this ceiling does not establish threshold convergence.',
+        ),
     )
 
 
@@ -53,13 +57,21 @@ def teaching_adaptive_fields():
     """Controls for studies that did not previously have an adaptive method."""
     return (
         ConfigField("n_down", "Correct answers before decreasing strength", "int", 2,
-                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True,
+            help_text='Consecutive correct responses required before a downward strength step. Increasing this count delays downward steps; it does not change the selected step magnitude.',
+        ),
         ConfigField("n_up", "Incorrect answers before increasing strength", "int", 1,
-                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True,
+            help_text='Consecutive incorrect responses required before an upward strength step. Increasing this count delays upward steps; it does not change the selected step magnitude.',
+        ),
         ConfigField("down_factor", "Down-step multiplier", "float", 0.8,
-                    minimum=0.000001, maximum=1, section="Adaptive settings", allow_legacy_default=True),
+                    minimum=0.000001, maximum=1, section="Adaptive settings", allow_legacy_default=True,
+            help_text='Multiplicative strength factor for an eligible downward step; the selected method enforces its lower strength bound.',
+        ),
         ConfigField("up_factor", "Up-step multiplier", "float", 1.25,
-                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True,
+            help_text='Multiplicative strength factor for an eligible upward step; the selected method enforces its upper strength bound.',
+        ),
     )
 
 

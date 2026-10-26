@@ -26,7 +26,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                method_planner=None, method_reviewer=None, stimulus_parameter_controls=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
-        fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
+        fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
     dictionary = {}
     if responses is not None:
         encoding = "; ".join(f"{i} = {meaning}" for i, meaning in enumerate(responses.alternatives))

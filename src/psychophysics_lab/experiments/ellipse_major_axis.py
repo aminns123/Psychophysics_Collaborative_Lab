@@ -38,10 +38,12 @@ FIELDS = (
         "text",
         "-0.4,0,0.5",
         units='degrees',
+        help_text="Probe position conditions in visual degrees in this experiment's declared reference coordinates. Each entry adds a tested condition; Review geometry shows the actual placement.",
     ),
-    ConfigField("fixation_ms", "Fixation duration", "int", 500, minimum=1, units="ms"),
+    ConfigField("fixation_ms", "Fixation duration", "int", 500, minimum=1, units="ms", help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.'),
     ConfigField(
-        "stimulus_ms", "Stimulus interval duration", "int", 250, minimum=1, units="ms"
+        "stimulus_ms", "Stimulus interval duration", "int", 250, minimum=1, units="ms",
+        help_text='Scheduled stimulus exposure duration in milliseconds; changing it changes the trial timeline, not measured display qualification.',
     ),
     ConfigField(
         "staircases_per_condition",
@@ -50,6 +52,7 @@ FIELDS = (
         4,
         minimum=1,
         units='staircases',
+        help_text='Number of independently updated adaptive staircases in each scientific condition. More staircases divide accepted responses across more adaptive tracks.',
     ),
     ConfigField(
         "starting_probe_intensity",
@@ -69,12 +72,14 @@ FIELDS = (
         minimum=0,
         maximum=1,
         units='digital intensity, 0 to 1',
+        help_text='Digital background command on the normalized zero-to-one scale. It changes available stimulus headroom; photometric calibration is required to interpret emitted luminance.',
     ),
     ConfigField(
         "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1,
         units='consecutive correct responses',
+        help_text='Consecutive correct responses required before a downward strength step. Increasing this count delays downward steps; it does not change the selected step magnitude.',
     ),
-    ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1, units='consecutive incorrect responses'),
+    ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1, units='consecutive incorrect responses', help_text='Consecutive incorrect responses required before an upward strength step. Increasing this count delays upward steps; it does not change the selected step magnitude.'),
     ConfigField("logUNIT_UP", "Increase in probe difference from background", "float", 0.36, minimum=0.000001, units='log10 units', help_text="Multiply the probe-background difference by 10**step; hold at the upper bound."),
     ConfigField("logUNIT_DW", "Decrease in probe difference from background", "float", 0.30294, minimum=0.000001, units='log10 units', help_text="Multiply the probe-background difference by 10**(-step); this approaches background, rather than subtracting the step from intensity."),
     ConfigField(
@@ -85,10 +90,12 @@ FIELDS = (
         minimum=0,
         maximum=1000,
         units='responses',
+        help_text='Maximum initial accepted responses per staircase using a one-correct downward rule. The first incorrect response ends this phase early; subsequent responses use the selected consecutive-correct rule. Zero disables the initial phase.',
     ),
     ConfigField(
         "reversal_termination", "Reversals per staircase", "int", 10, minimum=1,
         units='reversals',
+        help_text='Reversal count required to complete each adaptive staircase. A reversal is a change of step direction; the safety ceiling can stop the run before this goal.',
     ),
     ConfigField(
         "threshold_reversals",
@@ -97,6 +104,7 @@ FIELDS = (
         8,
         minimum=1,
         units='reversals',
+        help_text='Number of final eligible reversal values included in the declared threshold summary. Too few eligible reversals makes that estimator unavailable.',
     ),
     ConfigField(
         "max_trials",
@@ -105,10 +113,11 @@ FIELDS = (
         10000,
         minimum=1,
         units='responses',
+        help_text='Accepted-response safety ceiling used by the selected adaptive/fixed method. Fixed plans exceeding it are rejected; adaptive stopping at this ceiling does not establish threshold convergence.',
     ),
 )
 FIELDS += (
-    ConfigField("isi_ms", "Gap between intervals", "int", 250, minimum=1, units="ms"),
+    ConfigField("isi_ms", "Gap between intervals", "int", 250, minimum=1, units="ms", help_text='Scheduled silent/blank gap between the two stimulus intervals, in milliseconds; it changes their temporal separation.'),
     ConfigField(
         "ring_increment",
         "Ring digital increment (study choice; required)",
@@ -133,11 +142,13 @@ FIELDS += (
         help_text="Outer semi-major axis; ellipse aspect ratio controls the vertical semi-axis.",
     ),
     ConfigField(
-        "auditory_cues", "Interval onset cues", "choice", True, choices=(True, False)
+        "auditory_cues", "Interval onset cues", "choice", True, choices=(True, False),
+        help_text='Enable the experiment-declared auditory interval cues. This does not establish measured audio/display synchronization.',
     ),
     ConfigField(
         "cue_hz", "Cue frequency (study choice)", "int", 550, minimum=37, maximum=32767,
         units='Hz',
+        help_text='Requested tone frequency of the auditory cue, in hertz; it changes the cue pitch.',
     ),
     ConfigField(
         "cue_ms",
@@ -147,6 +158,7 @@ FIELDS += (
         minimum=1,
         maximum=1000,
         units="ms",
+        help_text='Requested auditory cue duration in milliseconds; physical audio onset and duration require independent qualification.',
     ),
 )
 FIELDS += (
@@ -156,6 +168,7 @@ FIELDS += (
         "choice",
         "base_and_ring",
         choices=("base_and_ring", "base_only", "ring_only"),
+        help_text='Select which declared ellipse/ring scenes are tested. This changes the scientific condition set and therefore the fixed schedule count.',
     ),
 )
 
