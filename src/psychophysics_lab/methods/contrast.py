@@ -265,7 +265,8 @@ class ConstantContrastMethod:
             raise ValueError("Cannot complete an unfinished constant-stimuli schedule.")
         # Names are scientific metadata labels; the canonical 20 TSV columns
         # and all previous adaptive result formats stay unchanged.
-        self._resolution["observed_level_accuracy"] = [
+        completed_resolution = dict(self._resolution)
+        completed_resolution["observed_level_accuracy"] = [
             {
                 self._condition_field: condition,
                 "presented_display_contrast": strength,
@@ -275,5 +276,5 @@ class ConstantContrastMethod:
             }
             for (condition, strength), counts in sorted(self._counts.items())
         ]
-        self.run.save_resolution(**self._resolution)
+        self.run.save_resolution(**completed_resolution)
         self.run.complete()
