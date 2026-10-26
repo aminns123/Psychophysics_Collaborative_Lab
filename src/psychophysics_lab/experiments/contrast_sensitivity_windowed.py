@@ -159,7 +159,7 @@ def validate_settings(values):
 
 
 SCIENTIFIC_SPEC = dict(csf.SCIENTIFIC_SPEC) | {
-    "version": "csf-circular-windowed-spatial-1",
+    "version": "csf-spatial-windowed-1",
     "stimulus": "Circular windowed sinusoidal grating; flat central disk, optional outer-edge raised-cosine fade.",
     "contrast_quantity": "Same digital peak-to-peak modulation as reference CSF, not optical Michelson contrast.",
     "historical_equivalence": "Distinct from thesis Gaussian-windowed CSF. Do not pool thresholds without examining envelope and aperture effects.",
