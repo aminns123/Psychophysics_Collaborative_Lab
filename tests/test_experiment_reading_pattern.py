@@ -109,7 +109,11 @@ def test_scientific_interfaces_are_readable_without_identical_main_loops():
     for identity in EXPERIMENTS:
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
         for name, arguments in contracts.items():
-            if name in {"update_experiment","is_finished"} and module.SPEC.adaptive is None and not hasattr(module,name):
+            if name in {"update_experiment", "is_finished"} and not hasattr(module, name):
+                # A study using the public contrast-method strategy may own
+                # adaptive updates/stopping in its imported method instead
+                # of duplicating them inside the scientific experiment file.
+                assert callable(getattr(module, "adaptive_method", None)) or module.SPEC.adaptive is None
                 continue
             assert tuple(inspect.signature(getattr(module, name)).parameters) == arguments, (
                 identity,
