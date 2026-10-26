@@ -10,8 +10,9 @@ The [accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
 headless CI. This is separate from the earlier `v0.3.0` research pre-release
 and does not yet certify a reproducible fresh laboratory installation.
 The [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) tracks the approved
-installation identity, dependency, fresh-install and rollback stages; they
-are planned work, not new installer capabilities in this documentation update.
+installation identity, dependency, fresh-install and rollback stages. Stage 2
+adds the editable identity check described below; dependency constraints and
+the broader fresh-install/update acceptance remain future stages.
 
 Git contains the shared software. Each computer creates its own Python environment
 and physical-display configuration. Scientific records live in an external data
@@ -39,7 +40,8 @@ Python installations or change PsyCoLab's version restriction as a workaround.
 `scripts/launcher_setup.py` creates `.venv` with the selected interpreter. It
 preserves an incompatible `.venv` as `.venv.incompatible-<timestamp>` rather than
 deleting it. It installs the project in editable mode and validates package
-requirements and imports. A valid environment is reused; a changed
+requirements, imports and editable installation identity. A valid environment
+is reused; a changed
 `pyproject.toml` triggers installation again. Errors leave the launcher terminal
 open for inspection. No global package environment is modified.
 
@@ -111,9 +113,31 @@ photon output.
 
 The tested principal versions and local/CI environment differences are recorded
 in the [baseline](ACCEPTED_SOFTWARE_BASELINE.md). Local read-only inspection
-also found source version `0.3.0` with installed editable metadata `0.2.2`;
-Issue #82 stage 2 will address identity validation separately. No automatic
-reinstall, metadata repair or dependency change is introduced here.
+found source version `0.3.0` with installed editable metadata `0.2.2`.
+Changing the dynamic source version does not change `pyproject.toml`, and an
+editable install needs its metadata rebuilt when that version changes.
+
+Both `.venv` and `USER_env` now check the imported package's resolved source
+path and version against this checkout and its installed distribution metadata.
+An isolated Python check also verifies the editable origin recorded in
+`direct_url.json`; ordinary launch imports are checked separately so an
+inherited `PYTHONPATH` cannot redirect the application unnoticed. This follows
+the existing literal `__version__` declaration in the package initializer.
+
+When dependency configuration is unchanged but identity is inconsistent, setup
+refreshes only the editable project with `--no-deps --no-build-isolation`.
+It does not upgrade build tools or dependencies, or install optional laboratory
+requirements on this repair path. Successful validation is required before
+setup records success; subsequent matching launches perform no installation.
+Changed dependency configuration retains the existing installation behaviour.
+
+If the existing build tools cannot perform the refresh, or imports still point
+elsewhere, setup stops without starting the application or recording success.
+Inspect the reported error (including inherited Python paths), correct the
+environment deliberately, and rerun the launcher. Setup does not automatically
+upgrade the environment to conceal the error. Exact approved build-tool and
+dependency versions belong to stage 3; the laboratory's live environment was
+not reinstalled as part of the stage 2 disposable acceptance tests.
 
 For a future release, use a reviewed **Windows x64 / CPython 3.11 constraints or
 lock file** containing exact runtime and transitive versions, with hashes where
