@@ -4,9 +4,16 @@ The companion JSON supplies settings; the TUI can override them for a run.
 PsyCoLab owns geometry, display, keys, validation and all saving.
 """
 
+from psychophysics_lab.methods.contrast import run_contrast_experiment
+from psychophysics_lab.methods.teaching import (
+    teaching_method_fields, teaching_adaptive_fields, fixed_teaching_schedule,
+    constant_teaching_method, OriginalTeachingMethod, TeachingAdaptiveMethod,
+)
+
 from psychophysics_lab.researcher import (
     ConfigField,
     ResponseParadigm,
+    AdaptiveSelection,
     experiment,
     TrialTimeline,
     Show,
@@ -36,6 +43,12 @@ FIELDS = (
         section="Timing",
     ),
 )
+
+
+FIELDS += teaching_method_fields(
+    default="original", strengths="0,0.1,0.2",
+    label="Line digital increment above grey background",
+) + teaching_adaptive_fields()
 
 
 RESPONSES = ResponseParadigm("line_position", ("left", "right"), ("F", "J"))
@@ -129,22 +142,75 @@ def finish_experiment(run, conditions, state):
     run.complete()
 
 
+def make_fixed_schedule(settings, seed):
+    return fixed_teaching_schedule(settings, seed, maximum=0.5, condition="line_side")
+
+
+def prepare_selection(run, condition):
+    if "offset_deg" not in condition:
+        distance = abs(run.stimulus_parameters()["offset_deg"])
+        condition["offset_deg"] = -distance if condition["target"] == 0 else distance
+
+
+def prepare_method_stimuli(run, condition, state):
+    if run.values.get("contrast_method", "original") == "original":
+        return prepare_stimuli(run, condition, state)
+    # The selected method owns increment above the stimulus's grey 0.5 command.
+    return {"target": run.stimulus_parameters(
+        offset_deg=condition["offset_deg"], intensity=0.5 + condition["contrast"]
+    )}
+
+
+def original_method(run):
+    return OriginalTeachingMethod(
+        run, make_conditions=make_conditions,
+        initialise=initialise_experiment, choose=choose_condition,
+        record=trial_record, update=update_experiment, finish=finish_experiment,
+    )
+
+
+def adaptive_method(run):
+    return TeachingAdaptiveMethod(
+        run, make_conditions=make_conditions, choose=choose_condition,
+        maximum=0.5,
+    )
+
+
+def fixed_method(run):
+    return constant_teaching_method(
+        run, make_fixed_schedule,
+        units="digital_line_increment_above_0.5",
+        display_mapping="I_line=0.5+selected increment; background=0.5. Not calibrated optical contrast.",
+    )
+
+
+def validate_method_settings(values):
+    method = values.get("contrast_method", "original")
+    if method == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+    elif method == "adaptive":
+        if not 0 <= values["starting_strength"] <= 0.5:
+            yield "Starting line increment must lie between 0 and 0.5."
+        if values["trial_count"] > values["max_trials"]:
+            yield "Adaptive trial_count exceeds the max_trials safety ceiling."
+
+
 def procedure(run):
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"],
-            condition=condition["value"],
-            parameters_by_slot=stimuli,
-            **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
-    finish_experiment(run, conditions, state)
+    return run_contrast_experiment(
+        run,
+        methods={
+            "original": lambda: original_method(run),
+            "adaptive": lambda: adaptive_method(run),
+            "constant_stimuli": lambda: fixed_method(run),
+        },
+        prepare_selection=prepare_selection,
+        prepare_stimuli=prepare_method_stimuli,
+        make_trial=make_trial,
+        interpret_response=interpret_response,
+    )
 
 
 # 7. FRAMEWORK CONNECTION
@@ -156,6 +222,10 @@ def definition(identity="example_experiment", stimulus=STIMULUS_DEFAULTS["target
         procedure=procedure,
         default_config=f"configs/experiments/{identity}.json",
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
+        method_planner=make_fixed_schedule, validator=validate_method_settings,
+        adaptive=AdaptiveSelection('consecutive_up_down',
+            controls=('n_down','n_up','down_factor','up_factor','max_trials')),
+
         responses=RESPONSES,
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),
