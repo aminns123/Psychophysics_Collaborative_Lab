@@ -16,6 +16,39 @@ from psychophysics_lab.stimuli.registry import get_stimulus
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize("size", [(80,24),(120,40)])
+@pytest.mark.parametrize("entry", ["2,4","2,nan"])
+def test_sidebar_review_applies_or_rejects_current_draft_instead_of_discarding_it(tmp_path,size,entry):
+    async def scenario():
+        app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
+        async with app.run_test(size=size) as pilot:
+            _,review=await enter_review(app,pilot,"contrast_sensitivity_windowed")
+            review.query_one("#review-show-response-instructions").value=False
+            await pilot.pause()
+            assert review.request.show_response_instructions is False
+            row=next(i for i,a in enumerate(review._row_authorities) if a["field"]=="frequencies_cpd")
+            review._edit_review_parameter(row)
+            await pilot.pause()
+            config=app.screen
+            field=config.query_one("#field-frequencies-cpd",Input)
+            field.value=entry
+            # Same keyboard route used in the real Windows entry-point audit.
+            await pilot.press("f6","tab","tab","enter")
+            await pilot.pause()
+            if "nan" in entry:
+                assert app.screen is config
+                assert field.value==entry
+                assert "2,8"==review.request.experiment_values["frequencies_cpd"]
+                assert str(config.query_one("#config-status",Static).renderable)
+                field.value="2,4"
+                config.query_one("#path-review",Button).press()
+                await pilot.pause()
+            assert app.screen is review
+            assert review.request.experiment_values["frequencies_cpd"]=="2,4"
+            assert review.request.show_response_instructions is False
+    asyncio.run(scenario())
+
+
 async def enter_review(app, pilot, identity, changes=None):
     app.query_one("#participant", Input).value = "REVIEW_NOVICE"
     app.query_one("#experiment", Select).value = identity

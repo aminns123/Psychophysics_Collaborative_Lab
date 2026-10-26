@@ -108,6 +108,12 @@ class LaboratoryNavigation(VerticalScroll):
             self.app.open_hub_page(identity[4:])
         elif identity.startswith('path-'):
             event.stop()
+            if identity == 'path-review' and type(self.app.screen).__name__ == 'ExperimentConfigScreen':
+                # A Review-to-Edit configuration can sit above the existing
+                # Review. Apply/validate its current draft before returning;
+                # popping straight to the old Review silently discards edits.
+                self.app.screen.query_one('#review', Button).press()
+                return
             target = 'ExperimentConfigScreen' if identity == 'path-configure' else 'ReviewScreen'
             existing = next((s for s in reversed(self.app.screen_stack) if type(s).__name__ == target), None)
             if existing is not None:

@@ -2156,6 +2156,8 @@ class ExperimentConfigScreen(Screen):
                 experiment_values=values,
                 data_root=str(self.data_root),
                 stimulus_snapshots=self.stimulus_snapshots,
+                show_response_instructions=(self.review_return.request.show_response_instructions
+                                            if self.review_return is not None else True),
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.app.verify_loaded_sources(self.experiment, self.stimulus_snapshots)
