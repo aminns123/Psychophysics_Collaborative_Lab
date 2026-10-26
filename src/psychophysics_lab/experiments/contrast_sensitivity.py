@@ -557,6 +557,9 @@ def constant_stimuli_procedure(run):
     }
     run.initialise(expected_trials=len(schedule), resolution=description,
                    background_intensity=settings["background_intensity"])
+    # Descriptive detection accuracy is defined independently of any adaptive
+    # reversal/threshold rule; each accepted response increments its cell.
+    cell_counts = {}
     for condition in schedule:
         stimuli = prepare_stimuli(run, condition, {})
         with run.trial(
@@ -571,7 +574,16 @@ def constant_stimuli_procedure(run):
                           "presented_display_contrast": condition["contrast"]},
             instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
         ) as trial:
-            interpret_response(condition, trial.response)
+            answer = interpret_response(condition, trial.response)
+            key = (condition["frequency_cpd"], condition["contrast"])
+            count, correct = cell_counts.get(key, (0, 0))
+            cell_counts[key] = (count + 1, correct + int(answer["correct"]))
+    description["observed_level_accuracy"] = [
+        {"frequency_cpd": frequency, "presented_display_contrast": contrast,
+         "accepted_trials": count, "correct_trials": correct,
+         "proportion_correct": correct / count}
+        for (frequency, contrast), (count, correct) in sorted(cell_counts.items())
+    ]
     run.save_resolution(**description)
     run.complete()
 
