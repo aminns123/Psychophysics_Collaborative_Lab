@@ -1716,16 +1716,16 @@ class ExperimentConfigScreen(Screen):
                     yield StimulusParametersPanel(self, slot)
             controls = set(self.experiment.adaptive.controls) if self.experiment.adaptive else set()
             for field in self.experiment.fields:
-                group = "Adaptive settings" if field.key in controls else field.section
+                group = ("Experiment" if field.key == "max_trials" and any(f.key == "contrast_method" for f in self.experiment.fields) else "Adaptive settings" if field.key in controls else field.section)
                 groups.setdefault(group, []).append(field)
             for group, fields in groups.items():
                 with Collapsible(title=group,
                                  collapsed=group not in {"Experiment", "Display and contrast", "Stimulus conditions"},
-                                 id="csf-fixed-level-settings" if group == "Constant stimuli" and self.experiment.id == "contrast_sensitivity" else None):
+                                 id="method-fixed-level-settings" if group == "Constant stimuli" and any(f.key == "contrast_method" for f in self.experiment.fields) else None):
                     if group == "Adaptive settings":
                         yield Static("Adaptive staircase settings. Ignored when Contrast selection method is constant_stimuli.")
                     elif group == "Constant stimuli":
-                        yield Static("Used only with Method of constant stimuli. Spatial frequencies remain the conditions; levels are digital peak-to-peak grating modulation, not measured optical contrast.")
+                        yield Static("Used only with Method of constant stimuli. Scientific conditions remain as declared above; strength units and digital limits depend on this experiment, not on a universal contrast equation.")
                     elif group == "Stimulus conditions":
                         yield Static(
                             "Enter the number of conditions and their comma-separated values. "
@@ -1759,7 +1759,7 @@ class ExperimentConfigScreen(Screen):
         self._refresh_contrast_help()
         self._refresh_constraints()
         self._refresh_mapping_choices()
-        self._sync_csf_contrast_method()
+        self._sync_contrast_method()
         if self.focus_field:
             field = next(item for item in self.experiment.fields if item.key == self.focus_field)
             widget = self.query_one("#" + _field_widget_id(field))
@@ -1960,7 +1960,7 @@ class ExperimentConfigScreen(Screen):
             options = (
                 [("Adaptive staircase", "adaptive"),
                  ("Method of constant stimuli", "constant_stimuli")]
-                if self.experiment.id == "contrast_sensitivity" and field.key == "contrast_method"
+                if field.key == "contrast_method" and {"adaptive", "constant_stimuli"} <= set(field.choices)
                 else [(str(choice), choice) for choice in field.choices]
             )
             kwargs = {"id": widget_id, "allow_blank": field.default is None}
@@ -2017,12 +2017,12 @@ class ExperimentConfigScreen(Screen):
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
-    def _sync_csf_contrast_method(self):
-        if self.experiment.id != "contrast_sensitivity":
+    def _sync_contrast_method(self):
+        if not any(f.key == "contrast_method" for f in self.experiment.fields):
             return
         try:
             selected = self.query_one("#field-contrast-method", Select).value
-            panel = self.query_one("#csf-fixed-level-settings", Collapsible)
+            panel = self.query_one("#method-fixed-level-settings", Collapsible)
         except Exception:
             return
         if not _is_blank_select_value(selected):
@@ -2030,7 +2030,7 @@ class ExperimentConfigScreen(Screen):
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "field-contrast-method":
-            self._sync_csf_contrast_method()
+            self._sync_contrast_method()
         if event.select.id == 'background-mapping':
             if event.value != event.select.value:
                 return  # Ignore queued events from a replaced option list.

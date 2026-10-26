@@ -438,10 +438,10 @@ def run_request(
         if extension_provenance is not None:
             payload["laboratory_extensions"] = extension_provenance
         payload["adaptive_algorithm"] = asdict(spec.adaptive) if spec.adaptive else None
-        # Selected fixed-level CSF has no active staircase even though this
+        # A selected fixed-level run has no active staircase even if this
         # experiment also declares the historical adaptive option. Preserve all
         # old adaptive manifest bytes/semantics on the unchanged default path.
-        if spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli":
+        if values.get("contrast_method") == "constant_stimuli":
             payload["trial_selection_method"] = "constant_stimuli"
             payload["adaptive_algorithm"] = None
         payload["response_paradigm"] = asdict(spec.response_paradigm) if spec.response_paradigm else None

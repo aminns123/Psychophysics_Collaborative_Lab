@@ -662,6 +662,7 @@ def definition(identity="contrast_sensitivity"):
             step_calculator="garcia_perez_1998",
             step_parameterization="log10_display_contrast",
         ),
+        method_planner=make_fixed_schedule,
         validator=validate_settings,
         monitor_validator=validate_monitor,
         supports_simulation=True,

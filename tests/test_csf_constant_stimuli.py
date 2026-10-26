@@ -190,7 +190,7 @@ def test_fixed_review_reports_active_method_not_inactive_adaptive_controls():
     assert description["resolution"]["planned_trials"] == 12
     rows = review_rows(csf.SPEC, selected, snapshots, description)
     assert not any(row[0] == "Adaptive" for row in rows)
-    assert any(row[:3] == ("Conditions", "Number of spatial-frequency conditions", "2")
+    assert any(row[:3] == ("Conditions", "Number of distinct scientific conditions", "2")
                for row in rows)
     assert any(row[:3] == ("Run plan", "planned_trials", "12")
                for row in rows)
