@@ -223,8 +223,25 @@ def validate_run(run_directory: Path) -> list[Check]:
                 "unknown adaptive status")
         ceiling = adaptive["max_trials"]
         require(len(rows) <= ceiling, "accepted count exceeds ceiling")
+        goal = adaptive.get("response_goal")
+        if goal is not None:
+            # An explicit finite teaching plan is a separate stopping rule,
+            # never a fabricated reversal or threshold convergence result.
+            require(type(goal) is int and 0 < goal <= ceiling, "invalid finite response goal")
+            values = manifest["experiment_values"]
+            resolution = read_json(root, "resolved_experiment.json")
+            lifecycle = read_json(root, "procedure_lifecycle.json")
+            require(manifest.get("adaptive_algorithm", {}).get("algorithm_id") == "consecutive_up_down",
+                    "finite response goal requires consecutive_up_down")
+            require(values.get("contrast_method") == "adaptive" and values.get("trial_count") == goal
+                    and resolution.get("response_goal") == goal and lifecycle["expected_trials"] == goal,
+                    "finite response goal differs from configured teaching plan")
+            require(resolution.get("scientific_estimator", "missing") is None
+                    and not (root / "primary_thresholds.json").exists(),
+                    "finite teaching protocol cannot claim a staircase threshold")
+            require(len(rows) <= goal, "accepted responses exceed finite response goal")
         all_complete = all(state["complete"] for state in adaptive["staircases"].values())
-        expected = "completed" if all_complete else "max_trials_reached" if len(rows) == ceiling else "running"
+        expected = "completed" if all_complete or (goal is not None and len(rows) == goal) else "max_trials_reached" if len(rows) == ceiling else "running"
         if state_status in {"completed", "max_trials_reached"}:
             require(state_status == expected, "final adaptive status contradicts completion/ceiling")
         elif state_status in {"aborted", "aborted_by_user", "running"}:
@@ -365,9 +382,32 @@ def validate_run(run_directory: Path) -> list[Check]:
     def ceiling_check():
         found = []
         for name, payload in metadata.items():
+            if name == "resolved_experiment.json" and "experiment_settings" in payload:
+                # This is the unchanged source preset, not the selected run.
+                # Validate its provenance before distinguishing these two exact
+                # source-value locations from active configuration/state.
+                source = payload["experiment_settings"]
+                require(isinstance(source, dict) and set(source) == {"file_identity", "sha256", "document", "values"},
+                        "invalid source preset provenance")
+                require(isinstance(source["file_identity"], str) and source["file_identity"].endswith(".json")
+                        and ".." not in Path(source["file_identity"]).parts,
+                        "invalid source preset file identity")
+                require(isinstance(source["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", source["sha256"]),
+                        "invalid source preset hash")
+                document = source["document"]
+                require(isinstance(document, dict) and set(document) == {"schema_version", "experiment_id", "values"}
+                        and document["schema_version"] == 1 and document["experiment_id"] == manifest["experiment_id"]
+                        and isinstance(document["values"], dict) and isinstance(source["values"], dict),
+                        "invalid source preset document")
             for location, value in leaves(payload):
                 if location.rsplit(".", 1)[-1] in {"max_trials", "number_trials", "max_accepted_responses"}:
                     require(type(value) is int and value > 0, f"invalid response ceiling: {name}{location}")
+                    if name == "resolved_experiment.json" and location in {
+                        ".experiment_settings.document.values.max_trials", ".experiment_settings.values.max_trials",
+                        ".experiment_settings.document.values.number_trials", ".experiment_settings.values.number_trials",
+                        ".experiment_settings.document.values.max_accepted_responses", ".experiment_settings.values.max_accepted_responses",
+                    }:
+                        continue
                     found.append((name + location, value))
         if adaptive_needed:
             require(bool(found), "no saved response ceiling")

@@ -3,6 +3,7 @@
 from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Static
+from .checkbox import ExplicitCheckbox as Checkbox
 
 from ..config.local import content_hash
 from ..config.models import SetupRequest

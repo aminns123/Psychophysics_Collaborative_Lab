@@ -54,20 +54,20 @@ FIELDS = (
         units='cycles/degree',
     ),
     ConfigField(
-        "contrast_method", "Contrast selection method", "choice", "adaptive",
+        "contrast_method", "Contrast selection method", "choice", "adaptive", allow_legacy_default=True,
         choices=("adaptive", "constant_stimuli"),
         help_text="Select adaptive staircases (unchanged) or fixed contrast levels. Both use the same spatial-frequency conditions and saved trial table.",
         section="Experiment",
     ),
     ConfigField(
         "fixed_contrasts", "Fixed digital peak-to-peak contrast levels", "text",
-        "0.02,0.04,0.08,0.16",
+        "0.02,0.04,0.08,0.16", allow_legacy_default=True,
         help_text="Constant stimuli only. Comma-separated digital grating modulation (not calibrated luminance contrast). Zero is an intentional catch level; levels must be distinct and within the selected background's digital gamut.",
         section="Constant stimuli",
     ),
     ConfigField(
         "fixed_repetitions", "Presentations per contrast level per scientific condition",
-        "int", 10, minimum=1, section="Constant stimuli",
+        "int", 10, minimum=1, section="Constant stimuli", allow_legacy_default=True,
         help_text="Each selected spatial frequency is a scientific condition. Each condition and contrast-level pair receives this many presentations; conditions can mean something else in other experiments. The max_trials field is a configurable safety ceiling.",
         units="trials",
     ),

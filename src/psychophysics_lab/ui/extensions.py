@@ -1,6 +1,7 @@
 """Minimal trusted-root controls inside the existing experiment catalogue."""
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Input, Button, Checkbox, Static
+from .checkbox import ExplicitCheckbox as Checkbox
 from .. import extensions
 from ..config.local import preferences
 

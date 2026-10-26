@@ -126,6 +126,8 @@ def test_teaching_adaptive_is_real_owned_staircase_without_threshold_claim(name,
     assert {r["staircase_id"] for r in rows} == {"0"}
     assert all(r["presented_display_contrast"] for r in rows)
     assert not (artifact.run_directory / "primary_thresholds.json").exists()
+    from scripts.validate_run import validate_run
+    assert not [c for c in validate_run(artifact.run_directory) if not c.passed]
 
 
 @pytest.mark.parametrize("name", ["orientation_task", "example_experiment", "probe_above_below"])
@@ -141,3 +143,25 @@ def test_original_teaching_default_still_executes(name, tmp_path):
     manifest = json.loads((artifact.run_directory / "manifest.json").read_text())
     assert manifest["adaptive_algorithm"] is None
     assert not (artifact.run_directory / "adaptive_session.json").exists()
+
+
+@pytest.mark.parametrize("ceiling", [4, 17])
+def test_orientation_finite_goal_and_recorded_safety_ceiling_are_distinct(tmp_path, ceiling):
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+    artifact, _ = simulate(
+        repo_root=Path(__file__).resolve().parents[1], data_root=tmp_path / "runs",
+        experiment_id="orientation_adaptive", seed=13, analyse=False,
+        values={"trial_count": 4, "max_trials": ceiling},
+    )
+    assert artifact.status == "completed" and artifact.accepted_trials == 4
+    from scripts.validate_run import leaves
+    actions = json.loads((artifact.run_directory / "trial_actions.json").read_text())
+    recorded = [value for key, value in leaves(actions) if key.endswith(".max_trials")]
+    assert recorded and set(recorded) == {ceiling}
+    assert not [check for check in validate_run(artifact.run_directory) if not check.passed]
+
+
+def test_orientation_rejects_an_unreachable_finite_response_goal():
+    with pytest.raises(ValueError, match="response safety ceiling"):
+        orientation_adaptive.SPEC.normalise_values({"trial_count": 5, "max_trials": 4})

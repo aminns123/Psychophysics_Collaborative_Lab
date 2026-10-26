@@ -37,11 +37,12 @@ The public `psychophysics_lab.methods.contrast` API offers
   Do not silently enable a new method for an existing experiment without
   documented parameter controls and method-specific regression tests.
 
-**Implementation status:** the shared API is generic, and CSF is its first
-integrated user. Other built-in experiments and laboratory extensions remain
-eligible for this interface, but they have **not yet been automatically
-converted to both methods**. Their scientifically distinct intensity mappings
-and stopping/analysis contracts must be connected and accepted individually.
+**Implementation status:** all nine active official experiments connect both
+methods, with original defaults retained. The three previously nonadaptive
+teaching examples also retain an explicit `original` mode. See the
+[verification matrix and limitations](../../../docs/FINAL_ARCHITECTURE_IMPLEMENTATION_20261026.md).
+The local `demolab__line_strength` example imports the same installed APIs;
+each new study still declares its own strength mapping and response design.
 
 ## Read every file in this order
 

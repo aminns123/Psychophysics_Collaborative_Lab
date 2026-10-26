@@ -30,8 +30,12 @@ def scaffold(repo_root: Path, name: str, *, kind="pair") -> tuple[Path, ...]:
         template = template.replace("BLUEPRINT_ID", name)
         template = template.replace("BLUEPRINT_STIMULUS", name if kind == "pair" else "vertical_line_probe")
         files[f"src/psychophysics_lab/experiments/{name}.py"] = template
-        document = json.loads((Path(__file__).resolve().parents[1] / "configs/experiments/example_experiment.json").read_text(encoding="utf-8"))
-        document["experiment_id"] = name
+        # This deliberately unfinished starter has its own field contract;
+        # example_experiment also declares methods the starter does not use.
+        document = {"schema_version": 1, "experiment_id": name, "values": {
+            "trial_count": 6, "fixation_ms": 500, "stimulus_ms": 200,
+            "interval_ms": 150, "response_timeout_ms": 0, "response_keys": "F,J",
+        }}
         files[f"configs/experiments/{name}.json"] = json.dumps(document, indent=2) + "\n"
     if kind == "adaptive":
         files[f"src/psychophysics_lab/adaptive/{name}.py"] = (source / "adaptive_method.py.txt").read_text(encoding="utf-8").replace("BLUEPRINT_ID", name)

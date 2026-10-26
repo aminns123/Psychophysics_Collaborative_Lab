@@ -4,6 +4,7 @@ from pathlib import Path
 from .console import ConsoleScreen as Screen
 from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.widgets import Button, Input, Select, Checkbox, Static, Label, Collapsible
+from .checkbox import ExplicitCheckbox as Checkbox
 from ..config.calibration_dataset import (load_active,save_active,accept_active,observation,summary,merge_observations,
     import_observations,luminance_state,physical_snapshot,active_directory,
     physical_snapshot_differences,replacement_draft_for_current_display)

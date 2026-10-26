@@ -13,6 +13,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from .console import ConsoleScreen as Screen
 from textual.widgets import Button, Input, Label, Select, Static, Collapsible, ContentSwitcher, DataTable, Checkbox
+from .checkbox import ExplicitCheckbox as Checkbox
 from textual.widgets._select import InvalidSelectValueError
 
 from ..analysis.thresholds import analyse_thresholds
@@ -1767,10 +1768,8 @@ class ExperimentConfigScreen(Screen):
                 yield Button("Update selected preset", id="update-preset")
 
     def on_mount(self):
-        self._refresh_unit_help()
         self._refresh_contrast_help()
         self._refresh_constraints()
-        self._refresh_mapping_choices()
         self._sync_contrast_method()
         if self.focus_field:
             field = next(item for item in self.experiment.fields if item.key == self.focus_field)
@@ -1780,82 +1779,6 @@ class ExperimentConfigScreen(Screen):
                     parent.collapsed = False
             self.call_after_refresh(widget.scroll_visible)
             self.call_after_refresh(widget.focus)
-
-    def _refresh_mapping_choices(self):
-        return
-        from ..config.background_mapping import configuration_mapping_choices, background_provenance
-        from ..config.calibration_dataset import dataset_hash, physical_snapshot
-        profile = self.app.monitor_profiles[self.monitor_profile_id]
-        selector = self.query_one('#background-mapping', Select)
-        old_identity = getattr(self, '_mapping_identity', None)
-        all_rows, dataset, state, source = configuration_mapping_choices(
-            self.app.local_config_root, profile
-        )
-        # Full command 1.0 may define the measured luminance endpoint,
-        # but is not a valid CSF background (the background must be < 1).
-        self._all_mapping_rows = all_rows
-        rows = [row for row in all_rows if 0 <= row['screen_intensity'] < 1]
-        # The source and the actual physical setup are part of selection identity.
-        # Notes-only revisions should not invalidate a selection.
-        mapping_hash = dataset_hash(dataset) if dataset is not None else content_hash({
-            "saved_pairs": [(p.screen_intensity, p.luminance_cdm2)
-                            for p in profile.luminance_calibration],
-            "physical_setup": physical_snapshot(profile),
-        })
-        identity = (profile.id, profile.profile_uuid, source, mapping_hash)
-        self._mapping_rows = rows
-        self._mapping_identity = identity
-        selected = 'manual'
-        intensity = luminance = None
-        try:
-            intensity = float(self.query_one('#field-Background-Screen-intensity', Input).value)
-            luminance = float(self.query_one('#field-Background-Luminance', Input).value)
-            selected = next((str(i) for i, point in enumerate(rows)
-                             if point['screen_intensity'] == intensity
-                             and point['luminance_cdm2'] == luminance), 'manual')
-        except (ValueError, TypeError):
-            pass
-        if old_identity is not None and old_identity != identity:
-            self._mapping_requires_confirmation = True
-        pending = getattr(self, '_mapping_requires_confirmation', False)
-        options = [('Manual entry — retain or edit values independently', 'manual')]
-        if pending:
-            options.insert(0, ('DISPLAY/CALIBRATION CHANGED — explicitly choose a new pair or Manual', 'confirm'))
-            selected = 'confirm'
-        elif getattr(self, '_mapping_manual', False):
-            selected = 'manual'
-        if rows:
-            prefix = 'TEST ONLY — profile-stored, unverified: ' if source == 'profile_only' else ''
-            options += [(f"{prefix}{p['luminance_cdm2']:g} cd/m² — intensity {p['screen_intensity']:g}",
-                         str(i)) for i, p in enumerate(rows)]
-        with self.prevent(Select.Changed):
-            selector.set_options(options)
-            selector.value = selected
-        # Linked selection is the normal control. Manual inputs become editable
-        # only after deliberately choosing Manual (or for an unmatched old draft).
-        linked = selected not in ('manual', 'confirm')
-        self.query_one('#field-Background-Screen-intensity', Input).disabled = linked
-        self.query_one('#field-Background-Luminance', Input).disabled = linked
-        text = state + '\nSelect a saved pair to set BOTH fields. Repeated readings contribute to one mean; no interpolation. Starting probe intensity is independent.'
-        if source == 'profile_only':
-            text += '\nThese values come from a saved, UNVERIFIED profile summary, not a matching active raw dataset. Repair calibration before human acquisition.'
-        if not rows:
-            text += '\nNo usable calibrated choices. Choose Manual for tests, or review/repair this monitor’s luminance dataset.'
-        if pending:
-            text += '\nPrevious experimental values were retained. Select a current pair or choose Manual explicitly before Review.'
-        elif intensity is not None and luminance is not None:
-            evidence = background_provenance(
-                self.app.local_config_root, profile,
-                {'Background_Screen_intensity': intensity, 'Background_Luminance': luminance},
-            )
-            text += f"\nCurrent: {luminance:g} cd/m² — Digital intensity {intensity:g}. "
-            if linked and source == 'active':
-                text += 'Exact saved mean pair; physical verification depends on the source evidence.'
-            elif linked:
-                text += 'PROFILE-ONLY TEST PAIR — not calibrated or physically verified.'
-            else:
-                text += 'Manual / unmatched pair. Use the selector for a saved pair.'
-        self.query_one('#mapping-provenance', Static).update(text)
 
     def _refresh_constraints(self):
         if not self.is_mounted: return
@@ -1889,14 +1812,6 @@ class ExperimentConfigScreen(Screen):
                 "mapping and local overlap constraints."
             )
 
-    def _refresh_unit_help(self):
-        return
-        unit = self.query_one("#field-condition-unit", Select).value
-        messages = {"cycles_per_degree": "Conditions are spatial frequencies in cycles/degree (cpd), e.g. 2,4,8. Derived from measured display geometry; not photometrically verified.",
-            "degrees_per_cycle": "Conditions are periods in degrees/cycle, e.g. 0.5,0.25,0.125. Stored trial frequencies are their reciprocals in cycles/degree.",
-            "legacy_shader_radians": "Explicit historical shader phase values, e.g. 63,252. These are uncalibrated scalars and must never be relabelled cycles/degree."}
-        self.query_one("#condition-unit-help", Static).update(messages.get(str(unit), "Select spatial-frequency units."))
-
     def on_screen_resume(self):
         if not hasattr(self, "draft_key"):
             return
@@ -1913,9 +1828,7 @@ class ExperimentConfigScreen(Screen):
             self.query_one("#experiment-description", Static).update(
                 f"[b]{self.experiment.display_name}[/b]\n{self.experiment.description}\n\n" +
                 _monitor_summary(current) + "\n" + readiness_text(self.experiment, current, self.app.repo_root))
-        self._refresh_unit_help()
         self._refresh_constraints()
-        self._refresh_mapping_choices()
 
     def _save_calibration_draft(self):
         save_preferences(self.app.local_config_root, active_monitor_profile_id=self.monitor_profile_id, calibration_experiment_draft={
@@ -1998,8 +1911,6 @@ class ExperimentConfigScreen(Screen):
     def on_input_changed(self, event: Input.Changed) -> None:
         self._refresh_contrast_help()
         self._refresh_constraints()
-        if event.input.id in {'field-Background-Screen-intensity', 'field-Background-Luminance'}:
-            self._refresh_mapping_choices()
         if hasattr(self, "draft_key"):
             self.remember_draft()
 
@@ -2017,26 +1928,8 @@ class ExperimentConfigScreen(Screen):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "field-contrast-method":
             self._sync_contrast_method()
-        if event.select.id == 'background-mapping':
-            if event.value != event.select.value:
-                return  # Ignore queued events from a replaced option list.
-            if _is_blank_select_value(event.value) or event.value == 'confirm':
-                return
-            self._mapping_requires_confirmation = False
-            self._mapping_manual = event.value == 'manual'
-            if event.value != 'manual':
-                point = self._mapping_rows[int(str(event.value))]
-                with self.prevent(Input.Changed):
-                    self.query_one('#field-Background-Screen-intensity', Input).value = repr(point['screen_intensity'])
-                    self.query_one('#field-Background-Luminance', Input).value = repr(point['luminance_cdm2'])
-                    endpoint = next((p for p in self._all_mapping_rows if p['screen_intensity'] == 1), None)
-                    if endpoint is not None:
-                        self.query_one('#field-Max-monitor-Luminance', Input).value = repr(endpoint['luminance_cdm2'])
-            self._refresh_mapping_choices()
-            self._refresh_contrast_help()
         if hasattr(self, "draft_key"):
             self.remember_draft()
-            self._refresh_unit_help()
             self._refresh_constraints()
 
     def _field_values(self, *, allow_incomplete=False):
@@ -2083,7 +1976,6 @@ class ExperimentConfigScreen(Screen):
         self.parameter_json_path, self.parameter_json_hash, self.parameter_json_pending = path, file_hash(path), False
         self.remember_draft()
         self._refresh_constraints()
-        self._refresh_mapping_choices()
         self.query_one("#config-status",Static).update(f"Loaded {path}. Review will use these values; subsequent TUI edits are saved back with history.")
 
     def _parameter_files(self):
@@ -2227,7 +2119,6 @@ class ExperimentConfigScreen(Screen):
                         )
                     self.remember_draft()
                     self._mapping_manual = False
-                    self._refresh_mapping_choices()
                 notice = f"Preset '{name}' {verb} successfully."
                 self.query_one("#config-status", Static).update(f"[green]{notice}[/green]")
                 self.app.notify(notice, title=f"Preset {verb}", timeout=6)
@@ -2382,6 +2273,7 @@ class ReviewScreen(Screen):
                 tooltip="Show response-key guidance during the experiment",
                 value=self.request.show_response_instructions,
                 id="review-show-response-instructions",
+                selected_status="Selected — applies to this run",
             )
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")

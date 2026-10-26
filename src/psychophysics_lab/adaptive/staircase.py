@@ -97,10 +97,15 @@ class AdaptiveRun:
     procedures need not use this class or a boolean-correctness interface.
     """
 
-    def __init__(self, configurations, max_trials, *, starting_values=None):
+    def __init__(self, configurations, max_trials, *, starting_values=None, response_goal=None):
         if not configurations:
             raise ValueError("At least one staircase is required")
         positive_integer("max_trials", max_trials)
+        if response_goal is not None:
+            positive_integer("response_goal", response_goal)
+            if response_goal > max_trials:
+                raise ValueError("response_goal must not exceed max_trials.")
+        self.response_goal = response_goal
         self.configurations = dict(configurations)
         if not all(isinstance(c, StaircaseConfig) for c in configurations.values()):
             raise TypeError("Each staircase requires a StaircaseConfig")
@@ -128,6 +133,10 @@ class AdaptiveRun:
 
     @property
     def status(self):
+        # Finite teaching protocols terminate by accepted responses, without
+        # pretending their unconverged staircases reached reversal limits.
+        if self.response_goal is not None and self.total_trials >= self.response_goal:
+            return "completed"
         if not self.active_ids:
             return "completed"
         if self.total_trials >= self.max_trials:
@@ -197,6 +206,7 @@ class AdaptiveRun:
 
     def snapshot(self):
         return {
+            **({"response_goal": self.response_goal} if self.response_goal is not None else {}),
             **({"reversal_convention": self.reversal_convention}
                if self.reversal_convention == "starting_presentation" else {}),
             "status": self.status,

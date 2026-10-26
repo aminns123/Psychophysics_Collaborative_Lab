@@ -58,12 +58,15 @@ def load_experiment_json(path, spec):
         raise ValueError("Experiment JSON needs schema_version=1, the selected experiment_id and a values object.")
     if set(document) - {"schema_version", "experiment_id", "values", "parameter_info", "saved_utc"}:
         raise ValueError("Unknown experiment JSON section; edit the values object.")
-    # Omitted fields are not silently replaced by Python defaults in a working
-    # file: make the complete set of values visible before a run.
     values = spec.normalise_input_keys(document["values"])
+    # Explicit additive compatibility uses the declared historic default, not
+    # the current saved preset. Missing original/unknown fields still fail.
+    for field in spec.fields:
+        if field.allow_legacy_default and field.key not in values:
+            values[field.key] = field.default
     if set(values) != {f.key for f in spec.fields}:
         raise ValueError("Experiment JSON must list every declared experiment parameter, with no unknown keys.")
-    return spec.normalise_values(values)
+    return spec.normalise_values(values, use_config=False)
 
 
 def ensure_unchanged(files):

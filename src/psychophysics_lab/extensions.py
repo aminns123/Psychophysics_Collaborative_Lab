@@ -246,7 +246,7 @@ def source_hashes(repo_root):
 # not just its Python source and stimulus classes. Updating any of these shared
 # scientific mechanisms requires retesting the local study. This deliberately
 # excludes UI themes, docs, packaging and other non-scientific changes.
-_SCIENCE_DEPENDENCY_VERSION = 2
+_SCIENCE_DEPENDENCY_VERSION = 3
 _SCIENCE_EXECUTION_FILES = (
     "analysis/primary.py",
     "analysis/previews.py",
@@ -269,6 +269,7 @@ def fingerprint(repo_root):
     framework = repo_root / 'src/psychophysics_lab'
     shared = [framework/'stimulus_library.py', framework/'researcher.py']
     shared += list((framework/'adaptive').glob('*.py'))
+    shared += list((framework/'methods').glob('*.py'))
     shared += list((framework/'stimuli').glob('*.py'))
     shared += [framework / relative for relative in _SCIENCE_EXECUTION_FILES]
     payload = {

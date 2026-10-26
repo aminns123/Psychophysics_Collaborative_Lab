@@ -5,6 +5,29 @@ import pytest
 from psychophysics_lab.stimulus_library import GaborPatch, TeachingGabor
 
 
+def test_sinusoidal_grating_retains_its_original_parameter_contract():
+    from psychophysics_lab.stimulus_library import SinusoidalGrating
+    assert {f.key for f in SinusoidalGrating.PARAMETERS} == {
+        "size_deg", "spatial_frequency_cpd", "orientation_deg", "phase_deg", "contrast",
+    }
+    original = {f.key: f.default for f in SinusoidalGrating.PARAMETERS}
+    assert SinusoidalGrating.SPEC.validate_parameters(original) == original
+
+
+@pytest.mark.parametrize("cls", [GaborPatch, TeachingGabor])
+@pytest.mark.parametrize("orientation,phase,frequency", [(0, 0, 2), (45, 90, 4), (90, 330, 1)])
+def test_declared_aperture_modes_preserve_carrier_coordinates(cls, orientation, phase, frequency):
+    params = {f.key: f.default for f in cls.PARAMETERS}
+    params.update(size_deg=1, envelope_mode="flat_hard_edge", contrast=.6,
+                  orientation_deg=orientation, phase_deg=phase, spatial_frequency_cpd=frequency)
+    params = cls.SPEC.validate_parameters(params)
+    x, y = np.meshgrid(np.linspace(-.6, .6, 17), np.linspace(-.6, .6, 19))
+    coordinate = x*np.cos(np.deg2rad(orientation)) + y*np.sin(np.deg2rad(orientation))
+    expected = np.where((abs(x) <= .5) & (abs(y) <= .5),
+                        .5 + .3*np.cos(2*np.pi*frequency*coordinate + np.deg2rad(phase)), .5)
+    np.testing.assert_array_equal(cls.render(params, x, y), expected)
+
+
 @pytest.mark.parametrize("cls", [GaborPatch, TeachingGabor])
 def test_one_degree_flat_hard_edge_has_full_carrier_amplitude_inside(cls):
     params = {f.key: f.default for f in cls.PARAMETERS}

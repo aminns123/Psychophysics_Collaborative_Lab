@@ -4,10 +4,9 @@
 an adaptive strategy or the method of constant stimuli without copying
 staircase algorithms or duplicating trial acquisition and saved-data logic.
 
-This describes the shared API. PR #135 integrated CSF, draft PR #137 adds
-line-position/flanker/ellipse studies, and draft PR #138 adds the four
-orientation/teaching studies. The last two PRs are **not merged or scientifically
-accepted until their CI and Windows TUI/simulation checks pass**.
+All nine active official studies connect both methods. Implementation,
+automated software verification and pending native/physical acceptance are
+distinguished in the [implementation report](FINAL_ARCHITECTURE_IMPLEMENTATION_20261026.md).
 A new local experiment can use the same public strategies after declaring its
 actual digital strength units, valid ranges and trial interpretation.
 
@@ -128,12 +127,12 @@ not to duplicate experiment code.
 | Study | Current behaviour | Required controlled quantity for dual-method adoption |
 | --- | --- | --- |
 | `contrast_sensitivity` | Both methods, first shared-API adopter | Digital peak-to-peak modulation (not measured optical contrast) |
-| `line_position_baseline`, `line_position_flanker` | Adaptive only | Probe digital increment above local background, including overlap headroom |
-| `ellipse_centre`, `ellipse_major_axis` | Adaptive only | Probe digital increment; preserve interval/ring geometry and local overlap limits |
-| `orientation_adaptive` | Adaptive teaching procedure | Teaching-Gabor digital modulation; preserve its finite-trial update rule |
-| `orientation_task` | Fixed-trial teaching procedure | Teaching-Gabor digital modulation; needs scientifically declared adaptive rule |
-| `probe_above_below` | Fixed-trial teaching procedure | Vertical-line intensity relative to its 0.5 digital background |
-| `example_experiment` | Fixed-trial teaching procedure | Line digital intensity relative to its 0.5 digital background |
+| `line_position_baseline`, `line_position_flanker` | Both; adaptive default | Probe digital increment above local background, including overlap headroom |
+| `ellipse_centre`, `ellipse_major_axis` | Both; adaptive default | Probe digital increment; preserve interval/ring geometry and local overlap limits |
+| `orientation_adaptive` | Both; original finite adaptive default | Teaching-Gabor digital modulation; original multiplication step rule |
+| `orientation_task` | Both plus original default | Teaching-Gabor modulation; finite adaptation, no threshold |
+| `probe_above_below` | Both plus original default | Vertical-line increment above its 0.5 digital background |
+| `example_experiment` | Both plus original default | Line increment above 0.5, mapped to absolute intensity |
 
 Note: `line_position_flanker` differs from baseline in scene composition.
 Do not use a global `1-background` cap as a replacement for its local
@@ -189,6 +188,24 @@ interpretation, timing and calibration restrictions readable in your own
 experiment file. Prefer a small declared `method_planner` (and optional
 `method_reviewer`) on the `ExperimentSpec` so the generic TUI/Review can
 show active method settings without hardcoded experiment IDs.
+
+The complete [local line-strength example](../examples/laboratory_extensions/experiments/demolab__line_strength.py)
+uses both installed methods with eccentricity conditions. Its
+[instructions](../examples/laboratory_extensions/METHODS.md) explain the digital
+mapping, binary target balancing and Tested/Ready invalidation after a shared
+scientific-method update. `fixed_level_schedule` balances exactly two target
+alternatives; other response designs require their own scientific scheduler.
+
+Finite teaching adaptation declares an engine `response_goal` separately from
+the configured `max_trials` safety ceiling. Saved validation requires agreement
+with the scientific trial count and lifecycle, and preserves true unfinished
+staircase/reversal state. Existing reversal-driven runs omit `response_goal`
+and retain their previous snapshot and stopping contracts.
+
+Working experiment JSON accepts omissions only for `ConfigField` additions
+explicitly marked `allow_legacy_default`. Missing original fields and unknown
+keys still fail. Source presets retain their own original values and hashes;
+active run values are checked against actual recorded state independently.
 
 ### Canonical local data is unchanged
 

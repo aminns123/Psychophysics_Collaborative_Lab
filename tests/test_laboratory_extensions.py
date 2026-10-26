@@ -55,6 +55,35 @@ def test_opt_in_and_builtin_discovery(lab):
         get_stimulus(STIMULUS)
 
 
+@pytest.mark.parametrize("method", ["adaptive", "constant_stimuli"])
+def test_local_shared_method_example_review_execution_and_validation(lab, tmp_path, method):
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+    from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
+    from psychophysics_lab.ui.settings_review import describe_settings
+    identity = "demolab__line_strength"
+    enable(lab)
+    assert execute_user_action(ROOT, "test", identity, {"trial_count": 4}) == 0
+    ext.publish(ROOT, "experiment", identity)
+    spec = get_experiment(identity)
+    values = spec.normalise_values({"contrast_method": method, "trial_count": 4,
+                                  "fixed_contrasts": "0,0.1", "fixed_repetitions": 2})
+    snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
+    description = describe_settings(spec, values, snapshots)
+    assert description["resolution"]["trial_selection_method"] == method
+    artifact, _ = simulate(repo_root=ROOT, data_root=tmp_path / "data",
+                           experiment_id=identity, values=values, seed=16, analyse=False)
+    assert artifact.status == "completed"
+    assert artifact.accepted_trials == (8 if method == "constant_stimuli" else 4)
+    assert not [c for c in validate_run(artifact.run_directory) if not c.passed]
+    if method == "constant_stimuli":
+        import csv
+        with artifact.trial_log_file.open(encoding="utf-8") as stream:
+            rows = list(csv.DictReader(stream, delimiter="\t"))
+        assert all(r["staircase_id"] == r["reversal_count"] == "" for r in rows)
+        assert {float(r["stimulus_condition"]) for r in rows} == {1, 2}
+
+
 def test_real_preview_simulation_provenance_and_offline_read(lab,tmp_path):
     before={p.relative_to(lab).as_posix():p.read_bytes() for p in lab.rglob('*') if p.is_file()}
     ready(lab)
@@ -397,6 +426,9 @@ def test_framework_update_and_relocation_preserve_science_config_and_data(lab,tm
     "core/runner.py",
     "analysis/primary.py",
     "data/trials.py",
+    "methods/contrast.py",
+    "methods/probe.py",
+    "methods/teaching.py",
 ])
 def test_shared_execution_update_invalidates_lab_ready_status_without_touching_real_code(
     tmp_path, monkeypatch, relative

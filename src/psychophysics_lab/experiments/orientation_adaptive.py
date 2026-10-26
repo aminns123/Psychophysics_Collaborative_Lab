@@ -4,7 +4,9 @@ Target 0 = negative tilt, 1 = positive tilt; F/J by default (TUI can remap).
 Correctness compares the target and response alternative indices. Conditions
 are balanced, shuffled with random_seed, and stop after trial_count responses.
 Adaptation defaults (editable in the TUI): independent 2-down/1-up staircase; two correct answers multiply
-contrast by .8, one incorrect by 1.25, hold otherwise, clamp to [.001, 1].
+contrast by .8, one incorrect by 1.25, hold otherwise, saturate at 1.
+Only representable-number underflow protection is applied at the lower bound;
+there is no scientific .001 contrast floor.
 Stop at trial_count accepted responses, not reversals (limit is count + 1).
 No audio in this task. Digital contrast is not optical contrast.
 Stimulus maths/defaults are in TeachingGabor in stimulus_library.py; optional
@@ -228,7 +230,8 @@ def initialise_experiment(run, conditions):
     contrast = run.stimulus_parameters()["contrast"]
     adaptive = (
         run.adaptive(
-            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count,
+            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)},
+            run.values["max_trials"],
             starting_values={0: contrast}
         )
         if run.spec.adaptive
@@ -270,6 +273,8 @@ def adaptive_method(run):
 
 
 def validate_method_settings(values):
+    if values.get("contrast_method", "adaptive") == "adaptive" and values["trial_count"] > values["max_trials"]:
+        yield "Accepted teaching trials must not exceed max_trials (the response safety ceiling)."
     if values.get("contrast_method", "adaptive") == "constant_stimuli":
         try:
             make_fixed_schedule(values, 0)
