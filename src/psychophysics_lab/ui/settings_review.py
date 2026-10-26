@@ -78,6 +78,21 @@ def describe_settings(spec, values, snapshots, *, profile=None):
                   phases=timeline.resolve(values).to_dict()["phases"],
                   phase_inputs={phase.name:phase.duration_ms for phase in timeline.phases if phase.kind in {"show","response"}},
                   note="Trial-controlled values show one representative trial. Random choices and adaptive strengths vary during a run.")
+    if profile is not None and getattr(profile, "expected_resolution_px", None):
+        from ..core.presentation import plan_visible_stimulus
+        from ..stimuli.registry import get_stimulus
+        result["viewport"] = []
+        for phase in timeline.resolve(values).phases:
+            for placement in getattr(phase, "placements", ()):
+                selected = snapshots[placement.slot]["document"]
+                geometry, _, _ = plan_visible_stimulus(profile, profile.expected_resolution_px,
+                    get_stimulus(selected["stimulus_id"]), stimuli[placement.slot], placement)
+                result["viewport"].append(geometry | {"phase": phase.name})
+        clipped = [view for view in result["viewport"] if view["clipped"]]
+        if clipped:
+            result["note"] += " WARNING: viewport clipping in this sample trial: " + "; ".join(
+                view["phase"] + "/" + view["slot"] + " (" + ", ".join(view["clipped_edges"]) + ")"
+                for view in clipped) + ". Requested geometry is retained, not fitted to the monitor. Review whether this is appropriate for the protocol."
     return result
 
 
@@ -134,6 +149,23 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             if field.key in description["overrides"].get(slot, {}):
                 source = "Experiment-controlled; sample" if field.key in parameter_sources(description, slot) else "Base parameter used by experiment; sample"
             rows.append((slot, field.display_label, str(effective[field.key]), source))
+    from ..core.viewport import stimulus_geometry
+    for slot, selected in snapshots.items():
+        stimulus = get_stimulus(selected["document"]["stimulus_id"])
+        geometry = stimulus_geometry(stimulus, description["stimuli"].get(slot, selected["document"]["parameters"]))
+        labels = {"support_radius_deg": "Outer support radius (degrees)",
+                  "support_diameter_deg": "Outer support diameter (degrees)",
+                  "taper_start_radius_deg": "Smooth fade starts at radius (degrees)",
+                  "raster_extent_deg": "Effective raster extent (degrees)",
+                  "background_outside_support": "Digital background outside support"}
+        for key, label in labels.items():
+            if key in geometry:
+                rows.append(("Stimulus geometry", slot + " / " + label, str(geometry[key]),
+                             "Derived from stimulus definition; display clipping does not rescale this geometry"))
+    for view in description.get("viewport", ()):
+        rows.append(("Viewport", view["phase"] + " / " + view["slot"],
+                     str(view["origin_px"]) + " + " + str(view["raster_px"]) + " pixels",
+                     "Clipped: " + ", ".join(view["clipped_edges"]) if view["clipped"] else "Entire requested raster visible"))
     if description["conditions"]:
         rows.append(("Conditions", "Number of condition/staircase entries",str(len(description["conditions"])),"Experiment's make_conditions"))
         keys = dict.fromkeys(key for c in description["conditions"] for key in c if key not in {"id","repeat"})

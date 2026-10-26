@@ -54,11 +54,20 @@ class LinePatch(LibraryStimulus):
         image = np.where(inside, parameters["intensity"], .5)
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], abs(np.cos(np.deg2rad(p["orientation_deg"]))) * p["length_deg"] + abs(np.sin(np.deg2rad(p["orientation_deg"]))) * p["width_deg"], abs(np.sin(np.deg2rad(p["orientation_deg"]))) * p["length_deg"] + abs(np.cos(np.deg2rad(p["orientation_deg"]))) * p["width_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return LinePatch.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="oriented_line", display_name="Oriented line",
         description="An oriented filled line, specified in degrees.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="line", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -77,11 +86,20 @@ class SquarePatch(LibraryStimulus):
         image = np.where(inside, parameters["intensity"], .5)
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], p["side_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return SquarePatch.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="square_patch", display_name="Square",
         description="A filled square with a digital background of 0.5.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="shape", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -101,11 +119,20 @@ class RectanglePatch(LibraryStimulus):
         image = np.where(inside, parameters["intensity"], .5)
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], p["width_deg"], p["height_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return RectanglePatch.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="rectangle_patch", display_name="Rectangle",
         description="A filled width-by-height rectangle.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="shape", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -124,11 +151,20 @@ class EllipsePatch(LibraryStimulus):
         image = np.where(r2 <= 1., parameters["intensity"], .5)
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], 2*p["radius_x_deg"], 2*p["radius_y_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return EllipsePatch.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="ellipse_patch", display_name="Filled ellipse",
         description="A filled ellipse with semi-axes in degrees.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="shape", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -149,11 +185,20 @@ class AnnulusPatch(LibraryStimulus):
         image = np.where(inside, parameters["intensity"], .5)
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], 2*p["radius_x_deg"], 2*p["radius_y_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return AnnulusPatch.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="annulus_patch", display_name="Elliptical annulus",
         description="An elliptical ring with a fractional inner semi-axis.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="shape", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -173,11 +218,20 @@ class GaussianDot(LibraryStimulus):
         image = .5 + (parameters["intensity"]-.5)*envelope
         return image
 
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], 8*p["sigma_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return GaussianDot.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="gaussian_dot", display_name="Gaussian dot",
         description="A Gaussian dot truncated at four standard deviations.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="shape", render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -393,11 +447,21 @@ class ComposedScene(LibraryStimulus):
         ConfigField("size_deg", "Scene aperture", "float", 12., units="degrees", minimum=.01, maximum=90),
         ConfigField("scene_json", "Scene recipe", "text", json.dumps(Scene(fixation()).to_dict())),
     )
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": p["size_deg"]}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return all(np.any(drawing._layer(x, y)[1])
+                   for drawing in ComposedScene.scene(p).drawings)
+
     SPEC = StimulusSpec("composed_scene", "Composed scene",
         "Ordered drawings from the shared stimulus library.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS,
         default_config="configs/stimuli/composed_scene.json", family="scene",
         render=render.__func__, validator=validate.__func__,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry", "luminance"),
         source_dependencies=("src/psychophysics_lab/stimulus_library.py",),
         spatial_frequencies=frequencies.__func__)
@@ -436,6 +500,14 @@ class ResearcherVerticalLine(LibraryStimulus):
     
     # FRAMEWORK DECLARATION: generated files already have the correct ID/paths.
     # The stimulus family is how a compatible experiment recognises this shape.
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"], 2*abs(p["offset_deg"])+p["line_width_deg"], p["line_length_deg"])}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return ResearcherVerticalLine.render(p | {"intensity": 1.0}, x, y) > .5
+
     SPEC = StimulusSpec(
         id="new_probe_vertical_line",
         display_name="Example: White Line",
@@ -445,6 +517,7 @@ class ResearcherVerticalLine(LibraryStimulus):
         default_config="configs/stimuli/new_probe_vertical_line.json",
         family="simple_line",
         render=render,
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry",),
     )
 
@@ -463,7 +536,7 @@ class ContrastSensitivityGrating(LibraryStimulus):
     Contrast is digital peak-to-peak modulation, not measured optical contrast.
     """
     PARAMETERS = (
-        ConfigField("size_deg", "Raster aperture", "float", 8., minimum=.1, maximum=30, units="degrees"),
+        ConfigField("size_deg", "Minimum raster extent", "float", 8., minimum=.1, maximum=30, units="degrees"),
         ConfigField("sigma_deg", "Gaussian standard deviation", "float", 1., minimum=.001, maximum=5, units="degrees"),
         ConfigField("cutoff_sigmas", "Smooth grating cutoff radius", "float", 3., minimum=2., maximum=5.,
                     units="multiples of sigma",
@@ -477,22 +550,6 @@ class ContrastSensitivityGrating(LibraryStimulus):
     def validate(parameters):
         if parameters["contrast"] > 2 * min(parameters["background"], 1-parameters["background"]):
             raise ValueError("Requested grating modulation exceeds the available digital range; no silent clipping.")
-        # The direct validator is also called with only background/contrast
-        # by existing digital-gamut checks; missing optional fields use the
-        # stimulus's declared defaults. The normal renderer always receives
-        # fully normalised parameters through StimulusSpec.
-        sigma = parameters.get("sigma_deg", 1.)
-        cutoff = parameters.get("cutoff_sigmas", 3.)
-        size = parameters.get("size_deg", 8.)
-        diameter = 2 * sigma * cutoff
-        if diameter > size:
-            raise ValueError(
-                f"Grating support diameter {diameter:g} degrees (2 x sigma {sigma:g} "
-                f"degrees x cutoff {cutoff:g}) exceeds the {size:g}-degree "
-                "raster aperture. Increase Raster aperture or reduce Gaussian "
-                "sigma / smooth cutoff to prevent a rectangular boundary."
-            )
-
     def render(parameters, x_deg, y_deg):
         sigma = parameters["sigma_deg"]
         radius_in_sigmas = np.hypot(x_deg, y_deg) / sigma
@@ -510,10 +567,23 @@ class ContrastSensitivityGrating(LibraryStimulus):
         carrier = np.sin(2 * np.pi * parameters["spatial_frequency_cpd"] * x_deg)
         return parameters["background"] + parameters["contrast"] * envelope * carrier / 2
 
+    @staticmethod
+    def geometry(p):
+        radius = p["sigma_deg"] * p["cutoff_sigmas"]
+        return {"raster_extent_deg": max(p["size_deg"], 2*radius),
+                "support_radius_deg": radius, "support_diameter_deg": 2*radius,
+                "taper_start_radius_deg": (p["cutoff_sigmas"]-1)*p["sigma_deg"],
+                "background_outside_support": p["background"]}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        return np.hypot(x, y) < p["sigma_deg"]*p["cutoff_sigmas"]
+
     SPEC = StimulusSpec("contrast_sensitivity_grating", "Contrast sensitivity grating",
         "Compact-support Gaussian-windowed grating with smoothly tapered outer edge in degree coordinates.",
         "src/psychophysics_lab/stimulus_library.py", parameters=PARAMETERS, family="contrast_sensitivity_grating",
-        render=render, validator=validate.__func__, floating_raster=True, calibration_requirements=("geometry", "luminance"))
+        render=render, validator=validate.__func__, floating_raster=True, geometry=geometry.__func__, required_support=visible.__func__,
+        calibration_requirements=("geometry", "luminance"))
 
 
 class GaussianFixation(LibraryStimulus):
@@ -577,7 +647,7 @@ class DetectionScene(LibraryStimulus):
         # Additive probe overlap depends on pixel coverage. render_values and
         # the experiment's resolved staircase limit check the actual grid.
 
-    def render(p,x,y):
+    def render(p,x,y, *, pixel_steps=None):
         image = np.full_like(x,p["background"],dtype=float)
         if p["flanker_present"]:
             mask = (abs(x+3.)<=2.5)&(abs(y)<=2.5)  # inner edge -0.5 degrees
@@ -588,19 +658,46 @@ class DetectionScene(LibraryStimulus):
             inner=(x/(a-.16))**2+((y-p["ring_y_deg"])/(b-.16))**2<1
             image=np.where(outer & ~inner,p["background"]+p["ring_increment"],image)
         if p["probe_present"]:
-            dx=np.abs(np.gradient(x, axis=1)) if x.shape[1]>1 else .0001
-            dy=np.abs(np.gradient(y, axis=0)) if y.shape[0]>1 else .0001
-            cx=np.maximum(0,np.minimum(x+dx/2,p["probe_x_deg"]+p["probe_width_deg"]/2)-np.maximum(x-dx/2,p["probe_x_deg"]-p["probe_width_deg"]/2))/dx
-            cy=np.maximum(0,np.minimum(y+dy/2,p["probe_y_deg"]+p["probe_length_deg"]/2)-np.maximum(y-dy/2,p["probe_y_deg"]-p["probe_length_deg"]/2))/dy
+            cx, cy = DetectionScene.probe_coverage(p,x,y,pixel_steps)
             image += p["contrast"]*cx*cy
         envelope=np.exp(-(x*x+y*y)/(2*.035**2))
         image = image*(1-envelope)+min(1.,p["background"]+.09)*envelope
         return image
 
+    @staticmethod
+    def probe_coverage(p, x, y, pixel_steps=None):
+        dx=(np.abs(np.gradient(x, axis=1)) if x.shape[1]>1 else .0001) if pixel_steps is None else pixel_steps[0]
+        dy=(np.abs(np.gradient(y, axis=0)) if y.shape[0]>1 else .0001) if pixel_steps is None else pixel_steps[1]
+        cx=np.maximum(0,np.minimum(x+dx/2,p["probe_x_deg"]+p["probe_width_deg"]/2)-np.maximum(x-dx/2,p["probe_x_deg"]-p["probe_width_deg"]/2))/dx
+        cy=np.maximum(0,np.minimum(y+dy/2,p["probe_y_deg"]+p["probe_length_deg"]/2)-np.maximum(y-dy/2,p["probe_y_deg"]-p["probe_length_deg"]/2))/dy
+        return cx, cy
+
+    @staticmethod
+    def geometry(p):
+        half = p["size_deg"]/2
+        if p["probe_present"]:
+            half = max(half, abs(p["probe_x_deg"])+p["probe_width_deg"]/2,
+                       abs(p["probe_y_deg"])+p["probe_length_deg"]/2)
+        if p["ring_present"]:
+            half = max(half, p["ring_radius_deg"], abs(p["ring_y_deg"])+p["ring_radius_deg"]*p["aspect_ratio"])
+        if p["flanker_present"]:
+            half = max(half, 5.5)
+        return {"raster_extent_deg": 2*half}
+
+    @staticmethod
+    def visible(p, x, y, steps):
+        # An explicitly absent probe is a valid catch/alternative, including
+        # zero modulation. A present probe must retain geometrical coverage.
+        if not p["probe_present"]:
+            return True
+        cx, cy = DetectionScene.probe_coverage(p,x,y,steps)
+        return (cx > 0) & (cy > 0)
+
     SPEC=StimulusSpec("detection_scene","Degree-based detection scene","Explicit line, ring, flanker and fixation in degrees.",
         "src/psychophysics_lab/stimulus_library.py",parameters=PARAMETERS,family="detection_scene",render=render,
-        validator=validate, floating_raster=True,
+        validator=validate, floating_raster=True, pixel_coverage=True,
         legacy_parameter_defaults={"probe_length_deg": .133, "probe_width_deg": .013}, spatial_frequencies=lambda p:(p["flanker_cpd"],) if p["flanker_present"] else (),
+        geometry=geometry.__func__, required_support=visible.__func__,
         calibration_requirements=("geometry","luminance"))
 
 

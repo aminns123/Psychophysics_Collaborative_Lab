@@ -87,12 +87,15 @@ def test_real_raster_preparation_has_no_residual_patch_tails():
     assert (raster[:, -1] == .41).all()
 
 
-def test_support_must_fit_full_raster_to_prevent_rectangular_crop():
+def test_support_expands_minimum_raster_without_changing_requested_parameters():
+    from psychophysics_lab.core.viewport import stimulus_geometry
     stimulus = ContrastSensitivityGrating.SPEC
-    params = default_parameters(size_deg=8., sigma_deg=1.5, cutoff_sigmas=3.)
-    with pytest.raises(ValueError, match="Grating support diameter.*raster aperture"):
-        stimulus.validate_parameters(params)
-    stimulus.validate_parameters(params | {"size_deg": 10.})
+    params = default_parameters(size_deg=8., sigma_deg=5., cutoff_sigmas=2.)
+    assert stimulus.validate_parameters(params) == params
+    geometry = stimulus_geometry(stimulus, params)
+    assert geometry["support_diameter_deg"] == 20.
+    assert geometry["raster_extent_deg"] == 20.
+    assert params["size_deg"] == 8.
 
 
 def test_experiment_selected_sigma_and_cutoff_reach_actual_grating():

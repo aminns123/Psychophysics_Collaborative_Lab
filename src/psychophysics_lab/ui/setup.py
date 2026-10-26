@@ -2230,6 +2230,12 @@ class ExperimentConfigScreen(Screen):
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.app.verify_loaded_sources(self.experiment, self.stimulus_snapshots)
+            # Planning errors belong in the editable configuration screen, before
+            # Review mounting or handing control to physical acquisition.
+            from .settings_review import describe_settings
+            describe_settings(self.experiment, request.experiment_values,
+                              request.stimulus_snapshots,
+                              profile=self.app.monitor_profiles[self.monitor_profile_id])
             if getattr(self,"parameter_json_path",None) and hasattr(self,"parameter_json_hash"):
                 from .parameter_files import replace_reviewed_json, parameter_info
                 self.parameter_json_hash = replace_reviewed_json(self.parameter_json_path,
