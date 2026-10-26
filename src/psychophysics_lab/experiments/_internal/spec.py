@@ -26,6 +26,9 @@ class ConfigField:
     maximum: float | None = None
     editable: bool = True
     section: str = "Experiment"
+    # Only additive fields explicitly marked here may be absent from an older
+    # otherwise complete JSON. Never infer compatibility from a key's spelling.
+    allow_legacy_default: bool = False
 
     @property
     def display_label(self) -> str:

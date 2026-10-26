@@ -61,7 +61,11 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Historical driver: selected parameters are shown; inspect its Python/shader for trial-dependent values."
         return result
     module = sys.modules[spec.procedure.__module__]
-    names = ("make_conditions", "initialise_experiment", "choose_condition", "prepare_stimuli", "make_trial")
+    names = ("prepare_stimuli", "make_trial")
+    method = values.get("contrast_method")
+    if not ((method == "constant_stimuli" and callable(spec.method_planner))
+            or (method == "adaptive" and callable(spec.method_reviewer))):
+        names += ("make_conditions", "initialise_experiment", "choose_condition")
     if not all(callable(getattr(module, name, None)) for name in names):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result

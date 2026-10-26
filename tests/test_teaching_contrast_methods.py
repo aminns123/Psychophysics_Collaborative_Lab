@@ -126,6 +126,8 @@ def test_teaching_adaptive_is_real_owned_staircase_without_threshold_claim(name,
     assert {r["staircase_id"] for r in rows} == {"0"}
     assert all(r["presented_display_contrast"] for r in rows)
     assert not (artifact.run_directory / "primary_thresholds.json").exists()
+    from scripts.validate_run import validate_run
+    assert not [c for c in validate_run(artifact.run_directory) if not c.passed]
 
 
 @pytest.mark.parametrize("name", ["orientation_task", "example_experiment", "probe_above_below"])

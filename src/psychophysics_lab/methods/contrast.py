@@ -69,11 +69,13 @@ def fixed_level_schedule(
     condition_field: str = "frequency_cpd",
     strength_field: str = "contrast",
 ):
-    """Generate independent, balanced condition×level repetitions.
+    """Generate independent condition×level repetitions for two alternatives.
 
     Reproduces the original CSF constant-stimuli RNG and order exactly.
     The caller validates scientific ranges, contrast conventions and the
     trial-count ceiling. This planner does not assume anything about pixels.
+    Targets 0/1 are balanced within each condition and level (odd counts differ
+    by one). Other response/interval designs need their own scientific planner.
     """
     if not conditions or not levels:
         raise ValueError("Fixed levels require at least one condition and strength.")

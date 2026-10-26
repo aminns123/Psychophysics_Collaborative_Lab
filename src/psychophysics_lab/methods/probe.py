@@ -27,18 +27,18 @@ def probe_contrast_fields():
         ConfigField(
             "contrast_method", "Contrast selection method", "choice", "adaptive",
             choices=("adaptive", "constant_stimuli"),
-            section="Experiment",
+            section="Experiment", allow_legacy_default=True,
             help_text="Adaptive retains the study's original staircase; constant stimuli presents preselected digital probe increments."
         ),
         ConfigField(
             "fixed_contrasts", "Fixed digital probe increments", "text",
-            "0.005,0.01,0.02", section="Constant stimuli",
+            "0.005,0.01,0.02", section="Constant stimuli", allow_legacy_default=True,
             units="increment above digital background",
             help_text="Comma-separated absolute digital increments I_probe-I_background, not measured optical contrast or absolute intensity."
         ),
         ConfigField(
             "fixed_repetitions", "Trials per level per scientific condition",
-            "int", 10, minimum=1, section="Constant stimuli",
+            "int", 10, minimum=1, section="Constant stimuli", allow_legacy_default=True,
             units="presentations",
             help_text="Condition means probe position/ellipse/ring configuration, not independent staircase replicate. Target intervals/sides are seeded and balanced."
         ),

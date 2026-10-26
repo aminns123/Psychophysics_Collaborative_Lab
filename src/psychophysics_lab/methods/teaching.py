@@ -33,19 +33,19 @@ def teaching_method_fields(*, default="adaptive", strengths="0.05,0.1,0.2",
     )
     return (
         ConfigField("contrast_method", "Contrast selection method", "choice",
-                    default, choices=choices, section="Experiment",
+                    default, choices=choices, section="Experiment", allow_legacy_default=True,
                     help_text="Original (if offered) preserves the previous teaching task. Adaptive updates strength; constant stimuli draws fixed strength levels."),
         ConfigField("fixed_contrasts", label + " levels", "text", strengths,
-                    section="Constant stimuli",
+                    section="Constant stimuli", allow_legacy_default=True,
                     help_text="Comma-separated digital modulation/increment levels, not measured optical luminance contrast."),
         ConfigField("fixed_repetitions", "Presentations per strength level per scientific condition",
-                    "int", 5, minimum=1, section="Constant stimuli"),
+                    "int", 5, minimum=1, section="Constant stimuli", allow_legacy_default=True),
         ConfigField("starting_strength", "Starting adaptive digital strength",
                     "float", 0.2, minimum=0, maximum=1,
-                    section="Adaptive settings",
+                    section="Adaptive settings", allow_legacy_default=True,
                     help_text="Digital modulation or increment as declared by the experiment."),
         ConfigField("max_trials", "Maximum planned responses (safety ceiling)",
-                    "int", 1000, minimum=1, section="Experiment"),
+                    "int", 1000, minimum=1, section="Experiment", allow_legacy_default=True),
     )
 
 
@@ -53,13 +53,13 @@ def teaching_adaptive_fields():
     """Controls for studies that did not previously have an adaptive method."""
     return (
         ConfigField("n_down", "Correct answers before decreasing strength", "int", 2,
-                    minimum=1, section="Adaptive settings"),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
         ConfigField("n_up", "Incorrect answers before increasing strength", "int", 1,
-                    minimum=1, section="Adaptive settings"),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
         ConfigField("down_factor", "Down-step multiplier", "float", 0.8,
-                    minimum=0.000001, maximum=1, section="Adaptive settings"),
+                    minimum=0.000001, maximum=1, section="Adaptive settings", allow_legacy_default=True),
         ConfigField("up_factor", "Up-step multiplier", "float", 1.25,
-                    minimum=1, section="Adaptive settings"),
+                    minimum=1, section="Adaptive settings", allow_legacy_default=True),
     )
 
 
@@ -205,6 +205,7 @@ class TeachingAdaptiveMethod:
             {0: StaircaseConfig(run.values["n_down"], run.values["n_up"],
                                 len(self.conditions) + 1)},
             run.values["max_trials"], starting_values={0: start},
+            response_goal=len(self.conditions),
         )
         self.maximum = maximum
         self.state = {"contrast": start}
