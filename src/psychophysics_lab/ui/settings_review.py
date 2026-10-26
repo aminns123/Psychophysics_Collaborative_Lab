@@ -66,9 +66,29 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
-    conditions = module.make_conditions(values)
-    state = module.initialise_experiment(run, conditions)
-    condition = module.choose_condition(run, conditions, state)
+    if spec.id == "contrast_sensitivity" and values.get("contrast_method") == "constant_stimuli":
+        # Review must inspect the selected fixed-level schedule, not invent a
+        # staircase just because this CSF experiment supports adaptive trials.
+        schedule = module.make_fixed_schedule(values, run.seed)
+        frequencies = list(dict.fromkeys(row["frequency_cpd"] for row in schedule))
+        conditions = [{"id": i, "frequency_cpd": frequency}
+                      for i, frequency in enumerate(frequencies, 1)]
+        condition = schedule[0]
+        state = {}
+        run.initialise(expected_trials=len(schedule),
+                       resolution={"trial_selection_method": "constant_stimuli",
+                                   "planned_trials": len(schedule),
+                                   "fixed_contrast_levels": list(module.fixed_contrast_levels(values)),
+                                   "fixed_repetitions_per_level_per_condition": values["fixed_repetitions"]})
+        representative_note = ("Constant stimuli: condition is spatial frequency; "
+                               f"{len(schedule)} planned presentations at the selected fixed levels. "
+                               "This is one seeded sample; no adaptive staircase or threshold estimate.")
+    else:
+        conditions = module.make_conditions(values)
+        state = module.initialise_experiment(run, conditions)
+        condition = module.choose_condition(run, conditions, state)
+        representative_note = ("Trial-controlled values show one representative trial. "
+                               "Random choices and adaptive strengths vary during a run.")
     stimuli = module.prepare_stimuli(run, condition, state)
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
@@ -77,7 +97,7 @@ def describe_settings(spec, values, snapshots, *, profile=None):
                   parameter_reads=reads, conditions=conditions, resolution=getattr(run, "resolution", {}),
                   phases=timeline.resolve(values).to_dict()["phases"],
                   phase_inputs={phase.name:phase.duration_ms for phase in timeline.phases if phase.kind in {"show","response"}},
-                  note="Trial-controlled values show one representative trial. Random choices and adaptive strengths vary during a run.")
+                  note=representative_note)
     if profile is not None and getattr(profile, "expected_resolution_px", None):
         from ..core.presentation import plan_visible_stimulus
         from ..stimuli.registry import get_stimulus
