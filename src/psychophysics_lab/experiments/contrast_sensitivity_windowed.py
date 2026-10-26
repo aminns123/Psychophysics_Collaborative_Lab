@@ -49,7 +49,11 @@ ENVELOPE_FIELDS = (
     ),
 )
 _FIELDS_REMOVED = frozenset(("grating_sigma_deg", "grating_cutoff_sigmas"))
-FIELDS = tuple(field for field in csf.FIELDS if field.key not in _FIELDS_REMOVED) + ENVELOPE_FIELDS
+# Start from the registered spec, not just csf.FIELDS: the public
+# experiment() declaration adds a researcher-editable response_keys field.
+FIELDS = tuple(
+    field for field in csf.SPEC.fields if field.key not in _FIELDS_REMOVED
+) + ENVELOPE_FIELDS
 
 STIMULUS_SLOTS = dict(csf.STIMULUS_SLOTS) | {
     "grating": "circular_windowed_sinusoidal_grating",
