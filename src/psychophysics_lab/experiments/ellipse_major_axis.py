@@ -541,6 +541,7 @@ def definition(identity="ellipse_major_axis"):
             step_calculator="garcia_perez_1998",
             step_parameterization="log10_display_contrast",
         ),
+        method_planner=lambda settings, seed: make_probe_fixed_schedule(settings, seed, make_conditions),
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,
