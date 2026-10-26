@@ -58,7 +58,7 @@ def test_odd_repetitions_balance_targets_with_at_most_one_extra():
 @pytest.mark.parametrize("bad", ["", "0.2,,0.4", "nan", "inf", "1.1",
                                   "-0.1", "0.1,0.1", "abc"])
 def test_invalid_contrasts_are_rejected_before_acquisition(bad):
-    settings = values(fixed_contrasts=bad)
+    settings = values() | {"fixed_contrasts": bad}
     assert list(csf.validate_settings(settings))
     with pytest.raises(ValueError):
         csf.make_fixed_schedule(settings, 1)
@@ -70,12 +70,12 @@ def test_digital_background_headroom_and_zero_contrast_catch_level():
     assert len(plan) == 90
     assert 0. in {trial["contrast"] for trial in plan}
     assert not list(csf.validate_settings(settings))
-    bad = values(background_intensity=.3, fixed_contrasts="0.7")
+    bad = values(background_intensity=.3) | {"fixed_contrasts": "0.7"}
     assert "between 0 and" in next(iter(csf.validate_settings(bad)))
 
 
 def test_planned_count_exceeding_declared_ceiling_needs_explicit_change():
-    settings = values(max_trials=20)
+    settings = values() | {"max_trials": 20}
     assert "120 trials" in next(iter(csf.validate_settings(settings)))
     with pytest.raises(ValueError, match="max_trials"):
         csf.make_fixed_schedule(settings, 1)
