@@ -1938,7 +1938,12 @@ class ExperimentConfigScreen(Screen):
         value = self.defaults.get(field.key, field.default)
         widget_id = _field_widget_id(field)
         if field.kind == "choice":
-            options = [(str(choice), choice) for choice in field.choices]
+            options = (
+                [("Adaptive staircase", "adaptive"),
+                 ("Method of constant stimuli", "constant_stimuli")]
+                if self.experiment.id == "contrast_sensitivity" and field.key == "contrast_method"
+                else [(str(choice), choice) for choice in field.choices]
+            )
             kwargs = {"id": widget_id, "allow_blank": field.default is None}
             if value is not None:
                 kwargs["value"] = value
