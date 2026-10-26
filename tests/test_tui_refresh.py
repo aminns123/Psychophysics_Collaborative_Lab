@@ -293,3 +293,36 @@ def test_changes_during_refresh_are_preserved_instead_of_replaced(tmp_path, monk
             assert app.screen is config and app.return_value is None
             assert config.query_one('#field-max-trials',Input).value=='17'
     asyncio.run(scenario())
+
+
+def test_refresh_error_popup_excludes_unrelated_nonblocking_source_warning(tmp_path, monkeypatch):
+    import pytest
+    warning = (
+        "contributions.py:86: RuntimeWarning: Invalid or untested published "
+        "components were NOT loaded: experiment:new_probe_vertical_line_stimulus"
+    )
+    fatal = (
+        "ValueError: Grating outer edge (multiples of sigma) "
+        "(grating-cutoff-sigmas) = 0.5 is outside its permitted range [1.0, 5.0]."
+    )
+    def fail(args, **kwargs):
+        return subprocess.CompletedProcess(
+            args, 1, stdout="",
+            stderr=warning + "\n" +
+                   refresh.CHECK_ERROR_PREFIX + json.dumps(fatal) + "\n",
+        )
+    monkeypatch.setattr(refresh.subprocess, "run", fail)
+    with pytest.raises(ValueError) as caught:
+        refresh.check_refresh({"page": "setup"}, ROOT)
+    assert str(caught.value) == fatal
+    assert "new_probe_vertical_line_stimulus" not in str(caught.value)
+
+
+def test_refresh_does_not_fail_on_unrelated_published_component_warning(tmp_path, monkeypatch):
+    def success(args, **kwargs):
+        return subprocess.CompletedProcess(
+            args, 0, stdout="",
+            stderr="contributions.py:86: RuntimeWarning: Invalid unrelated source was NOT loaded",
+        )
+    monkeypatch.setattr(refresh.subprocess, "run", success)
+    refresh.check_refresh({"page": "setup"}, ROOT)
