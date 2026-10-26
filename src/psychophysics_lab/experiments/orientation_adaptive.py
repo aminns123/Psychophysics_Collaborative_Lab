@@ -228,7 +228,8 @@ def initialise_experiment(run, conditions):
     contrast = run.stimulus_parameters()["contrast"]
     adaptive = (
         run.adaptive(
-            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)}, count,
+            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)},
+            run.values["max_trials"],
             starting_values={0: contrast}
         )
         if run.spec.adaptive
@@ -270,6 +271,8 @@ def adaptive_method(run):
 
 
 def validate_method_settings(values):
+    if values.get("contrast_method", "adaptive") == "adaptive" and values["trial_count"] > values["max_trials"]:
+        yield "Accepted teaching trials must not exceed max_trials (the response safety ceiling)."
     if values.get("contrast_method", "adaptive") == "constant_stimuli":
         try:
             make_fixed_schedule(values, 0)
