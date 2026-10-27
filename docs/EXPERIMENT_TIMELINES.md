@@ -1,21 +1,23 @@
 # Trial timelines and scientific actions
 
-Optional once-only readiness/settling events and flat sequence composition are
-documented in [session openings](SESSION_EVENTS.md). This additive Stage A API
-does not change official experiment defaults or the current authoring contract.
+Once-only readiness/settling events and flat sequence composition are documented
+in [session openings](SESSION_EVENTS.md). Stage B deliberately enables SPACE
+readiness and 1,000 ms settling for Gaussian CSF and Ellipse Major Axis only.
 
 Start with [the chronological beginner guide](LEARN_PSYCOLAB.md).
-New public Python experiments build a `TrialTimeline` with `make_trial()`
+New event-first Python experiments declare a flat `trial_events(settings, condition)` list
 and normally execute it using the **`RunContext.trial()` context manager**:
 accepted responses are explicitly interpreted and scientific state updated
 inside the trial boundary. `RunContext.play_trial()` remains a compatibility
 helper for an entire declared action plan; it is **not** the required
-seven-section researcher pattern. Earlier `Phase` and `load_timeline`
+researcher pattern. Existing `make_trial()`/TrialTimeline definitions remain
+supported, including older extensions. Earlier `Phase` and `load_timeline`
 support compatible older visual-only JSON designs.
 
 | Action | Input | Effect / automatic record |
 |---|---|---|
 | Show | name, duration integer or ConfigField name, slot or Stimulus placements | Timed static display, resolved parameters, software/virtual events |
+| WaitForKey | name, literal key or field name, optional slot/instructions | Session-only readiness; never a scientific answer |
 | CollectResponse | declared response meanings, timeout, optional visible slot | Framework maps TUI keys, timestamps and records one valid response |
 | RecordState | label, optional state fields | Detached finite JSON state, condition, resolved stimuli and response snapshot |
 | UpdateState | function(state, response), optional action name | Immutable inputs; validate and replace scientific state |

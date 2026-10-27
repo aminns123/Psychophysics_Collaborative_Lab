@@ -25,6 +25,12 @@ def test_active_official_inventory_matches_frozen_intake():
 
 @pytest.mark.parametrize('case', BASELINE['cases'], ids=lambda c: f"{c['identity']}-{c['method']}-{c['seed']}")
 def test_complete_scientific_trace_is_identical_without_new_feature(tmp_path, monkeypatch, case):
+    # Case A explicitly disables the Stage B opening; the frozen fixture is
+    # retained unchanged, including the absence of session provenance.
+    from dataclasses import replace
+    from psychophysics_lab.experiments._internal import registry
+    spec = registry.get_experiment(case['identity'])
+    monkeypatch.setitem(registry._REGISTRY, spec.id, replace(spec, session_start=[]))
     monkeypatch.setattr('psychophysics_lab.analysis.previews.create_run_figures', lambda **kwargs: None)
     a, _ = simulate(repo_root=ROOT, data_root=tmp_path, experiment_id=case['identity'],
                     values=case['values'], seed=case['seed'], analyse=False, observer=TeachingObserver(accuracy=.65))

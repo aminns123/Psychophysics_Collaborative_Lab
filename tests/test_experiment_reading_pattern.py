@@ -43,11 +43,15 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
         assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
         return
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
-    headings = [source.index(f"# {i}. {section}") for i, section in enumerate(SECTIONS, 1)]
+    migrated = identity in {"contrast_sensitivity", "ellipse_major_axis"}
+    sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
+                "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
+    headings = [source.index(f"# {i}. {section}") for i, section in enumerate(sections, 1)]
     assert headings == sorted(headings)
     tree = ast.parse(source)
     positions = {n.name: n.lineno for n in tree.body if isinstance(n, ast.FunctionDef)}
-    names = ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition")
+    names = (("trial_events", "prepare_stimuli", "make_conditions", "procedure", "definition")
+             if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     assert [positions[n] for n in names] == sorted(positions[n] for n in names)
     module = importlib.import_module("psychophysics_lab.experiments." + identity)
     from psychophysics_lab.experiments._internal.source_names import SOURCE_IDS
@@ -181,7 +185,8 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         values = {"max_trials":4,"probe_vertical_offset_deg":.5} if identity.startswith("line_") else {"max_trials":4,"ring_increment":.1}
         if identity == "line_position_flanker": values["flanker_cpd"] = 2.
     calls = []
-    prepare, make_trial = module.prepare_stimuli, module.make_trial
+    event_name = "trial_events" if hasattr(module, "trial_events") else "make_trial"
+    prepare, make_trial = module.prepare_stimuli, getattr(module, event_name)
     interpret, update = module.interpret_response, getattr(module,"update_experiment",None)
 
     def checked_prepare(run, condition, state):
@@ -196,7 +201,8 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         return result
 
     def checked_trial(settings, condition):
-        result = make_trial(settings, condition)
+        from psychophysics_lab.core.timeline import as_trial_timeline
+        result = as_trial_timeline(make_trial(settings, condition))
         assert not any(isinstance(p, (UpdateState, UpdateAdaptive)) for p in result.phases)
         responses = [p for p in result.phases if p.kind == "response"]
         assert len(responses) == 1 and responses[0].actions == module.SPEC.response_paradigm.alternatives
@@ -222,7 +228,7 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         return update(run, condition, state, response, trial)
 
     monkeypatch.setattr(module, "prepare_stimuli", checked_prepare)
-    monkeypatch.setattr(module, "make_trial", checked_trial)
+    monkeypatch.setattr(module, event_name, checked_trial)
     monkeypatch.setattr(module, "interpret_response", checked_interpret)
     if update is not None:
         monkeypatch.setattr(module, "update_experiment", checked_update)

@@ -1,9 +1,8 @@
 """CONTRAST SENSITIVITY â€” which side contained the grating?
 
-Read top to bottom: settings -> what is shown -> one trial -> contrast updates
--> the experiment. Thesis Chapter 4, Fig. 4.3A and Tables 4.3â€“4.4.
+Read top to bottom: parameters -> session opening -> repeated trial events
+-> scientific conditions and updates -> stopping/results -> registration. Thesis Chapter 4, Fig. 4.3A and Tables 4.3â€“4.4.
 The saved-run ID contrast_sensitivity is retained internally for compatibility.
-The older contrast_sensitivity ID refers to a different historical protocol.
 The software protocol is implemented; raster/photometric equivalence is unverified.
 """
 
@@ -26,14 +25,16 @@ from psychophysics_lab.researcher import (
     AdaptiveSelection,
     StaircaseConfig,
     Step,
-    TrialTimeline,
+    WaitForKey,
+    legacy_trial_factory,
     Show,
+    Beep,
     Stimulus,
     CollectResponse,
     UpdateAdaptive,
 )
 
-# 1. SETTINGS AND STIMULI
+# 1. PARAMETERS
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIXATION_MS = 500
 GRATING_MS = 300
@@ -217,13 +218,68 @@ FIELDS = (
 RESPONSES = ResponseParadigm(
     "csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT")
 )
-STIMULUS_SLOTS = {"fixation": "gaussian_fixation", "grating": "contrast_sensitivity_grating"}
+STIMULUS_SLOTS = {"fixation": "gaussian_fixation", "grating": "contrast_sensitivity_grating",
+                  "ready_fixation": "gaussian_fixation"}
 STIMULUS_DEFAULTS = {
+    "ready_fixation": "gaussian_fixation",
     "fixation": "gaussian_fixation",
     "grating": "contrast_sensitivity_grating",
 }
 
 PARADIGM = "two_alternative_forced_choice"
+
+
+# 2. SESSION START — ONCE
+# Approved Stage B opening. Edit Python directly; SESSION_START = [] disables it.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
+               instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
+
+
+# 3. TRIAL EVENTS — REPEATED
+# Build a fresh flat plan for each selected condition; never freeze future contrasts.
+
+
+def trial_events(settings, condition):
+    """Fixation -> grating on the selected side -> one left/right answer."""
+    offset = settings["grating_offset_deg"]
+    x = -offset if condition["target"] == 0 else offset
+    return [
+        Show("fixation", slot="fixation", duration="fixation_ms"),
+        Show(
+            "grating",
+            stimuli=(Stimulus("grating", x_deg=x),),
+            duration="grating_ms",
+            beep=None,  # Silent baseline; use Beep(550, 35) for an intentional onset cue.
+        ),
+        CollectResponse(actions=("left", "right"), slot="fixation",
+                        beep=None),  # Optional accepted-answer cue: Beep(750, 35).
+    ]
+
+
+# Effective appearance: the current condition supplies strength and target;
+# selected stimulus classes/presets supply the remaining validated parameters.
+
+
+def prepare_stimuli(run, condition, state):
+    background = run.values["background_intensity"]
+    return {
+        "grating": run.stimulus_parameters(
+            "grating",
+            sigma_deg=run.values["grating_sigma_deg"],
+            cutoff_sigmas=run.values["grating_cutoff_sigmas"],
+            spatial_frequency_cpd=condition["frequency_cpd"],
+            contrast=condition["contrast"],
+            background=background,
+        ),
+        "fixation": run.stimulus_parameters("fixation", background=background),
+    }
+
+
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+# select condition -> render its current strength -> interpret answer -> update next strength.
 
 
 SCIENTIFIC_SPEC = {
@@ -239,7 +295,23 @@ SCIENTIFIC_SPEC = {
 }
 
 
-# 2. CONDITIONS AND TRIAL ORDER
+ADAPTIVE_RULE = AdaptiveSelection(
+    "consecutive_up_down",
+    controls=(
+        "n_down",
+        "n_up",
+        "logUNIT_UP",
+        "logUNIT_DW",
+        "initial_one_down_limit",
+        "staircases_per_condition",
+        "reversal_termination",
+        "max_trials",
+    ),
+    step_calculator="garcia_perez_1998",
+    step_parameterization="log10_display_contrast",
+)
+
+
 def make_conditions(settings):
     frequencies = [float(f.strip()) for f in settings["frequencies_cpd"].split(",")]
     return [
@@ -271,7 +343,6 @@ def fixed_contrast_levels(settings):
         raise
 
 
-
 def make_fixed_schedule(settings, seed):
     """Deterministic condition x contrast x repeat schedule; independent of responses.
 
@@ -292,7 +363,6 @@ def make_fixed_schedule(settings, seed):
     return fixed_level_schedule(frequencies, levels, repetitions, seed=seed)
 
 
-
 def choose_condition(run, conditions, state):
     staircase, randomise = state["adaptive"], state["rng"]
     identity = staircase.select(randomise.choice)
@@ -306,40 +376,6 @@ def choose_condition(run, conditions, state):
     return condition
 
 
-# 3. PREPARE STIMULI
-def prepare_stimuli(run, condition, state):
-    background = run.values["background_intensity"]
-    return {
-        "grating": run.stimulus_parameters(
-            "grating",
-            sigma_deg=run.values["grating_sigma_deg"],
-            cutoff_sigmas=run.values["grating_cutoff_sigmas"],
-            spatial_frequency_cpd=condition["frequency_cpd"],
-            contrast=condition["contrast"],
-            background=background,
-        ),
-        "fixation": run.stimulus_parameters("fixation", background=background),
-    }
-
-
-# 4. ONE TRIAL
-def make_trial(settings, condition):
-    offset = settings["grating_offset_deg"]
-    x = -offset if condition["target"] == 0 else offset
-    return TrialTimeline(
-        (
-            Show("fixation", slot="fixation", duration="fixation_ms"),
-            Show(
-                "grating",
-                stimuli=(Stimulus("grating", x_deg=x),),
-                duration="grating_ms",
-            ),
-            CollectResponse(actions=("left", "right"), slot="fixation"),
-        )
-    )
-
-
-# 5. RESPONSES AND ADAPTATION
 def interpret_response(condition, response):
     """Both categories score the chosen spatial/property alternative or interval."""
     correct = response["alternative"] == condition["target"]
@@ -348,12 +384,6 @@ def interpret_response(condition, response):
     return dict(response) | {"correct": correct}
 
 
-# Shared staircase counters reset the opposite response streak and reset a streak
-# after its step. Optional initial one-down ends at the first error or selected
-# response count (0 disables it). Reversals are changes between nonzero numeric
-# adjustments; holds are ignored, with direction seeded by the starting presentation.
-# These tested counters stay in adaptive/staircase.py. The selected parameters,
-# contrast equation, gamut policy, scheduling and threshold estimator are here.
 def maximum_contrast(settings, condition):
     """Digital headroom for the additive scene (or symmetric grating)."""
     return (2
@@ -384,28 +414,6 @@ def update_experiment(run, condition, state, response, trial):
     return state
 
 
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements={
-            "spatial_frequency_cpd": condition["frequency_cpd"],
-            "staircase_repeat": condition["repeat"],
-            "grating_x_deg": (
-                -settings["grating_offset_deg"] if condition["target"] == 0
-                else settings["grating_offset_deg"]
-            ),
-        },
-        instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    )
-
-
-# 6. RUN AND FINISH
 def initialise_experiment(run, conditions, *, grating_resolution=None):
     settings = run.values
     frequencies = list(dict.fromkeys(c["frequency_cpd"] for c in conditions))
@@ -494,6 +502,68 @@ def initialise_experiment(run, conditions, *, grating_resolution=None):
     }
 
 
+def validate_settings(values):
+    try:
+        frequencies = [float(f.strip()) for f in values["frequencies_cpd"].split(",")]
+        import math
+
+        if (
+            not frequencies
+            or len(set(frequencies)) != len(frequencies)
+            or any(not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
+        ):
+            yield "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
+    except ValueError:
+        yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
+    if values.get("contrast_method", "adaptive") == "constant_stimuli":
+        try:
+            # Seed-independent validation; scheduling uses the recorded run seed.
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+    else:
+        if values["threshold_reversals"] > values["reversal_termination"]:
+            yield "Threshold reversal count must not exceed the staircase reversal limit."
+        if values["starting_contrast"] > 2 * min(
+            values["background_intensity"], 1 - values["background_intensity"]
+        ):
+            yield "Starting contrast exceeds the available digital range."
+
+
+def validate_monitor(settings, profile):
+    """Check actual condition frequencies before physical presentation.
+
+    Editing and simulation remain available with display feedback at Review.
+    """
+    if profile.expected_resolution_px:
+        import math
+        from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
+        frequencies = [condition["frequency_cpd"] for condition in make_conditions(settings)]
+        geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
+        # Match the raster backend's conservative limit on both pixel axes.
+        validate_requested_cpd(frequencies, geometry)
+        validate_requested_cpd(frequencies, geometry, orientation_rad=math.pi / 2)
+
+
+# 5. STOPPING AND RESULTS
+# Reversal completion and response ceiling remain distinct; fixed levels have no staircase estimator.
+
+
+TRIAL_COLUMN_MEANINGS = {
+    "presented_display_contrast": {
+        "units_or_encoding": "digital_peak_to_peak",
+        "meaning": "Presented digital peak-to-peak sinusoidal modulation.",
+        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+    },
+    "next_display_contrast": {
+        "units_or_encoding": "digital_peak_to_peak",
+        "meaning": "Post-response digital peak-to-peak sinusoidal modulation.",
+        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+    },
+    "stimulus_condition": {"units_or_encoding": "cycles/degree"},
+}
+
+
 def is_finished(run, conditions, state):
     return state["adaptive"].status != "running"
 
@@ -514,16 +584,25 @@ def primary_rule(settings, conditions):
         }
 
 
-def finish_experiment(run, conditions, state):
-    run.save_resolution(
-        **(
-            state["description"]
-            | {"reversal_contrasts": {str(i): v for i, v in state["reversals"].items()}}
-        )
+def trial_record(run, condition, state):
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=maximum_contrast(settings, condition),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements={
+            "spatial_frequency_cpd": condition["frequency_cpd"],
+            "staircase_repeat": condition["repeat"],
+            "grating_x_deg": (
+                -settings["grating_offset_deg"] if condition["target"] == 0
+                else settings["grating_offset_deg"]
+            ),
+        },
+        instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
     )
-    run.complete_adaptive(state["adaptive"])
-    # One declared estimator is used here and by post-hoc analysis.
-    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def fixed_trial_record(run, condition):
@@ -538,6 +617,18 @@ def fixed_trial_record(run, condition):
         },
         "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
     }
+
+
+def finish_experiment(run, conditions, state):
+    run.save_resolution(
+        **(
+            state["description"]
+            | {"reversal_contrasts": {str(i): v for i, v in state["reversals"].items()}}
+        )
+    )
+    run.complete_adaptive(state["adaptive"])
+    # One declared estimator is used here and by post-hoc analysis.
+    run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
 def fixed_contrast_method(run, *, grating_resolution=None):
@@ -614,53 +705,14 @@ def procedure(run):
             "constant_stimuli": lambda: fixed_contrast_method(run),
         },
         prepare_stimuli=prepare_stimuli,
-        make_trial=make_trial,
+        trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
 
-# 7. FRAMEWORK CONNECTION
-def validate_settings(values):
-    try:
-        frequencies = [float(f.strip()) for f in values["frequencies_cpd"].split(",")]
-        import math
-
-        if (
-            not frequencies
-            or len(set(frequencies)) != len(frequencies)
-            or any(not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
-        ):
-            yield "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
-    except ValueError:
-        yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
-    if values.get("contrast_method", "adaptive") == "constant_stimuli":
-        try:
-            # Seed-independent validation; scheduling uses the recorded run seed.
-            make_fixed_schedule(values, 0)
-        except ValueError as exc:
-            yield str(exc)
-    else:
-        if values["threshold_reversals"] > values["reversal_termination"]:
-            yield "Threshold reversal count must not exceed the staircase reversal limit."
-        if values["starting_contrast"] > 2 * min(
-            values["background_intensity"], 1 - values["background_intensity"]
-        ):
-            yield "Starting contrast exceeds the available digital range."
-
-
-def validate_monitor(settings, profile):
-    """Check actual condition frequencies before physical presentation.
-
-    Editing and simulation remain available with display feedback at Review.
-    """
-    if profile.expected_resolution_px:
-        import math
-        from psychophysics_lab.stimuli.spatial_calibration import resolve_spatial_geometry, validate_requested_cpd
-        frequencies = [condition["frequency_cpd"] for condition in make_conditions(settings)]
-        geometry = resolve_spatial_geometry(profile, profile.expected_resolution_px)
-        # Match the raster backend's conservative limit on both pixel axes.
-        validate_requested_cpd(frequencies, geometry)
-        validate_requested_cpd(frequencies, geometry, orientation_rad=math.pi / 2)
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility for older Python callers; acquisition and Review use trial_events above.
+make_trial = legacy_trial_factory(trial_events)
 
 
 def definition(identity="contrast_sensitivity"):
@@ -669,6 +721,8 @@ def definition(identity="contrast_sensitivity"):
         name="Contrast Sensitivity",
         data_directory_name="contrast_sensitivity",
         procedure=procedure,
+        session_start=SESSION_START,
+        stimulus_field_bindings={"ready_fixation": {"background": "background_intensity"}},
         description="Fixation then grating at a researcher-selected left/right angular offset; timing, position and adaptation are editable in the TUI.",
         fields=FIELDS,
         stimulus_parameter_controls={
@@ -678,21 +732,7 @@ def definition(identity="contrast_sensitivity"):
         },
         scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
-        adaptive=AdaptiveSelection(
-            "consecutive_up_down",
-            controls=(
-                "n_down",
-                "n_up",
-                "logUNIT_UP",
-                "logUNIT_DW",
-                "initial_one_down_limit",
-                "staircases_per_condition",
-                "reversal_termination",
-                "max_trials",
-            ),
-            step_calculator="garcia_perez_1998",
-            step_parameterization="log10_display_contrast",
-        ),
+        adaptive=ADAPTIVE_RULE,
         method_planner=make_fixed_schedule,
         validator=validate_settings,
         monitor_validator=validate_monitor,
@@ -702,19 +742,7 @@ def definition(identity="contrast_sensitivity"):
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason="Scientific acquisition requires the researcher to assess the selected display, raster geometry, effective contrast/luminance, response mapping and physical timing for this protocol. The declared default frequencies are editable choices, not a required published experiment. Use the explicit researcher override if proceeding without protocol qualification.",
-        trial_column_overrides={
-            "presented_display_contrast": {
-                "units_or_encoding": "digital_peak_to_peak",
-                "meaning": "Presented digital peak-to-peak sinusoidal modulation.",
-                "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
-            },
-            "next_display_contrast": {
-                "units_or_encoding": "digital_peak_to_peak",
-                "meaning": "Post-response digital peak-to-peak sinusoidal modulation.",
-                "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
-            },
-            "stimulus_condition": {"units_or_encoding": "cycles/degree"},
-        },
+        trial_column_overrides=TRIAL_COLUMN_MEANINGS,
         source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py",),
     )
 

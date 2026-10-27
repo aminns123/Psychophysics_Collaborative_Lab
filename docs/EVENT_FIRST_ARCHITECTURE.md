@@ -1,5 +1,10 @@
 # Event-first researcher interface: architecture and Stage A
 
+**Stage B:** Gaussian CSF and Ellipse Major Axis now use the six-section
+Python-first narrative, `trial_events()` and the approved SPACE/1,000 ms opening.
+See the [before/after comparison and equivalence report](STAGE_B_EVENT_FIRST.md).
+The Stage A evidence below remains a record of its original revision.
+
 Inventory and API decision, 27 October 2026. Starting checkout:
 `C:/Users/AlexanderMinns/Physics/PhD/GitHub/Psychophysics_Collaborative_Lab`,
 clean `main`, HEAD/origin/main `2374f535ed4ff96bc39e5d09044184dae02cbbf8`,

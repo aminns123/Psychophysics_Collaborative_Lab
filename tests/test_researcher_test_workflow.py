@@ -57,7 +57,8 @@ def test_real_presentation_mode_isolated_and_bounded_without_qualifying_acquisit
             self.delegate = VirtualPresentation(Response(0, responses.keys[0], 0.2))
 
         def prepare(self, *args):
-            self.prepared += 1
+            from psychophysics_lab.researcher import SessionTimeline
+            self.prepared += int(not isinstance(args[0], SessionTimeline))
             if abort and self.prepared == 2:
                 from psychophysics_lab.researcher import ParticipantAbort
 
