@@ -1,8 +1,9 @@
 # Trial timelines and scientific actions
 
 Once-only readiness/settling events and flat sequence composition are documented
-in [session openings](SESSION_EVENTS.md). Stage B deliberately enables SPACE
-readiness and 1,000 ms settling for Gaussian CSF and Ellipse Major Axis only.
+in [session openings](SESSION_EVENTS.md). Stage C enables SPACE readiness and
+1,000 ms settling for all ten official experiments; `SESSION_START=[]` disables
+it in the Python definition. See the [migration report](STAGE_C_EVENT_FIRST.md).
 
 Start with [the chronological beginner guide](LEARN_PSYCOLAB.md).
 New event-first Python experiments declare a flat `trial_events(settings, condition)` list

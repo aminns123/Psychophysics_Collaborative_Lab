@@ -46,16 +46,16 @@ For a concrete example of the **already supported Stage A** opening:
 from psychophysics_lab.researcher import WaitForKey, Show
 
 SESSION_START = [
-    WaitForKey("ready", key="SPACE", slot="fixation",
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
                instructions="Press SPACE when ready"),
-    Show("settle", slot="fixation", duration=1000),
+    Show("settle", slot="ready_fixation", duration=1000),
 ]
 
 # Disable without changing the framework:
 # SESSION_START = []
 ```
 
-The opening is passed through `experiment(..., session_start=SESSION_START)` and occurs *once*, before Trial 1. Readiness is **not** a scientific response or staircase update, and Trial 1's actual response is retained. A readiness screen is the **intended default for official experiments as they migrate**, but researchers can choose an empty session sequence for a protocol that does not need one. The current official experiment files have not all been migrated merely because Stage A exists.
+The opening is passed through `experiment(..., session_start=SESSION_START)` and occurs *once*, before Trial 1. Readiness is **not** a scientific response or staircase update, and Trial 1's actual response is retained. A readiness screen is the **intended default for official experiments as they migrate**, but researchers can choose an empty session sequence for a protocol that does not need one. Stage C now applies this declaration to all ten official experiments; see its [implementation and acceptance evidence](STAGE_C_EVENT_FIRST.md). Register a pure fixation in `ready_fixation`; do not reuse a task slot whose base parameters contain a probe.
 
 Small functions returning flat event lists may be composed like Lego pieces. There should be **one canonical event representation and one execution path**, shared across real presentation, simulation and Review. The existing `TrialTimeline` and other supported legacy authoring APIs remain available through the staged migration.
 

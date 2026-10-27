@@ -45,7 +45,13 @@ Choose a stable, institution-specific namespace (3–64 lowercase letters/digits
 
 Define stimulus classes in the one local `stimulus_library.py`, subclassing `psychophysics_lab.stimulus_library.LibraryStimulus` and declaring `PARAMETERS`, `render` and `SPEC`. Use the existing `StimulusSpec` and `ConfigField`, with `source_path="stimulus_library.py"`. No registration call or generated adapters are needed.
 
-Each experiment defines its own normal `procedure` and exports `SPEC` from `experiment(...)`. Keep the existing seven-section scientific narrative and units. Set `source_paths=("experiments/your_namespace__task.py",)`. Optional default JSON lives under `presets/`; paths are relative to the extension root. Local helper Python may live under `experiments/` and use relative imports (`from .helper import ...`, `from ..stimulus_library import ...`). Ordinary installed dependencies use normal Python imports. Do not mutate registries during import.
+Each experiment defines its own normal `procedure` and exports `SPEC` from `experiment(...)`. New starters use the six-section narrative: parameters; once-only session start; repeated trial events; scientific rules; stopping/results; final registration. Preserve scientific units. Older `make_trial()`/TrialTimeline sources and their original openings remain compatible. Set `source_paths=("experiments/your_namespace__task.py",)`. Optional default JSON lives under `presets/`; paths are relative to the extension root. Local helper Python may live under `experiments/` and use relative imports (`from .helper import ...`, `from ..stimulus_library import ...`). Ordinary installed dependencies use normal Python imports. Do not mutate registries during import.
+
+The [bundled event-first walkthrough](../examples/laboratory_extensions/METHODS.md)
+shows list composition, optional cues, source-owned opening and both shared
+methods. Stage C updates only the repository templates. Already installed
+laboratory sources, identities, trust and readiness fingerprints are retained;
+source/dependency changes still require testing under the existing rules.
 
 The supported scientific dependency set is the library, the root manifest, and Python/JSON under `experiments/` and `presets/`. Symlinks and Windows junctions are rejected before traversal. Source dependencies outside that set are rejected. Arbitrary scientific resource files, additional external roots and external adaptive-plugin discovery are not supported in this initial boundary; reuse the existing adaptive API. Trusted code can of course call Python APIs, but unrecorded external inputs must not be treated as covered by this readiness/provenance contract.
 

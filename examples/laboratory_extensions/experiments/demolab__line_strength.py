@@ -17,11 +17,11 @@ from psychophysics_lab.methods.teaching import (
 )
 from psychophysics_lab.researcher import (
     AdaptiveSelection, ConfigField, ResponseParadigm, experiment,
-    TrialTimeline, Show, Stimulus, CollectResponse,
+    TrialTimeline, Show, Stimulus, CollectResponse, WaitForKey, Beep, legacy_trial_factory,
 )
 
 
-# 1. SETTINGS AND STIMULI
+# 1. PARAMETERS
 FIELDS = (
     ConfigField("eccentricities_deg", "Line eccentricities", "text", "1,2",
                 units="degrees", section="Stimulus conditions",
@@ -32,12 +32,45 @@ FIELDS = (
 ) + teaching_method_fields(strengths="0,0.1,0.3", label="Line increment above grey 0.5") + teaching_adaptive_fields()
 RESPONSES = ResponseParadigm("line_side", ("left", "right"), ("F", "J"))
 
+STIMULUS_SLOTS = {"target":"line", "ready_fixation":"fixation"}
+STIMULUS_DEFAULTS = {"target":LinePatch.SPEC.id, "ready_fixation":"fixation_cross"}
+
+
+# 2. SESSION START — ONCE
+# Set SESSION_START = [] to disable it; no TUI source changes are needed.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation", instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
+
+
+# 3. TRIAL EVENTS — REPEATED
+def trial_events(settings, condition):
+    x = (-1 if condition["target"] == 0 else 1) * condition["value"]
+    return [
+        Show("fixation", duration="fixation_ms", instructions="+"),
+        Show("line", stimuli=(Stimulus("target", x_deg=x),), duration="stimulus_ms", beep=None),
+        CollectResponse(
+            actions=RESPONSES.alternatives,
+            instructions='Left: {left}   Right: {right}',
+            beep=None,
+        ),
+    ]
+
+
+def prepare_stimuli(run, condition, state):
+    return {"target": run.stimulus_parameters(intensity=.5 + condition["contrast"])}
+
+
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+# TeachingAdaptiveMethod owns the declared n-down/n-up counters and factors.
+# It updates strength after each accepted response, bounded to [0, .5]; no copied engine.
+
 
 def eccentricities(settings):
     return parse_fixed_strengths(settings["eccentricities_deg"], minimum=.1, maximum=5)
 
 
-# 2. CONDITIONS AND TRIAL ORDER
 def make_conditions(settings):
     positions = eccentricities(settings)
     return [{"value": positions[i % len(positions)], "target": (i // len(positions)) % 2}
@@ -58,22 +91,6 @@ def make_fixed_schedule(settings, seed):
                                 seed=seed, condition_field="eccentricity_deg")
 
 
-# 3. PREPARE STIMULI
-def prepare_stimuli(run, condition, state):
-    return {"target": run.stimulus_parameters(intensity=.5 + condition["contrast"])}
-
-
-# 4. ONE TRIAL
-def make_trial(settings, condition):
-    x = (-1 if condition["target"] == 0 else 1) * condition["value"]
-    return TrialTimeline((
-        Show("fixation", duration="fixation_ms", instructions="+"),
-        Show("line", stimuli=(Stimulus("target", x_deg=x),), duration="stimulus_ms"),
-        CollectResponse(actions=RESPONSES.alternatives, instructions="Left: {left}   Right: {right}"),
-    ))
-
-
-# 5. RESPONSE INTERPRETATION
 def interpret_response(condition, response):
     if response["correct"] != (response["alternative"] == condition["target"]):
         raise ValueError("Recorded response disagrees with the scientific target.")
@@ -91,7 +108,11 @@ def validate_settings(settings):
         yield str(exc)
 
 
-# 6. RUN AND FINISH — installed policies own bookkeeping and update equations.
+# 5. STOPPING AND RESULTS
+# Adaptive stops at trial_count accepted responses. Fixed stops at the scheduled
+# condition/level/repetition count. Both report responses/accuracy, not a threshold.
+
+
 def fixed_method(run):
     schedule = make_fixed_schedule(run.values, run.seed)
     return ConstantContrastMethod(run, schedule=schedule, condition_field="value",
@@ -109,17 +130,20 @@ def procedure(run):
         "adaptive": lambda: TeachingAdaptiveMethod(run, make_conditions=make_conditions,
                                                    choose=choose_condition, maximum=.5),
         "constant_stimuli": lambda: fixed_method(run),
-    }, prepare_stimuli=prepare_stimuli, make_trial=make_trial, interpret_response=interpret_response)
+    }, prepare_stimuli=prepare_stimuli, trial_events=trial_events, interpret_response=interpret_response)
 
 
-# 7. FRAMEWORK CONNECTION
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+make_trial = legacy_trial_factory(trial_events)
+
+
 SPEC = experiment(
     id="demolab__line_strength", name="Line strength at two eccentricities",
-    description=__doc__, procedure=procedure, fields=FIELDS, responses=RESPONSES,
+    description=__doc__, procedure=procedure, session_start=SESSION_START, fields=FIELDS, responses=RESPONSES,
     adaptive=AdaptiveSelection("consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor", "max_trials")),
     method_planner=make_fixed_schedule, validator=validate_settings,
     method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
     calibration_requirements=("geometry",), monitor_capabilities=("display_binding", "resolution"),
-    stimulus_slots={"target": "line"}, stimulus_defaults={"target": LinePatch.SPEC.id},
+    stimulus_slots=STIMULUS_SLOTS, stimulus_defaults=STIMULUS_DEFAULTS,
     supports_simulation=True, source_paths=("experiments/demolab__line_strength.py",),
 )
