@@ -132,3 +132,11 @@ Official experiment modules, scientific methods, adaptive algorithms, renderers,
 configuration JSON, calibration and trial-column definitions are not changed in
 Stage A. Stage B/C source conversions and starter-template migration remain
 separate review stages, not completed acceptance claims in this PR.
+
+The maintainer subsequently made **Windows the sole acceptance target**. The
+existing CI matrix is retained, but Ubuntu is not a completion gate. The final
+session/presentation/frozen-baseline/timeline group passed **104 tests** in
+64.85 s, including both methods through the actual bounded presentation-test
+workflow using an injected software display. A compatibility case retains the
+old resolution behavior for laboratory TrialTimeline subclasses with required
+constructor arguments. Final-head Windows CI is linked from the PR evidence.

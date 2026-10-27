@@ -150,7 +150,10 @@ class TrialTimeline:
                     key = values[key]
                 phase = replace(phase, key=validate_readiness_key(key))
             phases.append(phase)
-        return type(self)(tuple(phases))
+        # Older TrialTimeline subclasses may require extra constructor inputs;
+        # resolving them has always returned the canonical trial container.
+        return (SessionTimeline(tuple(phases)) if isinstance(self, SessionTimeline)
+                else TrialTimeline(tuple(phases)))
 
     def to_dict(self):
         return {"schema_version": 1, "phases": [p.to_dict() for p in self.phases]}

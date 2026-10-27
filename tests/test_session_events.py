@@ -138,6 +138,17 @@ def test_field_resolution_slot_checks_and_trial_composition():
     assert SessionTimeline([]).to_dict()['phases'] == []
 
 
+def test_existing_trial_subclass_can_keep_its_required_constructor_argument():
+    from dataclasses import dataclass
+    @dataclass(frozen=True)
+    class LaboratoryTimeline(TrialTimeline):
+        laboratory_note: str
+    sequence = LaboratoryTimeline((Show('fixation', duration='fixation_ms'),
+                                   CollectResponse(actions=('left','right'))), 'retained local extension')
+    resolved = sequence.resolve({'fixation_ms':12})
+    assert type(resolved) is TrialTimeline and resolved.phases[0].duration_ms == 12
+
+
 @pytest.mark.parametrize('failure', ['abort', 'prepare', 'device', 'bad_readiness'])
 def test_pre_first_trial_failures_preserve_partial_session_and_cleanup(tmp_path, monkeypatch, failure):
     monkeypatch.setattr('psychophysics_lab.analysis.previews.create_run_figures', lambda **kwargs: None)
@@ -285,3 +296,26 @@ def test_opt_in_session_rows_route_to_existing_configure_editors(tmp_path, monke
             assert review._row_authorities[timing]['field'] == 'initial_fixation_ms'
             assert any(r[0] == 'Trial' for r in review._review_rows)
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('identity', ['contrast_sensitivity', 'ellipse_major_axis'])
+@pytest.mark.parametrize('method', ['adaptive', 'constant_stimuli'])
+def test_existing_bounded_presentation_test_path_also_runs_opening_once(tmp_path, monkeypatch, identity, method):
+    # Reuse the established test's real presentation-test boundary, isolated
+    # display profile, injected software window and human-folder sentinel.
+    from test_researcher_test_workflow import test_real_presentation_mode_isolated_and_bounded_without_qualifying_acquisition
+    spec = install_opening(monkeypatch, identity)
+    spec = replace(spec, default_config='', fields=tuple(
+        replace(f, default=method) if f.key == 'contrast_method' else f for f in spec.fields))
+    monkeypatch.setitem(registry._REGISTRY, identity, spec)
+    from psychophysics_lab.config.local import config_root
+    output = config_root(ROOT).parent/'psycolab_presentation_tests'
+    before = set(output.rglob('session_events.json'))
+    test_real_presentation_mode_isolated_and_bounded_without_qualifying_acquisition(tmp_path, monkeypatch, identity)
+    traces = list(set(output.rglob('session_events.json')) - before)
+    assert len(traces) == 1
+    trace = json.loads(traces[0].read_text())
+    assert trace['status'] == 'completed' and [e['name'] for e in trace['events']] == ['ready', 'settle']
+    assert trace['data_kind'] == 'uncalibrated_presentation_test' and not trace['synthetic']
+    manifest = json.loads((traces[0].parent/'manifest.json').read_text())
+    assert manifest['accepted_trials'] == 2 and manifest['status'] == 'test_finished'
