@@ -1,5 +1,9 @@
 # Trial timelines and scientific actions
 
+Optional once-only readiness/settling events and flat sequence composition are
+documented in [session openings](SESSION_EVENTS.md). This additive Stage A API
+does not change official experiment defaults or the current authoring contract.
+
 Start with [the chronological beginner guide](LEARN_PSYCOLAB.md).
 New public Python experiments build a `TrialTimeline` with `make_trial()`
 and normally execute it using the **`RunContext.trial()` context manager**:

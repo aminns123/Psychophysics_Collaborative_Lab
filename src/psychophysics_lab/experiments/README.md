@@ -1,5 +1,10 @@
 # Researcher experiment files
 
+An optional [session-opening API](../../../docs/SESSION_EVENTS.md) supports
+once-only readiness and settling events. Existing definitions retain their
+behavior; the staged source migration is described in the
+[event-first architecture decision](../../../docs/EVENT_FIRST_ARCHITECTURE.md).
+
 Edit one experiment here and its stimulus class in `../stimulus_library.py`.
 Experiments share section order, units and response conventions. They may use
 different scientifically justified loops. The response alternatives and the
