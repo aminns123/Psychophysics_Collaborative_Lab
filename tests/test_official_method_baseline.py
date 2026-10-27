@@ -42,7 +42,10 @@ def test_official_selected_method_reaches_review_execution_and_validated_data(tm
             await pilot.pause()
             assert isinstance(app.screen, ReviewScreen)
             table = app.screen.query_one("#resolved-settings-table", DataTable)
-            assert any(str(table.get_row_at(i)[2]) == method for i in range(table.row_count))
+            assert any(str(table.get_row_at(i)[2]) == method for i in range(table.row_count)), (
+                identity, method, app.screen.request.experiment_values.get("contrast_method"),
+                table.row_count, [table.get_row_at(i) for i in range(table.row_count)],
+            )
             if method == "constant_stimuli":
                 assert not any(str(table.get_row_at(i)[0]) == "Adaptive" for i in range(table.row_count))
             reviewed.append(dict(app.screen.request.experiment_values))
