@@ -48,7 +48,11 @@ def test_new_stimulus_and_experiment_are_separate_registered_public_components()
 
 
 def test_windowed_csf_uses_exact_same_trials_conditions_and_updates_as_original():
-    assert windowed_csf.make_trial is gaussian_csf.make_trial
+    # Stage C makes both declarations visible in their own protocol files;
+    # compare their scientific plans rather than requiring one Python alias.
+    values = windowed_csf.SPEC.normalise_values({'fixation_ms':137,'grating_ms':211,'grating_offset_deg':.7})
+    for target in (0,1):
+        assert windowed_csf.make_trial(values,{'target':target}).to_dict() == gaussian_csf.make_trial(values,{'target':target}).to_dict()
     assert windowed_csf.make_conditions is gaussian_csf.make_conditions
     assert windowed_csf.choose_condition is gaussian_csf.choose_condition
     assert windowed_csf.update_experiment is gaussian_csf.update_experiment

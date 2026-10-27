@@ -24,13 +24,15 @@ from psychophysics_lab.researcher import (
     StaircaseConfig,
     Step,
     TrialTimeline,
+    WaitForKey,
+    legacy_trial_factory,
     Show,
     CollectResponse,
     Beep,
     UpdateAdaptive,
 )
 
-# 1. SETTINGS AND STIMULI
+# 1. PARAMETERS
 FIELDS = (
     ConfigField(
         "positions_deg",
@@ -141,52 +143,32 @@ STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_alternative_forced_choice"
 FIELDS += probe_contrast_fields()
 
-SCIENTIFIC_SPEC = {
-    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "line_position_baseline-5",
-    "response": "Is the line above or below fixation?",
-    "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
-    "conditions": "TUI-selected horizontal probe positions; independently interleaved repeat staircases and equiprobable above/below targets.",
-    "adaptive": "TUI n-down/n-up and log10 steps; reversal direction starts at the actual initial presentation, holds ignored.",
-    "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
-    "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
-    "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting.",
-}
+# A pure, session-only fixation; trial slots and their defaults stay unchanged.
+STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
+STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
-# 2. CONDITIONS AND TRIAL ORDER
+# 2. SESSION START — ONCE
+# Edit the Python list directly. SESSION_START = [] disables the opening.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
+               instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
 
 
-def make_conditions(settings):
-    positions = [float(x) for x in settings["positions_deg"].split(",")]
-    rows = []
-    for position in positions:
-        for repeat in range(settings["staircases_per_condition"]):
-            rows.append(
-                {
-                    "id": len(rows) + 1,
-                    "value": position,
-                    "x_deg": position,
-                    "repeat": repeat + 1,
-                }
-            )
-    return rows
+# 3. TRIAL EVENTS — REPEATED
+# One fresh flat event list per selected condition; effective strengths are prepared below.
 
 
-def choose_condition(run, conditions, state):
-    algorithm, rng = state["adaptive"], state["rng"]
-    identity = algorithm.select(rng.choice)
-    condition = dict(conditions[identity - 1])
-    condition.update(
-        target=rng.randrange(2),
-        contrast=state["contrasts"][identity],
-        previous_reversals=algorithm.states[identity].reversal_count,
-    )
-    return condition
-
-
-# 3. PREPARE STIMULI
+def trial_events(settings, condition):
+    """Fixation -> one probe display -> above/below answer; keep the existing cue."""
+    cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
+    return [
+        Show('fixation', slot='fixation', duration='fixation_ms'),
+        Show('probe', slot='first', duration='stimulus_ms', beep=cue),
+        CollectResponse(actions=('above', 'below'), slot='fixation', beep=cue),
+    ]
 
 
 def prepare_stimuli(run, condition, state):
@@ -215,21 +197,66 @@ def prepare_stimuli(run, condition, state):
     return {"fixation": fixation, "first": first}
 
 
-# 4. ONE TRIAL
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
 
 
-def make_trial(settings, condition):
-    cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
-    return TrialTimeline(
-        (
-            Show("fixation", slot="fixation", duration="fixation_ms"),
-            Show("probe", slot="first", duration="stimulus_ms", beep=cue),
-            CollectResponse(actions=("above", "below"), slot="fixation", beep=cue),
-        )
+SCIENTIFIC_SPEC = {
+    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
+    "version": "line_position_baseline-5",
+    "response": "Is the line above or below fixation?",
+    "quantity": "Digital line increment above background; optical contrast requires measured calibration.",
+    "conditions": "TUI-selected horizontal probe positions; independently interleaved repeat staircases and equiprobable above/below targets.",
+    "adaptive": "TUI n-down/n-up and log10 steps; reversal direction starts at the actual initial presentation, holds ignored.",
+    "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
+    "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
+    "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
+    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting.",
+}
+
+
+ADAPTIVE_RULE = AdaptiveSelection(
+    "consecutive_up_down",
+    controls=(
+        "n_down",
+        "n_up",
+        "logUNIT_UP",
+        "logUNIT_DW",
+        "initial_one_down_limit",
+        "staircases_per_condition",
+        "reversal_termination",
+        "max_trials",
+    ),
+    step_calculator="garcia_perez_1998",
+    step_parameterization="log10_display_contrast",
+)
+
+
+def make_conditions(settings):
+    positions = [float(x) for x in settings["positions_deg"].split(",")]
+    rows = []
+    for position in positions:
+        for repeat in range(settings["staircases_per_condition"]):
+            rows.append(
+                {
+                    "id": len(rows) + 1,
+                    "value": position,
+                    "x_deg": position,
+                    "repeat": repeat + 1,
+                }
+            )
+    return rows
+
+
+def choose_condition(run, conditions, state):
+    algorithm, rng = state["adaptive"], state["rng"]
+    identity = algorithm.select(rng.choice)
+    condition = dict(conditions[identity - 1])
+    condition.update(
+        target=rng.randrange(2),
+        contrast=state["contrasts"][identity],
+        previous_reversals=algorithm.states[identity].reversal_count,
     )
-
-
-# 5. RESPONSES AND ADAPTATION
+    return condition
 
 
 def interpret_response(condition, response):
@@ -267,26 +294,6 @@ def update_experiment(run, condition, state, response, trial):
     if staircase.states[identity].reversal_count > condition["previous_reversals"]:
         state["reversals"][identity].append(condition["contrast"])
     return state
-
-
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements={
-            "probe_x_deg": condition["x_deg"],
-            "staircase_repeat": condition["repeat"],
-        },
-        instructions=f"Above: {run.responses.keys[0]}   Below: {run.responses.keys[1]}   Escape stops",
-    )
-
-
-# 6. RUN AND FINISH
 
 
 def initialise_experiment(run, conditions):
@@ -345,6 +352,72 @@ def initialise_experiment(run, conditions):
         "reversals": {c["id"]: [] for c in conditions},
         "description": description,
     }
+
+
+def validate_settings(values):
+    import math
+
+    try:
+        positions = [float(x) for x in values["positions_deg"].split(",")]
+        if (
+            not positions
+            or len(set(positions)) != len(positions)
+            or any(not math.isfinite(x) or abs(x) > 5 for x in positions)
+        ):
+            yield "Choose distinct finite positions within +/-5 degrees."
+    except ValueError:
+        yield "Enter finite comma-separated numeric condition values."
+    if values["starting_probe_intensity"] < values["background_intensity"]:
+        yield "Starting probe intensity must be at or above background for this bright-probe procedure."
+    difference = values["starting_probe_intensity"] - values["background_intensity"]
+    if 0 < difference < sys.float_info.min:
+        yield "Starting probe intensity is closer to background than the positive log-staircase numeric floor; use exact background or a representable larger difference."
+    if values["background_intensity"] == 1:
+        yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
+    if values["threshold_reversals"] > values["reversal_termination"]:
+        yield "Threshold reversal count exceeds reversal termination."
+    if (values["starting_probe_intensity"] - values["background_intensity"]) > 1 - values["background_intensity"]:
+        yield "Starting probe intensity plus any additive ring/flanker layer exceeds 1. Review the scene headroom; no intensity was clipped."
+
+    # Fixed levels use the same scientific conditions but no staircase IDs.
+    yield from validate_probe_fixed_settings(values, make_conditions)
+
+
+# 5. STOPPING AND RESULTS
+# Require completed reversals for the primary adaptive result; a safety ceiling
+# is incomplete. Fixed levels report responses/accuracy without a threshold fit.
+
+
+TRIAL_COLUMN_MEANINGS = {
+    "presented_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Presented digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "next_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Post-response digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
+}
+
+
+def trial_record(run, condition, state):
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=maximum_contrast(settings, condition),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements={
+            "probe_x_deg": condition["x_deg"],
+            "staircase_repeat": condition["repeat"],
+        },
+        instructions=f"Above: {run.responses.keys[0]}   Below: {run.responses.keys[1]}   Escape stops",
+    )
 
 
 def is_finished(run, conditions, state):
@@ -410,42 +483,14 @@ def procedure(run):
             "constant_stimuli": lambda: constant_contrast_method(run),
         },
         prepare_stimuli=prepare_stimuli,
-        make_trial=make_trial,
+        trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
 
-# 7. FRAMEWORK CONNECTION
-
-
-def validate_settings(values):
-    import math
-
-    try:
-        positions = [float(x) for x in values["positions_deg"].split(",")]
-        if (
-            not positions
-            or len(set(positions)) != len(positions)
-            or any(not math.isfinite(x) or abs(x) > 5 for x in positions)
-        ):
-            yield "Choose distinct finite positions within +/-5 degrees."
-    except ValueError:
-        yield "Enter finite comma-separated numeric condition values."
-    if values["starting_probe_intensity"] < values["background_intensity"]:
-        yield "Starting probe intensity must be at or above background for this bright-probe procedure."
-    difference = values["starting_probe_intensity"] - values["background_intensity"]
-    if 0 < difference < sys.float_info.min:
-        yield "Starting probe intensity is closer to background than the positive log-staircase numeric floor; use exact background or a representable larger difference."
-    if values["background_intensity"] == 1:
-        yield "Background intensity of 1 leaves no headroom for this bright-probe log staircase."
-    if values["threshold_reversals"] > values["reversal_termination"]:
-        yield "Threshold reversal count exceeds reversal termination."
-    if (values["starting_probe_intensity"] - values["background_intensity"]) > 1 - values["background_intensity"]:
-        yield "Starting probe intensity plus any additive ring/flanker layer exceeds 1. Review the scene headroom; no intensity was clipped."
-
-    # Fixed levels use the same scientific conditions but no staircase IDs.
-    yield from validate_probe_fixed_settings(values, make_conditions)
-
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Central compatibility for callers expecting make_trial(...).resolve(...).
+make_trial = legacy_trial_factory(trial_events)
 
 
 def definition(identity="line_position_baseline"):
@@ -453,25 +498,13 @@ def definition(identity="line_position_baseline"):
         id=identity,
         name="Line Position Baseline (software validation)",
         procedure=procedure,
+        session_start=SESSION_START,
+        stimulus_field_bindings={"ready_fixation": {"background": "background_intensity"}},
         description="Line Position Baseline",
         fields=FIELDS,
         scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
-        adaptive=AdaptiveSelection(
-            "consecutive_up_down",
-            controls=(
-                "n_down",
-                "n_up",
-                "logUNIT_UP",
-                "logUNIT_DW",
-                "initial_one_down_limit",
-                "staircases_per_condition",
-                "reversal_termination",
-                "max_trials",
-            ),
-            step_calculator="garcia_perez_1998",
-            step_parameterization="log10_display_contrast",
-        ),
+        adaptive=ADAPTIVE_RULE,
         method_planner=lambda settings, seed: make_probe_fixed_schedule(settings, seed, make_conditions),
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
@@ -481,19 +514,7 @@ def definition(identity="line_position_baseline"):
         calibration_requirements=("geometry", "luminance", "timing"),
         monitor_capabilities=("display_binding", "resolution"),
         acquisition_block_reason="Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition.",
-        trial_column_overrides={
-            "presented_display_contrast": {
-                "units_or_encoding": "digital_probe_increment",
-                "meaning": "Presented digital line increment above background.",
-                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-            },
-            "next_display_contrast": {
-                "units_or_encoding": "digital_probe_increment",
-                "meaning": "Post-response digital line increment above background.",
-                "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-            },
-            "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
-        },
+        trial_column_overrides=TRIAL_COLUMN_MEANINGS,
         source_paths=("src/psychophysics_lab/experiments/line_position_baseline.py",),
     )
 

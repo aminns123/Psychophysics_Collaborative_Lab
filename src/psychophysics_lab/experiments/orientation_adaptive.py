@@ -29,13 +29,15 @@ from psychophysics_lab.researcher import (
     StaircaseConfig,
     Step,
     TrialTimeline,
+    WaitForKey,
+    legacy_trial_factory,
     Show,
     CollectResponse,
     UpdateAdaptive,
     RecordState,
 )
 
-# 1. SETTINGS AND STIMULI
+# 1. PARAMETERS
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
     ConfigField("trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
@@ -113,28 +115,38 @@ STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
 
 PARADIGM = "two_alternative_forced_choice"
 
-
-SCIENTIFIC_SPEC = {'version': 'orientation_adaptive-2', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'TUI consecutive up/down factors; demonstration only.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
-
-
-# 2. CONDITIONS AND TRIAL ORDER
-def make_conditions(settings):
-    targets = [i % 2 for i in range(settings["trial_count"])]
-    random.Random(settings["random_seed"]).shuffle(targets)
-    return [{"target": target} for target in targets]
+# A pure, session-only fixation; trial slots and their defaults stay unchanged.
+STIMULUS_SLOTS["ready_fixation"] = "fixation"
+STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
 
-def choose_condition(run, conditions, state):
-    condition = dict(conditions[run.accepted_trials])
-    base = run.stimulus_parameters()
-    condition["orientation_deg"] = (-1 if condition["target"] == 0 else 1) * abs(
-        base["orientation_deg"]
-    )
-    condition["value"] = condition["orientation_deg"]
-    return condition
+# 2. SESSION START — ONCE
+# Edit the Python list directly. SESSION_START = [] disables the opening.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
+               instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
 
 
-# 3. PREPARE STIMULI
+# 3. TRIAL EVENTS — REPEATED
+# One fresh flat event list per selected condition; effective strengths are prepared below.
+
+
+def trial_events(settings, condition):
+    """Fixation -> tilted Gabor -> blank interval -> negative/positive answer."""
+    return [
+        Show('fixation', duration='fixation_ms', instructions='+'),
+        Show('target', slot='target', duration='stimulus_ms'),
+        Show('interval', duration='interval_ms'),
+        CollectResponse(
+            actions=('negative', 'positive'),
+            timeout='response_timeout_ms',
+            instructions='Negative tilt: {negative}    Positive tilt: {positive}    Esc: abort',
+        ),
+    ]
+
+
 def prepare_stimuli(run, condition, state):
     # Fixed strengths arrive as a selected trial value. Adaptive continues to
     # read the historically tested state['contrast'] and original orientation.
@@ -152,23 +164,28 @@ def prepare_stimuli(run, condition, state):
     }
 
 
-# 4. ONE TRIAL
-def make_trial(settings, condition):
-    return TrialTimeline(
-        (
-            Show("fixation", duration="fixation_ms", instructions="+"),
-            Show("target", slot="target", duration="stimulus_ms"),
-            Show("interval", duration="interval_ms"),
-            CollectResponse(
-                actions=("negative", "positive"),
-                timeout="response_timeout_ms",
-                instructions="Negative tilt: {negative}    Positive tilt: {positive}    Esc: abort",
-            ),
-        )
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+
+
+SCIENTIFIC_SPEC = {'version': 'orientation_adaptive-2', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'TUI consecutive up/down factors; demonstration only.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
+
+
+def make_conditions(settings):
+    targets = [i % 2 for i in range(settings["trial_count"])]
+    random.Random(settings["random_seed"]).shuffle(targets)
+    return [{"target": target} for target in targets]
+
+
+def choose_condition(run, conditions, state):
+    condition = dict(conditions[run.accepted_trials])
+    base = run.stimulus_parameters()
+    condition["orientation_deg"] = (-1 if condition["target"] == 0 else 1) * abs(
+        base["orientation_deg"]
     )
+    condition["value"] = condition["orientation_deg"]
+    return condition
 
 
-# 5. RESPONSES AND ADAPTATION
 def interpret_response(condition, response):
     """Both categories score the chosen spatial/property alternative or interval."""
     correct = response["alternative"] == condition["target"]
@@ -177,10 +194,10 @@ def interpret_response(condition, response):
     return dict(response) | {"correct": correct}
 
 
-# Consecutive correct/incorrect counts and multipliers come from the TUI. A step
-# resets its streak; each response resets the opposite streak. No initial phase.
-# This teaching experiment saturates digital contrast at [0, 1] and stops after
-# trial_count responses; count+1 reversals is intentionally unreachable in that run.
+# Shared counters decide the step; this rule determines the next digital contrast.
+# Streak counts, multipliers, boundaries and finite response goal are unchanged.
+
+
 def next_contrast(state, response, step):
     factor = (
         state["down_factor"] if step == Step.DOWN else state["up_factor"] if step == Step.UP else 1
@@ -205,22 +222,10 @@ def update_experiment(run, condition, state, response, trial):
     return state
 
 
-def trial_record(run, condition, state):
-    return {
-        "state": {
-            "contrast": state["contrast"],
-            "down_factor": run.values["down_factor"],
-            "up_factor": run.values["up_factor"],
-        },
-        "instructions": f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort",
-    }
-
-
-# 6. RUN AND FINISH
 def initialise_experiment(run, conditions):
     count = run.values["trial_count"]
     targets = [c["target"] for c in conditions]
-    timeline = make_trial(run.values, {"target": 0}).resolve(run.values)
+    timeline = TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values)
     run.initialise(
         expected_trials=count,
         resolution={
@@ -247,18 +252,45 @@ def initialise_experiment(run, conditions):
     return {"contrast": contrast, "adaptive": adaptive}
 
 
+def make_fixed_schedule(settings, seed):
+    return fixed_teaching_schedule(
+        settings, seed, maximum=1.0, condition="tilt_sign"
+    )
+
+
+def validate_method_settings(values):
+    if values.get("contrast_method", "adaptive") == "adaptive" and values["trial_count"] > values["max_trials"]:
+        yield "Accepted teaching trials must not exceed max_trials (the response safety ceiling)."
+    if values.get("contrast_method", "adaptive") == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+
+
+# 5. STOPPING AND RESULTS
+# Stop at trial_count accepted responses, not reversal convergence. The fixed
+# method stops when its condition/level/repetition schedule is exhausted.
+# Both are teaching demonstrations without a scientific threshold estimator.
+
+
+def trial_record(run, condition, state):
+    return {
+        "state": {
+            "contrast": state["contrast"],
+            "down_factor": run.values["down_factor"],
+            "up_factor": run.values["up_factor"],
+        },
+        "instructions": f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort",
+    }
+
+
 def is_finished(run, conditions, state):
     return run.accepted_trials >= len(conditions)
 
 
 def finish_experiment(run, conditions, state):
     run.complete()
-
-
-def make_fixed_schedule(settings, seed):
-    return fixed_teaching_schedule(
-        settings, seed, maximum=1.0, condition="tilt_sign"
-    )
 
 
 def fixed_method(run):
@@ -279,16 +311,6 @@ def adaptive_method(run):
     )
 
 
-def validate_method_settings(values):
-    if values.get("contrast_method", "adaptive") == "adaptive" and values["trial_count"] > values["max_trials"]:
-        yield "Accepted teaching trials must not exceed max_trials (the response safety ceiling)."
-    if values.get("contrast_method", "adaptive") == "constant_stimuli":
-        try:
-            make_fixed_schedule(values, 0)
-        except ValueError as exc:
-            yield str(exc)
-
-
 def procedure(run):
     return run_contrast_experiment(
         run,
@@ -297,12 +319,16 @@ def procedure(run):
             "constant_stimuli": lambda: fixed_method(run),
         },
         prepare_stimuli=prepare_stimuli,
-        make_trial=make_trial,
+        trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
 
-# 7. FRAMEWORK CONNECTION
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Central compatibility for callers expecting make_trial(...).resolve(...).
+make_trial = legacy_trial_factory(trial_events)
+
+
 def definition(
     identity="orientation_adaptive",
     stimulus=STIMULUS_DEFAULTS["target"],
@@ -317,13 +343,14 @@ def definition(
         name=identity.replace("_", " ").title(),
         description="Self-paced tilt discrimination with a registered visual stimulus.",
         procedure=procedure,
+        session_start=SESSION_START,
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         method_planner=make_fixed_schedule, validator=validate_method_settings,
         responses=RESPONSES,
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),
         stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults={"target": stimulus},
+        stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
         supports_simulation=True,
         adaptive=(
             AdaptiveSelection(

@@ -102,11 +102,12 @@ def test_session_only_fixation_has_no_probe_and_tracks_selected_background(ident
         assert {s:spec.stimulus_slots[s] for s in ('fixation','first','second')} == dict.fromkeys(('fixation','first','second'),'detection_scene')
 
 
-def test_other_eight_experiments_keep_their_existing_opening():
+def test_all_official_openings_use_the_approved_stage_c_start():
     for spec in registry.list_experiments():
-        if spec.id not in MIGRATED and not spec.origin_namespace:
-            assert not spec.session_start.phases, spec.id
-            assert 'ready_fixation' not in spec.stimulus_slots, spec.id
+        if not spec.origin_namespace:
+            assert [(p.kind,p.duration_ms) for p in spec.session_start.phases] == [('key_wait',0),('show',1000)]
+            assert spec.session_start.phases[0].key == 'SPACE'
+            assert 'ready_fixation' in spec.stimulus_slots, spec.id
 
 
 def software_window(monkeypatch, *, escape=False):

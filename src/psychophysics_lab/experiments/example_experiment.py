@@ -17,13 +17,15 @@ from psychophysics_lab.researcher import (
     AdaptiveSelection,
     experiment,
     TrialTimeline,
+    WaitForKey,
+    legacy_trial_factory,
     Show,
     CollectResponse,
     RecordState,
     UpdateState,
 )
 
-# 1. SETTINGS AND STIMULI
+# 1. PARAMETERS
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
     ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
@@ -61,11 +63,59 @@ STIMULUS_DEFAULTS = {"target": "example_stimulus"}
 
 PARADIGM = "two_alternative_forced_choice"
 
+# A pure, session-only fixation; trial slots and their defaults stay unchanged.
+STIMULUS_SLOTS["ready_fixation"] = "fixation"
+STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
+
+
+# 2. SESSION START — ONCE
+# Edit the Python list directly. SESSION_START = [] disables the opening.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
+               instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
+
+
+# 3. TRIAL EVENTS — REPEATED
+# One fresh flat event list per selected condition; effective strengths are prepared below.
+
+
+def trial_events(settings, condition):
+    """Fixation -> line -> blank -> left/right answer; markers only observe state."""
+    return [
+        Show('fixation', duration='fixation_ms', instructions='+'),
+        RecordState('before_line'),
+        Show('line', slot='target', duration='stimulus_ms'),
+        Show('blank', duration='interval_ms'),
+        CollectResponse(actions=('left', 'right'), timeout='response_timeout_ms'),
+        RecordState('response_received'),
+    ]
+
+
+def prepare_stimuli(run, condition, state):
+    return {"target": run.stimulus_parameters(offset_deg=condition["offset_deg"])}
+
+
+def prepare_method_stimuli(run, condition, state):
+    if run.values.get("contrast_method", "original") == "original":
+        return prepare_stimuli(run, condition, state)
+    # The selected method owns increment above the stimulus's grey 0.5 command.
+    return {"target": run.stimulus_parameters(
+        offset_deg=condition["offset_deg"], intensity=0.5 + condition["contrast"]
+    )}
+
+
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+
 
 SCIENTIFIC_SPEC = {'version': 'example_experiment-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
 
 
-# 2. CONDITIONS AND TRIAL ORDER
+ADAPTIVE_RULE = AdaptiveSelection('consecutive_up_down',
+    controls=('n_down','n_up','down_factor','up_factor','max_trials'))
+
+
 def make_conditions(settings):
     return [{"target": i % 2} for i in range(settings["trial_count"])]
 
@@ -78,26 +128,6 @@ def choose_condition(run, conditions, state):
     return condition
 
 
-# 3. PREPARE STIMULI
-def prepare_stimuli(run, condition, state):
-    return {"target": run.stimulus_parameters(offset_deg=condition["offset_deg"])}
-
-
-# 4. ONE TRIAL
-def make_trial(settings, condition):
-    return TrialTimeline(
-        (
-            Show("fixation", duration="fixation_ms", instructions="+"),
-            RecordState("before_line"),
-            Show("line", slot="target", duration="stimulus_ms"),
-            Show("blank", duration="interval_ms"),
-            CollectResponse(actions=("left", "right"), timeout="response_timeout_ms"),
-            RecordState("response_received"),
-        )
-    )
-
-
-# 5. RESPONSES AND ADAPTATION
 def interpret_response(condition, response):
     """Both categories score the chosen spatial/property alternative or interval."""
     correct = response["alternative"] == condition["target"]
@@ -115,35 +145,17 @@ def update_experiment(run, condition, state, response, trial):
     return dict(trial.state)
 
 
-def trial_record(run, condition, state):
-    offset = condition["offset_deg"]
-    return {
-        "state": state | {"line_offset_deg": offset},
-        "measurements": {"line_offset_deg": offset},
-        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    }
-
-
-# 6. RUN AND FINISH
 def initialise_experiment(run, conditions):
     run.initialise(
         expected_trials=len(conditions),
         resolution={
             "task": "Report whether the line is left or right.",
             "condition_order": [c["target"] for c in conditions],
-            "trial_timeline": make_trial(run.values, {"target": 0}).resolve(run.values).to_dict(),
+            "trial_timeline": TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values).to_dict(),
             "measurement_units": {"line_offset_deg": "degrees", "correct_count": "responses"},
         },
     )
     return {"correct_count": 0}
-
-
-def is_finished(run, conditions, state):
-    return run.accepted_trials >= len(conditions)
-
-
-def finish_experiment(run, conditions, state):
-    run.complete()
 
 
 def make_fixed_schedule(settings, seed):
@@ -156,13 +168,40 @@ def prepare_selection(run, condition):
         condition["offset_deg"] = -distance if condition["target"] == 0 else distance
 
 
-def prepare_method_stimuli(run, condition, state):
-    if run.values.get("contrast_method", "original") == "original":
-        return prepare_stimuli(run, condition, state)
-    # The selected method owns increment above the stimulus's grey 0.5 command.
-    return {"target": run.stimulus_parameters(
-        offset_deg=condition["offset_deg"], intensity=0.5 + condition["contrast"]
-    )}
+def validate_method_settings(values):
+    method = values.get("contrast_method", "original")
+    if method == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except ValueError as exc:
+            yield str(exc)
+    elif method == "adaptive":
+        if not 0 <= values["starting_strength"] <= 0.5:
+            yield "Starting line increment must lie between 0 and 0.5."
+        if values["trial_count"] > values["max_trials"]:
+            yield "Adaptive trial_count exceeds the max_trials safety ceiling."
+
+
+# 5. STOPPING AND RESULTS
+# Original and finite adaptive modes collect trial_count accepted responses.
+# Fixed levels collect the scheduled level repetitions; no threshold is claimed.
+
+
+def trial_record(run, condition, state):
+    offset = condition["offset_deg"]
+    return {
+        "state": state | {"line_offset_deg": offset},
+        "measurements": {"line_offset_deg": offset},
+        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
+    }
+
+
+def is_finished(run, conditions, state):
+    return run.accepted_trials >= len(conditions)
+
+
+def finish_experiment(run, conditions, state):
+    run.complete()
 
 
 def original_method(run):
@@ -188,20 +227,6 @@ def fixed_method(run):
     )
 
 
-def validate_method_settings(values):
-    method = values.get("contrast_method", "original")
-    if method == "constant_stimuli":
-        try:
-            make_fixed_schedule(values, 0)
-        except ValueError as exc:
-            yield str(exc)
-    elif method == "adaptive":
-        if not 0 <= values["starting_strength"] <= 0.5:
-            yield "Starting line increment must lie between 0 and 0.5."
-        if values["trial_count"] > values["max_trials"]:
-            yield "Adaptive trial_count exceeds the max_trials safety ceiling."
-
-
 def procedure(run):
     return run_contrast_experiment(
         run,
@@ -212,30 +237,34 @@ def procedure(run):
         },
         prepare_selection=prepare_selection,
         prepare_stimuli=prepare_method_stimuli,
-        make_trial=make_trial,
+        trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
 
-# 7. FRAMEWORK CONNECTION
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Central compatibility for callers expecting make_trial(...).resolve(...).
+make_trial = legacy_trial_factory(trial_events)
+
+
 def definition(identity="example_experiment", stimulus=STIMULUS_DEFAULTS["target"]):
     return experiment(
         id=identity,
         name=identity.replace("_", " ").title(),
         description="Beginner left/right line-position discrimination.",
         procedure=procedure,
+        session_start=SESSION_START,
         default_config=f"configs/experiments/{identity}.json",
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         method_planner=make_fixed_schedule, validator=validate_method_settings,
         method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
-        adaptive=AdaptiveSelection('consecutive_up_down',
-            controls=('n_down','n_up','down_factor','up_factor','max_trials')),
+        adaptive=ADAPTIVE_RULE,
 
         responses=RESPONSES,
         calibration_requirements=("geometry",),
         monitor_capabilities=("display_binding", "resolution"),
         stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults={"target": stimulus},
+        stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
         supports_simulation=True,
         source_paths=(f"src/psychophysics_lab/experiments/{identity}.py",),
     )

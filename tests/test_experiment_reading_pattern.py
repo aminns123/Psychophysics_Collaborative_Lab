@@ -35,15 +35,14 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
         # This variant deliberately imports the common trial engine rather
         # than duplicating it just to satisfy a source-layout convention.
         from psychophysics_lab.experiments import contrast_sensitivity as shared
-        for name in ("make_conditions", "make_trial", "interpret_response",
+        for name in ("make_conditions", "interpret_response",
                      "update_experiment", "finish_experiment"):
             assert getattr(module, name) is getattr(shared, name)
         assert module.prepare_stimuli is not shared.prepare_stimuli
         assert module.SPEC.id != shared.SPEC.id
         assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
-        return
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
-    migrated = identity in {"contrast_sensitivity", "ellipse_major_axis"}
+    migrated = hasattr(module, "trial_events")
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
     headings = [source.index(f"# {i}. {section}") for i, section in enumerate(sections, 1)]
@@ -52,12 +51,14 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
     positions = {n.name: n.lineno for n in tree.body if isinstance(n, ast.FunctionDef)}
     names = (("trial_events", "prepare_stimuli", "make_conditions", "procedure", "definition")
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
+    if identity == "contrast_sensitivity_windowed":
+        names = ("trial_events", "prepare_stimuli", "procedure", "definition")
     assert [positions[n] for n in names] == sorted(positions[n] for n in names)
     module = importlib.import_module("psychophysics_lab.experiments." + identity)
     from psychophysics_lab.experiments._internal.source_names import SOURCE_IDS
 
     assert module.SPEC.id == SOURCE_IDS.get(identity, identity)
-    assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == module.FIELDS
+    assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == tuple(f for f in module.FIELDS if f.key != "response_keys")
     assert dict(module.SPEC.stimulus_slots) == module.STIMULUS_SLOTS
     assert dict(module.SPEC.stimulus_defaults) == module.STIMULUS_DEFAULTS
     assert module.SPEC.response_paradigm == module.RESPONSES
@@ -202,7 +203,8 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
 
     def checked_trial(settings, condition):
         from psychophysics_lab.core.timeline import as_trial_timeline
-        result = as_trial_timeline(make_trial(settings, condition))
+        authored = make_trial(settings, condition)
+        result = as_trial_timeline(authored)
         assert not any(isinstance(p, (UpdateState, UpdateAdaptive)) for p in result.phases)
         responses = [p for p in result.phases if p.kind == "response"]
         assert len(responses) == 1 and responses[0].actions == module.SPEC.response_paradigm.alternatives
@@ -213,7 +215,7 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
                 for p in result.phases
                 if p.name in {"interval_one", "inter_interval", "interval_two"}
             ] == ["interval_one", "inter_interval", "interval_two"]
-        return result
+        return authored
 
     def checked_interpret(condition, response):
         calls.append("interpret")

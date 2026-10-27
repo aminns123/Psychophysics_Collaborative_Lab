@@ -1,27 +1,21 @@
-"""CSF — CIRCULAR WINDOWED SINE GRATING
+"""Circular-windowed CSF: the same selection rules with a distinct grating envelope.
 
-A second scientific CSF protocol, sharing the established CSF experiment's
-conditions, staircase/constant-stimuli policies, response interpretation,
-timing, threshold calculation and canonical data schema.
-
-WHAT CHANGES SCIENTIFICALLY: Only the selected grating envelope. A circular
-aperture of exact researcher-selected angular diameter carries a full-strength
-sine wave across its central disk, fading only in an optional outer annulus.
-The historical Gaussian CSF remains available as contrast_sensitivity.
-
-Read this short file top to bottom: settings -> prepare stimulus -> shared
-scientific procedure -> registered experiment. The common CSF experiment
-contains the complete adaptive mathematics and original response timeline.
+Read parameters, opening and trial events here. The named Gaussian-CSF scientific
+functions are reused explicitly below; no second staircase/recorder is copied.
+Circular diameter, edge/fade, geometry, intensity units and saved identity remain
+distinct. Software implementation does not establish optical equivalence.
 """
 from dataclasses import replace
-
 from psychophysics_lab.experiments import contrast_sensitivity as csf
 from psychophysics_lab.methods.contrast import run_contrast_experiment
-from psychophysics_lab.researcher import ConfigField
+from psychophysics_lab.researcher import (
+    ConfigField, WaitForKey, Show, Stimulus, CollectResponse, legacy_trial_factory,
+)
 
-# 1. SETTINGS — one envelope-specific substitution, all remaining CSF settings
-# (frequencies, target offset, timings, contrast methods and response mappings)
-# are inherited directly from the public reference CSF.
+# 1. PARAMETERS
+# Reuse the exact CSF ConfigFields for frequency, timing, side offset, method,
+# response keys, background and adaptive steps. Replace only Gaussian-envelope
+# fields with the explicit circular controls below; no defaults are redefined.
 ENVELOPE_FIELDS = (
     ConfigField(
         "aperture_diameter_deg", "Circular grating aperture diameter",
@@ -48,38 +42,38 @@ ENVELOPE_FIELDS = (
         section="Stimulus conditions",
     ),
 )
+
 _FIELDS_REMOVED = frozenset(("grating_sigma_deg", "grating_cutoff_sigmas"))
-# Start from the registered spec, not just csf.FIELDS: the public
-# experiment() declaration adds a researcher-editable response_keys field.
+
 FIELDS = tuple(
     field for field in csf.SPEC.fields if field.key not in _FIELDS_REMOVED
 ) + ENVELOPE_FIELDS
 
-STIMULUS_SLOTS = {k: v for k, v in csf.STIMULUS_SLOTS.items() if k != "ready_fixation"} | {
-    "grating": "circular_windowed_sinusoidal_grating",
-}
-STIMULUS_DEFAULTS = {k: v for k, v in csf.STIMULUS_DEFAULTS.items() if k != "ready_fixation"} | {
-    "grating": "circular_windowed_sinusoidal_grating",
-}
-
-# 2. SCIENTIFIC CONDITIONS, TIMING AND RESPONSE RULES — deliberately shared.
-# These are aliases rather than a copied staircase engine or second timeline.
-make_conditions = csf.make_conditions
-make_fixed_schedule = csf.make_fixed_schedule
-fixed_contrast_levels = csf.fixed_contrast_levels
-choose_condition = csf.choose_condition
-make_trial = csf.make_trial
-interpret_response = csf.interpret_response
-trial_record = csf.trial_record
-fixed_trial_record = csf.fixed_trial_record
-update_experiment = csf.update_experiment
-is_finished = csf.is_finished
-finish_experiment = csf.finish_experiment
-primary_rule = csf.primary_rule
-validate_monitor = csf.validate_monitor
+STIMULUS_SLOTS = dict(csf.STIMULUS_SLOTS) | {"grating": "circular_windowed_sinusoidal_grating"}
+STIMULUS_DEFAULTS = dict(csf.STIMULUS_DEFAULTS) | {"grating": "circular_windowed_sinusoidal_grating"}
+RESPONSES = csf.RESPONSES
+PARADIGM = csf.PARADIGM
 
 
-# 3. PREPARE THE *DIFFERENT* STIMULUS — only scientific change in presentation.
+# 2. SESSION START — ONCE
+# SESSION_START = [] disables readiness without changing the scientific trial.
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation", instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
+
+
+# 3. TRIAL EVENTS — REPEATED
+def trial_events(settings, condition):
+    offset = settings["grating_offset_deg"]
+    x = -offset if condition["target"] == 0 else offset
+    return [
+        Show("fixation", slot="fixation", duration="fixation_ms"),
+        Show("grating", stimuli=(Stimulus("grating", x_deg=x),), duration="grating_ms"),
+        CollectResponse(actions=("left", "right"), slot="fixation"),
+    ]
+
+
 def prepare_stimuli(run, condition, state):
     settings = run.values
     background = settings["background_intensity"]
@@ -118,11 +112,61 @@ def grating_resolution(settings):
     }
 
 
+# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+# These public scientific functions own frequency/side selection, fixed schedules
+# and post-response log steps. The circular envelope does not change those rules.
+make_conditions = csf.make_conditions
+choose_condition = csf.choose_condition
+make_fixed_schedule = csf.make_fixed_schedule
+fixed_contrast_levels = csf.fixed_contrast_levels
+interpret_response = csf.interpret_response
+update_experiment = csf.update_experiment
+validate_monitor = csf.validate_monitor
+
+
+SCIENTIFIC_SPEC = dict(csf.SCIENTIFIC_SPEC) | {
+    "version": "csf-spatial-windowed-1",
+    "stimulus": "Circular windowed sinusoidal grating; flat central disk, optional outer-edge raised-cosine fade.",
+    "contrast_quantity": "Same digital peak-to-peak modulation as reference CSF, not optical Michelson contrast.",
+    "historical_equivalence": "Distinct from thesis Gaussian-windowed CSF. Do not pool thresholds without examining envelope and aperture effects.",
+}
+
+
 def initialise_experiment(run, conditions):
     # The inherited CSF staircase machinery uses identical parameters/rules.
     return csf.initialise_experiment(
         run, conditions,
         grating_resolution=grating_resolution(run.values),
+    )
+
+
+def validate_settings(values):
+    yield from csf.validate_settings(values)
+    radius = values["aperture_diameter_deg"] / 2.
+    if values["edge_mode"] == "soft_edge" and values["fade_width_deg"] > radius:
+        yield ("Circular outer-edge fade cannot exceed aperture radius; "
+               "decrease fade width or increase aperture diameter.")
+
+
+# 5. STOPPING AND RESULTS
+# Reversal completion, safety ceiling, canonical units and estimator are shared;
+# grating_resolution above records the circular support instead of Gaussian sigma.
+is_finished = csf.is_finished
+primary_rule = csf.primary_rule
+finish_experiment = csf.finish_experiment
+trial_record = csf.trial_record
+fixed_trial_record = csf.fixed_trial_record
+
+
+TRIAL_COLUMN_OVERRIDES = {
+    key: dict(value) for key, value in csf.SPEC.trial_column_overrides.items()
+}
+for column in ("presented_display_contrast", "next_display_contrast"):
+    details = TRIAL_COLUMN_OVERRIDES[column]
+    details["notes"] = (
+        "Strength before circular edge weighting; "
+        "background + (strength/2) * sin(2*pi*f*x) * circular_window. "
+        "Not calibrated optical Michelson contrast or historical C_disp."
     )
 
 
@@ -138,8 +182,6 @@ def fixed_contrast_method(run):
     )
 
 
-# 4. ONE COMMON TRIAL LOOP — the windowed experiment does NOT implement its
-# own staircase updates, recording pipeline or data directory conventions.
 def procedure(run):
     return run_contrast_experiment(
         run,
@@ -148,71 +190,49 @@ def procedure(run):
             "constant_stimuli": lambda: fixed_contrast_method(run),
         },
         prepare_stimuli=prepare_stimuli,
-        make_trial=make_trial,
+        trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
 
-# 5. VALIDATION — experiment-specific fade geometry, otherwise CSF invariant.
-def validate_settings(values):
-    yield from csf.validate_settings(values)
-    radius = values["aperture_diameter_deg"] / 2.
-    if values["edge_mode"] == "soft_edge" and values["fade_width_deg"] > radius:
-        yield ("Circular outer-edge fade cannot exceed aperture radius; "
-               "decrease fade width or increase aperture diameter.")
+# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+make_trial = legacy_trial_factory(trial_events)
 
 
-SCIENTIFIC_SPEC = dict(csf.SCIENTIFIC_SPEC) | {
-    "version": "csf-spatial-windowed-1",
-    "stimulus": "Circular windowed sinusoidal grating; flat central disk, optional outer-edge raised-cosine fade.",
-    "contrast_quantity": "Same digital peak-to-peak modulation as reference CSF, not optical Michelson contrast.",
-    "historical_equivalence": "Distinct from thesis Gaussian-windowed CSF. Do not pool thresholds without examining envelope and aperture effects.",
-}
-
-# The metadata and calibration requirements are preserved exactly, while a
-# unique experiment ID/data directory prevents confusing the two stimulus
-# conditions or accidentally overwriting legacy CSF runs.
-TRIAL_COLUMN_OVERRIDES = {
-    key: dict(value) for key, value in csf.SPEC.trial_column_overrides.items()
-}
-for column in ("presented_display_contrast", "next_display_contrast"):
-    details = TRIAL_COLUMN_OVERRIDES[column]
-    details["notes"] = (
-        "Strength before circular edge weighting; "
-        "background + (strength/2) * sin(2*pi*f*x) * circular_window. "
-        "Not calibrated optical Michelson contrast or historical C_disp."
+def definition(identity="contrast_sensitivity_windowed"):
+    return replace(
+        csf.SPEC,
+        session_start=SESSION_START,
+        stimulus_field_bindings={"ready_fixation": {"background": "background_intensity"}},
+        id=identity,
+        display_name="Contrast Sensitivity — Circular Windowed Grating",
+        description=(
+            "The same left/right CSF design and contrast methods as the Gaussian "
+            "reference, but a circular sine grating whose centre has a flat "
+            "amplitude envelope and whose outer edge can fade smoothly or stop abruptly."
+        ),
+        legacy_module=__name__,
+        legacy_experiment_type="contrast_sensitivity_windowed",
+        data_directory_name="contrast_sensitivity_windowed",
+        fields=FIELDS,
+        stimulus_parameter_controls={
+            "grating": {"size_deg": "aperture_diameter_deg", "edge_mode": "edge_mode",
+                        "fade_width_deg": "fade_width_deg", "background": "background_intensity"},
+            "fixation": {"background": "background_intensity"},
+        },
+        stimulus_slots=STIMULUS_SLOTS,
+        stimulus_defaults=STIMULUS_DEFAULTS,
+        procedure=procedure,
+        validator=validate_settings,
+        monitor_validator=validate_monitor,
+        method_planner=make_fixed_schedule,
+        trial_column_overrides=TRIAL_COLUMN_OVERRIDES,
+        scientific_spec=SCIENTIFIC_SPEC,
+        source_paths=(
+            "src/psychophysics_lab/experiments/contrast_sensitivity_windowed.py",
+            "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+        ),
     )
 
-SPEC = replace(
-    csf.SPEC,
-    session_start=(),  # Stage B migrates Gaussian CSF only; keep this variant's accepted opening.
-    stimulus_field_bindings={},
-    id="contrast_sensitivity_windowed",
-    display_name="Contrast Sensitivity — Circular Windowed Grating",
-    description=(
-        "The same left/right CSF design and contrast methods as the Gaussian "
-        "reference, but a circular sine grating whose centre has a flat "
-        "amplitude envelope and whose outer edge can fade smoothly or stop abruptly."
-    ),
-    legacy_module=__name__,
-    legacy_experiment_type="contrast_sensitivity_windowed",
-    data_directory_name="contrast_sensitivity_windowed",
-    fields=FIELDS,
-    stimulus_parameter_controls={
-        "grating": {"size_deg": "aperture_diameter_deg", "edge_mode": "edge_mode",
-                    "fade_width_deg": "fade_width_deg", "background": "background_intensity"},
-        "fixation": {"background": "background_intensity"},
-    },
-    stimulus_slots=STIMULUS_SLOTS,
-    stimulus_defaults=STIMULUS_DEFAULTS,
-    procedure=procedure,
-    validator=validate_settings,
-    monitor_validator=validate_monitor,
-    method_planner=make_fixed_schedule,
-    trial_column_overrides=TRIAL_COLUMN_OVERRIDES,
-    scientific_spec=SCIENTIFIC_SPEC,
-    source_paths=(
-        "src/psychophysics_lab/experiments/contrast_sensitivity_windowed.py",
-        "src/psychophysics_lab/experiments/contrast_sensitivity.py",
-    ),
-)
+
+SPEC = definition()
