@@ -23,10 +23,10 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
                acquisition_block_reason="", historical=False, scientific_spec=None,
                trial_column_overrides=None, migrate_values=None, data_directory_name="",
-               method_planner=None, method_reviewer=None):
+               method_planner=None, method_reviewer=None, stimulus_parameter_controls=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
-        fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping"),)
+        fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
     dictionary = {}
     if responses is not None:
         encoding = "; ".join(f"{i} = {meaning}" for i, meaning in enumerate(responses.alternatives))
@@ -46,7 +46,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config,
         acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {},
         trial_column_overrides=dictionary, method_planner=method_planner,
-        method_reviewer=method_reviewer)
+        method_reviewer=method_reviewer, stimulus_parameter_controls=stimulus_parameter_controls or {})
 
 
 class ParticipantAbort(Exception):

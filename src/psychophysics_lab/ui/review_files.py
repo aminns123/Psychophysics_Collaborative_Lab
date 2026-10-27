@@ -7,7 +7,7 @@ from uuid import uuid4
 from .parameter_files import working_path,ensure_json,load_experiment_json
 from ..config.stimulus_parameters import load_parameters
 from ..stimuli.registry import get_stimulus
-from .settings_review import parameter_sources
+from .settings_review import parameter_sources, parameter_controller
 
 
 def definition_line(path, *, key=None, owner=None, function=None):
@@ -129,7 +129,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             slot=group
             stimulus=get_stimulus(snapshots[slot]["document"]["stimulus_id"])
             field=next((field for field in stimulus.parameters if field.display_label==label),None)
-            binding=spec.stimulus_field_bindings.get(slot,{}).get(field.key) if field else None
+            binding=parameter_controller(spec,slot,field.key) if field else None
             if field is None and label=="Stimulus" and slot not in sources["stimuli"] and snapshots[slot]["file_identity"]=="library_defaults":
                 targets.append(python(key="STIMULUS_DEFAULTS",note="Default stimulus selection is declared by the experiment Python"))
             elif binding:

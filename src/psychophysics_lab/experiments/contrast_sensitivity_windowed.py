@@ -196,6 +196,11 @@ SPEC = replace(
     legacy_experiment_type="contrast_sensitivity_windowed",
     data_directory_name="contrast_sensitivity_windowed",
     fields=FIELDS,
+    stimulus_parameter_controls={
+        "grating": {"size_deg": "aperture_diameter_deg", "edge_mode": "edge_mode",
+                    "fade_width_deg": "fade_width_deg", "background": "background_intensity"},
+        "fixation": {"background": "background_intensity"},
+    },
     stimulus_slots=STIMULUS_SLOTS,
     stimulus_defaults=STIMULUS_DEFAULTS,
     procedure=procedure,

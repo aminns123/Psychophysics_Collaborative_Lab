@@ -53,6 +53,15 @@ def test_review_table_and_page_scrollbar_have_distinct_rails(tmp_path, monkeypat
             workspace = screen.query_one("#console-workspace")
             outer_edge = screen.query_one("#console-edge-right")
 
+            # Mounted widgets can still have their initial zero region before
+            # the first compositor layout on a busy Windows runner. Observe
+            # actual rendered bounds; do not replace the geometry assertions
+            # with a fixed sleep or accept a permanently collapsed table.
+            for _ in range(100):
+                if all(widget.region.width > 0 for widget in (table, workspace, outer_edge)):
+                    break
+                await pilot.pause(.02)
+
             # The table is entirely within the framed content region.
             # The frame is separate from a one-column outer scrollbar rail.
             assert table.region.width > 0

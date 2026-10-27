@@ -30,6 +30,18 @@ SECTIONS = (
 
 @pytest.mark.parametrize("identity", EXPERIMENTS)
 def test_every_researcher_file_has_the_same_actual_reading_order(identity):
+    module = importlib.import_module("psychophysics_lab.experiments." + identity)
+    if identity == "contrast_sensitivity_windowed":
+        # This variant deliberately imports the common trial engine rather
+        # than duplicating it just to satisfy a source-layout convention.
+        from psychophysics_lab.experiments import contrast_sensitivity as shared
+        for name in ("make_conditions", "make_trial", "interpret_response",
+                     "update_experiment", "finish_experiment"):
+            assert getattr(module, name) is getattr(shared, name)
+        assert module.prepare_stimuli is not shared.prepare_stimuli
+        assert module.SPEC.id != shared.SPEC.id
+        assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
+        return
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     headings = [source.index(f"# {i}. {section}") for i, section in enumerate(SECTIONS, 1)]
     assert headings == sorted(headings)
@@ -115,10 +127,14 @@ def test_scientific_interfaces_are_readable_without_identical_main_loops():
                 # of duplicating them inside the scientific experiment file.
                 assert callable(getattr(module, "adaptive_method", None)) or module.SPEC.adaptive is None
                 continue
-            assert tuple(inspect.signature(getattr(module, name)).parameters) == arguments, (
+            parameters = tuple(inspect.signature(getattr(module, name)).parameters.values())
+            assert tuple(p.name for p in parameters[:len(arguments)]) == arguments, (
                 identity,
                 name,
             )
+            assert all(p.kind is inspect.Parameter.KEYWORD_ONLY
+                       and p.default is not inspect.Parameter.empty
+                       for p in parameters[len(arguments):]), (identity, name)
         node = ast.parse(inspect.getsource(module.procedure)).body[0]
         procedures.append(ast.dump(node, include_attributes=False))
         assert not any(
@@ -144,8 +160,7 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         monkeypatch.setitem(registry._REGISTRY, module.SPEC.id, module.SPEC)
     values = (
         {"trial_count": 4}
-        if identity
-        not in {"base_flanker", "indirect_flanker", "ellipse_2d", "contrast_sensitivity"}
+        if "trial_count" in module.SPEC.field_defaults()
         else {}
     )
     if identity in {"base_flanker", "indirect_flanker", "ellipse_2d"}:
@@ -160,7 +175,7 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
             "condition_positions_deg": "[0.25, 0.5]",
             "decision_scene": "fixation_only_development",
         }
-    if identity == "contrast_sensitivity":
+    if identity in {"contrast_sensitivity", "contrast_sensitivity_windowed"}:
         values |= {"max_trials": 4, "frequencies_cpd": "2", "starting_contrast": 0.02}
     if identity in {"line_position_baseline","line_position_flanker","ellipse_major_axis","ellipse_centre"}:
         values = {"max_trials":4,"probe_vertical_offset_deg":.5} if identity.startswith("line_") else {"max_trials":4,"ring_increment":.1}
@@ -184,8 +199,8 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
         result = make_trial(settings, condition)
         assert not any(isinstance(p, (UpdateState, UpdateAdaptive)) for p in result.phases)
         responses = [p for p in result.phases if p.kind == "response"]
-        assert len(responses) == 1 and responses[0].actions == module.RESPONSES.alternatives
-        if module.PARADIGM == "two_interval_forced_choice":
+        assert len(responses) == 1 and responses[0].actions == module.SPEC.response_paradigm.alternatives
+        if module.SPEC.response_paradigm.alternatives == ("first", "second"):
             assert responses[0].actions == ("first", "second")
             assert [
                 p.name
@@ -211,6 +226,11 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
     monkeypatch.setattr(module, "interpret_response", checked_interpret)
     if update is not None:
         monkeypatch.setattr(module, "update_experiment", checked_update)
+        if identity == "contrast_sensitivity_windowed":
+            # The imported method factory resolves the callback in its owning
+            # module; instrument the function actually used by that method.
+            from psychophysics_lab.experiments import contrast_sensitivity as shared
+            monkeypatch.setattr(shared,"update_experiment",checked_update)
     artifacts, _ = simulate(
         repo_root=ROOT,
         data_root=tmp_path / "data",

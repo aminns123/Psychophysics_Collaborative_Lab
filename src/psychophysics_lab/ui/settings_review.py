@@ -146,6 +146,12 @@ def parameter_sources(description, slot):
     return overridden - read_as_input
 
 
+def parameter_controller(spec, slot, key):
+    """An explicit setting link, separate from binding/acquisition semantics."""
+    return (spec.stimulus_parameter_controls.get(slot, {}).get(key)
+            or spec.stimulus_field_bindings.get(slot, {}).get(key))
+
+
 def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     """One visible table of the values that feed the selected procedure."""
     saved = spec.settings_snapshot()
@@ -199,7 +205,13 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             )
             source = (f"{explanation} | Stimulus slot: {slot}, "
                       f"renderer: {identity}, source: {selected['file_identity']}")
-            if field.key in description["overrides"].get(slot, {}):
+            controller = parameter_controller(spec, slot, field.key)
+            if controller:
+                control = next(f for f in spec.fields if f.key == controller)
+                source = (f"Derived / experiment-controlled by {controller} ({control.display_label}). "
+                          f"Change Configure → {control.section} → {control.label}; "
+                          "the stimulus Python default or preset is overridden. " + source)
+            elif field.key in description["overrides"].get(slot, {}):
                 usage = ("Trial-controlled; value shown for one representative trial"
                          if field.key in parameter_sources(description, slot)
                          else "Selected base parameter read by the experiment")

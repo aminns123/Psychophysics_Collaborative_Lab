@@ -38,13 +38,15 @@ from psychophysics_lab.researcher import (
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField("trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500),
-    ConfigField("random_seed", "Trial order seed", "int", 123, minimum=0),
+    ConfigField("trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
+    ConfigField("random_seed", "Trial order seed", "int", 123, minimum=0, help_text='Integer seed for the experiment-owned condition randomization. Repeating the same seed and complete settings reproduces that randomization; changing it changes trial order.'),
     ConfigField(
-        "n_down", "Consecutive correct answers before decreasing contrast", "int", 2, minimum=1
+        "n_down", "Consecutive correct answers before decreasing contrast", "int", 2, minimum=1,
+        help_text='Consecutive correct responses required before a downward strength step. Increasing this count delays downward steps; it does not change the selected step magnitude.',
     ),
     ConfigField(
-        "n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1
+        "n_up", "Consecutive incorrect answers before increasing contrast", "int", 1, minimum=1,
+        help_text='Consecutive incorrect responses required before an upward strength step. Increasing this count delays upward steps; it does not change the selected step magnitude.',
     ),
     ConfigField(
         "down_factor",
@@ -53,8 +55,9 @@ FIELDS = (
         0.8,
         minimum=0.000001,
         maximum=1,
+        help_text='Multiplicative strength factor for an eligible downward step; the selected method enforces its lower strength bound.',
     ),
-    ConfigField("up_factor", "Contrast multiplier for an up step", "float", 1.25, minimum=1),
+    ConfigField("up_factor", "Contrast multiplier for an up step", "float", 1.25, minimum=1, help_text='Multiplicative strength factor for an eligible upward step; the selected method enforces its upper strength bound.'),
     ConfigField(
         "fixation_ms",
         "Fixation duration",
@@ -63,6 +66,7 @@ FIELDS = (
         units="ms",
         minimum=1,
         section="Timing",
+        help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.',
     ),
     ConfigField(
         "stimulus_ms",
@@ -72,6 +76,7 @@ FIELDS = (
         units="ms",
         minimum=1,
         section="Timing",
+        help_text='Scheduled stimulus exposure duration in milliseconds; changing it changes the trial timeline, not measured display qualification.',
     ),
     ConfigField(
         "interval_ms",
@@ -81,6 +86,7 @@ FIELDS = (
         units="ms",
         minimum=1,
         section="Timing",
+        help_text='Scheduled gap between the declared stimulus intervals, in milliseconds; only timeline phases using this setting are affected.',
     ),
     ConfigField(
         "response_timeout_ms",
@@ -90,6 +96,7 @@ FIELDS = (
         units="ms",
         minimum=0,
         section="Timing",
+        help_text='Time allowed for a valid response in milliseconds; zero waits without a timeout. Timeout is an incomplete response, not an invented answer.',
     ),
 )
 

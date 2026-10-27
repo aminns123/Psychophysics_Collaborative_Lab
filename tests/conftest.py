@@ -25,7 +25,16 @@ def wait_for_textual_mounts(monkeypatch):
             widgets = list(screen.query("*"))
             if screen.is_mounted and all(widget.is_mounted for widget in widgets):
                 await original_pause(pilot, .05)
-                return
+                # A queued button action can replace the screen during this
+                # await. Re-check the *current* screen and its current children
+                # before returning to an assertion about its values/layout.
+                if not pilot.app.screen_stack:
+                    return
+                if pilot.app.screen is screen and screen.is_mounted and all(
+                    widget.is_mounted for widget in screen.query("*")
+                ):
+                    return
+                continue
             await original_pause(pilot, .02)
         raise AssertionError("Textual screen did not finish mounting before the test assertion.")
 

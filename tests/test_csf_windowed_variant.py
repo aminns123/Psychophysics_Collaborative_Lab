@@ -99,11 +99,12 @@ def test_geometry_and_invalid_fade_are_defined_in_degrees():
     assert result["taper_start_radius_deg"] == .4
     with pytest.raises(ValueError, match="cannot exceed"):
         spec.validate_parameters(params(size_deg=1., fade_width_deg=.6))
-    settings = windowed_csf.SPEC.normalise_values({
-        "aperture_diameter_deg": 1.,
-        "fade_width_deg": .6
-    })
+    settings = windowed_csf.SPEC.field_defaults() | {
+        "aperture_diameter_deg": 1., "fade_width_deg": .6
+    }
     assert list(windowed_csf.validate_settings(settings))
+    with pytest.raises(ValueError, match="cannot exceed"):
+        windowed_csf.SPEC.normalise_values(settings)
     with pytest.raises(ValueError, match="digital range"):
         spec.validate_parameters(params(background=.1, contrast=.5))
 

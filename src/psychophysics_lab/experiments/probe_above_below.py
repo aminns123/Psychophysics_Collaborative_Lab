@@ -35,8 +35,8 @@ from psychophysics_lab.researcher import (
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000),
-    ConfigField("random_seed", "Condition seed", "int", 123, minimum=0, units="integer seed"),
+    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
+    ConfigField("random_seed", "Condition seed", "int", 123, minimum=0, units="integer seed", help_text='Integer seed for the experiment-owned condition randomization. Repeating the same seed and complete settings reproduces that randomization; changing it changes trial order.'),
     ConfigField(
         "probe_vertical_offset_deg", "Line distance above/below fixation",
         "float", 2.0, minimum=0.000001,
@@ -52,6 +52,7 @@ FIELDS = (
         maximum=3600000,
         units="ms",
         section="Timing",
+        help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.',
     ),
     ConfigField(
         "stimulus_ms",
@@ -62,6 +63,7 @@ FIELDS = (
         maximum=3600000,
         units="ms",
         section="Timing",
+        help_text='Scheduled stimulus exposure duration in milliseconds; changing it changes the trial timeline, not measured display qualification.',
     ),
     ConfigField(
         "interval_ms",
@@ -72,6 +74,7 @@ FIELDS = (
         maximum=3600000,
         units="ms",
         section="Timing",
+        help_text='Scheduled gap between the declared stimulus intervals, in milliseconds; only timeline phases using this setting are affected.',
     ),
     ConfigField(
         "response_timeout_ms",
@@ -82,6 +85,7 @@ FIELDS = (
         maximum=3600000,
         units="ms",
         section="Timing",
+        help_text='Time allowed for a valid response in milliseconds; zero waits without a timeout. Timeout is an incomplete response, not an invented answer.',
     ),
 )
 

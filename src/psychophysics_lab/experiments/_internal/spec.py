@@ -124,6 +124,9 @@ class ExperimentSpec:
     origin_namespace: str = ""
     method_planner: Callable | None = None
     method_reviewer: Callable | None = None
+    # Review-only links from resolved renderer inputs to editable experiment
+    # settings. Unlike stimulus_field_bindings these do not alter resolution.
+    stimulus_parameter_controls: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.procedure is not None:
@@ -144,6 +147,9 @@ class ExperimentSpec:
             validate_path_component(self.data_directory_name, label="experiment directory")
         if len({item.key for item in self.fields}) != len(self.fields):
             raise ValueError("Experiment fields must have unique keys.")
+        for slot, controls in self.stimulus_parameter_controls.items():
+            if slot not in self.stimulus_slots or set(controls.values()) - {f.key for f in self.fields}:
+                raise ValueError("Stimulus parameter controls must reference declared slots and experiment fields.")
         if self.adaptive is not None:
             self.adaptive.validate({item.key for item in self.fields})
         if self.method_reviewer is not None and not callable(self.method_reviewer):

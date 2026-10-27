@@ -26,14 +26,16 @@ from psychophysics_lab.researcher import (
 # 1. SETTINGS AND STIMULI
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
-    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
+    ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
     ConfigField(
-        "fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1, section="Timing"
+        "fixation_ms", "Fixation time", "int", 500, units="ms", minimum=1, section="Timing",
+        help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.',
     ),
     ConfigField(
-        "stimulus_ms", "Line presentation time", "int", 200, units="ms", minimum=1, section="Timing"
+        "stimulus_ms", "Line presentation time", "int", 200, units="ms", minimum=1, section="Timing",
+        help_text='Scheduled stimulus exposure duration in milliseconds; changing it changes the trial timeline, not measured display qualification.',
     ),
-    ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1, section="Timing"),
+    ConfigField("interval_ms", "Blank time", "int", 150, units="ms", minimum=1, section="Timing", help_text='Scheduled gap between the declared stimulus intervals, in milliseconds; only timeline phases using this setting are affected.'),
     ConfigField(
         "response_timeout_ms",
         "Response timeout (0 waits)",
@@ -42,6 +44,7 @@ FIELDS = (
         units="ms",
         minimum=0,
         section="Timing",
+        help_text='Time allowed for a valid response in milliseconds; zero waits without a timeout. Timeout is an incomplete response, not an invented answer.',
     ),
 )
 
