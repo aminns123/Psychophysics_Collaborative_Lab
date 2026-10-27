@@ -213,12 +213,13 @@ class Presentation:
         from ..researcher import ParticipantAbort
         event["display_geometry"] = getattr(self, "_phase_geometry", {}).get(phase.name, [])
         answer = None
+        ready = False
         aborted = False
         onset = None
         accepting = False
 
         def keypress(symbol, modifiers):
-            nonlocal answer, aborted
+            nonlocal answer, aborted, ready
             if symbol == pyglet.window.key.ESCAPE:
                 aborted = True
                 return True
@@ -226,6 +227,15 @@ class Presentation:
                 return True
             self.held.add(symbol)
             key = pyglet.window.key.symbol_string(symbol).removeprefix("_")
+            if accepting and phase.kind == "key_wait":
+                if key == phase.key and not ready:
+                    ready = True
+                    event["readiness"] = {"key": key, "elapsed_s": time.perf_counter() - onset,
+                                          "policy": "fresh declared key after readiness onset"}
+                    if phase.beep is not None:
+                        from .tone import request_beep
+                        event["audio"] = request_beep(phase.beep, trigger="accepted_readiness")
+                return True
             if accepting and key in self.responses.keys and answer is None:
                 elapsed = time.perf_counter() - onset
                 if phase.duration_ms and elapsed * 1000 >= phase.duration_ms:
@@ -271,7 +281,7 @@ class Presentation:
             if phase.kind == "show" and phase.beep is not None:
                 from .tone import request_beep
                 event["audio"] = request_beep(phase.beep, trigger="display_onset")
-            accepting = phase.kind == "response"
+            accepting = phase.kind in {"response", "key_wait"}
             hz = getattr(self,"refresh_rate_hz",None)
             if phase.kind == "show" and hz is not None:
                 frames = presentation_frames(phase.duration_ms,hz)
@@ -297,6 +307,8 @@ class Presentation:
                     raise ParticipantAbort("Escape or window close during trial timeline")
                 if answer is not None:
                     return answer
+                if ready:
+                    return None
                 if phase.duration_ms and (time.perf_counter() - onset)*1000 >= phase.duration_ms:
                     if accepting:
                         raise TimeoutError("No valid response before the configured response timeout")

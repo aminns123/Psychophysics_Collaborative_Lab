@@ -3,22 +3,23 @@ import time
 from .timeline import Phase
 
 
-def execute_timeline(timeline, backend, events, action, *, instructions=""):
+def execute_timeline(timeline, backend, events, action, *, instructions="", software_timestamps=False):
     """One traversal for live and virtual presentation, including nonvisual actions.
 
     Events are owned by the caller, so exceptions cannot discard partial history.
     This function performs no persistence. Action callbacks must not do IO.
     """
-    return execute_actions(timeline.phases, backend, events, action, instructions=instructions)
+    return execute_actions(timeline.phases, backend, events, action, instructions=instructions,
+                           software_timestamps=software_timestamps)
 
 
-def execute_actions(phases, backend, events, action, *, instructions="", start_index=0):
+def execute_actions(phases, backend, events, action, *, instructions="", start_index=0, software_timestamps=False):
     """Execute an ordered slice; staged updates continue the same trial event indices."""
     response = None
     for index, phase in enumerate(phases, start_index):
         event = {"action_index": index, **phase.to_dict(), "status": "started",
                  "timing_basis": "virtual observer" if backend.synthetic else "software perf_counter"}
-        if not backend.synthetic:
+        if not backend.synthetic or software_timestamps:
             event["software_started_s"] = time.perf_counter()
         events.append(event)
         try:
@@ -34,7 +35,7 @@ def execute_actions(phases, backend, events, action, *, instructions="", start_i
             event["error"] = str(exc)
             raise
         finally:
-            if not backend.synthetic:
+            if not backend.synthetic or software_timestamps:
                 event["software_finished_s"] = time.perf_counter()
     return response
 
@@ -42,7 +43,7 @@ def execute_actions(phases, backend, events, action, *, instructions="", start_i
 class VirtualPresentation:
     synthetic = True
 
-    def __init__(self, response):
+    def __init__(self, response=None):
         self.response = response
         self.elapsed_ms = 0
 
@@ -56,6 +57,16 @@ class VirtualPresentation:
         event["planned_onset_ms"] = self.elapsed_ms  # schema-1 compatibility
         event["virtual_onset_ms"] = self.elapsed_ms
         event["timing_basis"] = "simulated schedule, not measured presentation"
+        if phase.kind == "key_wait":
+            event["readiness"] = {"key": phase.key, "elapsed_s": 0.,
+                                  "policy": "accept declared key immediately; no observer response or RNG draw"}
+            event["virtual_offset_ms"] = self.elapsed_ms
+            event["planned_offset_ms"] = None
+            if phase.beep is not None:
+                event["audio"] = {"trigger": "accepted_readiness", **phase.beep.to_dict(),
+                                  "output": "virtual schedule only; no sound generated",
+                                  "virtual_request_ms": self.elapsed_ms}
+            return None
         if phase.kind == "show" and phase.beep is not None:
             event["audio"] = {"trigger": "display_onset", **phase.beep.to_dict(),
                               "output": "virtual schedule only; no sound generated",

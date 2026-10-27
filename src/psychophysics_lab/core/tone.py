@@ -16,7 +16,7 @@ def request_beep(beep, *, trigger):
     On Windows this uses the original winsound.Beep(frequency, duration).
     """
     from .timeline import Beep
-    if not isinstance(beep, Beep) or trigger not in {"display_onset", "accepted_response"}:
+    if not isinstance(beep, Beep) or trigger not in {"display_onset", "accepted_response", "accepted_readiness"}:
         raise ValueError("Invalid beep command or trigger.")
     if sys.platform != "win32":
         raise RuntimeError("Physical beep playback currently requires Windows; disable beeps on this system.")

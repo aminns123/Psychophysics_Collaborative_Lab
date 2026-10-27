@@ -318,6 +318,74 @@ def validate_run(run_directory: Path) -> list[Check]:
                     "action/canonical response associations differ")
     check("Trial action plans, partial events and accepted responses", trial_actions_check)
 
+    def session_events_check():
+        from psychophysics_lab.core.timeline import SessionTimeline, Phase, Stimulus, Beep, scientific_snapshot
+        require("session_events" in manifest["files"], "session journal missing from manifest")
+        document = read_json(root, manifest["files"]["session_events"])
+        scientific_snapshot(document)
+        require(document["schema_version"] == 1 and document["sequence"] == "session_start",
+                "unsupported session event schema")
+        def sequence(raw):
+            require(raw["schema_version"] == 1 and raw["sequence"] == "session_start", "invalid session plan")
+            phases = []
+            for item in raw["phases"]:
+                phases.append(Phase(item["name"], item["kind"], item.get("slot"), item["duration_ms"],
+                                    item.get("instructions", ""), tuple(Stimulus(**p) for p in item.get("stimuli", ())),
+                                    tuple(item.get("actions", ())), Beep(**item["beep"]) if item.get("beep") else None,
+                                    item.get("key")))
+            result = SessionTimeline(tuple(phases))
+            require(result.to_dict() == raw, "session plan contains unrecognized fields")
+            return result
+        plan = sequence(document["plan"])
+        declared = sequence(document["declared_plan"])
+        setup = read_json(root, "experiment_config.json")
+        require(declared.resolve(setup["request"]["experiment_values"]).to_dict() == plan.to_dict(),
+                "session plan differs from selected experiment values")
+        require(document["synthetic"] == (manifest["data_kind"] == "synthetic")
+                and document["data_kind"] == manifest["data_kind"]
+                and document["photon_timing_verified"] is False, "session presentation basis differs")
+        for key in ("software_started_s", "software_finished_s"):
+            require(type(document[key]) in (int, float) and math.isfinite(document[key]), "invalid session timestamp")
+        require(document["software_started_s"] <= document["software_finished_s"], "reversed session timestamps")
+        snapshots = read_json(root, manifest["files"]["stimulus_parameters"])["slots"]
+        used_slots = {p.slot for event in plan.phases for p in event.placements}
+        require(set(document["resolved_stimuli"]) == used_slots, "session stimulus slots differ")
+        for slot, selected in document["resolved_stimuli"].items():
+            require(selected["stimulus_id"] == snapshots[slot]["document"]["stimulus_id"] and
+                    selected["parameters"] == snapshots[slot]["document"]["parameters"],
+                    "session stimulus differs from selected base")
+        events = document["events"]
+        require(len(events) <= len(plan.phases), "more session events than planned")
+        previous = document["software_started_s"]
+        for index, event in enumerate(events):
+            phase = plan.phases[index]
+            require(event["action_index"] == index and all(event.get(k) == v for k, v in phase.to_dict().items()),
+                    "session event differs from plan")
+            require(event["status"] in {"completed", "aborted", "error"}, "unfinished session event")
+            require(not {"response", "state", "adaptive_before", "adaptive_after"}.intersection(event),
+                    "session event contains scientific response/state")
+            start, finish = event["software_started_s"], event["software_finished_s"]
+            require(all(type(v) in (int, float) and math.isfinite(v) for v in (start, finish)),
+                    "nonfinite session event timestamps")
+            require(previous <= start <= finish <= document["software_finished_s"], "invalid session event timestamps")
+            previous = finish
+            if phase.kind == "key_wait" and event["status"] == "completed":
+                ready = event["readiness"]
+                require(ready["key"] == phase.key and type(ready["elapsed_s"]) in (int, float)
+                        and math.isfinite(ready["elapsed_s"]) and ready["elapsed_s"] >= 0, "invalid readiness observation")
+                if document["synthetic"]:
+                    require(ready["elapsed_s"] == 0, "synthetic readiness must be immediate")
+        if document["status"] == "completed":
+            require(len(events) == len(plan.phases) and all(e["status"] == "completed" for e in events),
+                    "incomplete session start marked completed")
+        else:
+            require(document["status"] in {"aborted", "error"} and not rows
+                    and manifest["status"] == ("aborted_by_user" if document["status"] == "aborted" else "error"),
+                    "session failure must precede all accepted responses and terminate the run")
+
+    if "session_events" in manifest.get("files", {}) or (root / "session_events.json").exists():
+        check("Once-only session events are separate from scientific responses", session_events_check)
+
     def journal_check():
         if "trial_events" not in manifest.get("files", {}):
             return  # Older runs have no journal; their original files remain valid.

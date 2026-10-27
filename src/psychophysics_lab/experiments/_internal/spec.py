@@ -127,6 +127,7 @@ class ExperimentSpec:
     # Review-only links from resolved renderer inputs to editable experiment
     # settings. Unlike stimulus_field_bindings these do not alter resolution.
     stimulus_parameter_controls: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+    session_start: Any = ()  # optional flat canonical event sequence; appended for positional compatibility
 
     def __post_init__(self):
         if self.procedure is not None:
@@ -147,6 +148,21 @@ class ExperimentSpec:
             validate_path_component(self.data_directory_name, label="experiment directory")
         if len({item.key for item in self.fields}) != len(self.fields):
             raise ValueError("Experiment fields must have unique keys.")
+        from psychophysics_lab.core.timeline import SessionTimeline
+        if not isinstance(self.session_start, (SessionTimeline, list, tuple)):
+            raise TypeError("Session start requires a SessionTimeline or flat list/tuple of events.")
+        opening = (self.session_start if isinstance(self.session_start, SessionTimeline)
+                   else SessionTimeline(tuple(self.session_start)))
+        opening.validate_slots(self.stimulus_slots)
+        keys = {item.key for item in self.fields}
+        for event in opening.phases:
+            if isinstance(event.duration_ms, str) and event.duration_ms not in keys:
+                raise ValueError(f"Undeclared session timing field: {event.duration_ms}")
+            if event.kind == "key_wait" and event.key.upper() != event.key and event.key not in keys:
+                raise ValueError(f"Undeclared readiness key field: {event.key}")
+        if opening.phases and self.procedure is None:
+            raise ValueError("Session start requires a RunContext procedure.")
+        object.__setattr__(self, "session_start", opening)
         for slot, controls in self.stimulus_parameter_controls.items():
             if slot not in self.stimulus_slots or set(controls.values()) - {f.key for f in self.fields}:
                 raise ValueError("Stimulus parameter controls must reference declared slots and experiment fields.")
@@ -198,6 +214,7 @@ class ExperimentSpec:
         errors = list(self.validator(normalised)) if self.validator else []
         if errors:
             raise ValueError("\n".join(errors))
+        self.session_start.resolve(normalised)
         return normalised
 
     def data_path_parts(

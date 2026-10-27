@@ -36,19 +36,20 @@ class Beep:
 @dataclass(frozen=True)
 class Phase:
     name: str
-    kind: str  # "show" or "response"
+    kind: str  # "show", "response", or session-only "key_wait"
     slot: str | None = None  # None means an empty/blank stage; no stimulus module needed
     duration_ms: int = 0  # response: 0 waits indefinitely; show: strictly positive
     instructions: str = ""
     stimuli: tuple = ()
     actions: tuple[str, ...] = ()
     beep: Beep | None = None
+    key: str | None = None  # key_wait only: literal uppercase key or settings-field name
 
     def __post_init__(self):
         if not self.name or not self.name.replace("_", "").isalnum():
             raise ValueError("Phase name must be a nonempty word (underscores allowed).")
-        if self.kind not in {"show", "response"}:
-            raise ValueError("Phase kind must be 'show' or 'response'.")
+        if self.kind not in {"show", "response", "key_wait"}:
+            raise ValueError("Phase kind must be 'show', 'response' or 'key_wait'.")
         if self.slot is not None and (not isinstance(self.slot, str) or not self.slot.isidentifier()):
             raise ValueError("Phase slot must be a registered identifier or null for a blank stage.")
         if isinstance(self.duration_ms, str) and self.duration_ms.isidentifier():
@@ -69,6 +70,17 @@ class Phase:
             raise ValueError("Response actions must be named meanings.")
         if self.kind == "show" and self.duration_ms == 0:
             raise ValueError("A keyless show phase must have a positive duration; zero would stall.")
+        if self.kind == "key_wait":
+            if self.duration_ms != 0 or self.actions:
+                raise ValueError("Readiness waits are self-paced and cannot declare scientific actions.")
+            if not isinstance(self.key, str) or not self.key or self.key.upper() == "ESCAPE":
+                raise ValueError("Readiness requires a key or settings-field name; Escape is reserved for abort.")
+            if self.key.upper() == self.key:
+                validate_readiness_key(self.key)
+            elif not self.key.isidentifier():
+                raise ValueError("Readiness key fields must be identifiers.")
+        elif self.key is not None:
+            raise ValueError("Only readiness waits may declare a key.")
 
     @property
     def placements(self):
@@ -83,7 +95,10 @@ class Phase:
             result["actions"] = list(self.actions)
         if self.beep is not None:
             result["beep"] = self.beep.to_dict()
-            result["beep_trigger"] = "display_onset" if self.kind == "show" else "accepted_response"
+            result["beep_trigger"] = ("display_onset" if self.kind == "show" else
+                                      "accepted_readiness" if self.kind == "key_wait" else "accepted_response")
+        if self.kind == "key_wait":
+            result["key"] = self.key
         return result
 
 
@@ -97,6 +112,8 @@ class TrialTimeline:
             raise TypeError("Timeline accepts only declared trial actions.")
         if not self.phases:
             raise ValueError("A trial timeline needs at least one phase.")
+        if any(p.kind == "key_wait" for p in self.phases):
+            raise ValueError("Readiness waits belong to SessionTimeline, not scientific trials.")
         names = [phase.name for phase in self.phases]
         if len(set(names)) != len(names):
             raise ValueError("Each phase name within one trial must be unique.")
@@ -125,11 +142,52 @@ class TrialTimeline:
                 phase = replace(phase, duration_ms=values[phase.duration_ms])
                 if type(phase.duration_ms) is not int:
                     raise ValueError("Resolved duration must be integer milliseconds.")
+            if isinstance(phase, Phase) and phase.kind == "key_wait":
+                key = phase.key
+                if key.upper() != key:
+                    if key not in values:
+                        raise ValueError(f"Unknown readiness key field: {key}")
+                    key = values[key]
+                phase = replace(phase, key=validate_readiness_key(key))
             phases.append(phase)
-        return TrialTimeline(tuple(phases))
+        return type(self)(tuple(phases))
 
     def to_dict(self):
         return {"schema_version": 1, "phases": [p.to_dict() for p in self.phases]}
+
+
+def validate_readiness_key(key):
+    """Use the same supported key vocabulary as responses; Escape stays reserved."""
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") | {"LEFT", "RIGHT", "UP", "DOWN", "SPACE", "ENTER"}
+    if not isinstance(key, str) or key not in allowed:
+        raise ValueError("Readiness key must be a letter, digit, arrow, SPACE or ENTER; Escape is reserved for abort.")
+    return key
+
+
+@dataclass(frozen=True)
+class SessionTimeline(TrialTimeline):
+    """Once-only visual/readiness sequence using the canonical Phase vocabulary.
+
+    Empty is an explicit opt-out. Scientific responses and updates are forbidden.
+    """
+    def __post_init__(self):
+        object.__setattr__(self, "phases", tuple(self.phases))
+        if any(not isinstance(p, Phase) or p.kind not in {"show", "key_wait"} or p.actions for p in self.phases):
+            raise ValueError("Session start accepts only Show and WaitForKey events.")
+        if len({p.name for p in self.phases}) != len(self.phases):
+            raise ValueError("Each session event name must be unique.")
+
+    def to_dict(self):
+        return {**super().to_dict(), "sequence": "session_start"}
+
+
+def as_trial_timeline(events):
+    """Accept an existing trial or a flat list/tuple; never flatten hidden nesting."""
+    if isinstance(events, TrialTimeline) and not isinstance(events, SessionTimeline):
+        return events
+    if not isinstance(events, (list, tuple)):
+        raise TypeError("A trial requires a TrialTimeline or flat list/tuple of declared events.")
+    return TrialTimeline(tuple(events))
 
 
 def load_timeline(path: Path, *, timings: Mapping[str, int] = (), slots=()) -> TrialTimeline:
@@ -249,6 +307,11 @@ def Show(name, *, slot=None, duration, instructions="", stimuli=(), beep=None):
 def CollectResponse(*, actions, timeout=0, name="answer", slot=None, instructions="", beep=None):
     """Collect a response; optional beep is triggered only for an accepted key."""
     return Phase(name, "response", slot, timeout, instructions, (), tuple(actions), beep)
+
+
+def WaitForKey(name, *, key, slot=None, instructions="", stimuli=(), beep=None):
+    """Session readiness, independent of scientific answers and guidance visibility."""
+    return Phase(name, "key_wait", slot, 0, instructions, tuple(stimuli), beep=beep, key=key)
 
 
 @dataclass(frozen=True)
