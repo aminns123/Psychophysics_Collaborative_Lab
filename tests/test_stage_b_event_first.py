@@ -103,11 +103,16 @@ def test_session_only_fixation_has_no_probe_and_tracks_selected_background(ident
 
 
 def test_all_official_openings_use_the_approved_stage_c_start():
-    for spec in registry.list_experiments():
-        if not spec.origin_namespace:
-            assert [(p.kind,p.duration_ms) for p in spec.session_start.phases] == [('key_wait',0),('show',1000)]
-            assert spec.session_start.phases[0].key == 'SPACE'
-            assert 'ready_fixation' in spec.stimulus_slots, spec.id
+    # Other compatibility tests register standalone protocols too; the frozen
+    # inventory identifies the official ten, independent of test registry order.
+    saved = json.loads((ROOT/'tests/fixtures/stage_c_baseline_20261027.json').read_text())
+    identities = [item['id'] for item in saved['inventory']]
+    assert len(identities) == 10
+    for identity in identities:
+        spec = registry.get_experiment(identity)
+        assert [(p.kind,p.duration_ms) for p in spec.session_start.phases] == [('key_wait',0),('show',1000)]
+        assert spec.session_start.phases[0].key == 'SPACE'
+        assert 'ready_fixation' in spec.stimulus_slots, spec.id
 
 
 def software_window(monkeypatch, *, escape=False):
