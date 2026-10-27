@@ -1,11 +1,13 @@
-# Optional session openings (Stage A)
+# Python session openings
 
-Existing experiments and extensions retain their current behavior. This additive
-API is the first stage of the [event-first architecture](EVENT_FIRST_ARCHITECTURE.md).
-Official experiment files have not yet been reorganized. CSF and ellipse software
-comparisons are regression gates, not a claim of physical timing/photometry.
+Stage A added this optional API. Stage B enables SPACE readiness followed by
+1,000 ms settling in Gaussian CSF and Ellipse Major Axis only; see the
+[source comparison and evidence](STAGE_B_EVENT_FIRST.md). Other experiments and
+existing extensions retain their openings. Edit the migrated Python
+`SESSION_START` list directly; `SESSION_START=[]` disables it. Their session-only
+`ready_fixation` slot is a Gaussian fixation on the selected background.
 
-## A once-only fixation and configurable start key
+## Optional Configure fields for a session opening
 
 In an experiment that already registers a `fixation` slot, add these fields to
 its existing `FIELDS`. They use the normal Configure editor and saved settings;
@@ -119,7 +121,7 @@ cleanup. If a device cannot open, a saved error/session trace can be inspected,
 but the validator reports missing runtime/resolved evidence; it does not invent
 successful display metadata. No-event sessions create no session sidecar.
 
-Stage B will reorganize the Gaussian CSF and two-interval ellipse sources around
-parameters, session opening, trial events, scientific rules and results. Only
-after those source migrations demonstrate equivalence may Stage C reorganize
-the remaining official experiments and starter templates.
+Stage B reorganizes only Gaussian CSF and Ellipse Major Axis. Their
+`trial_events(settings, condition)` lists drive acquisition and generic Review;
+older `make_trial()` callers remain supported. Stage C remains a separate migration
+of the other eight official experiments and starter templates.

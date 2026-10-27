@@ -55,10 +55,10 @@ FIELDS = tuple(
     field for field in csf.SPEC.fields if field.key not in _FIELDS_REMOVED
 ) + ENVELOPE_FIELDS
 
-STIMULUS_SLOTS = dict(csf.STIMULUS_SLOTS) | {
+STIMULUS_SLOTS = {k: v for k, v in csf.STIMULUS_SLOTS.items() if k != "ready_fixation"} | {
     "grating": "circular_windowed_sinusoidal_grating",
 }
-STIMULUS_DEFAULTS = dict(csf.STIMULUS_DEFAULTS) | {
+STIMULUS_DEFAULTS = {k: v for k, v in csf.STIMULUS_DEFAULTS.items() if k != "ready_fixation"} | {
     "grating": "circular_windowed_sinusoidal_grating",
 }
 
@@ -185,6 +185,8 @@ for column in ("presented_display_contrast", "next_display_contrast"):
 
 SPEC = replace(
     csf.SPEC,
+    session_start=(),  # Stage B migrates Gaussian CSF only; keep this variant's accepted opening.
+    stimulus_field_bindings={},
     id="contrast_sensitivity_windowed",
     display_name="Contrast Sensitivity — Circular Windowed Grating",
     description=(

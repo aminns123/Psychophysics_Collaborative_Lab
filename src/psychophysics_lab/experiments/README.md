@@ -1,9 +1,10 @@
 # Researcher experiment files
 
-An optional [session-opening API](../../../docs/SESSION_EVENTS.md) supports
-once-only readiness and settling events. Existing definitions retain their
-behavior; the staged source migration is described in the
-[event-first architecture decision](../../../docs/EVENT_FIRST_ARCHITECTURE.md).
+The [Python-first philosophy](../../../docs/CODE_PHILOSOPHY_AND_CONTRIBUTIONS.md)
+governs experiment authoring. [Stage B](../../../docs/STAGE_B_EVENT_FIRST.md)
+migrates only Gaussian CSF and Ellipse Major Axis: flat `trial_events()` lists
+and a once-only SPACE/1,000 ms opening. Write `SESSION_START=[]` to disable it.
+The other eight keep their accepted behavior until Stage C.
 
 Edit one experiment here and its stimulus class in `../stimulus_library.py`.
 Experiments share section order, units and response conventions. They may use
@@ -42,14 +43,36 @@ The public `psychophysics_lab.methods.contrast` API offers
   Do not silently enable a new method for an existing experiment without
   documented parameter controls and method-specific regression tests.
 
-**Implementation status:** all nine active official experiments connect both
+**Implementation status:** all ten active official experiments connect both
 methods, with original defaults retained. The three previously nonadaptive
 teaching examples also retain an explicit `original` mode. See the
 [verification matrix and limitations](../../../docs/FINAL_ARCHITECTURE_IMPLEMENTATION_20261026.md).
 The local `demolab__line_strength` example imports the same installed APIs;
 each new study still declares its own strength mapping and response design.
 
-## Read every file in this order
+## Read the two Stage B experiments in this order
+
+1. **Parameters:** declared fields, selected stimulus identities and defaults.
+2. **Session start — once:** the ordinary Python `SESSION_START` list. Edit its
+   key/duration directly; Configure fields are optional.
+3. **Trial events — repeated:** `trial_events(settings, condition)` returns a
+   flat chronological list. `prepare_stimuli` beside it maps the current condition
+   and adaptive strength to validated renderer parameters.
+4. **Scientific rules:** conditions, selection, response meaning and the explicit
+   response-dependent next contrast. Scientific callbacks run outside timed displays.
+5. **Stopping and results:** reversal completion, safety ceiling, measurements,
+   primary estimator and the shared-method procedure.
+6. **Framework registration:** minimal final `SPEC` connection. A centralized
+   compatibility adapter retains `make_trial(...).resolve(...)` for older callers.
+
+Acquisition, simulation and Review use the same Python event definition.
+`run_contrast_experiment(trial_events=trial_events, ...)` builds it for each
+selected condition. Existing extensions may retain `make_trial=...`; the method
+rejects competing factories. A new experiment needs no change to `ui/setup.py`.
+See [the before/after edit map](../../../docs/STAGE_B_EVENT_FIRST.md) for beeps,
+placement, key changes and the exact compatibility/equivalence boundary.
+
+## Compatible reading order in the eight experiments awaiting Stage C
 
 1. **Settings and stimuli:** `FIELDS`, `RESPONSES`, stimulus slots/defaults and
    `PARADIGM`. All *researcher-adjustable experiment parameters* should be

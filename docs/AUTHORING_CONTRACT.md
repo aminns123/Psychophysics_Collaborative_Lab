@@ -2,6 +2,10 @@
 
 **This is the authoritative rule for all new experiments and visual stimuli.**
 
+The [code philosophy](CODE_PHILOSOPHY_AND_CONTRIBUTIONS.md) defines long-term
+architectural goals and contribution policy. The experiment Python file owns
+science; the TUI generically configures and inspects existing declarations.
+
 ## The only normal researcher editing locations
 
 - **Stimuli:** `src/psychophysics_lab/stimulus_library.py`. Add a
@@ -26,18 +30,27 @@
 ## Required reading order and executable contract
 
 Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md)
-and [implementation plan](EXPERIMENT_CONSISTENCY_PLAN.md). The current public experiment files follow the same seven-section narrative;
+and [Stage B source/equivalence guide](STAGE_B_EVENT_FIRST.md). Gaussian CSF and
+Ellipse Major Axis now follow parameters; session start; trial events; scientific
+rules; stopping/results; minimal final registration. The other eight retain their
+compatible older structure until Stage C. New event-first files declare
+`trial_events(settings, condition)` as a flat list; older files may still use
+`make_trial(settings, condition)` returning TrialTimeline. Both enter the same
+validated RunContext and execution path;
 procedure details and loop structures remain experiment-owned, not artificially
 standardised for convenience.
 Conditions are named dictionaries; `prepare_stimuli(run, condition, state)` always
-returns parameters by slot. `make_trial(settings, condition)` contains chronological
+returns parameters by slot. `trial_events(settings, condition)` (or legacy `make_trial`) contains chronological
 presentation, response collection and observation markers, with no update actions.
 `interpret_response()` and `update_experiment()` execute explicitly inside
 `run.trial()`, followed by the shared recording boundary. `is_finished()` owns
 scientific termination. TUI-selected adaptive values remain authoritative.
 
-The seven sections are settings/stimuli; conditions/order; stimulus preparation;
-one trial; responses/updates/measurement fields; run/finish; framework connection.
+The older seven-section pattern remains supported: settings/stimuli;
+conditions/order; preparation; one trial; responses/updates; run/finish; connection.
+The new event list is authoritative for acquisition, simulation and generic Review.
+Session start is a Python list passed to `experiment(session_start=SESSION_START)`;
+fields are optional, and an empty list disables it without a TUI change.
 Spatial 2AFC location tasks, single-interval binary judgment tasks and
 **2IFC** (two-interval forced-choice) tasks use the same software contracts,
 while stimulus presentations, response meanings and estimators remain explicit.

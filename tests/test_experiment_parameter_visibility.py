@@ -140,9 +140,11 @@ PUBLIC_FILES = (
 def test_all_public_experiment_fields_precede_scientific_execution(module):
     import inspect
     source = inspect.getsource(module)
-    assert source.index("# 1. SETTINGS AND STIMULI") < source.index("FIELDS = (")
-    assert source.index("FIELDS = (") < source.index("# 2. CONDITIONS AND TRIAL ORDER")
-    assert source.index("# 2. CONDITIONS AND TRIAL ORDER") < source.index("def procedure")
+    migrated = hasattr(module, "trial_events")
+    parameters = "# 1. PARAMETERS" if migrated else "# 1. SETTINGS AND STIMULI"
+    following = "# 2. SESSION START" if migrated else "# 2. CONDITIONS AND TRIAL ORDER"
+    assert source.index(parameters) < source.index("FIELDS = (")
+    assert source.index("FIELDS = (") < source.index(following) < source.index("def procedure")
     for field in module.SPEC.fields:
         if field.key.endswith("_deg"):
             assert field.units == "degrees", (module.__name__, field.key, field.units)

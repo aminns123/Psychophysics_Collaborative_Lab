@@ -24,7 +24,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                acquisition_block_reason="", historical=False, scientific_spec=None,
                trial_column_overrides=None, migrate_values=None, data_directory_name="",
                method_planner=None, method_reviewer=None, stimulus_parameter_controls=None,
-               session_start=()):
+               session_start=(), stimulus_field_bindings=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
@@ -48,7 +48,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {},
         trial_column_overrides=dictionary, method_planner=method_planner,
         method_reviewer=method_reviewer, stimulus_parameter_controls=stimulus_parameter_controls or {},
-        session_start=session_start)
+        session_start=session_start, stimulus_field_bindings=stimulus_field_bindings or {})
 
 
 class ParticipantAbort(Exception):
@@ -100,6 +100,9 @@ class RunContext:
         if not self.spec.session_start.phases:
             return self._initialise(expected_trials=expected_trials, resolution=resolution,
                                     runtime_display=runtime_display, background_intensity=background_intensity)
+        # The established acquisition/argument guards precede even session
+        # parameter resolution, including direct Python procedure calls.
+        self._validate_initialisation(expected_trials, resolution, background_intensity)
         if self.status != "created" or getattr(self, "_session_started", False):
             raise ValueError("Initialise and execute session start exactly once.")
         from datetime import datetime, timezone
@@ -157,8 +160,8 @@ class RunContext:
             self._persist_independently([("session event journal", lambda: atomic_write_json(path, trace))],
                                         original_error=error)
 
-    def _initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
-        """Declare the planned response count and resolved scientific settings."""
+    def _validate_initialisation(self, expected_trials, resolution, background_intensity):
+        """Retain the same guards before opening a display or resolving an opening."""
         check_acquisition_qualification(self, self.spec)
         if self.status != "created" or type(expected_trials) is not int or expected_trials < 1:
             raise ValueError("Initialise once with a positive expected_trials count.")
@@ -167,6 +170,10 @@ class RunContext:
         import math
         if type(background_intensity) not in (int, float) or not math.isfinite(background_intensity) or not 0 <= background_intensity <= 1:
             raise ValueError("Background must be a finite digital command in [0, 1].")
+
+    def _initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
+        """Declare the planned response count and resolved scientific settings."""
+        self._validate_initialisation(expected_trials, resolution, background_intensity)
         if not self.synthetic and not runtime_display:
             if not self.spec.stimulus_slots:
                 raise ValueError("Human presentation must record the actual runtime_display.")
@@ -660,5 +667,5 @@ def configure(participant_id, data_root, setup, *, run_directory):
     return str(conditions), str(parameters), str(response)
 
 # Small public chronological vocabulary; existing Phase/JSON stays compatible.
-from .core.timeline import (TrialTimeline, SessionTimeline, Phase, Show, Stimulus, CollectResponse, WaitForKey,
+from .core.timeline import (TrialTimeline, SessionTimeline, Phase, Show, Stimulus, CollectResponse, WaitForKey, legacy_trial_factory,
                             RecordState, UpdateState, UpdateAdaptive, Beep)

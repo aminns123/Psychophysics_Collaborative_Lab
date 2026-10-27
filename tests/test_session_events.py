@@ -91,11 +91,16 @@ def test_completed_reversal_threshold_and_initial_one_down_are_preserved(tmp_pat
 
 def test_flat_composition_runs_through_canonical_trial_recording(tmp_path, monkeypatch):
     from psychophysics_lab.experiments import contrast_sensitivity as module
-    original = module.make_trial
+    original = module.trial_events
+    calls = []
     # The same scientifically declared events, now returned as a composable list.
-    monkeypatch.setattr(module, 'make_trial', lambda *args: list(original(*args).phases))
+    def flat_events(*args):
+        calls.append(True)
+        return list(original(*args))
+    monkeypatch.setattr(module, 'trial_events', flat_events)
     artifact = run(tmp_path)
     assert artifact.accepted_trials > 0
+    assert len(calls) == artifact.accepted_trials
     assert all(c.passed for c in validate_run(artifact.run_directory))
 
 
@@ -280,7 +285,7 @@ def test_opt_in_session_rows_route_to_existing_configure_editors(tmp_path, monke
             screen.query_one('#review', Button).press()
             await pilot.pause()
             review = app.screen
-            assert isinstance(review, ReviewScreen)
+            assert isinstance(review, ReviewScreen), str(screen.query_one('#config-status').renderable)
             row = next(i for i,r in enumerate(review._review_rows) if r[:2] == ('Session start (once)', 'ready key'))
             assert review._row_authorities[row]['field'] == 'start_key'
             review._edit_review_parameter(row)

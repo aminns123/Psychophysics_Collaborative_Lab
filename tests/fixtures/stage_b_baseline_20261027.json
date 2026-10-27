@@ -1,0 +1,279 @@
+{
+  "baseline_commit": "b3d53d511721fbd201c4ee263783a2f10dcb1cdf",
+  "cases": [
+    {
+      "identity": "contrast_sensitivity",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "frequencies_cpd": "2,4",
+        "contrast_method": "adaptive",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 19,
+      "rows_sha256": "726c61d46a86a3d67c7a2fe8aa1d640935c7cfde9b1dbb03e7b25dd6eff2bc09",
+      "files_sha256": {
+        "adaptive_history.json": "98e7c9e7f9567cfcb9c700bfc219321c8ba731ab64e690cf98a288e313622897",
+        "adaptive_session.json": "873a0b51f7ba41d9dd545a94508f307417b3b0d97ceab59996bed4a99256d1f7",
+        "primary_thresholds.json": "c1dc8538c9b825109e0b3a6f169d64ef34029d855332564de8f9d77d11530b5b",
+        "resolved_experiment.json": "18afda2408f9902d66f18d5ebfb305c406776f492440cedf1dd52b75939e94ae",
+        "trial_actions.json": "23d043dffe72a82448fdc33d526409020f374005fd0514550eea4d6cb8af0341",
+        "trial_presentations.json": "c863107b7ea5ee196eadf83361b28c2902c8cfe97ad5698d612145397d6c6353"
+      }
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "frequencies_cpd": "2,4",
+        "contrast_method": "adaptive",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 20,
+      "rows_sha256": "672aacc0fb767f6b16543fb10f53b0fa29332f6fc63eff71c80553da6a055959",
+      "files_sha256": {
+        "adaptive_history.json": "7bae617d5d1ee087f4381e8892c192a19a58cbfd3fabdf484a67fdf230c44d1a",
+        "adaptive_session.json": "e5b825a3f1bb8333f598c30f58648aa491fee9a127fbabf43fa2774cc041cfe9",
+        "primary_thresholds.json": "7c40100717b1c5c8eddc1b2ab9117b3b51a23ca6a9b6075be36ddaffbe7bc42f",
+        "resolved_experiment.json": "127ff3f1660583d5771780f57fa7d667310c9063535209433dde516f727e109b",
+        "trial_actions.json": "0fb7ab9d2dac1dde3434e916a007fa41c32fe4c84e9008e23be8e37269a48913",
+        "trial_presentations.json": "d5807174d4336f3cd4d7411f89c15b559dd0dba8a71fbd7884ae410fe72f23a4"
+      }
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "frequencies_cpd": "2,4",
+        "contrast_method": "constant_stimuli",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 8,
+      "rows_sha256": "9df04bb4e540a3ec7af66097d243764b7b85b2b97a717091830923f36fea4493",
+      "files_sha256": {
+        "resolved_experiment.json": "585fc2a31000242be8c8b05dd0aff35ac9d6400a7ed75370cef2657c8e585bbe",
+        "trial_actions.json": "9ae2ce94e298ebc95291fb636cad97dfbe3dde4f14de5a1587fa432f72651c0f",
+        "trial_presentations.json": "44644116277652abe4d565d386b1ace2d3a62c28e49c53efee9205ee14a064dc"
+      }
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "frequencies_cpd": "2,4",
+        "contrast_method": "constant_stimuli",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 8,
+      "rows_sha256": "234544a013c580b756c4d4837d487b1060ef8a9be9472b7a3956459a2b30e780",
+      "files_sha256": {
+        "resolved_experiment.json": "e0e49952c14af99de4616f439e65c8ab10bcffb2e13703e03419108c40618081",
+        "trial_actions.json": "729b5319a26654dfa077a1b42fda69a2502087cca0401f875eb8d24d845016a6",
+        "trial_presentations.json": "0ef90edd13ab8b1dac8e68926b55cb492c9ad6dafdc06d76fd75dab3754bbc09"
+      }
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "contrast_method": "adaptive",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 79,
+      "rows_sha256": "b27860fa2a5ae0b54a170778fc95fb253ccb59035e264ae684fe9b03de73c84b",
+      "files_sha256": {
+        "adaptive_history.json": "abbda63be38221e16e6c2ae5094af9b8db358ab6842d1cb53edb99544154ab1b",
+        "adaptive_session.json": "72bbb2fa5743a2835b796ce05ac9ab0cd145a80d5c5af610ce72e4a90de9e316",
+        "primary_thresholds.json": "8c8130001f7aab46a1763de67e8b67663f99434f9b4981b2fe289eda67a5b829",
+        "resolved_experiment.json": "c77001a28463edbfec801bee507fd624fa595a12dd4d430e2f832f331cbdedb5",
+        "trial_actions.json": "21bdba4c59cd0e19c3433b7bca931ecceddbc155be53686ad3546e5e28e49106",
+        "trial_presentations.json": "81a90ab41646df7c030db37a9a8cd598970e42a825a4688d440786e5b5f09a56"
+      }
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "contrast_method": "adaptive",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 89,
+      "rows_sha256": "9cec83154ade5e6cb01b16cca9b16609350ccc11f3e9817e68fb5ee58d2df8a3",
+      "files_sha256": {
+        "adaptive_history.json": "2d15391119d2e839c53c4cfecdc66dd9b0f81d14d983fe634cccc07aa33b272f",
+        "adaptive_session.json": "68d4c5575049902e8675597dcf71170e7c2d48f15d220ba7c0144e331b5c2898",
+        "primary_thresholds.json": "790a3588dbd3bd2affced1f88da695491d491311545f94d244c3fd227576108a",
+        "resolved_experiment.json": "5ba8b8a7880c6ae2d4ac96fce36c98e5505b21c915cb9e32ca6f5c2d579821a6",
+        "trial_actions.json": "dbcff860059f55887d166664ef9c9049596acc7aa551071c66f4c221c38236fd",
+        "trial_presentations.json": "7dca051bd65ddad701d89063c05000f1f746a27d0c66c46e84494f83ee1045a0"
+      }
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "contrast_method": "constant_stimuli",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 32,
+      "rows_sha256": "2bf99a4ef325dad65086bb9b047427f5e74ed6d87075cbfc68ddc37f75acb5f2",
+      "files_sha256": {
+        "resolved_experiment.json": "37425a507596a8e62516aa3097af75b135f3c7f97d429289d812661ae8bc0828",
+        "trial_actions.json": "193293c1f51002daf1e5c93524fd0c1a4f1c32562e17f6c684e904df3ff37499",
+        "trial_presentations.json": "8315c96966e5ed4ee60d9daaf153908f7ab3a3efdb489c6e81813b2901ac9632"
+      }
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "contrast_method": "constant_stimuli",
+        "max_trials": 256,
+        "staircases_per_condition": 1,
+        "n_down": 1,
+        "n_up": 1,
+        "initial_one_down_limit": 2,
+        "reversal_termination": 4,
+        "threshold_reversals": 2,
+        "fixed_contrasts": "0,.01",
+        "fixed_repetitions": 2
+      },
+      "status": "completed",
+      "accepted": 32,
+      "rows_sha256": "99d1e3b16f7434f4c67e0a0e80ff23e6d22f815d037094055c23b456f111ea57",
+      "files_sha256": {
+        "resolved_experiment.json": "189380676845741907f54c14660792f114288ffc48b1e1b90284d3aab18cd7c7",
+        "trial_actions.json": "640ae106e5f7fec109531d0569de75d15c3ce30e67d5f9193e680613ad4c6023",
+        "trial_presentations.json": "5f1c09edc63ad4d253ad603d91285e5a6c8ac22202778df847a583f139cd8ccf"
+      }
+    }
+  ],
+  "functions": {
+    "contrast_sensitivity": {
+      "make_conditions": "6f704d89e56ef4313d9179714a3d5df7cba94ce2157479192e7324d5baf1ed1c",
+      "fixed_contrast_levels": "aa3118b1c31c2dd75a3b3a4214faed4e8648ed39df269eb840d42e8bceef613f",
+      "make_fixed_schedule": "43d7ba8f97b05bb65f8b12b061e6a0dd10323135eefb4034be818ae2a2e5c6a2",
+      "choose_condition": "d96297546e7f66330c9f1b175293b1828901d9a4df6c7114fe3d3c0a5ba64ccf",
+      "prepare_stimuli": "e202fc6c9eaaa44644f0566ce1782110431c20dcce08ccca6a66c96d4f3d2ca0",
+      "make_trial": "569fac336e8d856241886b45cab74357af51b350f4203ebdedb7bb2af2ba53d2",
+      "interpret_response": "536a73a784d99e1b939a33202fbff802ec375b7c96828f4cd05e8c7065e02e14",
+      "maximum_contrast": "a04ac867cbcb73e22d2acf80560cce93a797a9f926d9b22e1a1bbeadc62a0967",
+      "change_contrast": "4ad946ba3e71a8a2fa2cb2b559ba59b7e41d5cc39cb0a6dbe98dd83359201510",
+      "update_experiment": "bc2475b4ed1731cde538adf0eb320841a98c49c80265691a6ddaa7f9d08de4cc",
+      "trial_record": "55c7c5a494ab191949fb54661660347ac67e763f1fdb00b556b511117c9d4291",
+      "initialise_experiment": "d2244af965cda9bff3d84e3da563c97f9fdba2a33065f097b0bb9de0dda80097",
+      "is_finished": "08a588937f68cb0cac98f5b3ceef5f9d25b8653bb0b81c7d69b690239fafef5e",
+      "primary_rule": "806a76122ed57045767c152417c011fdcec0c9c2e996e81a44f748f624394ce3",
+      "finish_experiment": "d52fdac5bffbd36f0dc6223a172784b023cc2c5db54447469b9ecad5991b53e9",
+      "fixed_trial_record": "b25e00c0a0c2d5c8ff0356c0f9915fb5e6130ca4e0bc0734683d77e7c5ce18d8",
+      "fixed_contrast_method": "1b98568db7eb581b0fd7732894e9d7d89b7d79326952ba6922e74e16db093fbb",
+      "adaptive_contrast_method": "94208b16f031cc22b101e9088b6dd4f7531c825c714301ef0eb5c07fe8cbaefd",
+      "procedure": "c14282d34078edd764931dcb6bbbab68f2623d5648d75f24838e11e0385c95f4",
+      "validate_settings": "dbb7958d92cbe647fd378e5f89d3141cd85f5e94d2351d70ceea196295902c64",
+      "validate_monitor": "02205a36cbb29caf943496a81e6b551cad1927438c398ca57c38a5245b3b15b7",
+      "definition": "4ad85873034608d08995b03e1e6efd4b5ec165fb490559a67c06a7ff85f432c5"
+    },
+    "ellipse_major_axis": {
+      "make_conditions": "d0f9e3e20df07ee0c822ce576dd72aafbf4e5f8003d41d5751f147a829930fdb",
+      "choose_condition": "edd469faed688d8f39baea9f628434884cd4b022b3eafdde868516c7ccb69e9c",
+      "prepare_stimuli": "96a997dadb31ae3987e2bc79f15d94fc803c6d9412197137bb318e8dd3157d25",
+      "make_trial": "bd530bb40ded0f0957d81db0a95df37a4d64d0ab1edf6a3e05ef34f1134bd0d7",
+      "interpret_response": "679b01f068ae1ac1cb27096fb39fe5835f60f3571f17bff4a038cd523e39730c",
+      "maximum_contrast": "796e8d4474e11e071bce34cbb0e554535ff8aaed34304759e11387aa623a6eb4",
+      "change_contrast": "4ad946ba3e71a8a2fa2cb2b559ba59b7e41d5cc39cb0a6dbe98dd83359201510",
+      "update_experiment": "bc2475b4ed1731cde538adf0eb320841a98c49c80265691a6ddaa7f9d08de4cc",
+      "trial_record": "39b9b34bbc0253105e8718ae8d5acdcd8f652daa44584ab466e77a4bdda1529f",
+      "initialise_experiment": "bd29aa7ceeaaae25a0e77298ee5ebdab939db6ed4496762fc246829ccc8c500b",
+      "is_finished": "08a588937f68cb0cac98f5b3ceef5f9d25b8653bb0b81c7d69b690239fafef5e",
+      "primary_rule": "50db03e54d4117324d4220c51b2ca3037d4548d53fe230310cc45cc4f3903531",
+      "finish_experiment": "d52fdac5bffbd36f0dc6223a172784b023cc2c5db54447469b9ecad5991b53e9",
+      "adaptive_contrast_method": "e2923f86e6707a41e17afe79a7e757ffe10966403df15c3c16800e5ff1aa9612",
+      "constant_contrast_method": "47011e44884713cea3dcdb431e5449f3dc9805f4e7b9876d93bc3085f6c1646d",
+      "procedure": "654a9f02a18349ef5e6d6f5d05ac76589eefcb65d3c23de535255ba062710906",
+      "validate_settings": "4ef2012e987f0fb6f77e490a59cb417227125ae3e168fe4f74f8e9481eeb3f45",
+      "definition": "cbf8839d1b18149986a6da082ddb492e0717a167be150543d85cad9441006d56"
+    }
+  }
+}

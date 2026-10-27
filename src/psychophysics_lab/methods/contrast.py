@@ -127,8 +127,9 @@ def run_contrast_experiment(
     *,
     methods: Mapping[str, Callable[[], Any]],
     prepare_stimuli: Callable,
-    make_trial: Callable,
     interpret_response: Callable,
+    trial_events: Callable | None = None,
+    make_trial: Callable | None = None,
     prepare_selection: Callable | None = None,
 ):
     """One scientific trial sequence for every registered contrast method.
@@ -141,6 +142,11 @@ def run_contrast_experiment(
     Explicit mapping of supported method factories prevents changing another
     experiment's protocol merely because a new method exists in the package.
     """
+    if trial_events is not None and make_trial is not None:
+        raise ValueError("Declare trial_events or legacy make_trial, not both.")
+    events = trial_events if trial_events is not None else make_trial
+    if not callable(events):
+        raise TypeError("Provide a callable trial_events (or legacy make_trial).")
     method = select_contrast_method(
         run.values.get("contrast_method", "adaptive"), methods
     )
@@ -152,7 +158,7 @@ def run_contrast_experiment(
             prepare_selection(run, condition)
         stimuli = prepare_stimuli(run, condition, method.state)
         with run.trial(
-            make_trial(run.values, condition),
+            events(run.values, condition),
             target=condition["target"],
             condition=condition["value"],
             parameters_by_slot=stimuli,

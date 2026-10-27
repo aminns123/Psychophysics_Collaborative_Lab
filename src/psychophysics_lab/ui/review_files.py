@@ -179,7 +179,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
         elif group=="Trial" and label.endswith(" duration") and description.get("phase_inputs",{}).get(label[:-9]) in {f.key for f in spec.fields}:
             targets.append(experiment(description["phase_inputs"][label[:-9]]))
         else:
-            targets.append(python(function="make_trial" if group in {"Trial","Trial action","Audio"} else None))
+            targets.append(python(function=description.get("trial_event_function", "make_trial") if group in {"Trial","Trial action","Audio"} else None))
     return targets
 
 
