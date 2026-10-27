@@ -1,135 +1,113 @@
-# PsyCoLab authoring contract — one route
-
-**This is the authoritative rule for all new experiments and visual stimuli.**
+# PsyCoLab authoring contract
 
 The [code philosophy](CODE_PHILOSOPHY_AND_CONTRIBUTIONS.md) defines long-term
 architectural goals and contribution policy. The experiment Python file owns
-science; the TUI generically configures and inspects existing declarations.
+scientific behaviour. The framework executes it, and the TUI discovers, configures
+and inspects the registered definition.
 
-## The only normal researcher editing locations
+## Where scientific code belongs
 
-- **Stimuli:** `src/psychophysics_lab/stimulus_library.py`. Add a
-  `LibraryStimulus` class with `PARAMETERS`, `render(parameters,x_deg,y_deg)`
-  and `SPEC`. Use a unique stable stimulus ID. Built-in shapes are complete classes in that file. Optional `Scene`
-  utilities are imported from `core/scene_primitives.py`, a framework
-  internal nobody must edit to add a class. No second registry, shape-dispatch
-  edit, auto-generator or extra per-stimulus Python file.
-- **Experiments:** `src/psychophysics_lab/experiments/<id>.py`, containing
-  scientific defaults (`ConfigField`), conditions, geometry, trial ordering,
-  timing, response meanings, adaptive choices and stopping rules. Companion
-  JSON presets are optional. Export `SPEC` with its ID matching the filename;
-  definitions are discovered without editing a registration list. A trial selects
-  registered stimuli, places them in visual degrees, schedules `Show` and
-  `CollectResponse`, updates scientific/adaptive state, and ends with
-  `run.complete()`. A beep is an optional **experiment action**, never part of
-  the pixel renderer.
-- **External data:** the framework allocates participant/simulation runs and
-  writes canonical output outside the Git checkout. The user never adds file
-  writing to a `render()` method or a timed response callback.
+Official experiments are curated reference implementations in
+`src/psychophysics_lab/experiments/<id>.py`. Their IDs match their filenames.
+New paradigms and variations normally begin as uniquely named
+[laboratory extensions](LABORATORY_EXTENSIONS.md). Promotion into the official
+catalogue requires a reviewed PR; a local contribution must not replace an
+official experiment or stimulus.
 
-## Required reading order and executable contract
+Official visual definitions are `LibraryStimulus` classes in
+`src/psychophysics_lab/stimulus_library.py`, with `PARAMETERS`, `render()`
+and `SPEC`. External laboratory stimulus classes use the documented extension
+layout and the same public interfaces. Renderers receive calibrated coordinate
+arrays in degrees and return intensity arrays. Scientific equations, masks,
+geometry and contrast conventions belong in the stimulus class or named
+scientific methods, with units stated explicitly.
 
-Follow the [experiment folder guide](../src/psychophysics_lab/experiments/README.md)
-and [Stage B source/equivalence guide](STAGE_B_EVENT_FIRST.md). Gaussian CSF and
-Ellipse Major Axis now follow parameters; session start; trial events; scientific
-rules; stopping/results; minimal final registration. The other eight retain their
-compatible older structure until Stage C. New event-first files declare
-`trial_events(settings, condition)` as a flat list; older files may still use
-`make_trial(settings, condition)` returning TrialTimeline. Both enter the same
-validated RunContext and execution path;
-procedure details and loop structures remain experiment-owned, not artificially
-standardised for convenience.
-Conditions are named dictionaries; `prepare_stimuli(run, condition, state)` always
-returns parameters by slot. `trial_events(settings, condition)` (or legacy `make_trial`) contains chronological
-presentation, response collection and observation markers, with no update actions.
-`interpret_response()` and `update_experiment()` execute explicitly inside
-`run.trial()`, followed by the shared recording boundary. `is_finished()` owns
-scientific termination. TUI-selected adaptive values remain authoritative.
+## The six-section experiment narrative
 
-The older seven-section pattern remains supported: settings/stimuli;
-conditions/order; preparation; one trial; responses/updates; run/finish; connection.
-The new event list is authoritative for acquisition, simulation and generic Review.
-Session start is a Python list passed to `experiment(session_start=SESSION_START)`;
-fields are optional, and an empty list disables it without a TUI change.
-Spatial 2AFC location tasks, single-interval binary judgment tasks and
-**2IFC** (two-interval forced-choice) tasks use the same software contracts,
-while stimulus presentations, response meanings and estimators remain explicit.
-The two-response label alone is not evidence that two stimuli were presented;
-see [scientific terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
+All ten official experiments and the bundled extension starters now use:
 
-Only researcher experiment definitions belong at the top level of `experiments/`
-(plus its required `__init__.py` and README). Framework machinery and saved-design
-compatibility belong in `_internal/`. Normal researcher imports remain the public
-`psychophysics_lab.researcher` API. The renamed public contrast-sensitivity source
-retains its established saved-run ID through a documented internal source-name
-map; new experiments still match their own filenames and IDs normally.
+1. **PARAMETERS:** ConfigField declarations, response alternatives, stimulus slots
+   and defaults. Read selected settings from `run.values` or `settings`.
+2. **SESSION START — ONCE:** `SESSION_START`, passed to
+   `experiment(session_start=SESSION_START)`. An empty list disables it.
+3. **TRIAL EVENTS — REPEATED:** `trial_events(settings, condition)` returns an
+   ordinary flat event list. Nearby `prepare_stimuli(run, condition, state)`
+   resolves the current condition and latest adaptive strength into slot parameters.
+4. **SCIENTIFIC RULES — CONDITIONS AND UPDATES:** conditions, seeded selection,
+   response interpretation and explicit response-dependent stimulus updates.
+5. **STOPPING AND RESULTS:** termination, scientific measurements, estimators
+   where applicable and the procedure connecting these rules to RunContext.
+6. **FRAMEWORK REGISTRATION — MINIMAL AND LAST:** the final `SPEC` connection.
 
-## Creation and validation
+This is a reading structure, not a requirement to invent empty functions or use
+the same scientific loop in every study. See the
+[Stage C comparison and evidence](STAGE_C_EVENT_FIRST.md).
 
-Write the code directly. The framework loads subclasses from the shared
-library without editing registration files. To apply Draft/Test/Ready protection
-to an experiment file, use:
-`python -m psychophysics_lab --dev-stage experiment ID`;
-`python -m psychophysics_lab --dev-test ID`;
-`python -m psychophysics_lab --dev-ready experiment ID`.
-Preview a visual renderer with `--dev-preview STIMULUS_ID`.
+## Chronological events and scientific updates
 
-Published source fingerprints, calibration requirements and hardware
-readiness are independent checks. Preview/virtual success does **not**
-measure luminance, temporal precision or speaker onset.
+```python
+SESSION_START = [
+    WaitForKey("ready", key="SPACE", slot="ready_fixation",
+               instructions="Press SPACE when ready"),
+    Show("settle", slot="ready_fixation", duration=1000),
+]
 
-## The CSF exception is internal, not a second authoring option
+def fixation_events(settings):
+    return [Show("fixation", slot="fixation", duration="fixation_ms")]
 
-`ContrastSensitivityGrating` in `stimulus_library.py` exposes the new Gaussian grating
-equation; `experiments/contrast_sensitivity.py` owns the new CSF settings and procedure.
-The historical `CSFGrating` class still owns the reference GLSL shader source. The physical reference presenter,
-file/event bridge and old staircase compatibility implementation live
-**only** in `src/psychophysics_lab/_reference_csf/` until the shared
-TrialTimeline/RunContext presenter is scientifically and physically
-equivalent. Do not modify those internals to author a new experiment.
+def trial_events(settings, condition):
+    return fixation_events(settings) + [
+        Show("target", slot="target", duration="stimulus_ms"),
+        CollectResponse(actions=("left", "right"), slot="fixation"),
+    ]
+```
 
-The top-level `Events/`, `Experiments/`, `Functions/`, `Interface/`
-and `libC.py` paths have been removed. They are not competing public APIs.
-The internal reference code is still scientifically active, not dead code.
+Register the named slots and import the events from
+`psychophysics_lab.researcher`. A ready slot must contain fixation only, without
+the task's probe or other stimulus. Readiness waits indefinitely for a fresh
+keypress, runs once before Trial 1, and is never a scientific response, adaptive
+update or observer draw. Escape aborts with zero accepted responses.
 
-See [LEARN_PSYCOLAB.md](LEARN_PSYCOLAB.md) for the short walkthrough and
-[CSF_ACTION_MIGRATION.md](CSF_ACTION_MIGRATION.md) for the remaining
-validation gates.
+A trial contains one response stage. Events describe displays, response collection,
+optional cues and observation markers. Keep scientific updates outside timed
+displays, inside the existing `run.trial()` recording boundary. A shared-method
+experiment passes `trial_events=trial_events` to `run_contrast_experiment`;
+a direct procedure passes the flat list to `run.trial()`. Resolve each new trial's
+strength from the current state, rather than precomputing future adaptive values.
+Small functions may compose lists with ordinary `+`; no nested runner is needed.
 
+The experiment declares optional `Beep(frequency_hz, duration_ms)` on Show or
+CollectResponse; drawing classes do not own sound. Adding a new experiment with
+existing public components requires no change to `ui/setup.py`.
 
-## Scientific decisions retained internally
+## Configuration and compatibility
 
-| Internal service | Why it stays central | Experiment-owned scientific choice |
-|---|---|---|
-| `core/scene_primitives.py` | Reuse shape/render equations across Scene compositions | Primitive types, sizes, amplitudes, positions, order and background |
-| `adaptive/legacy_flanker.py` | One fixture-backed historical logarithmic update and reversal counter | Explicit n-down, log increments, initial phase, reversal/trial limits and global ceiling in each flanker experiment |
-| `adaptive/staircase.py` | Shared consecutive-response counters and adaptive state | Selected n-down/n-up, initial phase and limits; numeric updates declared by each experiment, including thesis CSF |
-| `core/timeline.py`, `core/trial_execution.py`, `researcher.py` | Resolve and execute the same phases for live and virtual responses; collect/save raw input and meaning | Ordered phases, durations, alternatives, correctness by index equality and update callbacks |
-| `core/presentation.py`, `core/tone.py`, `config/` | Display creation/calibration, frame requests, devices and Windows beep output | When to display or beep and the requested tone parameters; no claim of measured photon/acoustic onset |
-| `data/`, `core/runner.py` | Shared serialization, errors, immutable acquisition/provenance | Named scientific measurements and experiment source identity |
-| `experiments/_internal/library_builder.py` | Interpret pre-existing saved JSON designs and test historical equivalence | New experiments use Python; the built-in spatial task is now `probe_above_below.py` |
-| `_reference_csf/`, `simulations/csf.py` | Preserve the reference shader/event/adaptive bridge until physical/state parity is established | `_reference_csf/experiment_definition.py` retains the old phase queue and documents geometric/audio choices and virtual substitutions |
+ConfigField editing remains available through generic Configure/Review. Exposing
+the ready key or settling duration as fields is optional: researchers can edit
+their Python literals directly. Selected overrides remain authoritative; neither
+Review nor a second parameter store defines a competing experiment.
 
-Base, Indirect Flanker and Ellipse 2D own independent procedure files; the
-thesis-informed review documents further work needed for researcher readability.
-Their matched scientific policies intentionally repeat; display, input, staircase
-algorithms, audio and storage do not. Frozen pre-audit traces test the entire
-trial plan, stimulus parameters, target/response meanings, adaptive states and
-canonical trial rows, ignoring only relocated callback module qualifications.
-The development acquisition blocks remain in force.
+Older `make_trial(settings, condition)`/TrialTimeline definitions and supported
+legacy actions remain compatible. Migrated files retain
+`make_trial = legacy_trial_factory(trial_events)` at registration for existing
+callers. This small central adapter wraps the same list; it does not maintain
+another event definition. Acquisition, simulation and Review share the public
+event factory. Existing extensions are not rewritten or automatically trusted.
 
+## Recording and validation
 
-The thesis CSF is now a normal RunContext procedure, with its scientific sequence
-in `contrast_sensitivity.py`. Historical CSF definition/validators live in
-`_reference_csf/experiment_definition.py`; the old experiment ID remains available
-for interpreting saved runs. Source consolidation did not make the older protocol
-equivalent to the thesis, so their identities and acquisition qualifications remain distinct.
+RunContext and the canonical recorder allocate external run folders and save the
+existing 20-column TSV, scientific state, event records and source provenance.
+Do not add file writing to renderers or timed callbacks. Trial journal records
+preserve accepted input and partial events on interruption; readers report
+incomplete writes. Historical runs retain their saved identities and metadata:
+interpret them from their own manifests, without rewriting participant files.
 
-## Collaboration and local ownership
+Preview/Test/Ready source fingerprints, hardware calibration and acquisition
+qualification remain separate checks. Software tests do not establish physical
+luminance, photon timing, audio onset or response latency. Preserve the existing
+preflight and protocol qualification requirements.
 
-The current TUI supports local configuration presets, but the production
-experiment loader does **not** yet import an external sibling
-`PsyCoLab_Extensions/` source tree. Until that separately reviewed addition,
-keep locally modified scientific Python on a branch/fork. See
-[contributor workflow](CONTRIBUTING_EXPERIMENTS.md) and
-[three-layer roadmap](INTERNATIONAL_LAB_ROADMAP.md).
+Start with [the learning guide](LEARN_PSYCOLAB.md), the
+[experiment file guide](../src/psychophysics_lab/experiments/README.md) and the
+[bundled extension walkthrough](../examples/laboratory_extensions/METHODS.md).

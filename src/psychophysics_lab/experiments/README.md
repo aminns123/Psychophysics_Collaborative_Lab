@@ -1,227 +1,117 @@
 # Researcher experiment files
 
 The [Python-first philosophy](../../../docs/CODE_PHILOSOPHY_AND_CONTRIBUTIONS.md)
-governs experiment authoring. [Stage B](../../../docs/STAGE_B_EVENT_FIRST.md)
-migrates only Gaussian CSF and Ellipse Major Axis: flat `trial_events()` lists
-and a once-only SPACE/1,000 ms opening. Write `SESSION_START=[]` to disable it.
-The other eight keep their accepted behavior until Stage C.
+governs authoring: the experiment file defines scientific behaviour, the shared
+framework executes it and the TUI provides generic configuration and inspection.
+All ten active official experiments use flat chronological `trial_events()`
+and a once-only SPACE readiness / 1,000 ms settling fixation. Write
+`SESSION_START=[]` to disable the opening. Existing external sources are not
+rewritten. See the [Stage C evidence](../../../docs/STAGE_C_EVENT_FIRST.md).
 
-Edit one experiment here and its stimulus class in `../stimulus_library.py`.
-Experiments share section order, units and response conventions. They may use
-different scientifically justified loops. The response alternatives and the
-presentation structure must both be explicit: a left/right **spatial 2AFC**
-location task, a single-interval binary position/orientation judgment, or a
-**2IFC** (two-interval forced-choice) task with first/second interval responses.
-The term **2AFTC** is not used. See
-[psychophysical terminology](../../../docs/PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
-The code's `PARADIGM` identifier does not alone establish the number of
-stimulus intervals or the applicable signal-detection model.
+## Read every official experiment in this order
 
-## Universal contrast-method design
+1. **PARAMETERS:** declared ConfigFields, response meanings, stimulus identities
+   and selected defaults. Settings passed by Configure override these defaults.
+2. **SESSION START — ONCE:** edit the key, settling duration or entire list here.
+   The session-only ready slot contains fixation, without a task probe.
+3. **TRIAL EVENTS — REPEATED:** the flat `trial_events(settings, condition)`
+   list gives the actual display order, durations, response and optional cues.
+   `prepare_stimuli` maps the current condition and strength to renderer parameters.
+4. **SCIENTIFIC RULES — CONDITIONS AND UPDATES:** condition construction,
+   randomisation, correctness and the response-dependent next stimulus.
+5. **STOPPING AND RESULTS:** completion, safety ceiling, recording, result
+   calculations and the procedure. Finite teaching tasks do not acquire a
+   scientific threshold merely because an adaptive method is selected.
+6. **FRAMEWORK REGISTRATION — MINIMAL AND LAST:** `SPEC` and compatibility
+   connection. A new supported experiment requires no TUI source change.
 
-**Contrast-method selection belongs to the shared framework, not to duplicate
-versions of every experiment.** See
-[the method API, experiment inventory and adoption criteria](../../../docs/CONTRAST_METHODS.md)
-and the reference implementation in `contrast_sensitivity.py`.
-The public `psychophysics_lab.methods.contrast` API offers
-`select_contrast_method`, `AdaptiveContrastMethod`,
-`ConstantContrastMethod`, `parse_fixed_strengths`,
-`fixed_level_schedule` and `run_contrast_experiment`.
+Start with `orientation_task.py` for a finite teaching task,
+`contrast_sensitivity.py` for interleaved reversal-completion staircases and
+`ellipse_major_axis.py` for two temporal intervals. The two line-position
+experiments share a spatial question but retain their distinct geometry.
+`ellipse_centre.py` is another two-interval geometry.
 
-- A researcher defines the **conditions first** (e.g. frequency, target
-  position, ring/ellipse geometry), then selects adaptive or constant stimuli
-  from TUI controls when the experiment has declared and connected both.
-- Every method consumes the same experiment-defined timeline, stimulus
-  preparation and correctness rule, and writes to the existing canonical
-  `trials.tsv` contract. Only strength selection, updates, stopping and
-  method-specific metadata vary.
-- The experiment must explicitly declare its strength units and mapping:
-  CSF digital peak-to-peak modulation is not probe increment above background
-  or absolute line intensity, and none alone establishes optical luminance
-  contrast.
-- The original default and scientific adaptive equations stay untouched.
-  Do not silently enable a new method for an existing experiment without
-  documented parameter controls and method-specific regression tests.
+`contrast_sensitivity_windowed.py` explicitly declares its circular-windowed
+grating and event order. Its named shared CSF functions deliberately reuse
+condition selection, adaptation and estimation; its local envelope parameters
+and distinct experiment ID remain visible. Follow those named scientific
+functions only when studying the shared mathematics.
 
-**Implementation status:** all ten active official experiments connect both
-methods, with original defaults retained. The three previously nonadaptive
-teaching examples also retain an explicit `original` mode. See the
-[verification matrix and limitations](../../../docs/FINAL_ARCHITECTURE_IMPLEMENTATION_20261026.md).
-The local `demolab__line_strength` example imports the same installed APIs;
-each new study still declares its own strength mapping and response design.
-
-## Read the two Stage B experiments in this order
-
-1. **Parameters:** declared fields, selected stimulus identities and defaults.
-2. **Session start — once:** the ordinary Python `SESSION_START` list. Edit its
-   key/duration directly; Configure fields are optional.
-3. **Trial events — repeated:** `trial_events(settings, condition)` returns a
-   flat chronological list. `prepare_stimuli` beside it maps the current condition
-   and adaptive strength to validated renderer parameters.
-4. **Scientific rules:** conditions, selection, response meaning and the explicit
-   response-dependent next contrast. Scientific callbacks run outside timed displays.
-5. **Stopping and results:** reversal completion, safety ceiling, measurements,
-   primary estimator and the shared-method procedure.
-6. **Framework registration:** minimal final `SPEC` connection. A centralized
-   compatibility adapter retains `make_trial(...).resolve(...)` for older callers.
-
-Acquisition, simulation and Review use the same Python event definition.
-`run_contrast_experiment(trial_events=trial_events, ...)` builds it for each
-selected condition. Existing extensions may retain `make_trial=...`; the method
-rejects competing factories. A new experiment needs no change to `ui/setup.py`.
-See [the before/after edit map](../../../docs/STAGE_B_EVENT_FIRST.md) for beeps,
-placement, key changes and the exact compatibility/equivalence boundary.
-
-## Compatible reading order in the eight experiments awaiting Stage C
-
-1. **Settings and stimuli:** `FIELDS`, `RESPONSES`, stimulus slots/defaults and
-   `PARADIGM`. All *researcher-adjustable experiment parameters* should be
-   declared here as `ConfigField` values with meaningful names, units, bounds
-   where physically or numerically necessary, and `help_text` for ambiguity.
-   The TUI supplies the selected values; this section gives defaults. The
-   selected values must be read from `run.values` (or `settings` inside
-   `make_trial` / `make_conditions`), not from frozen defaults further down.
-   Geometric relationships defining the task (e.g. a probe at its ellipse
-   centre or a target sign corresponding to the response alternatives) may
-   remain equations/invariants; explain them near the setting declarations.
-2. **Conditions and order:** `make_conditions(settings)` returns named condition
-   dictionaries; `choose_condition(run, conditions, state)` selects one and sets
-   its `target` (correct alternative index) and `value` (condition saved in data).
-3. **Prepare stimuli:** `prepare_stimuli(run, condition, state)` always returns
-   a dictionary of validated stimulus parameters by slot, never a bare coordinate
-   or Scene object. Conditions carry scientifically named coordinates/quantities.
-4. **One trial:** `make_trial(settings, condition)` returns the chronological
-   displays, interval gaps, optional sounds and response collection. Observation
-   markers may appear here; scientific updates may not. Both intervals remain
-   explicit in a temporal task.
-5. **Responses and adaptation:** `interpret_response(condition, response)` states
-   correctness; `update_experiment(run, condition, state, response, trial)` performs
-   the scientific update once and returns state. `trial_record()` declares named
-   measurements and canonical data fields. No file-writing code belongs here.
-6. **Run and finish:** setup, a Boolean stopping rule, the point estimator where
-   applicable, and a procedure that follows the scientific design.
-7. **Framework connection:** validation and `SPEC = definition()` connect these
-   scientific functions to the TUI and shared machinery.
-
-`condition` describes this trial. `state` holds quantities that persist across
-trials, including adaptive counters/engines. The open `trial` exposes an immutable
-accepted response and trial state, and applies declared nonvisual updates.
+## One event definition and one execution path
 
 ```python
-def procedure(run):
-    conditions = make_conditions(run.values)
-    state = initialise_experiment(run, conditions)
-    while not is_finished(run, conditions, state):
-        condition = choose_condition(run, conditions, state)
-        stimuli = prepare_stimuli(run, condition, state)
-        with run.trial(
-            make_trial(run.values, condition),
-            target=condition["target"], condition=condition["value"],
-            parameters_by_slot=stimuli, **trial_record(run, condition, state),
-        ) as trial:
-            response = interpret_response(condition, trial.response)
-            state = update_experiment(run, condition, state, response, trial)
-    finish_experiment(run, conditions, state)
+def fixation_events(settings):
+    return [Show("fixation", slot="fixation", duration="fixation_ms")]
+
+def trial_events(settings, condition):
+    return fixation_events(settings) + [
+        Show("target", slot="target", duration="stimulus_ms",
+             beep=Beep(550, 35)),
+        CollectResponse(actions=("left", "right"), slot="fixation",
+                        beep=Beep(750, 35)),
+    ]
 ```
 
-Entering `run.trial()` presents the trial using the existing renderer and collects
-one response. Interpretation and update are explicit calls inside the boundary;
-leaving it saves once. An exception preserves accepted input, partial events and
-state, and marks the run interrupted/failed. A failed adaptive update remains
-incomplete rather than being invented to make counts agree. Do not perform file
-access in an update callback. The compatibility `play_trial()` API still exists
-for internal/older action plans. The example above is an adaptive pattern; a
-fixed-trial procedure can use a for loop and omit an adaptive update.
+This is an authoring illustration, not a new default cue or protocol. Preserve
+each study's actual timing, cue and response meanings. Spatial 2AFC, binary
+single-interval judgments and first/second **2IFC** are different designs; two
+keys do not imply two stimulus intervals. See
+[psychophysical terminology](../../../docs/PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md).
 
-Start with `orientation_task.py` for fixed trials, `contrast_sensitivity.py`
-for interleaved staircases, and `ellipse_major_axis.py` for two explicit temporal
-intervals. `line_position_baseline.py` and `line_position_flanker.py` show the
-matched spatial task; `ellipse_centre.py` shows a different temporal geometry.
-The scientific specification and declared primary estimator state what a result
-means. A safety ceiling does not make incomplete staircases adequate.
-Historical reconstructions live under `_internal/historical/`, preserve their
-quirks for explicit replay and are absent from normal menus.
-The edited custom probe retains its existing Draft/Test/Ready gate.
+Shared-method procedures call
+`run_contrast_experiment(trial_events=trial_events, ...)`; direct procedures
+pass the list to `run.trial()`. The latest scientific state determines the
+effective parameters immediately before each trial. Interpretation and update
+occur explicitly inside the recording boundary; leaving it saves once.
+Do not perform file access or scientific updates during timed displays.
 
-`_internal/` holds discovery, declaration validation, source-name compatibility and
-historical design loading. Researchers do not edit it to add experiments.
-`__init__.py` is the required package entry point and contains no experiment science.
+Acquisition, simulation and Review inspect the same factory. Older
+`make_trial=...`/TrialTimeline experiments remain supported. Migrated files
+retain `make_trial = legacy_trial_factory(trial_events)` for older callers;
+the central adapter wraps the same list.
 
-## Editing scientific parameters consistently
+## Scientific methods, settings and results
 
-- **Experiment choices** such as condition positions, CSF grating eccentricity
-  and envelope width, ellipse ring radius/vertical centre, trial durations,
-  staircase settings and sound cues belong in the experiment's leading
-  `FIELDS` section. They must be reflected by the rendered timeline,
-  canonical trial measurements and scientific run summary.
-- **Stimulus appearance** such as the line's drawn width, grating phase or
-  Gabor diameter belongs in that stimulus's `PARAMETERS` in
-  `stimulus_library.py`; edit the stimulus class/preset, not a duplicate
-  experimental constant. The experiment can use a named field to vary an
-  appearance choice specifically for that study.
-- **Shared algorithms and coordinate conventions** belong in the shared
-  engine. For example, above/below uses the sign of a positive displacement;
-  a probe at the centre of an ellipse tracks that ellipse's centre. Do not
-  expose literal alternative indices or zero coordinate origins as misleading
-  "scientific settings".
-- Some examples use an authoritative `default_config` JSON that supplies
-  initial `values`. Keep declared Python fields, JSON keys, their defaults
-  and units coherent. Other JSON designs in `configs/experiment_designs/`
-  may be *historical compatibility inputs*, not the active Python protocol.
-- Regression tests should vary each editable field and test the *chosen*
-  value, not freeze a specific default (except a compatibility/default
-  round-trip test). Qualifying physical geometry, luminance and timing remains
-  a separate laboratory task.
+All ten official experiments support adaptive and constant-stimuli methods.
+`orientation_task`, `probe_above_below` and `example_experiment` also retain
+their original mode. Method choice uses the existing public
+`psychophysics_lab.methods.contrast` components. Conditions, strength units,
+display mapping, correctness and estimator remain experiment-owned.
 
-## Contrast sensitivity naming
+Digital peak-to-peak grating modulation, probe increment and absolute line
+intensity are distinct quantities. None establishes measured optical contrast.
+Constant-stimuli schedules save observed performance; a fitted psychometric
+threshold requires a separately justified analysis. A safety ceiling does not
+turn an incomplete staircase into a valid threshold.
 
-The public file and menu name are Contrast Sensitivity. Its established saved-run
-ID `csf_thesis` is retained internally: the older ID `contrast_sensitivity` already
-means a scientifically different historical shader protocol. The internal
-`source_names.py` migration map prevents either kind of saved run from being
-silently reinterpreted. New experiment files still match their own IDs normally.
+ConfigField declarations should state useful units, bounds and help text.
+Run-selected settings must affect presentation and saved scientific metadata.
+Library appearance parameters belong in `../stimulus_library.py` or a selected
+preset; do not hide duplicate constants later in the procedure. Optional JSON
+presets supply values through the same configuration route.
 
+## Ownership, compatibility and records
 
-Required study choices remain blank in setup until selected. Adaptive n-up/down,
-step sizes, reversal counts and retention come from TUI values, never hidden
-historical constants. Shared staircase state, primary analysis and display
-services have documented reasons in `docs/SCIENTIFIC_REDESIGN.md`. Scientific
-stimuli preserve floating commands through texture upload; output precision and
-optical timing still require physical qualification before acquisition.
+Official files are curated reference protocols. Develop new studies as uniquely
+identified [laboratory extensions](../../../docs/LABORATORY_EXTENSIONS.md);
+promotion is deliberate and reviewed. The
+[bundled starters](../../../examples/laboratory_extensions/METHODS.md) demonstrate
+composition, cues and the existing Test/Ready workflow.
 
+Only researcher experiment definitions, this README and the required
+`__init__.py` belong at the public directory level. `_internal/` holds discovery
+and saved-design compatibility, not a second authoring route. Current official
+IDs match filenames, including `contrast_sensitivity`. Historical run identity
+comes from saved provenance; do not infer a past protocol from today's source.
 
-The shared run context handles physical-test versus participant-acquisition policy
-at initialisation. Do not add a blanket non-synthetic guard: physical testing uses
-the real display and is intentionally distinct from participant acquisition.
-Shared recording helpers shorten repeated projections; the scientific strength,
-steps, gamut and measurements remain explicit at the experiment's call site.
-See `docs/RESEARCHER_TEST_WORKFLOW.md` for these narrowly shared responsibilities.
+Canonical response rows and trial journals preserve accepted input and partial
+events independently at trial boundaries. Compatible aggregate histories are
+written on finalisation; interrupted journal readers report truncation.
+`trial_column_overrides` saves the protocol-specific meaning of existing columns
+with each run. Existing participant records are never rewritten by authoring.
 
-## Reading and recording without more framework code
-
-To understand a task quickly, start with `make_trial()` and `prepare_stimuli()`,
-then its response/update functions and finish rule. Settings and framework
-declarations can stay folded in your editor until you need them. Keep equations,
-conditions, optional cues and the primary estimate in this file. A fixed-trial
-task needs no dummy adaptation function. The NumPy grids supplied to a stimulus
-renderer support named masks and equations; see the short learning guide.
-
-`trial_column_overrides` documents protocol-specific meanings in the existing
-saved-data dictionary. For example, `digital_probe_increment` and
-`digital_peak_to_peak` must not inherit the historical C_disp definition. New
-runs save the declarations with the run, so later source edits cannot silently
-change their data definitions. Existing data files are never rewritten.
-
-At each trial boundary, canonical responses and `trial_events.jsonl` are saved
-independently. Each journal line contains the actual trial, response/partial
-events, presentation record and adaptive updates. Compatible aggregate JSON
-histories are produced once during finalisation, including ordinary aborts and
-errors. This avoids repeatedly rewriting all earlier trials. If the process is
-killed, the durable journal remains even when aggregate files are absent. The
-reader `data.session.read_json_records` yields complete lines and explicitly
-reports an incomplete final line; it does not conceal a truncated write.
-
-Cropping, blank/control trials and off-centre stimuli are intentional design
-choices, not automatically corrected or prohibited. Inspect all relevant
-conditions. Display sampling limitations are shown at Review without blocking
-design or simulation; physical presentation still checks the actual display.
+Cropping, zero-strength catches and off-centre stimuli may be intentional.
+Inspect all relevant conditions. Review sampling warnings aid design; physical
+presentation and participant acquisition retain their actual display,
+calibration and protocol qualification checks. Software tests establish no
+physical photometric, temporal or audio qualification.

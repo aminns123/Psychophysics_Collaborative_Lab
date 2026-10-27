@@ -160,8 +160,9 @@ class MyNewLine(LibraryStimulus):
     assert MyNewLine.SPEC in library.library_stimulus_specs()
 
     monkeypatch.setitem(stimuli._REGISTRY, MyNewLine.SPEC.id, MyNewLine.SPEC)
-    experiment = replace(get_experiment("example_experiment"),
-                         stimulus_defaults={"target": MyNewLine.SPEC.id})
+    original = get_experiment("example_experiment")
+    experiment = replace(original,
+                         stimulus_defaults=dict(original.stimulus_defaults) | {"target": MyNewLine.SPEC.id})
     resolved = resolve_stimuli(experiment, experiment.field_defaults(), repo_root=ROOT)
     assert resolved["target"]["file_identity"] == "library_defaults"
     assert resolved["target"]["document"]["parameters"] == {"size_deg": 1.0}

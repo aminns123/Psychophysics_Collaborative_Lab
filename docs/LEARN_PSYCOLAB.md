@@ -47,9 +47,10 @@ Open one file in `src/psychophysics_lab/experiments/`:
 - `line_position_baseline.py`: single-interval, binary above/below line judgment.
 - `ellipse_major_axis.py`: two-interval forced-choice (2IFC) line detection.
 
-Read settings → conditions/order → stimulus preparation → one trial → responses
-and adaptation → run/finish → framework connection. `TrialTimeline` states the
-display order. Keep the participant's alternatives, units, adaptive change,
+Read PARAMETERS → SESSION START → TRIAL EVENTS → SCIENTIFIC RULES → STOPPING
+AND RESULTS → FRAMEWORK REGISTRATION. Every official experiment follows this
+six-section narrative. `trial_events(settings, condition)` gives the flat display
+and response order. Keep the participant's alternatives, units, adaptive change,
 stopping rule and primary estimator explicit. The TUI supplies the chosen values.
 Do not copy an example's scientific choices unless they fit your study.
 Use [psychophysical terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md)
@@ -61,12 +62,26 @@ registry edit. Fixed-trial and adaptive loops may differ. Repeated recording
 machinery is shared; each experiment still declares strength, steps, gamut and
 extra measurements at its recording call.
 
-For a quick scientific review, start with `make_trial()` and `prepare_stimuli()`,
+For a quick scientific review, read `SESSION_START`, `trial_events()` and `prepare_stimuli()`,
 then read response/adaptation and `finish_experiment()`. Expand the settings when
 changing the study. Keep fixed-trial loops simple; they need no dummy adaptive
 stage. Dictionary declarations beside the framework connection explain what the
 saved columns mean; a digital increment and a peak-to-peak grating modulation are
 different quantities even if they use the same compatibility column name.
+
+All official experiments start with fixation, a participant SPACE keypress and
+1,000 ms settling, once before Trial 1. Edit the `SESSION_START` Python list to
+change the key/duration, or write `SESSION_START=[]` to disable it. Readiness is
+not an answer and never updates a staircase. Older `make_trial()`/TrialTimeline
+definitions still work through the same framework.
+
+For a new local study, begin with the uniquely identified
+[laboratory starter](../examples/laboratory_extensions/METHODS.md). It shows
+ordinary list composition, optional onset/accepted-response beeps, stimulus
+selection, response meaning and stopping. The companion strength example names
+the adaptive next-value rule. Neither requires a TUI source change. Official
+reference protocols require reviewed changes; keep new scientific variations in
+your own extension namespace.
 
 ## 3. Try the actual trials
 

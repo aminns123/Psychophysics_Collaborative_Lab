@@ -36,7 +36,8 @@ def test_stimulus_library_contains_real_cross_and_white_line():
 def test_spatial_probe_demo_is_discovered_from_its_experiment_python_file():
     spec = get_experiment("probe_above_below")
     assert spec.procedure is not None and spec.supports_simulation
-    assert spec.stimulus_defaults == {"fixation": "fixation_cross", "probe": "vertical_line_probe"}
+    assert spec.stimulus_defaults == {"fixation": "fixation_cross", "probe": "vertical_line_probe",
+                                     "ready_fixation": "fixation_cross"}
     assert spec.response_paradigm.alternatives == ("above", "below")
     assert spec.response_paradigm.keys == ("F", "J")
     assert spec.calibration_requirements == ("geometry",)

@@ -19,6 +19,13 @@ and [experiment file guide](../src/psychophysics_lab/experiments/README.md).
 
 Start from a known correct **example**, not an assumed formula. The code itself remains editable in an ordinary Python editor; the TUI is the hub for selecting, configuring, inspecting, calibrating and testing. New `SPEC`-declaring experiment files in the supported public directory are discovered automatically; manual calls to the internal registry are not normally required. Saved-design compatibility, managed Draft/Test/Ready status and legacy names have additional constraints.
 
+Use the current six-section event-first narrative and one flat
+`trial_events(settings, condition)` definition for execution and Review.
+The [Stage C guide](STAGE_C_EVENT_FIRST.md) maps editable source locations;
+the [extension walkthrough](../examples/laboratory_extensions/METHODS.md)
+is the starting point for a uniquely identified local study. Legacy authoring
+APIs remain supported, without requiring their authors to migrate now.
+
 ## Submitting an experiment/stimulus PR
 
 1. Fork the repository, or obtain collaborator write access, and make a dedicated branch. Do not edit `main` directly.

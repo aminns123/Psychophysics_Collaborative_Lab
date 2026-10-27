@@ -1,11 +1,14 @@
 # Python session openings
 
-Stage A added this optional API. Stage B enables SPACE readiness followed by
-1,000 ms settling in Gaussian CSF and Ellipse Major Axis only; see the
-[source comparison and evidence](STAGE_B_EVENT_FIRST.md). Other experiments and
-existing extensions retain their openings. Edit the migrated Python
-`SESSION_START` list directly; `SESSION_START=[]` disables it. Their session-only
-`ready_fixation` slot is a Gaussian fixation on the selected background.
+Stage A added this optional API. Stage B migrated Gaussian CSF and Ellipse Major
+Axis; Stage C extends SPACE readiness and 1,000 ms settling to all ten official
+experiments and the bundled starters. See the
+[source comparison and evidence](STAGE_C_EVENT_FIRST.md). Existing laboratory
+sources are not rewritten. Edit `SESSION_START` directly;
+`SESSION_START=[]` disables it. Contrast/detection protocols use a session-only
+Gaussian fixation on the selected background. Geometry-only teaching protocols
+and starters use the existing fixation cross on grey 0.5, without adding a
+luminance qualification requirement. No ready slot contains the task stimulus.
 
 ## Optional Configure fields for a session opening
 
@@ -121,7 +124,7 @@ cleanup. If a device cannot open, a saved error/session trace can be inspected,
 but the validator reports missing runtime/resolved evidence; it does not invent
 successful display metadata. No-event sessions create no session sidecar.
 
-Stage B reorganizes only Gaussian CSF and Ellipse Major Axis. Their
-`trial_events(settings, condition)` lists drive acquisition and generic Review;
-older `make_trial()` callers remain supported. Stage C remains a separate migration
-of the other eight official experiments and starter templates.
+All ten official `trial_events(settings, condition)` lists now drive acquisition,
+simulation and generic Review. Older `make_trial()` callers remain supported.
+Bundled starters demonstrate the same API; provisioning does not overwrite an
+existing laboratory source folder or automatically grant trust/Test/Ready status.

@@ -32,6 +32,55 @@ def enable(lab):
     assert not ext.load(ROOT)
 
 
+@pytest.mark.parametrize('identity', ['demolab__left_right','demolab__line_strength'])
+def test_event_first_starters_test_ready_and_run_without_ui_edits(lab,tmp_path,identity):
+    import sys
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+    enable(lab)
+    if identity == EXPERIMENT:
+        assert execute_user_action(ROOT,'preview',STIMULUS,{})==0
+        ext.publish(ROOT,'stimulus',STIMULUS)
+    assert execute_user_action(ROOT,'test',identity,{'trial_count':4})==0
+    ext.publish(ROOT,'experiment',identity)
+    assert ext.status(ROOT,'experiment',identity)=='ready'
+    spec=get_experiment(identity)
+    module=sys.modules[spec.procedure.__module__]
+    assert callable(module.trial_events) and module.make_trial.__wrapped__ is module.trial_events
+    methods=('adaptive','constant_stimuli') if identity.endswith('strength') else (None,)
+    for method in methods:
+        values={'trial_count':4}
+        if method:values.update(contrast_method=method,fixed_contrasts='0,.1',fixed_repetitions=2)
+        a,_=simulate(repo_root=ROOT,data_root=tmp_path/'starter_runs',experiment_id=identity,values=values,analyse=False)
+        assert a.status=='completed'
+        trace=json.loads((a.run_directory/'session_events.json').read_text())
+        assert trace['status']=='completed' and len(trace['events'])==2
+        assert trace['events'][0]['readiness']['key']=='SPACE'
+        assert all(s['stimulus_id']=='fixation_cross' for s in trace['resolved_stimuli'].values())
+        assert all(c.passed for c in validate_run(a.run_directory))
+    assert ext.status(ROOT,'experiment',identity)=='ready'
+
+
+def test_archived_pre_stage_c_extension_retains_legacy_api_and_empty_opening(lab,tmp_path):
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+    source=lab/'experiments'/(EXPERIMENT+'.py')
+    source.write_bytes((ROOT/'tests/fixtures/legacy_stage_b_extension.py.txt').read_bytes())
+    original=source.read_bytes()
+    enable(lab)
+    assert execute_user_action(ROOT,'preview',STIMULUS,{})==0
+    ext.publish(ROOT,'stimulus',STIMULUS)
+    assert execute_user_action(ROOT,'test',EXPERIMENT,{'trial_count':3})==0
+    ext.publish(ROOT,'experiment',EXPERIMENT)
+    assert not get_experiment(EXPERIMENT).session_start.phases
+    a,_=simulate(repo_root=ROOT,data_root=tmp_path/'legacy_runs',experiment_id=EXPERIMENT,
+                 values={'trial_count':3},analyse=False)
+    assert a.status=='completed' and a.accepted_trials==3
+    assert not (a.run_directory/'session_events.json').exists()
+    assert all(c.passed for c in validate_run(a.run_directory))
+    assert source.read_bytes()==original and ext.status(ROOT,'experiment',EXPERIMENT)=='ready'
+
+
 def test_new_local_parameter_has_generic_review_edit_route_and_both_methods(lab,tmp_path):
     """Create a local study by extending the documented shared-method example."""
     from textual.widgets import Button,DataTable,Input,Select

@@ -195,7 +195,7 @@ def test_older_dictionary_is_preserved_and_validation_limits_are_explicit(tmp_pa
 
 def test_crop_and_blank_target_choices_remain_available(tmp_path):
     from psychophysics_lab.stimuli.registry import get_stimulus
-    from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
+    from psychophysics_lab.config.stimulus_parameters import document_for, snapshot, resolve_stimuli
     stimulus = get_stimulus("detection_scene")
     # This fixture intentionally puts the complete reference probe outside
     # the aperture; researcher-edited class defaults must not change the case.
@@ -205,8 +205,13 @@ def test_crop_and_blank_target_choices_remain_available(tmp_path):
     spec = get_experiment("line_position_baseline")
     profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"], expected_resolution_px=(1920, 1080))
     selected = snapshot(document_for(stimulus, parameters), file_identity="intentional_crop")
-    request = SetupRequest("crop_test", "new", spec.id, profile.id, spec.field_defaults() | {"probe_vertical_offset_deg": .5},
-                           stimulus_snapshots={slot: selected for slot in spec.stimulus_slots})
+    values = spec.field_defaults() | {"probe_vertical_offset_deg": .5}
+    snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
+    # Crop every task scene, while keeping the session-only fixation's own family.
+    snapshots.update({slot: selected for slot, family in spec.stimulus_slots.items()
+                      if family == stimulus.family})
+    request = SetupRequest("crop_test", "new", spec.id, profile.id, values,
+                           stimulus_snapshots=snapshots)
     assert validate_setup(request, spec, profile, mode="configuration")
 
 
