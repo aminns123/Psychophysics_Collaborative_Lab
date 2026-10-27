@@ -111,6 +111,7 @@ altering previously acquired records. Learn / Help also opens the code example.
 - [Experiment file guide](src/psychophysics_lab/experiments/README.md)
 - [Scientific specifications and validation limits](docs/SCIENTIFIC_REDESIGN.md)
 - [Researcher workflow implementation](docs/RESEARCHER_TEST_WORKFLOW.md)
+- [Installing and updating PsyCoLab with Git — beginner's Windows guide](docs/GIT_INSTALL_AND_UPDATE_FOR_BEGINNERS.md)
 
 The command-line simulation defaults now use the **current public**
 `contrast_sensitivity` experiment and its registered observer. The current
