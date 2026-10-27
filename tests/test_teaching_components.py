@@ -116,7 +116,8 @@ def test_multiple_slots_and_offline_simulation(tmp_path, monkeypatch):
             run.present(slot=slot, target=0, condition=slot)
         run.complete()
     base = get_experiment("orientation_task")
-    spec = replace(base, id="two_patches", procedure=procedure, source_paths=(),
+    # This separate test protocol replaces every slot and has no opening.
+    spec = replace(base, id="two_patches", procedure=procedure, source_paths=(), session_start=[],
         stimulus_slots={"target": "orientation_patch", "comparison": "orientation_patch"},
         stimulus_defaults={"target": "teaching_gabor", "comparison": "teaching_gabor"})
     register_experiment(spec)

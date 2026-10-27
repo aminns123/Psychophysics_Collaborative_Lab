@@ -99,7 +99,8 @@ def test_two_stimuli_can_appear_in_order_and_record_custom_measurement(tmp_path,
                        measurements={"probe_offset_deg": 0.5})
         run.complete()
     base = get_experiment("orientation_task")
-    spec = replace(base, id="sequential_stimuli", procedure=procedure, source_paths=(),
+    # This separate test protocol replaces every slot and has no opening.
+    spec = replace(base, id="sequential_stimuli", procedure=procedure, source_paths=(), session_start=[],
                    stimulus_slots={"target": "orientation_patch", "comparison": "orientation_patch"},
                    stimulus_defaults={"target": "teaching_gabor", "comparison": "teaching_gabor"})
     register_experiment(spec)
