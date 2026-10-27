@@ -1,0 +1,915 @@
+{
+  "baseline_commit": "2374f535ed4ff96bc39e5d09044184dae02cbbf8",
+  "original_reference_commit": "da377eb784197aff7207428fdb57789c037b1272",
+  "registry": [
+    {
+      "id": "example_experiment",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "orientation_adaptive",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "orientation_task",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "probe_above_below",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "contrast_sensitivity",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "contrast_sensitivity_windowed",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "ellipse_centre",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "ellipse_major_axis",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "line_position_baseline",
+      "historical": false,
+      "origin": ""
+    },
+    {
+      "id": "line_position_flanker",
+      "historical": false,
+      "origin": ""
+    }
+  ],
+  "hash_encoding": "sha256 of json.dumps(sort_keys=True,separators=(comma,colon),allow_nan=False), utf8",
+  "cases": [
+    {
+      "identity": "contrast_sensitivity",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "01b0b4d3a53b452fbaa31694bf90131f7e16ab203c32040ffc39cf21eda8bee8",
+      "trial_actions_sha256": "d84345607ea0a628ba02384486671cdc9cfe1dc74c1a34f8e07c68f818fa7aed",
+      "adaptive_history_sha256": "bfbc53088af9bd41f65cbad5ae6e4bb2f3a508beb4a13b665188b12a2d58631b"
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "0140cea70e283645397b56638059302c31a6935a382e5378ba38029a36c43d25",
+      "trial_actions_sha256": "c49abd81527b5cd1ebd4194a808b2ec5dda02e2c11a9250c5b74abec16cab787",
+      "adaptive_history_sha256": "260d5466444cfcd78b4787a0f01946d43ba3adbfa699dcd81fbc4accb415b87a"
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "9df04bb4e540a3ec7af66097d243764b7b85b2b97a717091830923f36fea4493",
+      "trial_actions_sha256": "52bb51d5ad17bc0e954d4bcd6783786ffa11e0934b19a67adfde4192518924c6"
+    },
+    {
+      "identity": "contrast_sensitivity",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "234544a013c580b756c4d4837d487b1060ef8a9be9472b7a3956459a2b30e780",
+      "trial_actions_sha256": "729b5319a26654dfa077a1b42fda69a2502087cca0401f875eb8d24d845016a6"
+    },
+    {
+      "identity": "contrast_sensitivity_windowed",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "01b0b4d3a53b452fbaa31694bf90131f7e16ab203c32040ffc39cf21eda8bee8",
+      "trial_actions_sha256": "1f297a64f60f07358c7a789c59968e7103bbf221fea08e326d8c745e700e8022",
+      "adaptive_history_sha256": "bfbc53088af9bd41f65cbad5ae6e4bb2f3a508beb4a13b665188b12a2d58631b"
+    },
+    {
+      "identity": "contrast_sensitivity_windowed",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "0140cea70e283645397b56638059302c31a6935a382e5378ba38029a36c43d25",
+      "trial_actions_sha256": "4dcc41d1e002f95fabe6bb826064b6cf428554f69baaeea89663ef0c31dc8009",
+      "adaptive_history_sha256": "260d5466444cfcd78b4787a0f01946d43ba3adbfa699dcd81fbc4accb415b87a"
+    },
+    {
+      "identity": "contrast_sensitivity_windowed",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "9df04bb4e540a3ec7af66097d243764b7b85b2b97a717091830923f36fea4493",
+      "trial_actions_sha256": "56962a325a253942e5f6c8984893c56caf1b54d43dde6e93340583043814f10a"
+    },
+    {
+      "identity": "contrast_sensitivity_windowed",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_contrast": 0.02,
+        "staircases_per_condition": 2,
+        "frequencies_cpd": "2,4",
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "234544a013c580b756c4d4837d487b1060ef8a9be9472b7a3956459a2b30e780",
+      "trial_actions_sha256": "0b63bd7c0cf6f22006e3514d3b8a23350767d9eb267a14ea50f4edabb2f186d9"
+    },
+    {
+      "identity": "line_position_baseline",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "883a1fa2e9d91ad0f806be48221b119688d392db9d62fae70be1e5eb579bb253",
+      "trial_actions_sha256": "73838979b31bc73cafc70f6cf851cd532603440c861f6e22af7782a2bd26c29d",
+      "adaptive_history_sha256": "56489d9dce13e58849cf4f4432aca3f0c0b53e443a5a7a53ac961b143b254372"
+    },
+    {
+      "identity": "line_position_baseline",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "619d514c4b658b6f9b32dbeb91256f35b24821ff90588382465cb38b9faebbc9",
+      "trial_actions_sha256": "fe5b8dd4a72dad64fdb91ff87ff9479954d7f71e3450c27dfcf68422ce938218",
+      "adaptive_history_sha256": "0f0f70aa7c9dedc2aaa5d4621984257a0e04b186fb5979caff49ce3c28b6d206"
+    },
+    {
+      "identity": "line_position_baseline",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "4adabb2daba086463a36161f293d2f4299a5c33c9851ee1e7fb43dac27ab8364",
+      "trial_actions_sha256": "e5c616735cd12f118d3c2c56072ecc3603418fe11b6b70f85cab81929689f592"
+    },
+    {
+      "identity": "line_position_baseline",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "74b4adfa261d6a2407010440dcd9ea82289de3b6b9d7ab5df45a781286367fd3",
+      "trial_actions_sha256": "826f38eaa2f7752355ce1e5564d92076f8835e6c7c93ad0dcd9b3ce9fe4dc324"
+    },
+    {
+      "identity": "line_position_flanker",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "flanker_cpd": 2.0,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "883a1fa2e9d91ad0f806be48221b119688d392db9d62fae70be1e5eb579bb253",
+      "trial_actions_sha256": "28d60d7e97f4a9bdbfa312badfd27a8fa585abec84c37c94c2e21f575e818084",
+      "adaptive_history_sha256": "56489d9dce13e58849cf4f4432aca3f0c0b53e443a5a7a53ac961b143b254372"
+    },
+    {
+      "identity": "line_position_flanker",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "flanker_cpd": 2.0,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "619d514c4b658b6f9b32dbeb91256f35b24821ff90588382465cb38b9faebbc9",
+      "trial_actions_sha256": "934c889faf9567a19bd4c70f1f46f1d385db491e6979e41e5edf821132cc827e",
+      "adaptive_history_sha256": "0f0f70aa7c9dedc2aaa5d4621984257a0e04b186fb5979caff49ce3c28b6d206"
+    },
+    {
+      "identity": "line_position_flanker",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "flanker_cpd": 2.0,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "4adabb2daba086463a36161f293d2f4299a5c33c9851ee1e7fb43dac27ab8364",
+      "trial_actions_sha256": "28138c56ea99179c5f0491d76c29d06ae3421c996a52782590dc5f502cb176c0"
+    },
+    {
+      "identity": "line_position_flanker",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "probe_vertical_offset_deg": 0.4,
+        "flanker_cpd": 2.0,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "74b4adfa261d6a2407010440dcd9ea82289de3b6b9d7ab5df45a781286367fd3",
+      "trial_actions_sha256": "e8a5acd1a193f1a96a913beec8017c2681fb425a11f39e362a84235ddb049813"
+    },
+    {
+      "identity": "ellipse_centre",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "f351b90d8e9a5755ca61c42860ccc153c608e4c58f00d479c7b4c3f049715235",
+      "trial_actions_sha256": "282f3a9dcbc9a5fe74906868f1b0c2643ef697bb1744e54b525d43be8c23aa33",
+      "adaptive_history_sha256": "56489d9dce13e58849cf4f4432aca3f0c0b53e443a5a7a53ac961b143b254372"
+    },
+    {
+      "identity": "ellipse_centre",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "1efe147f9cf81ba496866b5d202587bb8ccb7b7edc5ed3cc71bcbc9314b1a94c",
+      "trial_actions_sha256": "634b324657c81c121765d662af4f47c19bdb85a860a288bfbda46646d49964f6",
+      "adaptive_history_sha256": "0f0f70aa7c9dedc2aaa5d4621984257a0e04b186fb5979caff49ce3c28b6d206"
+    },
+    {
+      "identity": "ellipse_centre",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "c5c7aebd420908b6401e09021fc802cb9d757a0edc7ce967302ee0d15de476bd",
+      "trial_actions_sha256": "a7ac8d6acb96795178966ab18c53079df968f7743b8e5f79e78013dae54fbab8"
+    },
+    {
+      "identity": "ellipse_centre",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 8,
+      "trial_rows_sha256": "7e4d3c4b1b2556dbb595291e5608b071baca59ad5ab032dc49f48335a5067c33",
+      "trial_actions_sha256": "647da1c56586947a952c40adbd5396cfa3f875432e9eba1bbeae12b89949b8fe"
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "9bd709e1589d2f3378c6acadb094869958cb401e4196ff45b091e20649c0690c",
+      "trial_actions_sha256": "176975cf63d407a27a1c602d16b8967bd1df0559942a0c6328b89e60fe9e0370",
+      "adaptive_history_sha256": "e80fd28e89e332076e7ed807da1556fba006676e5e016161236b4fac750bebf4"
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "max_trials_reached",
+      "accepted": 12,
+      "trial_rows_sha256": "b2f40e33e4a70b1bc76e9dca889f0d59d2aa3b35e97e1fd0f9fbfa6b26ca4381",
+      "trial_actions_sha256": "c227c57ed18651c1ef3c83a216a8b0b64eaa9b8b1c7a39bb8f49b26fee66ae9b",
+      "adaptive_history_sha256": "f356c7da6b12bf6e9915d6a7e41b814d4bebd03d44e7f969a40b2564df9a2e20"
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.2,
+        "starting_probe_intensity": 0.21000000000000002,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 32,
+      "trial_rows_sha256": "2bf99a4ef325dad65086bb9b047427f5e74ed6d87075cbfc68ddc37f75acb5f2",
+      "trial_actions_sha256": "81297f1f32cac337f17416fd3f52750e9135ca40ad5466a9668285c3857655cc"
+    },
+    {
+      "identity": "ellipse_major_axis",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "background_intensity": 0.5,
+        "starting_probe_intensity": 0.51,
+        "staircases_per_condition": 2,
+        "positions_deg": "-0.2,0.2",
+        "aspect_ratios": "0.75,1",
+        "ring_increment": 0.03,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 32,
+      "trial_rows_sha256": "99d1e3b16f7434f4c67e0a0e80ff23e6d22f815d037094055c23b456f111ea57",
+      "trial_actions_sha256": "640ae106e5f7fec109531d0569de75d15c3ce30e67d5f9193e680613ad4c6023"
+    },
+    {
+      "identity": "orientation_adaptive",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "3c177cdf030ff15bd052251b31c8dfec1e020a1ac55c15cd773170716970ad1c",
+      "trial_actions_sha256": "151c9525fbd638e6e370d332fc6aad6656976fc0254436a5c3450ac51312e2d2",
+      "adaptive_history_sha256": "f6c2ec334592008ce25d4e92da78af846255044d0cda13d3f7bffeb2da1073fe"
+    },
+    {
+      "identity": "orientation_adaptive",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "d98731e6d05c6c831d332b64248d7b70a985a15141ea562f495032b79b289f0b",
+      "trial_actions_sha256": "21958bf7835da3f454dff1f8cff0c0ea60092c43eda3ea51f3b6ec825a8a54a8",
+      "adaptive_history_sha256": "5f9faa9d9dd52cff0ba060faa9ae7c55db07270492cb9aed6f628169ab5d66a0"
+    },
+    {
+      "identity": "orientation_adaptive",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "fabb8e384478aef06e05142cc2f7e90df1e2dabe39ef31a49f50f4371271ecdd",
+      "trial_actions_sha256": "85337a28370b5ebf807c9d4e663ae6bb9891129b621e158c78bd0c0af6f22efd"
+    },
+    {
+      "identity": "orientation_adaptive",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "d141491e5e04631e85b74d142f92ab62d3d5580d44d812994b9db76189e29c6c",
+      "trial_actions_sha256": "c1bf13cdab1812d05fe3d9b92bcaf4b2ad7ab91f9d837908f368fa440ec056f6"
+    },
+    {
+      "identity": "orientation_task",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "31530b953c351b42cfd730bcfdf8a322a55134709833e3c5244ac226a7e364fc",
+      "trial_actions_sha256": "4186304571c07b35d2b31599a57cf8ede47fa4a2d764037e62e9a0b67c9cf35d",
+      "adaptive_history_sha256": "90f7853cc3d320c40441025888315d7b7f142d2f482391db648289d3666bbe15"
+    },
+    {
+      "identity": "orientation_task",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "4414a7077b3dba952d9b13c74be20ae93ec50898b6bc16328243a03bcd941b6b",
+      "trial_actions_sha256": "79a6dd77a54909f751b5ffb3412c90577b931b218bfbfaa97c0c539a4530e1d2",
+      "adaptive_history_sha256": "af907c1a5efc41b38845964df40cf9c707b95b7ab5dc42da6c885f2cde81a9d7"
+    },
+    {
+      "identity": "orientation_task",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "fabb8e384478aef06e05142cc2f7e90df1e2dabe39ef31a49f50f4371271ecdd",
+      "trial_actions_sha256": "85337a28370b5ebf807c9d4e663ae6bb9891129b621e158c78bd0c0af6f22efd"
+    },
+    {
+      "identity": "orientation_task",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "d141491e5e04631e85b74d142f92ab62d3d5580d44d812994b9db76189e29c6c",
+      "trial_actions_sha256": "c1bf13cdab1812d05fe3d9b92bcaf4b2ad7ab91f9d837908f368fa440ec056f6"
+    },
+    {
+      "identity": "probe_above_below",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "9812fe767c9bf4aa7204c2df96d15e25806899c5551a31ecaea41c1a3fdb90ac",
+      "trial_actions_sha256": "66a3c20c0c6ab2ba81efa770d63b3fa9336167ded5397ff01522adaf663ef471",
+      "adaptive_history_sha256": "90f7853cc3d320c40441025888315d7b7f142d2f482391db648289d3666bbe15"
+    },
+    {
+      "identity": "probe_above_below",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "2777bba5d8cfa2cc6d038063646031dc94fae54400ba1169729157b958d6196e",
+      "trial_actions_sha256": "1b781fc946df97261aee7a88fdce515ad9ff65fc627af4749af7cda1c80f7dc3",
+      "adaptive_history_sha256": "af907c1a5efc41b38845964df40cf9c707b95b7ab5dc42da6c885f2cde81a9d7"
+    },
+    {
+      "identity": "probe_above_below",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "4385fa88373fc803e623fc722717bedbae791222f771e938fa4a9a7e4f76164e",
+      "trial_actions_sha256": "8e87740d283a864212a77c51edfb46bf0e06927b83fce07ae4e8bb6d98566446"
+    },
+    {
+      "identity": "probe_above_below",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "probe_vertical_offset_deg": 0.4,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "2622d5bb5758e03638b80bc8ef181c5bbb4bcbed6bd9fb70cf9365246b74c97c",
+      "trial_actions_sha256": "d812002222faa0b5b74ec8c4857f92d3aa128c5fe7b216b8cf4acda64700897d"
+    },
+    {
+      "identity": "example_experiment",
+      "method": "adaptive",
+      "seed": 0,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "af9e677df2509b607f7d555ded1cfd3fad248ebf964f450c25ce84fb3d889d0e",
+      "trial_actions_sha256": "bb3b24fe2c3e547e1f7b8b6016c9623b45a4a5695ec37fd381968a34812386cc",
+      "adaptive_history_sha256": "90f7853cc3d320c40441025888315d7b7f142d2f482391db648289d3666bbe15"
+    },
+    {
+      "identity": "example_experiment",
+      "method": "adaptive",
+      "seed": 19,
+      "values": {
+        "contrast_method": "adaptive",
+        "max_trials": 12,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 6,
+      "trial_rows_sha256": "eec487190d98b2b4a2ba00d1aa89fbf5bf9012379564b648a17702d799417409",
+      "trial_actions_sha256": "40ed77c7be3314e82dd01dc46f8f49e822460562ec37b016c830ca7832a89a90",
+      "adaptive_history_sha256": "af907c1a5efc41b38845964df40cf9c707b95b7ab5dc42da6c885f2cde81a9d7"
+    },
+    {
+      "identity": "example_experiment",
+      "method": "constant_stimuli",
+      "seed": 0,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "d73eb30df0b14a5cda0adfd3317a8c238e85b5e9b0a1807598aed46c25f4cdc5",
+      "trial_actions_sha256": "f5c938587d1b18fce2600e01081d99edeab61e9c1e7be9ed8c3418698cfb7565"
+    },
+    {
+      "identity": "example_experiment",
+      "method": "constant_stimuli",
+      "seed": 19,
+      "values": {
+        "contrast_method": "constant_stimuli",
+        "max_trials": 64,
+        "fixed_contrasts": "0,0.01",
+        "fixed_repetitions": 2,
+        "trial_count": 6,
+        "starting_strength": 0.1,
+        "n_down": 2,
+        "n_up": 1
+      },
+      "status": "completed",
+      "accepted": 4,
+      "trial_rows_sha256": "7c8f6e18e2c9f76ba7bdd14ec62eb466c6198ecc1b985cae37c9e7af5e69e665",
+      "trial_actions_sha256": "cd18d8270b4e9ad954ff66b80dc1c2a8124662ad7c84dddc682bbb15e5ae78ad"
+    }
+  ]
+}
