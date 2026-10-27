@@ -139,6 +139,7 @@ def software_window(monkeypatch, *, escape=False):
 def test_actual_phase_player_preserves_first_last_trial_and_scientific_state(tmp_path, monkeypatch, identity, method):
     from psychophysics_lab.config.monitor import load_monitor_profiles
     scientific = []
+    states = []
     opening = None
     for enabled in (False, True):
         with monkeypatch.context() as patch:
@@ -160,6 +161,13 @@ def test_actual_phase_player_preserves_first_last_trial_and_scientific_state(tmp
                 context.close()
             assert context.accepted_trials == (8 if method=='adaptive' else 4)
             scientific.append([{k:v for k,v in row.items() if k not in {'recorded_utc','event_time_s'}} for row in rows(directory)])
+            states.append({
+                'trials': [{key:trial[key] for key in ('trial_index','condition','target','plan',
+                    'resolved_stimuli','initial_state','final_state','status')}
+                    for trial in read(directory,'trial_actions.json')['trials']],
+                'adaptive': read(directory,'adaptive_history.json') if (directory/'adaptive_history.json').exists() else None,
+                'primary': read(directory,'primary_thresholds.json') if (directory/'primary_thresholds.json').exists() else None,
+            })
             if enabled:
                 opening = read(directory,'session_events.json')
                 assert opening['status']=='completed' and len(opening['events'])==2
@@ -167,6 +175,7 @@ def test_actual_phase_player_preserves_first_last_trial_and_scientific_state(tmp
             else:
                 assert not (directory/'session_events.json').exists()
     assert scientific[0] == scientific[1]
+    assert states[0] == states[1]
     assert not any('response' in e for e in opening['events'])
 
 
