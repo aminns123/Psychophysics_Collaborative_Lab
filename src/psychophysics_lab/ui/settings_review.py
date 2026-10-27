@@ -64,12 +64,16 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         result["note"] = "Historical driver: selected parameters are shown; inspect its Python/shader for trial-dependent values."
         return result
     module = sys.modules[spec.procedure.__module__]
-    names = ("prepare_stimuli", "make_trial")
+    event_factory = getattr(module, "trial_events", None)
+    event_name = "trial_events" if event_factory is not None else "make_trial"
+    if event_factory is None:
+        event_factory = getattr(module, "make_trial", None)
+    names = ("prepare_stimuli",)
     method = values.get("contrast_method")
     if not ((method == "constant_stimuli" and callable(spec.method_planner))
             or (method == "adaptive" and callable(spec.method_reviewer))):
         names += ("make_conditions", "initialise_experiment", "choose_condition")
-    if not all(callable(getattr(module, name, None)) for name in names):
+    if not callable(event_factory) or not all(callable(getattr(module, name, None)) for name in names):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
@@ -109,10 +113,10 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
     from ..core.timeline import as_trial_timeline
-    timeline=as_trial_timeline(module.make_trial(values, condition))
+    timeline=as_trial_timeline(event_factory(values, condition))
     result.update(stimuli={slot: dict(p) for slot,p in stimuli.items()}, overrides=run.overrides,
                   parameter_reads=reads, conditions=conditions, resolution=getattr(run, "resolution", {}),
-                  phases=timeline.resolve(values).to_dict()["phases"],
+                  phases=timeline.resolve(values).to_dict()["phases"], trial_event_function=event_name,
                   phase_inputs={phase.name:phase.duration_ms for phase in timeline.phases if phase.kind in {"show","response"}},
                   note=representative_note)
     if profile is not None and getattr(profile, "expected_resolution_px", None):

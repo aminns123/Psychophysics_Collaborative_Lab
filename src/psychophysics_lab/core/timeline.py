@@ -193,6 +193,19 @@ def as_trial_timeline(events):
     return TrialTimeline(tuple(events))
 
 
+def legacy_trial_factory(event_factory):
+    """Keep older make_trial(...).resolve(...) callers on the same event plan.
+
+    New experiments author one flat trial_events function. This compatibility
+    adapter adds only the validated container, never another event definition.
+    """
+    from functools import wraps
+    @wraps(event_factory)
+    def make_trial(*args, **kwargs):
+        return as_trial_timeline(event_factory(*args, **kwargs))
+    return make_trial
+
+
 def load_timeline(path: Path, *, timings: Mapping[str, int] = (), slots=()) -> TrialTimeline:
     """Load editable chronological JSON with timing keys resolved from experiment fields.
 

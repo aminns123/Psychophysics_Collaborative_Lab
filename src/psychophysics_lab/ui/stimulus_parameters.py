@@ -111,14 +111,23 @@ class StimulusParametersPanel(Vertical):
                 latest = load_parameters(self.path, self.stimulus)
                 if latest["file_sha256"] != self.loaded["file_sha256"]:
                     raise ValueError(f"{self.slot}: JSON changed; choose Reload and validate.")
-            return self.loaded
-        fields = self.configuration.experiment.stimulus_field_bindings[self.slot]
-        values = {}
+            selected = self.loaded
+        else:
+            selected = None
+        fields = self.configuration.experiment.stimulus_field_bindings.get(self.slot, {})
+        if not fields and selected is not None:
+            return selected
+        # Bound inputs come from Configure, including after returning from
+        # Review. Keep every unbound selected appearance parameter intact.
+        values = (dict(selected["document"]["parameters"]) if selected is not None
+                  else {f.key: f.default for f in self.stimulus.parameters})
         for parameter, key in fields.items():
             value = self.configuration.query_one("#field-" + key.replace("_", "-")).value
             field = next(item for item in self.stimulus.parameters if item.key == parameter)
             values[parameter] = field.coerce(value)
-        return snapshot(document_for(self.stimulus, values), file_identity="experiment_values")
+        return snapshot(document_for(self.stimulus, values),
+                        file_identity=selected["file_identity"] if selected else "experiment_values",
+                        file_sha256=selected.get("file_sha256") if selected else None)
 
     def load_default(self):
         if self.stimulus.default_config:

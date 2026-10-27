@@ -81,7 +81,10 @@ def resolve_stimuli(spec, values, snapshots=None, *, repo_root=None):
             if Path(selected["file_identity"]).name != selected["file_identity"] or "/" in selected["file_identity"] or "\\" in selected["file_identity"]:
                 raise ValueError("Stimulus file identity must be a filename, not a path.")
         elif spec.stimulus_field_bindings.get(slot):
-            parameters = {key: values[field] for key, field in spec.stimulus_field_bindings[slot].items()}
+            # Bind declared inputs while retaining the stimulus class's other
+            # defaults. Saved JSON documents still require every original key.
+            parameters = {f.key: f.default for f in stimulus.parameters} | {
+                key: values[field] for key, field in spec.stimulus_field_bindings[slot].items()}
             selected = snapshot(document_for(stimulus, parameters), file_identity="experiment_values")
         else:
             if repo_root is None:

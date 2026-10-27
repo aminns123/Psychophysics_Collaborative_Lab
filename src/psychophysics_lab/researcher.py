@@ -24,7 +24,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                acquisition_block_reason="", historical=False, scientific_spec=None,
                trial_column_overrides=None, migrate_values=None, data_directory_name="",
                method_planner=None, method_reviewer=None, stimulus_parameter_controls=None,
-               session_start=()):
+               session_start=(), stimulus_field_bindings=None):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
@@ -48,7 +48,7 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {},
         trial_column_overrides=dictionary, method_planner=method_planner,
         method_reviewer=method_reviewer, stimulus_parameter_controls=stimulus_parameter_controls or {},
-        session_start=session_start)
+        session_start=session_start, stimulus_field_bindings=stimulus_field_bindings or {})
 
 
 class ParticipantAbort(Exception):
@@ -660,5 +660,5 @@ def configure(participant_id, data_root, setup, *, run_directory):
     return str(conditions), str(parameters), str(response)
 
 # Small public chronological vocabulary; existing Phase/JSON stays compatible.
-from .core.timeline import (TrialTimeline, SessionTimeline, Phase, Show, Stimulus, CollectResponse, WaitForKey,
+from .core.timeline import (TrialTimeline, SessionTimeline, Phase, Show, Stimulus, CollectResponse, WaitForKey, legacy_trial_factory,
                             RecordState, UpdateState, UpdateAdaptive, Beep)
