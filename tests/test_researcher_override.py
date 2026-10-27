@@ -133,7 +133,8 @@ def inject_display(monkeypatch, outcome="complete"):
             displays.append(self)
 
         def prepare(self, *args):
-            self.prepared += 1
+            from psychophysics_lab.researcher import SessionTimeline
+            self.prepared += int(not isinstance(args[0], SessionTimeline))
             if self.prepared == 2 and outcome != "complete":
                 if outcome == "abort":
                     from psychophysics_lab.researcher import ParticipantAbort

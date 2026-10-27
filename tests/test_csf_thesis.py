@@ -166,7 +166,9 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
             values = app.screen._collect()
             return values, app.screen.stimulus_snapshots
     values, snapshots = asyncio.run(collect())
-    assert all(s["file_identity"] == "library_defaults" for s in snapshots.values())
+    assert all(snapshots[slot]["file_identity"] == "library_defaults" for slot in ("fixation","grating"))
+    assert snapshots["ready_fixation"]["file_identity"] == "experiment_values"
+    assert snapshots["ready_fixation"]["document"]["parameters"]["background"] == values["background_intensity"]
     assert all(values[k] == v for k, v in selected.items())
     original = RunContext.trial
     presented = []

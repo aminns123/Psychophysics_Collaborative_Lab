@@ -104,7 +104,9 @@ No future adaptive values are precomputed.
 | Chronological displays | The flat `trial_events` list near the top; both ellipse intervals and ISI are visible together |
 
 The framework retains pre-rendering, input handling, algorithms, recording and
-recovery. No arbitrary callback is added inside a timed phase. Python edits can
+recovery. The existing initialisation guards are shared and run before session
+parameter resolution as well as before display creation, preserving direct-call
+qualification and invalid-background rejection. No arbitrary callback is added inside a timed phase. Python edits can
 change a protocol intentionally; saved field selections still override edited
 Python defaults where the existing configuration contract says so.
 
@@ -162,6 +164,15 @@ extension/reading-pattern selection passed **164 tests, 1 platform skip**, in
 155.12 s. An earlier broader group passed 246 tests and identified a generic
 Configure partial-binding issue; that issue was repaired and the edit/return
 workflow now has its own regression. No scientific assertion was removed.
+
+The first full local candidate (`8346803`) reported **2,043 passed, 8 failed,
+1 skipped** in 1,391.74 s. Five failures exposed initialisation guards occurring
+after session-slot resolution; the original checks now precede that resolution.
+One assertion needed to distinguish trial library defaults from the new bound
+session-fixation source. Two injected-display counters needed to count scientific
+trials, excluding the opening. Qualification, response counts and mathematical
+assertions were retained. The affected guard/override/session/equivalence group
+then passed **134 tests**, 134.60 s. Final Windows results are recorded in the PR.
 
 The design is ready for maintainer assessment as the pattern for Stage C once
 Windows acceptance is green. Broader migration requires acceptance of this
