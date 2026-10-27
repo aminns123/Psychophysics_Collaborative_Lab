@@ -166,6 +166,13 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             targets.append(python(key="RESPONSES",note="Alternative meanings are declared by the experiment; response keys are settings above"))
         elif group=="Conditions":
             targets.append(python(function="make_conditions",note="Derived condition list; edit its settings above or the experiment's make_conditions"))
+        elif group=="Session start (once)":
+            event_name, _, attribute = label.rpartition(" ")
+            key = description.get("session_inputs", {}).get(event_name, {}).get(attribute)
+            if isinstance(key, str) and key in {f.key for f in spec.fields}:
+                targets.append(experiment(key))
+            else:
+                targets.append(python(key="SESSION_START", note="Once-only event declaration; selected input fields are editable in Configure"))
         elif group=="Trial" and label.endswith(" planned display"):
             targets.append(python(Path(__file__).parents[1]/"core/presentation.py",function="presentation_frames",
                 note="Derived frame count from requested duration and monitor refresh rate; edit those inputs"))

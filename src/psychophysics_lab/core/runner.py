@@ -566,7 +566,7 @@ def run_request(
                 payload["status"] = "error"
             if (run_dir / "trial_events.jsonl").exists():
                 payload["files"]["trial_events"] = "trial_events.jsonl"
-            for name in ("trial_presentations", "adaptive_history", "trial_actions", "primary_thresholds"):
+            for name in ("trial_presentations", "adaptive_history", "trial_actions", "primary_thresholds", "session_events"):
                 if (run_dir / (name + ".json")).exists():
                     payload["files"][name] = name + ".json"
         for name, source in (("conditions", conditions_file), ("parameters", parameters_file), ("user_config", user_config_file)):

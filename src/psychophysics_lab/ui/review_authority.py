@@ -59,7 +59,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                 + (f"Matching saved experiment JSON: {saved}. " if saved else "Authority: current TUI/run selection. ")
                 + "Changing a Python default does not overwrite this selected value. "
                 "Edit here through Configure; advanced JSON editing remains available.")
-    if group in {"Responses", "Trial action", "Audio"} and not key:
+    if group in {"Responses", "Trial action", "Audio", "Session start (once)"} and not key:
         result.update(status="Scientific definition", edit_kind=None,
                       route="Advanced source inspection; response keys and timing inputs are editable above")
     return result

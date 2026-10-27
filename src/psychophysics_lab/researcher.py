@@ -23,7 +23,8 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                stimulus_slots=None, stimulus_defaults=None, supports_simulation=False, default_config="",
                acquisition_block_reason="", historical=False, scientific_spec=None,
                trial_column_overrides=None, migrate_values=None, data_directory_name="",
-               method_planner=None, method_reviewer=None, stimulus_parameter_controls=None):
+               method_planner=None, method_reviewer=None, stimulus_parameter_controls=None,
+               session_start=()):
     """Build a registered experiment without the historical four-file adapter."""
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
@@ -46,7 +47,8 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
         stimulus_slots=stimulus_slots or {}, stimulus_defaults=stimulus_defaults or {}, supports_simulation=supports_simulation, default_config=default_config,
         acquisition_block_reason=acquisition_block_reason, historical=historical, scientific_spec=scientific_spec or {},
         trial_column_overrides=dictionary, method_planner=method_planner,
-        method_reviewer=method_reviewer, stimulus_parameter_controls=stimulus_parameter_controls or {})
+        method_reviewer=method_reviewer, stimulus_parameter_controls=stimulus_parameter_controls or {},
+        session_start=session_start)
 
 
 class ParticipantAbort(Exception):
@@ -90,6 +92,72 @@ class RunContext:
     expected_trials: int = field(default=0, init=False)
 
     def initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
+        """Initialise normally, then run an optional once-only opening before trials.
+
+        Readiness has its own provenance; it cannot create a scientific answer,
+        choose a condition, draw observer randomness or update a staircase.
+        """
+        if not self.spec.session_start.phases:
+            return self._initialise(expected_trials=expected_trials, resolution=resolution,
+                                    runtime_display=runtime_display, background_intensity=background_intensity)
+        if self.status != "created" or getattr(self, "_session_started", False):
+            raise ValueError("Initialise and execute session start exactly once.")
+        from datetime import datetime, timezone
+        import time
+        from .core.timeline import scientific_snapshot
+        from .core.trial_execution import VirtualPresentation, execute_timeline
+        # Resolve everything before opening a physical output device.
+        sequence = self.spec.session_start.resolve(self.values).validate_slots(self.stimulus_snapshots)
+        resolved = {}
+        for phase in sequence.phases:
+            for placement in phase.placements:
+                if placement.slot not in resolved:
+                    selected = self.stimulus_snapshots[placement.slot]["document"]
+                    resolved[placement.slot] = (selected["stimulus_id"], self.stimulus_parameters(placement.slot))
+        trace = {"schema_version": 1, "sequence": "session_start", "status": "started",
+                 "declared_plan": self.spec.session_start.to_dict(), "plan": sequence.to_dict(),
+                 "resolved_stimuli": scientific_snapshot({slot: {"stimulus_id": identity, "parameters": params}
+                                                         for slot, (identity, params) in resolved.items()}),
+                 "data_kind": self.data_kind, "synthetic": self.synthetic,
+                 "photon_timing_verified": False, "events": [],
+                 "started_utc": datetime.now(timezone.utc).isoformat(),
+                 "software_started_s": time.perf_counter()}
+        self._session_started = True
+        self._session_trace = trace
+        path = self.run_directory / "session_events.json"
+        atomic_write_json(path, trace)
+        error = None
+        self._session_pending = True
+        try:
+            self._initialise(expected_trials=expected_trials, resolution=resolution,
+                             runtime_display=runtime_display, background_intensity=background_intensity)
+            backend = (self.virtual_presentation or VirtualPresentation()) if self.synthetic else self._presentation
+            backend.prepare(sequence, resolved)
+            def verify(event, response, observed):
+                if response is not None:
+                    raise ValueError("Session events cannot yield scientific responses.")
+                if event.kind == "key_wait":
+                    import math
+                    ready = observed.get("readiness", {})
+                    elapsed = ready.get("elapsed_s")
+                    if (ready.get("key") != event.key or type(elapsed) not in (int, float)
+                            or not math.isfinite(elapsed) or elapsed < 0):
+                        raise ValueError("Readiness requires the declared key and a finite nonnegative elapsed time.")
+            execute_timeline(sequence, backend, trace["events"], verify, software_timestamps=True)
+            trace["status"] = "completed"
+        except BaseException as exc:
+            error = exc
+            trace["status"] = "aborted" if isinstance(exc, ParticipantAbort) else "error"
+            trace["error"] = str(exc)
+            self.status = "aborted_by_user" if isinstance(exc, ParticipantAbort) else "error"
+            raise
+        finally:
+            self._session_pending = False
+            trace["software_finished_s"] = time.perf_counter()
+            self._persist_independently([("session event journal", lambda: atomic_write_json(path, trace))],
+                                        original_error=error)
+
+    def _initialise(self, *, expected_trials: int, resolution: Mapping, runtime_display=None, background_intensity=.5):
         """Declare the planned response count and resolved scientific settings."""
         check_acquisition_qualification(self, self.spec)
         if self.status != "created" or type(expected_trials) is not int or expected_trials < 1:
@@ -234,12 +302,14 @@ class RunContext:
             raise PresentationTestComplete("Test response limit reached; study stopping rules were not changed.")
         if getattr(self, "_in_trial", False):
             raise ValueError("Finish the active trial before starting another.")
+        if getattr(self, "_session_pending", False):
+            raise ValueError("Finish session start before starting a scientific trial.")
         if adaptive_value_column not in {"next_screen_intensity", "next_display_contrast"}:
             raise ValueError("Declare the canonical column holding the adaptive numeric value.")
         if adaptive_record is not None and not any(adaptive_record is a for a in getattr(self, "_algorithms", ())):
             raise ValueError("Adaptive recording requires an owned algorithm")
-        if not isinstance(timeline, TrialTimeline):
-            raise TypeError("play_trial requires a TrialTimeline.")
+        from .core.timeline import as_trial_timeline
+        timeline = as_trial_timeline(timeline)
         if self.status != "running" or self.accepted_trials >= self.expected_trials:
             raise ValueError("Start a timeline only while a response is expected.")
         if _staged and any(isinstance(p, (UpdateState, UpdateAdaptive)) for p in timeline.phases):
@@ -467,6 +537,11 @@ class RunContext:
         # once at finalisation, including on abort/error; never rewrite N trials
         # after every response. Always attempt display cleanup after save errors.
         operations = []
+        if hasattr(self, "_session_trace"):
+            # The first trial's flip can finish the last session display's
+            # measured dwell. Preserve that existing presenter's observation.
+            operations.append(("session event summary", lambda: atomic_write_json(
+                self.run_directory / "session_events.json", self._session_trace)))
         if hasattr(self, "_action_trials"):
             operations.append(("action summary", lambda: atomic_write_json(
                 self.run_directory / "trial_actions.json", {"schema_version": 1, "trials": self._action_trials})))
@@ -585,5 +660,5 @@ def configure(participant_id, data_root, setup, *, run_directory):
     return str(conditions), str(parameters), str(response)
 
 # Small public chronological vocabulary; existing Phase/JSON stays compatible.
-from .core.timeline import (TrialTimeline, Phase, Show, Stimulus, CollectResponse,
+from .core.timeline import (TrialTimeline, SessionTimeline, Phase, Show, Stimulus, CollectResponse, WaitForKey,
                             RecordState, UpdateState, UpdateAdaptive, Beep)

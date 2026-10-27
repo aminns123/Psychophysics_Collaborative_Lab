@@ -57,6 +57,9 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     """
     result = {"stimuli": {slot: selected["document"]["parameters"] for slot, selected in snapshots.items()},
               "overrides": {}, "parameter_reads": {}, "conditions": [], "phases": [], "resolution": {}, "note": ""}
+    result["session_phases"] = spec.session_start.resolve(values).to_dict()["phases"]
+    result["session_inputs"] = {event.name: {"duration": event.duration_ms, "key": event.key}
+                                for event in spec.session_start.phases}
     if spec.procedure is None or spec.historical:
         result["note"] = "Historical driver: selected parameters are shown; inspect its Python/shader for trial-dependent values."
         return result
@@ -105,7 +108,8 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     stimuli = prepare(run, condition, state)
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
-    timeline=module.make_trial(values, condition)
+    from ..core.timeline import as_trial_timeline
+    timeline=as_trial_timeline(module.make_trial(values, condition))
     result.update(stimuli={slot: dict(p) for slot,p in stimuli.items()}, overrides=run.overrides,
                   parameter_reads=reads, conditions=conditions, resolution=getattr(run, "resolution", {}),
                   phases=timeline.resolve(values).to_dict()["phases"],
@@ -244,6 +248,19 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         for key in keys:
             distinct = list(dict.fromkeys(str(c[key]) for c in description["conditions"] if key in c))
             rows.append(("Conditions",key,", ".join(distinct),"All configured values; repeats shown above"))
+    for phase in description.get("session_phases", ()):
+        group = "Session start (once)"
+        if phase["kind"] == "key_wait":
+            rows.append((group, phase["name"] + " key", phase["key"],
+                         "Readiness only; fresh key after onset; Escape aborts; not a scientific answer"))
+        else:
+            rows.append((group, phase["name"] + " duration", str(phase["duration_ms"]), "ms; planned settling/display duration"))
+        for placement in (phase.get("stimuli") or ([{"slot": phase["slot"]}] if phase.get("slot") else [])):
+            rows.append((group, phase["name"] + " stimulus", placement["slot"], "Selected slot base parameters; prepared before session timing"))
+        if phase.get("instructions"):
+            rows.append((group, phase["name"] + " instructions", phase["instructions"], "Independent of response-key guidance"))
+        if phase.get("beep"):
+            rows.append((group, phase["name"] + " audio", str(phase["beep"]), phase["beep_trigger"]))
     for phase in description["phases"]:
         if phase["kind"] not in {"show", "response"}:
             labels = {"record_state": "Record state", "update_state": "Update state",
