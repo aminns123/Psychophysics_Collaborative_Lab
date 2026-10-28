@@ -1,0 +1,9 @@
+{
+  "frequencies_cpd": "2,8",
+  "staircases_per_condition": 2,
+  "n_down": 1,
+  "n_up": 1,
+  "reversal_termination": 4,
+  "threshold_reversals": 2,
+  "max_trials": 160
+}
