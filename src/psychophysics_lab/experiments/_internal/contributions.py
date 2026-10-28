@@ -83,8 +83,12 @@ def load_contributions():
         # built-in experiments or silently launch an untested revision.
         problems = load_authored(find_repo_root(), include_drafts=False, tolerate_errors=True)
         if problems:
-            warnings.warn("Invalid or untested published components were NOT loaded: "
-                          + "; ".join(f"{name}: {reason}" for name, reason in problems.items()),
+            warnings.warn("Invalid or untested published components were NOT loaded:\n"
+                          + "\n".join(f"  {name}: {reason}" for name, reason in problems.items())
+                          + "\nOnly the listed components were skipped; other valid experiments remain available. "
+                          "Restore missing files from a known, reviewed Git revision or correct invalid source, "
+                          "then restart PsyCoLab and repeat the supported Draft/Test/Ready workflow. "
+                          "Missing or changed source is not approved automatically.",
                           RuntimeWarning)
         # JSON-only experiments reuse the very same experiment registry and
         # RunContext/TrialTimeline executor, never a separate acquisition path.

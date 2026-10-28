@@ -62,11 +62,12 @@ def test_adopt_refreshed_defaults_replaces_retained_snapshot_without_overwriting
 
 @pytest.mark.parametrize("size", [(80,24),(120,40)])
 @pytest.mark.parametrize("entry", ["2,4","2,nan"])
-def test_sidebar_review_applies_or_rejects_current_draft_instead_of_discarding_it(tmp_path,size,entry):
+@pytest.mark.parametrize("identity", ["contrast_sensitivity", "contrast_sensitivity_windowed"])
+def test_sidebar_review_applies_or_rejects_current_draft_instead_of_discarding_it(tmp_path,size,entry,identity):
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=size) as pilot:
-            _,review=await enter_review(app,pilot,"contrast_sensitivity_windowed")
+            _,review=await enter_review(app,pilot,identity)
             review.query_one("#review-show-response-instructions").value=False
             await pilot.pause()
             assert review.request.show_response_instructions is False
@@ -83,7 +84,9 @@ def test_sidebar_review_applies_or_rejects_current_draft_instead_of_discarding_i
                 assert app.screen is config
                 assert field.value==entry
                 assert "2,8"==review.request.experiment_values["frequencies_cpd"]
-                assert str(config.query_one("#config-status",Static).renderable)
+                message = str(config.query_one("#config-status",Static).renderable)
+                assert "0.5-32 cycles/degree" in message
+                assert message.isascii()
                 field.value="2,4"
                 config.query_one("#path-review",Button).press()
                 await pilot.pause()
