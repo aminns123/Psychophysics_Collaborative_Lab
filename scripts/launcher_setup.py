@@ -239,7 +239,7 @@ def digest(name):
     p=base/name
     return hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
 records=[]
-for p in (base/'conda-meta').glob('*.json'):
+for p in sorted((base/'conda-meta').glob('*.json')):
     r=json.loads(p.read_text(encoding='utf-8'))
     records.append({k:r.get(k) for k in ('name','version','build','sha256')})
     if r.get('name') in required:
