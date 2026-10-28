@@ -1,5 +1,11 @@
 # Reproducible Windows software environment
 
+This is the existing source/developer installation route. The separate
+[guided Windows candidate](WINDOWS_GUIDED_INSTALLATION.md) provides installation,
+ordinary launch and retained-version choices without student commands. It remains
+private pending qualification and redistribution clearance; do not replace a
+working laboratory installation with it.
+
 The initial qualified profile is Windows 11 x64, conda-forge CPython **3.11.15
 h0159041_1_cpython**. `requirements/windows-cp311/profile.json` identifies its
 interpreter binaries/support artifacts, exact runtime/build/development versions,

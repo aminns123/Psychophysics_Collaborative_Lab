@@ -234,6 +234,11 @@ def save_workspace_state(
 
 
 def local_preferences_path(repo_root: Path) -> Path:
+    # Packaged/managed installations explicitly select a writable per-user root.
+    # Keep legacy checkout pointers in place when no override is selected.
+    override = os.environ.get("PSYCOLAB_CONFIG_DIR")
+    if override:
+        return Path(override).expanduser().resolve() / LOCAL_PREFERENCES_FILENAME
     return repo_root / LOCAL_PREFERENCES_FILENAME
 
 
@@ -256,7 +261,7 @@ def preferred_data_root(repo_root: Path, fallback: Path) -> Path:
 
 def remember_data_root(repo_root: Path, data_root: Path) -> None:
     path = local_preferences_path(repo_root)
-    with file_lock(repo_root / ".psycolab_preferences.lock"):
+    with file_lock(path.parent / ".psycolab_preferences.lock"):
         try:
             previous = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(previous, dict): previous = {}

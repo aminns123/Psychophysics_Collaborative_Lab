@@ -14,8 +14,11 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 
 ## Start
 
-Install Python **3.11**, then double-click **run_psycolab.bat**. PsyCoLab creates
-its local environment and opens the setup interface.
+For a source installation, follow the [approved Windows environment guide](docs/WINDOWS_ENVIRONMENT.md),
+then double-click **run_psycolab.bat**. An arbitrary Python 3.11 installation is
+not a qualified interpreter. A [guided installation candidate](docs/WINDOWS_GUIDED_INSTALLATION.md)
+is being qualified for students and managed teaching computers; it is not yet a
+released installer.
 
 1. Choose **Experiment**, an experiment, and a display profile.
 2. Configure its conditions, timings, response keys and adaptive settings.
