@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Packaging identities hash exact bytes across Windows Git checkout settings.
+requirements/windows-cp311/* text eol=lf

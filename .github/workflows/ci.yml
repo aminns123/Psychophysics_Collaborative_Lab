@@ -27,7 +27,12 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Install development dependencies
-        run: python -m pip install -e ".[dev]"
+        # Headless source regression may use the hosted Python distribution;
+        # exact conda-forge installer qualification runs separately on Windows 11.
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements/windows-cp311/build.lock
+          python -m pip install --require-hashes --only-binary=:all: -r requirements/windows-cp311/development.lock
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Run headless tests
         run: python -m pytest
       - name: Check portability

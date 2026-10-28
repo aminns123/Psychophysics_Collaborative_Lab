@@ -17,8 +17,23 @@ if not exist "pyproject.toml" (
 
 set "PSYCOLAB_PYTHON="
 
+rem Reuse this checkout's own interpreter before searching global registrations.
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+    if not errorlevel 1 set "PSYCOLAB_PYTHON=".venv\Scripts\python.exe""
+)
+
+if not defined PSYCOLAB_PYTHON if defined PSYCOLAB_BOOTSTRAP_PYTHON (
+    if not exist "%PSYCOLAB_BOOTSTRAP_PYTHON%" (
+        echo ERROR: PSYCOLAB_BOOTSTRAP_PYTHON does not name an existing interpreter.
+        pause
+        exit /b 1
+    )
+    set "PSYCOLAB_PYTHON="%PSYCOLAB_BOOTSTRAP_PYTHON%""
+)
+
 where py >nul 2>nul
-if not errorlevel 1 (
+if not errorlevel 1 if not defined PSYCOLAB_PYTHON (
     py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
     if not errorlevel 1 set "PSYCOLAB_PYTHON=py -3.11"
 )
@@ -51,9 +66,9 @@ if not defined PSYCOLAB_PYTHON (
 if not defined PSYCOLAB_PYTHON (
     echo ERROR: PsyCoLab currently requires Python 3.11.
     echo.
-    echo Install a 64-bit Python 3.11 interpreter, then run this launcher again.
-    echo PsyCoLab intentionally keeps the tested Python 3.11 / Pyglet 1.5.27
-    echo baseline while the legacy OpenGL renderer is being validated.
+    echo Obtain the qualified conda-forge Python 3.11.15 interpreter described
+    echo in docs\WINDOWS_ENVIRONMENT.md and set PSYCOLAB_BOOTSTRAP_PYTHON.
+    echo Existing global Python installations do not need to be replaced.
     pause
     exit /b 1
 )

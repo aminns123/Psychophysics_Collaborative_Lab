@@ -32,6 +32,14 @@ if not defined USERENV_BOOTSTRAP (
     )
 )
 
+if not defined USERENV_BOOTSTRAP if defined PSYCOLAB_BOOTSTRAP_PYTHON (
+    if not exist "%PSYCOLAB_BOOTSTRAP_PYTHON%" (
+        echo ERROR: PSYCOLAB_BOOTSTRAP_PYTHON does not name an existing interpreter.
+        goto failed
+    )
+    set "USERENV_BOOTSTRAP="%PSYCOLAB_BOOTSTRAP_PYTHON%""
+)
+
 if not defined USERENV_BOOTSTRAP (
     where py >nul 2>nul
     if not errorlevel 1 (
@@ -68,7 +76,8 @@ if not defined USERENV_BOOTSTRAP (
 if not defined USERENV_BOOTSTRAP (
     echo ERROR: No working Python 3.11 interpreter was found.
     echo If run_psycolab.bat works, verify .venv\Scripts\python.exe exists.
-    echo Otherwise run "py -0p" and "where python" to inspect installed interpreters.
+    echo For fresh setup see docs\WINDOWS_ENVIRONMENT.md for the exact qualified
+    echo interpreter and PSYCOLAB_BOOTSTRAP_PYTHON. Do not replace global Python.
     goto failed
 )
 

@@ -7,10 +7,12 @@ import venv
 import pytest
 
 from scripts import launcher_setup as launcher
+from _locked_launcher_fixture import locked_fixture
 
 
 @pytest.fixture(params=[".venv", "USER_env"])
 def installation(tmp_path, monkeypatch, request):
+    qualification = locked_fixture(monkeypatch, launcher)
     root = tmp_path / "checkout with spaces & unicode é"
     root.mkdir()
     project = root / "pyproject.toml"
@@ -43,7 +45,7 @@ def installation(tmp_path, monkeypatch, request):
     extra = root / "user_requirements.txt"
     extra.write_text("# Laboratory-owned requirements must stay untouched.\n", encoding="utf-8")
     extra_hash = launcher._hash_file(extra) if request.param == "USER_env" else None
-    launcher._write_state(launcher._hash_file(project), extra_hash)
+    launcher._write_state(launcher._hash_file(project), extra_hash, qualification=qualification)
     calls = []
     behavior = {"refresh": lambda: installed("0.2.2")}
     real_run = launcher._run

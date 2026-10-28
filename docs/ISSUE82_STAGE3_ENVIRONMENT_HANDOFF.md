@@ -1,6 +1,10 @@
 # Issue #82 Stage 3: Windows environment qualification handoff
 
-**Status: preparation only — no dependency lock is approved or installed.**
+**Historical preparation handoff.** The gaps below describe the pre-integration
+baseline. The Stage 3B implementation candidate and its exact interpreter,
+dependency locks and qualification boundaries are now documented in
+[Windows environment](WINDOWS_ENVIRONMENT.md). Maintainer review remains
+required; this handoff does not itself approve a software release.
 This is a narrow Windows 11 / x64 Python 3.11 installation-identity task, not
 scientific or apparatus qualification. Read
 [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md),

@@ -7,14 +7,15 @@ Windows 11 and 64-bit Python 3.11. See the
 [acceptance policy](WINDOWS_ACCEPTANCE_POLICY.md); historical cross-platform
 results below remain evidence for their dated revisions, not support promises.
 
-The [accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
+The [historical accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
 `5fec547ecf3f86cd6bbd202a9e463637deca07d3`, with passing Windows and Ubuntu
 headless CI. This is separate from the earlier `v0.3.0` research pre-release
 and does not yet certify a reproducible fresh laboratory installation.
 The [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) tracks the approved
 installation identity, dependency, fresh-install and rollback stages. Stage 2
-adds the editable identity check described below; dependency constraints and
-the broader fresh-install/update acceptance remain future stages.
+adds the editable identity check described below. The Stage 3 candidate uses the
+[exact Windows environment profile](WINDOWS_ENVIRONMENT.md); independent
+fresh-install/update acceptance remains separate under Stages 4–5.
 
 Git contains the shared software. Each computer creates its own Python environment
 and physical-display configuration. Scientific records live in an external data
@@ -24,28 +25,28 @@ for a different display.
 ## First installation
 
 1. Clone the repository into a writable folder, keeping the complete source tree.
-2. Install **64-bit Python 3.11**. Python 3.12 or later is not supported by this
-   project's current compatibility requirement.
-3. Double-click `run_psycolab.bat`. An internet connection and access to a package
-   index are needed for the first installation; no manual scientific-package
-   installation is required.
+2. Obtain and verify **conda-forge CPython 3.11.15 h0159041_1_cpython x64** using
+   the [interpreter acquisition instructions](WINDOWS_ENVIRONMENT.md). Select it
+   with `PSYCOLAB_BOOTSTRAP_PYTHON`; do not replace global Python installations.
+3. Run `run_psycolab.bat` from that configured environment. First installation
+   needs the exact reviewed wheels from the package index or the documented
+   offline wheel directory; no manual scientific-package installation is required.
 4. Choose an external data folder in the TUI and explicitly configure/calibrate
    the physical display before human acquisition.
 
-The launcher checks `py -3.11`, then resolves `python3.11.exe` with `where` and
-executes its quoted full path, then tries `python` and `python3`. Every candidate
-must report major/minor **3.11**. This also supports the newer Python install
-manager's versioned executable when an older `py` launcher cannot find it.
-If needed, reopen the terminal after Python installation. Do not remove newer
-Python installations or change PsyCoLab's version restriction as a workaround.
+The launcher first reuses this checkout's `.venv`, then an explicitly selected
+bootstrap interpreter, then the existing Python discovery routes. Discovery of
+Python 3.11 alone is insufficient: setup checks the exact qualified interpreter
+distribution, patch, architecture and artifact identities before installation.
 
 `scripts/launcher_setup.py` creates `.venv` with the selected interpreter. It
-preserves an incompatible `.venv` as `.venv.incompatible-<timestamp>` rather than
-deleting it. It installs the project in editable mode and validates package
-requirements, imports and editable installation identity. A valid environment
-is reused; a changed
-`pyproject.toml` triggers installation again. Errors leave the launcher terminal
-open for inspection. No global package environment is modified.
+preserves and refuses an incompatible or unqualified existing `.venv` in place.
+It installs verified binary dependencies and the project editably, then validates
+package requirements, file integrity, imports and editable installation identity.
+A matching approved environment is reused. Changed dependency specifications or
+locks require a separate reviewed checkout rather than an automatic upgrade.
+Errors leave the launcher terminal open for inspection. No global package
+environment is modified.
 
 Keep the complete checkout: runtime resources include root `configs/`,
 `simulations/`, `scripts/` and current `src/psychophysics_lab/` modules.
@@ -96,10 +97,11 @@ both locations. See [data layout](DATA_LAYOUT.md) and
 ## Dependencies and reproducibility boundaries
 
 The project requires NumPy **1.26.4**, installed Pyglet **1.5.27**, Textual
-`>=1,<2` and Matplotlib `>=3.8,<4`. The launcher installs transitive dependencies
-automatically. These ranges do not provide a fully locked environment: clean
-installs on different dates may resolve different compatible versions, and the
-launcher upgrades packaging tools during initial setup/configuration changes.
+`>=1,<2` and Matplotlib `>=3.8,<4` in its broad package metadata. Supported launcher
+installation additionally enforces the reviewed exact runtime/build closure in
+`requirements/windows-cp311/`, including Textual 1.0.0 and Matplotlib 3.11.2.
+Hashes, binary-only installation and controlled editable builds prevent floating
+tool or transitive upgrades. Development requirements remain separate.
 
 The current Windows runtime uses installed Pyglet from the environment;
 no tracked `libC.py` or bundled Pyglet archive overrides it. Earlier
@@ -131,15 +133,15 @@ refreshes only the editable project with `--no-deps --no-build-isolation`.
 It does not upgrade build tools or dependencies, or install optional laboratory
 requirements on this repair path. Successful validation is required before
 setup records success; subsequent matching launches perform no installation.
-Changed dependency configuration retains the existing installation behaviour.
+Changed dependency configuration is refused without upgrading the environment.
 
 If the existing build tools cannot perform the refresh, or imports still point
 elsewhere, setup stops without starting the application or recording success.
 Inspect the reported error (including inherited Python paths), correct the
 environment deliberately, and rerun the launcher. Setup does not automatically
-upgrade the environment to conceal the error. Exact approved build-tool and
-dependency versions belong to stage 3; the laboratory's live environment was
-not reinstalled as part of the stage 2 disposable acceptance tests.
+upgrade the environment to conceal the error. See the [Windows environment
+guide](WINDOWS_ENVIRONMENT.md) for exact build tools, locked dependencies,
+USER_env constraints, bounded pending-install retries and qualification limits.
 
 For a future release, use a reviewed **Windows x64 / CPython 3.11 constraints or
 lock file** containing exact runtime and transitive versions, with hashes where
