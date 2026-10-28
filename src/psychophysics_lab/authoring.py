@@ -58,7 +58,7 @@ def inventory(repo_root: Path) -> tuple[Component, ...]:
             raise ValueError("Invalid component entry in authoring manifest.")
         item = Component(**row)
         _valid(item.kind, item.name)
-        if item.status not in {"draft", "ready"} or (item.kind, item.name) in seen:
+        if item.status not in {"draft", "ready", "retired"} or (item.kind, item.name) in seen:
             raise ValueError("Duplicate component or unknown authoring status.")
         if not isinstance(item.tested_fingerprint, str):
             raise ValueError("Invalid validation fingerprint.")
@@ -123,12 +123,51 @@ def fingerprint(repo_root: Path, item: Component) -> str:
     return digest.hexdigest()
 
 
+def retire(repo_root: Path, kind: str, name: str) -> Component:
+    """Explicitly retire a project-published experiment, preserving source and archives.
+
+    A retained 'retired' entry blocks automatic rediscovery of an intact Python
+    file. Removing a file alone is never interpreted as intentional retirement.
+    Official curated experiments have no entry here and cannot be retired.
+    """
+    if kind != "experiment":
+        raise ValueError("This operation retires experiments only.")
+    records = inventory(repo_root)
+    target = next((item for item in records if item.kind == kind and item.name == name), None)
+    if target is None:
+        raise ValueError("Only published researcher experiments can be retired; official experiments require a reviewed Git PR.")
+    if target.status == "retired":
+        return target
+    from dataclasses import replace
+    updated = replace(target, status="retired", tested_fingerprint="")
+    _save(repo_root, tuple(updated if item == target else item for item in records))
+    return updated
+
+
+def restore(repo_root: Path, kind: str, name: str) -> Component:
+    """Restore a retired researcher experiment as Draft; testing is mandatory."""
+    if kind != "experiment":
+        raise ValueError("This operation restores experiments only.")
+    records = inventory(repo_root)
+    target = next((item for item in records if item.kind == kind and item.name == name), None)
+    if target is None or target.status != "retired":
+        raise ValueError("Only an explicitly retired researcher experiment can be restored.")
+    if not _path(Path(repo_root), kind, name).is_file():
+        raise ValueError("Restore the missing source from version control before restoring the experiment.")
+    from dataclasses import replace
+    updated = replace(target, status="draft", tested_fingerprint="")
+    _save(repo_root, tuple(updated if item == target else item for item in records))
+    return updated
+
+
 def mark_tested(repo_root: Path, kind: str, name: str) -> Component:
     """Record a successful preview/simulation result for the exact current sources."""
     records = inventory(repo_root)
     target = next((item for item in records if item.kind == kind and item.name == name), None)
     if target is None:
         raise ValueError("Register the component as a draft before testing.")
+    if target.status == "retired":
+        raise ValueError("Experiment is retired. Restore it to Draft before testing.")
     fp = fingerprint(repo_root, target)
     from dataclasses import replace
     updated = replace(target, status="draft", tested_fingerprint=fp)
@@ -141,6 +180,8 @@ def publish(repo_root: Path, kind: str, name: str) -> Component:
     target = next((item for item in records if item.kind == kind and item.name == name), None)
     if target is None:
         raise ValueError("Unknown authoring component.")
+    if target.status == "retired":
+        raise ValueError("Experiment is retired. Restore it to Draft and retest before marking Ready.")
     if not target.tested_fingerprint or target.tested_fingerprint != fingerprint(repo_root, target):
         raise ValueError("Source or JSON changed since last successful test; test this version again before publishing.")
     if kind == "experiment":
@@ -173,7 +214,7 @@ def load_authored(repo_root: Path, *, include_drafts: bool = False,
     from psychophysics_lab.experiments._internal import registry as experiments
     # Older single-file stimulus drafts are migrated to stimulus_library.py.
     # This loader is for independent experiments and adaptive code only.
-    items = [i for i in inventory(repo_root) if i.kind != "stimulus" and (include_drafts or i.status == "ready")]
+    items = [i for i in inventory(repo_root) if i.kind != "stimulus" and i.status != "retired" and (include_drafts or i.status == "ready")]
     items.sort(key=lambda i: (i.kind == "experiment", i.kind, i.name))
     problems = {}
     importlib.invalidate_caches()
