@@ -22,14 +22,14 @@ class RetireExperimentDialog(ModalScreen[bool]):
 
     def __init__(self, name, origin, status, source):
         super().__init__()
-        self.name, self.origin, self.state, self.source = name, origin, status, source
+        self.experiment_id, self.origin, self.current_status, self.source = name, origin, status, source
 
     def compose(self):
         with Vertical(id="retire-dialog"):
             yield Static("RETIRE EXPERIMENT", classes="section-title")
             yield Static(
-                f"ID: {self.name}\nOrigin: {self.origin}\n"
-                f"Current state: {self.state}\nSource: {self.source}\n\n"
+                f"ID: {self.experiment_id}\nOrigin: {self.origin}\n"
+                f"Current state: {self.current_status}\nSource: {self.source}\n\n"
                 "Retiring removes this experiment from the runnable catalogue. "
                 "Its Python source, presets, calibration and previously recorded "
                 "scientific data are NOT deleted. To use it again, explicitly "
