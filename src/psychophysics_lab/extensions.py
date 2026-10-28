@@ -350,7 +350,9 @@ def restore(repo_root, kind, identity):
         item = items.get(f"{kind}:{identity}")
         if item is None or item.get("retired") is not True:
             raise ValueError("Only an explicitly retired experiment can be restored.")
-        items[f"{kind}:{identity}"] = {"fingerprint": fingerprint(repo_root), "ready": False}
+        # Do not accidentally grant even Tested status on restoration.
+        # Readiness must be earned again by a new Test → Ready sequence.
+        items[f"{kind}:{identity}"] = {"fingerprint": "0" * 64, "ready": False}
         atomic_write_json(_records_path(repo_root), {"schema_version": 1, "components": items})
     unload()
 
