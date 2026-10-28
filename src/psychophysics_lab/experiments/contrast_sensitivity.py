@@ -512,7 +512,7 @@ def validate_settings(values):
             or len(set(frequencies)) != len(frequencies)
             or any(not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
         ):
-            yield "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
+            yield "Choose distinct finite spatial frequencies within 0.5-32 cycles/degree."
     except ValueError:
         yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
     if values.get("contrast_method", "adaptive") == "constant_stimuli":

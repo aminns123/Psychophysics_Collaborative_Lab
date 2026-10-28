@@ -24,6 +24,15 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
+def frozen_csf_validation_spelling(node):
+    """Keep the frozen AST strict except #140's exact error-text correction."""
+    for item in ast.walk(node):
+        if (isinstance(item, ast.Constant) and item.value ==
+                "Choose distinct finite spatial frequencies within 0.5-32 cycles/degree."):
+            item.value = "Choose distinct finite spatial frequencies within 0.5â€“32 cycles/degree."
+    return node
+
+
 def read(directory, name):
     return json.loads((directory/name).read_text(encoding='utf-8'))
 
@@ -77,7 +86,10 @@ def test_scientific_function_bodies_are_unchanged_and_trial_definition_is_unique
     functions = {n.name:n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef)}
     for name, expected in BASELINE['functions'][identity].items():
         if name not in {'make_trial','procedure','definition'}:
-            assert digest(ast.dump(functions[name], include_attributes=False)) == expected, name
+            node = functions[name]
+            if identity == 'contrast_sensitivity' and name == 'validate_settings':
+                node = frozen_csf_validation_spelling(node)
+            assert digest(ast.dump(node, include_attributes=False)) == expected, name
     assert 'trial_events' in functions and 'make_trial' not in functions
     assert module.make_trial.__wrapped__ is module.trial_events
     values = module.SPEC.normalise_values({'ring_increment':.03} if identity=='ellipse_major_axis' else {})
