@@ -125,10 +125,6 @@ class AuthoringPanel(Vertical):
             else:
                 from ..authoring import retire
                 retire(self.app.repo_root, "experiment", name)
-                # Remove only this already-registered identity in the current
-                # process. All other experiment/stimulus entries are unchanged.
-                from ..experiments._internal import registry
-                registry._REGISTRY.pop(name, None)
             self.refresh_inventory()
             self.query_one("#author-result", Static).update(
                 f"{name} retired. Python source, presets and acquired runs preserved. "

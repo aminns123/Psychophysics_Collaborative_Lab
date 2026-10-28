@@ -319,7 +319,12 @@ def retire(repo_root, kind, identity):
     if current is None or not identity.startswith(current[1] + "__"):
         raise ValueError("Choose an enabled experiment in the current laboratory namespace.")
     root, _ = current
-    path = source_at(root, "experiments/" + identity + ".py")
+    # Missing source is a warning, not an implicit retirement. Permit the
+    # explicit operation for a previously recorded identity without deleting or
+    # following anything outside the experiments directory.
+    path = _plain(root / "experiments" / (identity + ".py"))
+    if path.parent != root / "experiments":
+        raise ValueError("Choose an experiment directly inside the laboratory experiments folder.")
     with file_lock(_records_path(repo_root).with_suffix(".lock")):
         items = records(repo_root)
         key = f"{kind}:{identity}"
@@ -332,7 +337,10 @@ def retire(repo_root, kind, identity):
         item.update(fingerprint=fingerprint(repo_root), ready=False, retired=True)
         items[key] = item
         atomic_write_json(_records_path(repo_root), {"schema_version": 1, "components": items})
-    unload()  # Remove loaded laboratory experiments, requiring an explicit refresh.
+    from .experiments._internal import registry
+    registry._REGISTRY.pop(identity, None)
+    _loaded.pop((kind, identity), None)
+    _errors.pop("experiments/" + identity + ".py", None)
 
 
 def restore(repo_root, kind, identity):
@@ -354,7 +362,9 @@ def restore(repo_root, kind, identity):
         # Readiness must be earned again by a new Test → Ready sequence.
         items[f"{kind}:{identity}"] = {"fingerprint": "0" * 64, "ready": False}
         atomic_write_json(_records_path(repo_root), {"schema_version": 1, "components": items})
-    unload()
+    from .experiments._internal import registry
+    registry._REGISTRY.pop(identity, None)
+    _loaded.pop((kind, identity), None)
 
 
 def record_test(repo_root, kind, identity, before):
@@ -446,6 +456,9 @@ def load(repo_root, *, development=False):
         _package(prefix + ".experiments", root / "experiments")
         files = [("stimulus", "stimulus_library.py")]
         for path in sorted((root / "experiments").glob("*.py")):
+            if records(repo_root).get(f"experiment:{path.stem}", {}).get("retired") is True:
+                _errors.pop(path.relative_to(root).as_posix(), None)
+                continue
             try:
                 tree = ast.parse(source_at(root, path.relative_to(root).as_posix()).read_text(encoding="utf-8-sig"))
             except (SyntaxError, UnicodeError) as exc:

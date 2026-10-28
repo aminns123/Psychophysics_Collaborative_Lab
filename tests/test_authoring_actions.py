@@ -112,7 +112,18 @@ def test_researcher_restoration_requires_original_source(tmp_path):
     assert inventory(tmp_path)[0].status == "retired"
 
 
-def test_native_authoring_retire_cancel_confirm_restore(tmp_path):
+def test_direct_retirement_revokes_already_loaded_project_experiment(tmp_path, monkeypatch):
+    from psychophysics_lab.experiments._internal import registry
+    scaffold_draft(tmp_path, "cached_example", "experiment")
+    sentinel = object()
+    monkeypatch.setitem(registry._REGISTRY, "cached_example", sentinel)
+    before = dict(registry._REGISTRY)
+    retire(tmp_path, "experiment", "cached_example")
+    assert registry._REGISTRY == {k: v for k, v in before.items() if k != "cached_example"}
+
+
+@pytest.mark.parametrize("cancel", ["button", "escape"])
+def test_headless_authoring_retire_cancel_confirm_restore(tmp_path, cancel):
     source, preset = scaffold_draft(tmp_path, "my_retirement", "experiment")
     old = (source.read_bytes(), preset.read_bytes())
     class TestApp(App):
@@ -127,7 +138,10 @@ def test_native_authoring_retire_cancel_confirm_restore(tmp_path):
         async with app.run_test(size=(110, 38)) as pilot:
             app.query_one("#author-retire", Button).press()
             await pilot.pause()
-            app.screen.query_one("#retire-cancel", Button).press()
+            if cancel == "escape":
+                await pilot.press("escape")
+            else:
+                app.screen.query_one("#retire-cancel", Button).press()
             await pilot.pause()
             assert inventory(tmp_path)[0].status == "draft"
             app.query_one("#author-retire", Button).press()
