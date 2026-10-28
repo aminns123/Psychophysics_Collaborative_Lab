@@ -29,6 +29,14 @@ named `ready_fixation`, which hold session-only slot provenance, not trial state
 Source/manifest hashes, host timestamps and the session sidecar are separately
 validated rather than claimed to be byte-equivalent across source revisions.
 
+The Windows fixture retains raw CRLF preset hashes inside resolved metadata.
+Windows Git/ZIP checkouts may also contain LF. The comparison now verifies each
+recorded preset hash against its actual source bytes, then uses CRLF bytes only
+to reconstruct that frozen comparison form. Parsed scientific values are still
+included in the complete-document hash. Neither the fixture nor acquired files
+are rewritten, and an incorrect recorded raw hash still fails. This is a test
+boundary correction for Windows checkout reproducibility, not a runtime change.
+
 `test_stage_c_event_first.py` compares every case with the opening off and on,
 checks unchanged scientific function ASTs, and supplements simulation with the
 actual software presentation path. The frozen Stage A and Stage B JSON fixtures
