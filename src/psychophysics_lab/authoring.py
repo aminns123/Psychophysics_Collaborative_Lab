@@ -136,11 +136,14 @@ def retire(repo_root: Path, kind: str, name: str) -> Component:
     target = next((item for item in records if item.kind == kind and item.name == name), None)
     if target is None:
         raise ValueError("Only published researcher experiments can be retired; official experiments require a reviewed Git PR.")
-    if target.status == "retired":
-        return target
     from dataclasses import replace
     updated = replace(target, status="retired", tested_fingerprint="")
-    _save(repo_root, tuple(updated if item == target else item for item in records))
+    if target.status != "retired":
+        _save(repo_root, tuple(updated if item == target else item for item in records))
+    # The public operation must revoke the current process as well as future
+    # discovery; callers need not know about the TUI's registry cache.
+    from .experiments._internal import registry
+    registry._REGISTRY.pop(name, None)
     return updated
 
 
