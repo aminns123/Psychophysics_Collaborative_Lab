@@ -1,5 +1,10 @@
 # Issue #165: executable scientist-first investigation
 
+**Historical prototype report for PR head `9724d9f`.** The subsequent design-freeze
+proposal is [EXPERIMENT_AUTHORING_STANDARD.md](EXPERIMENT_AUTHORING_STANDARD.md).
+Its reference no longer imports official CSF or uses a source-hash guard; source
+size and coupling descriptions below record the earlier investigation only.
+
 Baseline: merged `main` **9776a25fd9dce39860ef620b3dd70652f9dfa113**.
 Investigation is isolated from the retirement follow-up and the working lab.
 No official experiment, stimulus, framework, TUI, method or recorder is changed.

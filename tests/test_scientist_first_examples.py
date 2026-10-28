@@ -93,7 +93,9 @@ def test_csf_matches_reference_trial_bytes_histories_estimators_and_stimuli(lab,
     def function_body(author, name):
         tree = ast.parse(Path(author.__file__).read_text(encoding="utf-8"))
         return ast.dump(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name), include_attributes=False)
-    for name in ("make_conditions", "choose_condition", "change_contrast", "update_experiment", "is_finished", "primary_rule"):
+    # Track construction now derives from the explicit scientific factor list;
+    # its complete values/order are compared above, rather than its source AST.
+    for name in ("choose_condition", "change_contrast", "update_experiment", "is_finished", "primary_rule"):
         assert function_body(prototype, name) == function_body(reference, name)
     if method == "adaptive":
         assert read(candidate, "resolved_experiment.json")["reversal_contrasts"] == read(baseline, "resolved_experiment.json")["reversal_contrasts"]
@@ -276,11 +278,21 @@ def test_actual_phase_player_escape_before_trial_one(lab, tmp_path, monkeypatch,
         run.close()
 
 
-def test_reference_dependency_change_fails_closed(lab, monkeypatch):
+def test_reference_example_has_no_official_source_dependency_or_hash_guard(lab, monkeypatch):
     author = module(CSF)
-    monkeypatch.setattr(author, "REFERENCE_SHA256", "0" * 64)
-    with pytest.raises(ValueError, match="reference changed"):
-        author.SPEC.normalise_values({})
+    source = Path(author.__file__).read_text(encoding="utf-8")
+    assert "REFERENCE_SHA256" not in source
+    assert "reference." not in source
+    imports = [n.module or "" for n in ast.walk(ast.parse(source)) if isinstance(n, ast.ImportFrom)]
+    assert not any(name.startswith("psychophysics_lab.experiments") for name in imports)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Official experiment callback must not be invoked")
+    for name in ("initialise_experiment", "prepare_stimuli", "trial_record", "fixed_trial_record", "make_fixed_schedule", "validate_settings"):
+        monkeypatch.setattr(reference, name, forbidden)
+    settings = author.SPEC.normalise_values(VALUES)
+    assert len(author.make_conditions(settings)) == 4
+    assert author.fixed_conditions(settings, 137)
+    ready(CSF, VALUES)
 
 
 def test_csf_response_ceiling_retains_incomplete_reference_result(lab, tmp_path):
