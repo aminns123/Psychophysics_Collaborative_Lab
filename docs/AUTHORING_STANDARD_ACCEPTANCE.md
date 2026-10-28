@@ -25,7 +25,7 @@ do not infer CI acceptance from an earlier head or from these focused tests.
 | No official CSF import/hash pin or migration cycle in the reference | PASS | Import inspection and successful execution with old official callbacks deliberately disabled |
 | All ten current official sources/contracts and shared scientific implementation protected | PASS | Frozen main source/field/response/stimulus/calibration hashes; unchanged Stage C evidence |
 | Real software phase player, once-only opening and zero-response Escape | PASS | Established injected-display harness; not native UI/hardware evidence |
-| Focused reference/standard selection | PASS | 61 tests before full qualification; commands below |
+| Focused reference/standard selection | PASS | 66 tests before full qualification; commands below |
 | Complete Windows regression / portability for final candidate | NOT VERIFIED in this pre-CI snapshot | Mandatory final outcome is reported on PR #167 for its exact head |
 | Final hosted Windows CI for proposed integration | NOT VERIFIED in this pre-CI snapshot | Mandatory final outcome is the final PR check, including reviewed main base |
 | Independent scientist understands and edits without framework help | NOT VERIFIED | No independent human exercise has been conducted |
@@ -40,7 +40,10 @@ python -m pytest tests/test_authoring_standard.py tests/test_scientist_first_exa
 ```
 
 On the isolated Windows 11 / CPython 3.11.15 exact-profile environment, the first
-complete refined selection passed **61 tests in 75.79 seconds**. The existing
+complete final selection passed **66 tests in 79.82 seconds**. A source-edit
+stress check first reproduced five invalid-factor cases that incorrectly passed
+validation; the candidate now validates the authoritative factor function and
+all five are rejected. No official source or mathematical method changed. The existing
 all-ten frozen scientific matrix, source/contracts, legacy extensions, readers,
 Review and installation regressions remain in the full Windows suite. No
 dependency or installation change is part of this PR.

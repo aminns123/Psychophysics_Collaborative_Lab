@@ -67,6 +67,15 @@ def test_factor_levels_tracks_targets_and_fixed_repetitions_are_distinct(lab):
     assert author.RESPONSES.alternatives == ("left", "right")
 
 
+@pytest.mark.parametrize("conditions", [[{"frequency_cpd": .1}], [{"frequency_cpd": float("nan")}],
+    [{"frequency_cpd": 2.}, {"frequency_cpd": 2.}], [], [{}]])
+def test_validation_checks_the_authoritative_factor_definition(lab, monkeypatch, conditions):
+    author = module(CSF)
+    monkeypatch.setattr(author, "scientific_conditions", lambda settings: conditions)
+    with pytest.raises(ValueError, match="frequenc"):
+        author.SPEC.normalise_values(VALUES)
+
+
 def test_everyday_python_edits_change_science_without_framework_or_ui_edits(lab, tmp_path):
     # A real source edit exercise, not a human comprehension claim.
     source = lab / "experiments" / (CSF + ".py")

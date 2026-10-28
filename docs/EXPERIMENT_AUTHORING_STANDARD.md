@@ -124,6 +124,11 @@ instead of introducing another object model. The necessary callback signatures
 may receive a run/state; a scientist changing A1 does not need to understand that
 execution object or recorder internals.
 
+Validate the actual factor/condition definition used for execution. If A1 exposes
+`scientific_conditions`, checking only its original text input is insufficient:
+empty, duplicated, nonfinite, malformed or out-of-range returned levels must be
+rejected before acquisition. The reference tests this source-edit boundary.
+
 Keep selection policy, counterbalancing, target assignment, renderer-parameter
 conversion, digital bounds, initial scientific state, response correctness,
 adaptive rule and stopping/estimation decisions here or in explicitly named,

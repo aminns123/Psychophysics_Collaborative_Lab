@@ -391,16 +391,17 @@ def initialise_experiment(run, conditions, *, grating_resolution=None):
 
 def validate_settings(values):
     try:
-        frequencies = [float(f.strip()) for f in values["frequencies_cpd"].split(",")]
+        frequencies = [condition["frequency_cpd"] for condition in scientific_conditions(values)]
         import math
 
         if (
             not frequencies
             or len(set(frequencies)) != len(frequencies)
-            or any(not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
+            or any(isinstance(f, bool) or not isinstance(f, (int, float))
+                   or not math.isfinite(f) or not 0.5 <= f <= 32 for f in frequencies)
         ):
             yield "Choose distinct finite spatial frequencies within 0.5-32 cycles/degree."
-    except ValueError:
+    except (ValueError, KeyError, TypeError):
         yield "Enter spatial frequencies as comma-separated numbers in cycles/degree."
     if values.get("contrast_method", "adaptive") == "constant_stimuli":
         try:
