@@ -1,9 +1,11 @@
 # Installing PsyCoLab on a Windows laboratory computer
 
-Windows is the supported laboratory platform. Existing headless checks on other
+Windows 11 is the sole supported laboratory platform. Existing headless checks on other
 operating systems are useful regression checks, not a promise of physical-display
 or audio support there. The installation and qualification workflow below targets
-Windows and Python 3.11.
+Windows 11 and 64-bit Python 3.11. See the
+[acceptance policy](WINDOWS_ACCEPTANCE_POLICY.md); historical cross-platform
+results below remain evidence for their dated revisions, not support promises.
 
 The [accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
 `5fec547ecf3f86cd6bbd202a9e463637deca07d3`, with passing Windows and Ubuntu

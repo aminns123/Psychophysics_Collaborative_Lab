@@ -1,5 +1,10 @@
 # PsyCoLab — Psychophysics Collaborative Lab
 
+**Supported platform: Windows 11, 64-bit Python 3.11.** Windows is the sole
+official software acceptance and release target. See the
+[Windows acceptance policy](docs/WINDOWS_ACCEPTANCE_POLICY.md) for the distinction
+between hosted CI, Windows 11 installation testing and physical qualification.
+
 **Download a version:** [GitHub Releases](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases) — select a tagged snapshot to see release notes and obtain the automatic **Source code (zip)** / **Source code (tar.gz)** archives. A source ZIP is not an installer or a validated laboratory configuration; do not extract it over an existing Git checkout. See the [changelog](CHANGELOG.md) and [safe update guide](docs/SAFE_UPDATES_AND_LOCAL_WORK.md).
 
 
