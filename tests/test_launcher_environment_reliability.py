@@ -4,8 +4,10 @@ import subprocess
 import sys
 import pytest
 from scripts import launcher_setup as launcher
+from _locked_launcher_fixture import locked_fixture
 
 def configured_launcher(tmp_path,monkeypatch,*,existing):
+    qualification = locked_fixture(monkeypatch, launcher)
     root=tmp_path/'checkout with spaces & unicode é'
     root.mkdir()
     project=root/'pyproject.toml'
@@ -19,9 +21,10 @@ def configured_launcher(tmp_path,monkeypatch,*,existing):
     calls=[]
     def command(args,**kwargs):
         calls.append(args)
-        if args[1:3]==['-m','venv']: venv.mkdir()
+        if args[1:3]==['-m','venv']: venv.mkdir(exist_ok=True)
         return subprocess.CompletedProcess(args,0)
     monkeypatch.setattr(launcher,'_run',command)
+    monkeypatch.setattr(launcher, '_fixture_qualification', qualification, raising=False)
     return root,project,python,calls
 
 def test_fresh_environment_commands_keep_paths_as_arguments(tmp_path,monkeypatch):
@@ -34,7 +37,7 @@ def test_fresh_environment_commands_keep_paths_as_arguments(tmp_path,monkeypatch
 
 def test_existing_environment_reuse_does_not_install(tmp_path,monkeypatch):
     root,project,python,calls=configured_launcher(tmp_path,monkeypatch,existing=True)
-    launcher._write_state(launcher._hash_file(project))
+    launcher._write_state(launcher._hash_file(project), qualification=launcher._fixture_qualification)
     assert launcher.main()==0
     assert not any('install' in args or 'venv' in args for args in calls)
     assert [str(python),'-m','pip','check'] in calls

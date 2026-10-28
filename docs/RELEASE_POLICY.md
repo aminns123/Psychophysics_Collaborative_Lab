@@ -59,7 +59,7 @@ source commit, software tests and acceptance scope, and create a **new** approve
 version/tag only after owner sign-off. Document physical qualification separately
 for each laboratory apparatus/protocol for which acquisition claims are made. Never silently retag a published
 source snapshot. Use the [accepted baseline](ACCEPTED_SOFTWARE_BASELINE.md)
-for current evidence and the [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md)
+for historical evidence and the [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md)
 for remaining stages. The [original Windows acceptance plan](WINDOWS_RELEASE_ACCEPTANCE_AND_STRESS_TEST_PLAN.md)
 retains the historical evidence matrix; Issue #82 remains the stable release gate.
 

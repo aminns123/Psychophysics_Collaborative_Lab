@@ -17,8 +17,23 @@ if not exist "pyproject.toml" (
 
 set "PSYCOLAB_PYTHON="
 
+rem Reuse this checkout's own interpreter before searching global registrations.
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
+    if not errorlevel 1 set "PSYCOLAB_PYTHON=".venv\Scripts\python.exe""
+)
+
+if not defined PSYCOLAB_PYTHON if defined PSYCOLAB_BOOTSTRAP_PYTHON (
+    if not exist "%PSYCOLAB_BOOTSTRAP_PYTHON%" (
+        echo ERROR: PSYCOLAB_BOOTSTRAP_PYTHON does not name an existing interpreter.
+        pause
+        exit /b 1
+    )
+    set "PSYCOLAB_PYTHON="%PSYCOLAB_BOOTSTRAP_PYTHON%""
+)
+
 where py >nul 2>nul
-if not errorlevel 1 (
+if not errorlevel 1 if not defined PSYCOLAB_PYTHON (
     py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 11) else 1)" >nul 2>nul
     if not errorlevel 1 set "PSYCOLAB_PYTHON=py -3.11"
 )

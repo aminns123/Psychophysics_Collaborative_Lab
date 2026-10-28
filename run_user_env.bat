@@ -32,6 +32,14 @@ if not defined USERENV_BOOTSTRAP (
     )
 )
 
+if not defined USERENV_BOOTSTRAP if defined PSYCOLAB_BOOTSTRAP_PYTHON (
+    if not exist "%PSYCOLAB_BOOTSTRAP_PYTHON%" (
+        echo ERROR: PSYCOLAB_BOOTSTRAP_PYTHON does not name an existing interpreter.
+        goto failed
+    )
+    set "USERENV_BOOTSTRAP="%PSYCOLAB_BOOTSTRAP_PYTHON%""
+)
+
 if not defined USERENV_BOOTSTRAP (
     where py >nul 2>nul
     if not errorlevel 1 (
