@@ -72,7 +72,7 @@ def test_profile_rejects_a_changed_lock_before_setup(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('field,value', [('version',[3,11,9]),('bits',32),('implementation','pypy'),
-    ('exe_sha256','wrong'),('dll_sha256','wrong'),('distribution','other-provider')])
+    ('exe_sha256','wrong'),('dll_sha256','wrong'),('native_fingerprint','wrong'),('distribution','other-provider')])
 def test_interpreter_identity_does_not_accept_an_arbitrary_311(field, value):
     profile, _ = setup._profile()
     identity = dict(profile['python'], platform='win32', distribution='conda-forge', native=[

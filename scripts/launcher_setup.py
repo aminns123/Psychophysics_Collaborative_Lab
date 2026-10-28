@@ -260,7 +260,7 @@ print(json.dumps(dict(implementation=sys.implementation.name,version=list(sys.ve
 def _validate_interpreter(identity: dict) -> None:
     profile, _ = _profile()
     expected = profile["python"]
-    for key in ("implementation", "version", "bits", "exe_sha256", "dll_sha256"):
+    for key in ("implementation", "version", "bits", "exe_sha256", "dll_sha256", "native_fingerprint"):
         if identity.get(key) != expected[key]:
             raise ValueError(f"Python {key} differs from qualified profile {profile['id']}. "
                              "Use the documented interpreter in a new checkout; existing environments were preserved.")
