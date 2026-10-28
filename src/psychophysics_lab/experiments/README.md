@@ -106,6 +106,24 @@ not retired by this change. If a laboratory wants a similar experiment,
 author it as a new, uniquely identified external extension and follow the
 normal Test → Ready process; do not silently resurrect the retired ID.
 
+**Deleting or retiring an experiment today:** ordinary unlisted Python
+experiment definitions are discovered from their Python source; removing a
+definition removes it from fresh discovery. Older published researcher
+experiments can also have an explicit entry in
+`authoring/components.json`. When deliberately removing one of those sources,
+the same reviewed commit must retire its publication entry; otherwise PsyCoLab
+will correctly warn that a formerly Ready experiment is missing. That warning
+must **not** be silently suppressed: the missing file could also be an accidental
+or incomplete installation. Keep historical run records and configuration
+files rather than deleting them as part of source retirement.
+
+Independent laboratory extensions use a separate, machine-local readiness
+record and an explicitly trusted external folder. Their lifecycle is distinct
+from this repository's published inventory. A single researcher-facing
+Retire/Remove action, which handles relevant active registration without
+deleting acquisition records, is proposed as a future usability improvement;
+it is **not** implemented by this retirement.
+
 ## Ownership, compatibility and records
 
 Official files are curated reference protocols. Develop new studies as uniquely
