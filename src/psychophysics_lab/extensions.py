@@ -297,19 +297,69 @@ def records(repo_root):
     if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data.get("schema_version") != 1 or not isinstance(data.get("components"), dict):
         raise ValueError("Unsupported extension readiness record; original file preserved.")
     for key, item in data["components"].items():
-        if not isinstance(key, str) or not isinstance(item, dict) or type(item.get("ready")) is not bool or not isinstance(item.get("fingerprint"), str) or not re.fullmatch("[0-9a-f]{64}", item["fingerprint"]):
+        if not isinstance(key, str) or not isinstance(item, dict) or type(item.get("ready")) is not bool or type(item.get("retired", False)) is not bool or not isinstance(item.get("fingerprint"), str) or not re.fullmatch("[0-9a-f]{64}", item["fingerprint"]):
             raise ValueError("Invalid extension readiness record; original file preserved.")
     return data["components"]
 
 
 def status(repo_root, kind, identity):
     item = records(repo_root).get(f"{kind}:{identity}", {})
+    if item.get("retired") is True:
+        return "retired"
     if item.get("fingerprint") != fingerprint(repo_root):
         return "draft"
     return "ready" if item.get("ready") is True else "tested"
 
 
+def retire(repo_root, kind, identity):
+    """Retire a trusted laboratory experiment without touching its source/data."""
+    if kind != "experiment":
+        raise ValueError("Only laboratory experiments can be retired here.")
+    current = configured(repo_root)
+    if current is None or not identity.startswith(current[1] + "__"):
+        raise ValueError("Choose an enabled experiment in the current laboratory namespace.")
+    root, _ = current
+    path = source_at(root, "experiments/" + identity + ".py")
+    with file_lock(_records_path(repo_root).with_suffix(".lock")):
+        items = records(repo_root)
+        key = f"{kind}:{identity}"
+        if not path.is_file() and key not in items:
+            raise ValueError("Experiment source and readiness record are both missing; nothing to retire.")
+        if items.get(key, {}).get("retired") is True:
+            return
+        # Keep the historical fingerprint, but revoke Ready for this identity.
+        item = dict(items.get(key, {}))
+        item.update(fingerprint=fingerprint(repo_root), ready=False, retired=True)
+        items[key] = item
+        atomic_write_json(_records_path(repo_root), {"schema_version": 1, "components": items})
+    unload()  # Remove loaded laboratory experiments, requiring an explicit refresh.
+
+
+def restore(repo_root, kind, identity):
+    """Restore an explicitly retired experiment as Draft, requiring Test → Ready."""
+    if kind != "experiment":
+        raise ValueError("Only laboratory experiments can be restored here.")
+    current = configured(repo_root)
+    if current is None or not identity.startswith(current[1] + "__"):
+        raise ValueError("Choose an enabled experiment in the current laboratory namespace.")
+    root, _ = current
+    if not source_at(root, "experiments/" + identity + ".py").is_file():
+        raise ValueError("Restore the missing Python source before restoring this experiment.")
+    with file_lock(_records_path(repo_root).with_suffix(".lock")):
+        items = records(repo_root)
+        item = items.get(f"{kind}:{identity}")
+        if item is None or item.get("retired") is not True:
+            raise ValueError("Only an explicitly retired experiment can be restored.")
+        # Do not accidentally grant even Tested status on restoration.
+        # Readiness must be earned again by a new Test → Ready sequence.
+        items[f"{kind}:{identity}"] = {"fingerprint": "0" * 64, "ready": False}
+        atomic_write_json(_records_path(repo_root), {"schema_version": 1, "components": items})
+    unload()
+
+
 def record_test(repo_root, kind, identity, before):
+    if records(repo_root).get(f"{kind}:{identity}", {}).get("retired") is True:
+        raise ValueError("Experiment is retired. Restore it to Draft before testing.")
     if before != fingerprint(repo_root) or _loaded.get((kind, identity)) != before:
         raise ValueError("Extension source changed during testing; restart and retest this exact revision.")
     with file_lock(_records_path(repo_root).with_suffix(".lock")):
@@ -322,6 +372,8 @@ def publish(repo_root, kind, identity):
     with file_lock(_records_path(repo_root).with_suffix(".lock")):
         items = records(repo_root)
         item = items.get(f"{kind}:{identity}")
+        if item is not None and item.get("retired") is True:
+            raise ValueError("Experiment is retired. Restore it to Draft and retest before marking Ready.")
         if item is None or item.get("fingerprint") != fingerprint(repo_root):
             raise ValueError("Run a successful --dev-preview or --dev-test on this exact source revision first.")
         # An experiment's simulation exercises its selected local stimuli too.
@@ -407,6 +459,12 @@ def load(repo_root, *, development=False):
         _errors["root"] = str(exc)
         return dict(_errors)
     for kind, relative in files:
+        # A retired source remains on disk for the scientist, but cannot be
+        # registered even by the development loader until explicitly restored.
+        if kind == "experiment" and records(repo_root).get(
+            f"experiment:{Path(relative).stem}", {}
+        ).get("retired") is True:
+            continue
         registries = (experiments._REGISTRY, stimuli._REGISTRY, adaptive._REGISTRY)
         saved = [dict(registry) for registry in registries]
         imported_before = dict(_loaded)

@@ -7,7 +7,7 @@ import pytest
 from textual.app import App
 from textual.widgets import Button, Select, Static
 from _manual_authoring_fixture import scaffold_draft
-from psychophysics_lab.authoring import inventory, mark_tested, publish
+from psychophysics_lab.authoring import inventory, mark_tested, publish, retire, restore, load_authored
 from _manual_authoring_fixture import scaffold
 from test_beginner_examples import _load
 from psychophysics_lab.ui.authoring import AuthoringPanel
@@ -78,3 +78,70 @@ def test_normal_authoring_panel_exposes_sources_and_validated_ready_workflow(tmp
             assert calls[-1][1]["cwd"] == tmp_path
             assert calls[-1][1]["env"]["PSYCOLAB_REPO_ROOT"] == str(tmp_path)
     asyncio.run(scenario())
+
+
+def test_researcher_published_retirement_keeps_source_and_requires_explicit_restore(tmp_path):
+    source, preset = scaffold_draft(tmp_path, "retirement_example", "experiment")
+    untouched_source, untouched_preset = source.read_bytes(), preset.read_bytes()
+    tested = mark_tested(tmp_path, "experiment", "retirement_example")
+    assert tested.tested_fingerprint
+    retired = retire(tmp_path, "experiment", "retirement_example")
+    assert retired.status == "retired" and not retired.tested_fingerprint
+    assert retire(tmp_path, "experiment", "retirement_example") == retired
+    assert source.read_bytes() == untouched_source and preset.read_bytes() == untouched_preset
+    assert load_authored(tmp_path, include_drafts=True, tolerate_errors=True) == {}
+    with pytest.raises(ValueError, match="retired"):
+        mark_tested(tmp_path, "experiment", "retirement_example")
+    with pytest.raises(ValueError, match="retired"):
+        publish(tmp_path, "experiment", "retirement_example")
+    with pytest.raises(ValueError, match="reviewed Git PR"):
+        retire(tmp_path, "experiment", "contrast_sensitivity")
+    restored = restore(tmp_path, "experiment", "retirement_example")
+    assert restored.status == "draft" and restored.tested_fingerprint == ""
+    with pytest.raises(ValueError, match="test"):
+        publish(tmp_path, "experiment", "retirement_example")
+    assert source.read_bytes() == untouched_source and preset.read_bytes() == untouched_preset
+
+
+def test_researcher_restoration_requires_original_source(tmp_path):
+    source, _ = scaffold_draft(tmp_path, "lost_example", "experiment")
+    retire(tmp_path, "experiment", "lost_example")
+    source.unlink()
+    with pytest.raises(ValueError, match="Restore the missing source"):
+        restore(tmp_path, "experiment", "lost_example")
+    assert inventory(tmp_path)[0].status == "retired"
+
+
+def test_native_authoring_retire_cancel_confirm_restore(tmp_path):
+    source, preset = scaffold_draft(tmp_path, "my_retirement", "experiment")
+    old = (source.read_bytes(), preset.read_bytes())
+    class TestApp(App):
+        repo_root = tmp_path
+        def compose(self):
+            yield AuthoringPanel("experiment")
+        def inspect_source(self, path):
+            pass
+
+    async def scenario():
+        app = TestApp()
+        async with app.run_test(size=(110, 38)) as pilot:
+            app.query_one("#author-retire", Button).press()
+            await pilot.pause()
+            app.screen.query_one("#retire-cancel", Button).press()
+            await pilot.pause()
+            assert inventory(tmp_path)[0].status == "draft"
+            app.query_one("#author-retire", Button).press()
+            await pilot.pause()
+            app.screen.query_one("#retire-confirm", Button).press()
+            await pilot.pause()
+            assert inventory(tmp_path)[0].status == "retired"
+            assert app.query_one("#author-test", Button).disabled
+            assert app.query_one("#author-ready", Button).disabled
+            assert not app.query_one("#author-restore", Button).disabled
+            app.query_one("#author-restore", Button).press()
+            await pilot.pause()
+            assert inventory(tmp_path)[0].status == "draft"
+            assert inventory(tmp_path)[0].tested_fingerprint == ""
+
+    asyncio.run(scenario())
+    assert (source.read_bytes(), preset.read_bytes()) == old
