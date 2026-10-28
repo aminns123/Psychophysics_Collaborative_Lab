@@ -24,6 +24,12 @@ scientific methods, with units stated explicitly.
 
 ## The six-section experiment narrative
 
+The proposed [version-1 A1/A2/B authoring standard](EXPERIMENT_AUTHORING_STANDARD.md)
+is at the Issue #165 design-freeze checkpoint. Its external reference examples
+are executable; approval and family migration remain separate. The ten current
+official sources below remain the accepted implementation until reviewed
+migrations are approved. See the [migration plan](EXPERIMENT_MIGRATION_PLAN.md).
+
 All ten official experiments and the bundled extension starters now use:
 
 1. **PARAMETERS:** ConfigField declarations, response alternatives, stimulus slots
