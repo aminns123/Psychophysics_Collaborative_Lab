@@ -66,9 +66,9 @@ if not defined PSYCOLAB_PYTHON (
 if not defined PSYCOLAB_PYTHON (
     echo ERROR: PsyCoLab currently requires Python 3.11.
     echo.
-    echo Install a 64-bit Python 3.11 interpreter, then run this launcher again.
-    echo PsyCoLab intentionally keeps the tested Python 3.11 / Pyglet 1.5.27
-    echo baseline while the legacy OpenGL renderer is being validated.
+    echo Obtain the qualified conda-forge Python 3.11.15 interpreter described
+    echo in docs\WINDOWS_ENVIRONMENT.md and set PSYCOLAB_BOOTSTRAP_PYTHON.
+    echo Existing global Python installations do not need to be replaced.
     pause
     exit /b 1
 )

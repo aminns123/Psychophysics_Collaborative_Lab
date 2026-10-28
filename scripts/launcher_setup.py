@@ -103,7 +103,15 @@ def _install_extra_requirements(python: Path, extra: Path | None) -> None:
                      "--constraint", str(PROFILE_DIR / "core.constraints"), "--requirement", str(extra)]
         # Resolve conflicts/unavailable inputs before mutating USER_env. Laboratory
         # requirements remain owned by the researcher and are never rewritten.
-        _run(arguments + ["--dry-run"] + _wheelhouse_options())
+        report = VENV / ".psycolab-extra-plan.json"
+        report.unlink(missing_ok=True)
+        _run(arguments + ["--dry-run", "--report", str(report)] + _wheelhouse_options())
+        profile, _ = _profile()
+        for item in json.loads(report.read_text(encoding="utf-8"))["install"]:
+            name = item["metadata"]["name"].lower().replace("_", "-").replace(".", "-")
+            if name in profile["core"] or name == "psychophysics-lab":
+                raise ValueError(f"Laboratory requirements would replace approved {name}; "
+                                 "the core was preserved. Revise the optional requirements and retest.")
         _run(arguments + _wheelhouse_options())
         print("Laboratory requirements checked against the fixed core; retest affected studies. Ready was not granted.")
 
@@ -213,6 +221,11 @@ def _profile() -> tuple[dict, str]:
         path = PROFILE_DIR / name
         if path.parent != PROFILE_DIR or _hash_file(path) != expected:
             raise ValueError(f"Reviewed dependency file changed: {name}. Use a reviewed checkout/profile; no upgrade was attempted.")
+    constraints = dict(line.split("==", 1) for line in
+                       (PROFILE_DIR / "core.constraints").read_text(encoding="utf-8").splitlines()
+                       if line.strip() and not line.startswith("#"))
+    if constraints != profile["core"]:
+        raise ValueError("Core constraints differ from the reviewed environment profile.")
     return profile, hashlib.sha256(raw).hexdigest()
 
 

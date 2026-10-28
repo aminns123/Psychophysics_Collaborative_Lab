@@ -111,6 +111,7 @@ def test_real_installed_dependency_files_are_checked(tmp_path, monkeypatch, faul
 
 
 def test_optional_requirements_resolve_against_core_before_install(tmp_path, monkeypatch):
+    monkeypatch.setattr(setup, 'VENV', tmp_path)
     path=tmp_path/'user_requirements.txt';path.write_text('iniconfig==2.3.1\n')
     calls=[]
     def record(command, **kwargs):
@@ -120,3 +121,18 @@ def test_optional_requirements_resolve_against_core_before_install(tmp_path, mon
     with pytest.raises(subprocess.CalledProcessError): setup._install_extra_requirements(Path(sys.executable),path)
     assert len(calls)==1 and '--constraint' in calls[0] and '--dry-run' in calls[0]
     assert path.read_text()=='iniconfig==2.3.1\n'
+
+
+def test_optional_same_version_core_replacement_is_refused(tmp_path, monkeypatch):
+    monkeypatch.setattr(setup, 'VENV', tmp_path)
+    path = tmp_path / 'user_requirements.txt'
+    path.write_text('numpy @ file:///different-build.whl\n')
+    calls = []
+    def plan(command, **kwargs):
+        calls.append(command)
+        Path(command[command.index('--report') + 1]).write_text(json.dumps(
+            {'install': [{'metadata': {'name': 'numpy', 'version': '1.26.4'}}]}))
+    monkeypatch.setattr(setup, '_run', plan)
+    with pytest.raises(ValueError, match='would replace approved numpy'):
+        setup._install_extra_requirements(Path(sys.executable), path)
+    assert len(calls) == 1 and '--dry-run' in calls[0]
