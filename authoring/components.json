@@ -1,11 +1,4 @@
 {
   "schema_version": 1,
-  "components": [
-    {
-      "kind": "experiment",
-      "name": "new_probe_vertical_line_stimulus",
-      "status": "ready",
-      "tested_fingerprint": "b2a5a795fae1886c9de88eab7794966628236b1613c13e1491463ed733cf19c5"
-    }
-  ]
+  "components": []
 }

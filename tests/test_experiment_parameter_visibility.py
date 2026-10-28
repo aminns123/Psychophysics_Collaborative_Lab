@@ -66,11 +66,23 @@ def test_above_below_rejects_invalid_offsets(bad):
 
 def test_retired_probe_settings_remain_readable_without_importing_removed_source():
     import json
-    path = Path(__file__).resolve().parents[1] / "configs/experiments/new_probe_vertical_line_stimulus.json"
+    from psychophysics_lab.authoring import inventory, load_authored
+
+    root = Path(__file__).resolve().parents[1]
+    path = root / "configs/experiments/new_probe_vertical_line_stimulus.json"
     source = json.loads(path.read_text(encoding="utf-8"))
-    # The researcher removed this independent source; keep its saved settings
-    # readable without making active experiment tests import the retired module.
+
+    # The former experiment's Python source is absent by design. Its saved
+    # settings stay readable, but no published Ready entry may reference it.
+    assert source["experiment_id"] == "new_probe_vertical_line_stimulus"
     assert source["values"]["probe_vertical_offset_deg"] == 2.0
+    assert not (root / "src/psychophysics_lab/experiments/new_probe_vertical_line_stimulus.py").exists()
+    assert ("experiment", "new_probe_vertical_line_stimulus") not in {
+        (item.kind, item.name) for item in inventory(root)
+    }
+    assert "experiment:new_probe_vertical_line_stimulus" not in load_authored(
+        root, tolerate_errors=True
+    )
 
 
 @pytest.mark.parametrize("radius,y", [(0.4, -1.1), (0.8, 1.25)])
