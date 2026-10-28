@@ -38,6 +38,50 @@ def read(folder,name):
     return json.loads((folder/name).read_text(encoding='utf-8'))
 
 
+def frozen_comparison_value(folder, name):
+    """Verify actual preset provenance, then compare with the frozen Windows form.
+
+    Git/ZIP checkouts can use LF on Windows too. The pre-change fixture includes
+    CRLF raw-file hashes inside resolved metadata, alongside parsed science.
+    Normalize only those verified hashes for this comparison; saved runs and the
+    fixture remain untouched. Every parsed setting and scientific field remains
+    in the complete-document hash.
+    """
+    value = scientific(read(folder, name))
+    if name != 'resolved_experiment.json':
+        return value
+
+    def verify_and_normalise(node):
+        if isinstance(node, list):
+            for child in node:
+                verify_and_normalise(child)
+        if not isinstance(node, dict):
+            return
+        if 'document' in node and 'file_identity' in node:
+            if node.get('file_sha256') is not None:
+                from psychophysics_lab.stimuli.registry import get_stimulus
+                stimulus = get_stimulus(node['document']['stimulus_id'])
+                path = ROOT / stimulus.default_config
+                assert path.name == node['file_identity'], 'Unexpected frozen stimulus preset'
+                field = 'file_sha256'
+            elif 'sha256' in node:
+                path = ROOT / node['file_identity']
+                field = 'sha256'
+            else:
+                path = None  # Library defaults/experiment values have no raw file.
+            if path is not None:
+                assert path.resolve().is_relative_to(ROOT.resolve()) and path.suffix == '.json'
+                raw = path.read_bytes()
+                assert hashlib.sha256(raw).hexdigest() == node[field], 'Recorded raw preset hash differs from its source'
+                windows_bytes = raw.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+                node[field] = hashlib.sha256(windows_bytes).hexdigest()
+        for child in node.values():
+            verify_and_normalise(child)
+
+    verify_and_normalise(value)
+    return value
+
+
 def rows(folder):
     with (folder/'trials.tsv').open(encoding='utf-8',newline='') as stream:
         return list(csv.DictReader(stream,delimiter='\t'))
@@ -63,7 +107,7 @@ def test_every_complete_scientific_trace_matches_before_migration(tmp_path,monke
     assert (a.status,a.accepted_trials)==(case['status'],case['accepted'])
     assert digest(rows(a.run_directory))==case['rows_sha256']
     for name,expected in case['files_sha256'].items():
-        assert digest(scientific(read(a.run_directory,name)))==expected,name
+        assert digest(frozen_comparison_value(a.run_directory,name))==expected,name
     if enabled:
         opening=read(a.run_directory,'session_events.json')
         assert opening['status']=='completed' and len(opening['events'])==2
@@ -75,6 +119,32 @@ def test_every_complete_scientific_trace_matches_before_migration(tmp_path,monke
         assert not (a.run_directory/'session_events.json').exists()
     failures=[(c.name,c.detail) for c in validate_run(a.run_directory) if not c.passed]
     assert not failures,failures
+
+
+@pytest.mark.parametrize('ending', [b'\n', b'\r\n'], ids=['LF-source', 'CRLF-source'])
+@pytest.mark.parametrize('identity', ['example_experiment', 'orientation_adaptive'])
+def test_windows_source_line_endings_preserve_complete_frozen_science(tmp_path, monkeypatch, ending, identity):
+    # Inject source bytes at the existing file boundary; never edit the checkout.
+    original = Path.read_bytes
+    def source_bytes(path):
+        raw = original(path)
+        if path.is_relative_to(ROOT / 'configs') and path.suffix == '.json':
+            return raw.replace(b'\r\n', b'\n').replace(b'\n', ending)
+        return raw
+    monkeypatch.setattr(Path, 'read_bytes', source_bytes)
+    case = next(c for c in BASELINE['cases'] if
+                (c['identity'], c['method'], c['seed']) == (identity, 'adaptive', 0))
+    test_every_complete_scientific_trace_matches_before_migration(tmp_path, monkeypatch, case, False)
+
+
+def test_comparison_rejects_incorrect_raw_preset_hash(tmp_path):
+    from psychophysics_lab.config.experiment_parameters import settings_snapshot
+    spec = registry.get_experiment('example_experiment')
+    snapshot = settings_snapshot(spec)
+    snapshot['sha256'] = '0' * 64
+    (tmp_path/'resolved_experiment.json').write_text(json.dumps({'experiment_settings': snapshot}), encoding='utf-8')
+    with pytest.raises(AssertionError, match='Recorded raw preset hash'):
+        frozen_comparison_value(tmp_path, 'resolved_experiment.json')
 
 
 @pytest.mark.parametrize('saved',BASELINE['inventory'],ids=lambda c:c['id'])
