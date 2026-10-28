@@ -17,8 +17,8 @@ separately before adopting this policy PR.
 
 GitHub's hosted `windows-latest` runner currently uses Windows Server, not a
 Windows 11 research workstation. Its successful headless job is automated Windows
-regression evidence. **It does not satisfy the separate Windows 11 fresh-install,
-researcher workflow or physical apparatus acceptance gates.** Record runner OS,
+regression evidence. **It does not satisfy the separate Windows 11 fresh-install or researcher
+workflow acceptance gates, and it never certifies physical apparatus.** Record runner OS,
 Python/dependency versions, tested source/merge commit and results in each audit.
 
 Linux portability diagnostics may be run separately if useful, but must remain
@@ -44,18 +44,27 @@ the frozen Windows fixture. No Linux runtime or fixture repair is included in
 this policy change. If optional cross-platform equivalence is pursued later,
 compare parsed scientific settings separately from validated raw-file provenance.
 
-## Release and apparatus gates
+## Separate software-release and apparatus-acquisition gates
 
-A green Windows job does not authorize a release or certify psychophysics.
-Before a laboratory release, retain an approved reproducible Windows environment,
-clean installation/reuse/recovery evidence, protected external source/config/data
-roots, upgrade/rollback evidence, compatible archived-run readers, licensing and
-maintainer sign-off. Exercise the real interface with a human researcher on
-Windows 11; a virtual observer or injected display is software evidence only.
+A green Windows job does not authorize a stable software release. Software
+release qualification requires a reviewed exact source commit, an approved
+reproducible Windows environment, clean installation/reuse/recovery evidence,
+protected external source/config/data roots, update/rollback guidance,
+compatible archived-run readers, an independent human Windows 11 researcher
+workflow, rights/licensing review and explicit maintainer approval.
 
-For acquisition, independently qualify actual display binding and geometry,
-photometric transfer/contrast, output precision, sampling, photon timing, input
-latency and audio where applicable, plus protocol-specific scientific validity.
-Keep the existing calibration, readiness and acquisition safeguards. Never infer
-qualification from a copied profile or alter participant/calibration data during
-software acceptance. No merge, tag or release is automatic.
+**Stable software distribution does not require universal hardware
+qualification.** State the unverified physical scope in release notes. A stable
+software release makes no claim that a particular monitor, GPU, photometer,
+speaker or response device is calibrated or experimentally adequate.
+
+**Before making scientific acquisition claims**, the individual laboratory
+must qualify actual display binding/geometry, photometric transfer and contrast,
+output precision, spatial sampling, photon timing, input latency, audio when
+used and the protocol's scientific validity against documented tolerances.
+Keep calibration, readiness and acquisition safeguards intact. An explicit
+researcher override records an exception; it does not turn missing physical
+evidence into verified measurements. Never infer qualification from a copied
+profile or modify participant/calibration data during software acceptance.
+
+No merge, tag, release or physical qualification is automatic.
