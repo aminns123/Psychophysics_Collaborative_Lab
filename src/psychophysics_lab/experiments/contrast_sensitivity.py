@@ -710,6 +710,22 @@ def procedure(run):
     )
 
 
+# Review-only declarations; the actual record functions remain authoritative.
+MEASUREMENT_UNITS = {
+    "spatial_frequency_cpd": "cycles/degree",
+    "staircase_repeat": "1-based staircase repeat",
+    "grating_x_deg": "degrees from fixation",
+    "fixed_repeat": "1-based fixed repetition",
+    "presented_display_contrast": "digital peak-to-peak modulation",
+}
+REVIEW_INACTIVE_FIELDS = {
+    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
+    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
+                        + ("starting_contrast", "threshold_reversals"),
+}
+# End Review-only declarations.
+
+
 # 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
 # Compatibility for older Python callers; acquisition and Review use trial_events above.
 make_trial = legacy_trial_factory(trial_events)
@@ -734,6 +750,7 @@ def definition(identity="contrast_sensitivity"):
         responses=RESPONSES,
         adaptive=ADAPTIVE_RULE,
         method_planner=make_fixed_schedule,
+        method_reviewer={"constant_stimuli": fixed_contrast_method},
         validator=validate_settings,
         monitor_validator=validate_monitor,
         supports_simulation=True,

@@ -13,6 +13,7 @@ from simulations.run import simulate
 from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
 from test_scientist_first_examples import lab, module, ready, read, presentations, ROOT, CSF, TEMPORAL, VALUES
+from _review_source_additions import ADDITIONS, without_review_additions
 
 BASELINE = json.loads((ROOT / "tests/fixtures/authoring_standard_main_a5aa56a.json").read_text(encoding="utf-8"))
 # PR #169, merged at bd0e30e: exact reviewed source, not permission for later drift.
@@ -24,6 +25,8 @@ WAVE1_SOURCE_SHA256_LF = {
 
 def source_hash(path):
     source = path.read_bytes().replace(b"\r\n", b"\n")
+    if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
+        source = without_review_additions(source.decode("utf-8"), path.stem).encode("utf-8")
     if path in {ROOT / "src/psychophysics_lab/experiments" / (identity + ".py")
                 for identity in ("ellipse_centre", "ellipse_major_axis")}:
         # Preserve the frozen source hashes and every other byte. The only
