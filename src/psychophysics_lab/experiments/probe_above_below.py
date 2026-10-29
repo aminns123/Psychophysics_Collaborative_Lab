@@ -1,14 +1,8 @@
-"""Is the line above or below the central fixation cross?
+"""Finite teaching discrimination; original, adaptive and constant-stimuli modes.
 
-This Python file replaces the built-in JSON procedure without changing its
-scientific choices. The old design and loader remain internal compatibility
-resources for saved data and independently tested historical designs.
-Target 0 = above (+selected degrees), 1 = below (-selected degrees); default keys F/J.
-Correctness is equality of the target/response alternative indices. Conditions
-are balanced then shuffled using random_seed. Stop at trial_count responses.
-No adaptation or sound. All durations are milliseconds; 0 timeout waits for a key.
-Stimulus defaults/maths are FixationCross and VerticalLineProbe in the library.
-RunContext executes the same procedure for live and virtual response sources.
+A1 contains everyday experimental choices, A2 the inspectable scientific rules,
+and B the unchanged execution/recording connections. Digital increments are not
+calibrated optical contrast; none of these finite tasks estimates a threshold.
 """
 
 import random
@@ -18,7 +12,6 @@ from psychophysics_lab.methods.teaching import (
     constant_teaching_method, OriginalTeachingMethod, TeachingAdaptiveMethod,
     review_teaching_adaptive,
 )
-
 from psychophysics_lab.researcher import (
     ConfigField,
     ResponseParadigm,
@@ -34,8 +27,23 @@ from psychophysics_lab.researcher import (
     UpdateState,
 )
 
-# 1. PARAMETERS
-# Defaults below populate the TUI; run.values contains the selections for this run.
+# PART A1 — EXPERIMENTAL CHOICES
+# Scheduled durations are ms; placement is degrees. Selected Configure values
+# override defaults without rewriting this file or a saved preset.
+# Target alternatives are response codes, not independent staircase tracks.
+# The distance factor is probe_vertical_offset_deg. Balance target rows then
+# shuffle with random_seed; odd counts retain one extra above target. Original
+# canonical conditions are above/below; finite adaptation uses one track.
+FIXED_CONDITION = 'above_or_below'  # historical fixed-mode canonical cell label
+TARGET_ALTERNATIVES = ('above', 'below')
+RESPONSE_KEYS = ("F", "J")
+CALIBRATION_REQUIREMENTS = ("geometry",)
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
+MAXIMUM_INCREMENT = 0.5  # digital I_line - I_background; background command = 0.5
+# Original uses the selected stimulus intensity. Adaptive/fixed use 0.5 + strength.
+# Original/adaptive stop after trial_count accepted answers; fixed mode schedules
+# fixed_repetitions per strength (not per side). Odd target counts are preserved.
+
 FIELDS = (
     ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=1000, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
     ConfigField("random_seed", "Condition seed", "int", 123, minimum=0, units="integer seed", help_text='Integer seed for the experiment-owned condition randomization. Repeating the same seed and complete settings reproduces that randomization; changing it changes trial order.'),
@@ -91,25 +99,24 @@ FIELDS = (
     ),
 )
 
-
 FIELDS += teaching_method_fields(
     default="original", strengths="0,0.1,0.2",
     label="Vertical-line increment above grey background",
 ) + teaching_adaptive_fields()
 
-RESPONSES = ResponseParadigm("probe_above_below", ("above", "below"), ("F", "J"))
+RESPONSES = ResponseParadigm("probe_above_below", TARGET_ALTERNATIVES, RESPONSE_KEYS)
+
 STIMULUS_SLOTS = {"fixation": "fixation", "probe": "line"}
+
 STIMULUS_DEFAULTS = {"fixation": "fixation_cross", "probe": "vertical_line_probe"}
 
 PARADIGM = "two_alternative_forced_choice"
 
-# A pure, session-only fixation; trial slots and their defaults stay unchanged.
 STIMULUS_SLOTS["ready_fixation"] = "fixation"
+
 STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
-
-# 2. SESSION START — ONCE
-# Edit the Python list directly. SESSION_START = [] disables the opening.
+# Session opening runs once; SESSION_START = [] disables it. SPACE is not a trial answer.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
                instructions="Press SPACE when ready"),
@@ -117,8 +124,10 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
-# One fresh flat event list per selected condition; effective strengths are prepared below.
+def target_position(settings, condition):
+    """Target 0 above (+degrees), 1 below (-degrees), relative to fixation."""
+    offset = settings["probe_vertical_offset_deg"]
+    return {"probe_y_deg": offset if condition["target"] == 0 else -offset}
 
 
 def trial_events(settings, condition):
@@ -132,9 +141,51 @@ def trial_events(settings, condition):
             duration='stimulus_ms',
         ),
         Show('blank', duration='interval_ms'),
-        CollectResponse(actions=('above', 'below'), timeout='response_timeout_ms'),
+        CollectResponse(actions=TARGET_ALTERNATIVES, timeout='response_timeout_ms'),
         RecordState('response_received'),
     ]
+
+# These are the EXISTING original-mode journal measurements, with explicit units.
+# Adaptive mode retains the owned staircase observations; fixed mode retains
+# fixed_repeat and presented_display_contrast (digital increment), from teaching.py.
+MEASUREMENT_UNITS = {'probe_x_deg': 'degrees', 'probe_y_deg': 'degrees'}
+
+
+def trial_measurements(settings, condition):
+    """Requested geometry, not a physically measured location; original mode."""
+    return {"probe_x_deg": 0.0, "probe_y_deg": condition["probe_y_deg"]}
+
+
+def response_instructions(responses):
+    """Participant prompt; keys are the effective selected response mapping."""
+    return "  ".join(f"{alt}: {key}" for alt, key in zip(responses.alternatives, responses.keys))
+
+
+# PART A2 — SCIENTIFIC METHODS
+# Original line: alternating 0/1. Above/below: balanced then random_seed shuffle.
+# Shared finite adaptation retains n-down/n-up, multiplicative steps, bounds,
+# and trial_count stopping; fixed uses the seeded shared level schedule.
+# Legacy SCIENTIFIC_SPEC text is retained verbatim for saved-run compatibility.
+SCIENTIFIC_SPEC = {'version': 'probe_above_below-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
+
+ADAPTIVE_RULE = AdaptiveSelection('consecutive_up_down',
+    controls=('n_down','n_up','down_factor','up_factor','max_trials'))
+
+def make_conditions(settings):
+    order = [i % 2 for i in range(settings["trial_count"])]
+    random.Random(settings["random_seed"]).shuffle(order)
+    return [{"target": target, **target_position(settings, {"target": target})} for target in order]
+
+
+def choose_condition(run, conditions, state):
+    condition = dict(conditions[run.accepted_trials])
+    condition["value"] = run.responses.alternatives[condition["target"]]
+    return condition
+
+
+def prepare_selection(run, condition):
+    if "probe_y_deg" not in condition:
+        condition.update(target_position(run.values, condition))
 
 
 def prepare_stimuli(run, condition, state):
@@ -155,29 +206,6 @@ def prepare_method_stimuli(run, condition, state):
     }
 
 
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
-
-
-SCIENTIFIC_SPEC = {'version': 'probe_above_below-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
-
-
-ADAPTIVE_RULE = AdaptiveSelection('consecutive_up_down',
-    controls=('n_down','n_up','down_factor','up_factor','max_trials'))
-
-
-def make_conditions(settings):
-    order = [i % 2 for i in range(settings["trial_count"])]
-    random.Random(settings["random_seed"]).shuffle(order)
-    offset = settings["probe_vertical_offset_deg"]
-    return [{"target": target, "probe_y_deg": offset if target == 0 else -offset} for target in order]
-
-
-def choose_condition(run, conditions, state):
-    condition = dict(conditions[run.accepted_trials])
-    condition["value"] = run.responses.alternatives[condition["target"]]
-    return condition
-
-
 def interpret_response(condition, response):
     """Both categories score the chosen spatial/property alternative or interval."""
     correct = response["alternative"] == condition["target"]
@@ -195,35 +223,8 @@ def update_experiment(run, condition, state, response, trial):
     return dict(trial.state)
 
 
-def initialise_experiment(run, conditions):
-    run.initialise(
-        expected_trials=len(conditions),
-        resolution={
-            "task": "A white vertical line is shown above or below a central fixation cross.",
-            "condition_order": [run.responses.alternatives[c["target"]] for c in conditions],
-            "trial_order_seed": run.values["random_seed"],
-            "probe_vertical_offset_deg": run.values["probe_vertical_offset_deg"],
-            "above_timeline": TrialTimeline(trial_events(run.values, {"probe_y_deg": run.values["probe_vertical_offset_deg"]}))
-            .resolve(run.values)
-            .to_dict(),
-            "below_timeline": TrialTimeline(trial_events(run.values, {"probe_y_deg": -run.values["probe_vertical_offset_deg"]}))
-            .resolve(run.values)
-            .to_dict(),
-            "stimulus_slots": run.stimulus_snapshots,
-        },
-    )
-
-    return {"correct_count": 0}
-
-
 def make_fixed_schedule(settings, seed):
-    return fixed_teaching_schedule(settings, seed, maximum=0.5, condition="above_or_below")
-
-
-def prepare_selection(run, condition):
-    if "probe_y_deg" not in condition:
-        offset = run.values["probe_vertical_offset_deg"]
-        condition["probe_y_deg"] = offset if condition["target"] == 0 else -offset
+    return fixed_teaching_schedule(settings, seed, maximum=MAXIMUM_INCREMENT, condition=FIXED_CONDITION)
 
 
 def validate_method_settings(values):
@@ -234,26 +235,10 @@ def validate_method_settings(values):
         except ValueError as exc:
             yield str(exc)
     elif method == "adaptive":
-        if not 0 <= values["starting_strength"] <= 0.5:
+        if not 0 <= values["starting_strength"] <= MAXIMUM_INCREMENT:
             yield "Starting vertical-line increment must lie between 0 and 0.5."
         if values["trial_count"] > values["max_trials"]:
             yield "Adaptive trial_count exceeds the max_trials safety ceiling."
-
-
-# 5. STOPPING AND RESULTS
-# Original and finite adaptive modes collect trial_count accepted responses.
-# Fixed levels collect their scheduled repetitions; neither estimates a threshold.
-
-
-def trial_record(run, condition, state):
-    probe_y = condition["probe_y_deg"]
-    return {
-        "state": dict(state),
-        "measurements": {"probe_x_deg": 0.0, "probe_y_deg": probe_y},
-        "instructions": "  ".join(
-            f"{alt}: {key}" for alt, key in zip(run.responses.alternatives, run.responses.keys)
-        ),
-    }
 
 
 def is_finished(run, conditions, state):
@@ -275,7 +260,7 @@ def original_method(run):
 def adaptive_method(run):
     return TeachingAdaptiveMethod(
         run, make_conditions=make_conditions, choose=choose_condition,
-        maximum=0.5,
+        maximum=MAXIMUM_INCREMENT,
     )
 
 
@@ -285,6 +270,43 @@ def fixed_method(run):
         units="digital_line_increment_above_0.5",
         display_mapping="I_line=0.5+selected increment, background=0.5. Not measured optical contrast.",
     )
+
+
+def initial_state():
+    """Original-mode accepted correct-response count starts at zero."""
+    return {"correct_count": 0}
+
+
+def scientific_resolution(run, conditions):
+    """Existing task/order/timeline metadata; no result estimator is introduced."""
+    return {
+        "task": "A white vertical line is shown above or below a central fixation cross.",
+        "condition_order": [run.responses.alternatives[c["target"]] for c in conditions],
+        "trial_order_seed": run.values["random_seed"],
+        "probe_vertical_offset_deg": run.values["probe_vertical_offset_deg"],
+        "above_timeline": TrialTimeline(trial_events(run.values, {"probe_y_deg": run.values["probe_vertical_offset_deg"]}))
+        .resolve(run.values)
+        .to_dict(),
+        "below_timeline": TrialTimeline(trial_events(run.values, {"probe_y_deg": -run.values["probe_vertical_offset_deg"]}))
+        .resolve(run.values)
+        .to_dict(),
+        "stimulus_slots": run.stimulus_snapshots,
+    }
+
+
+# PART B — FRAMEWORK INTEGRATION
+# No scientific choices here: initialise, project existing records, bind callbacks.
+def initialise_experiment(run, conditions):
+    run.initialise(expected_trials=len(conditions), resolution=scientific_resolution(run, conditions))
+    return initial_state()
+
+
+def trial_record(run, condition, state):
+    return {
+        "state": dict(state),
+        "measurements": trial_measurements(run.values, condition),
+        "instructions": response_instructions(run.responses),
+    }
 
 
 def procedure(run):
@@ -302,8 +324,6 @@ def procedure(run):
     )
 
 
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
-# Central compatibility for callers expecting make_trial(...).resolve(...).
 make_trial = legacy_trial_factory(trial_events)
 
 
@@ -318,12 +338,11 @@ def definition(identity="probe_above_below"):
         method_planner=make_fixed_schedule, validator=validate_method_settings,
         method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
         adaptive=ADAPTIVE_RULE,
-
         responses=RESPONSES,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
-        calibration_requirements=("geometry",),
-        monitor_capabilities=("display_binding", "resolution"),
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
         supports_simulation=True,
         source_paths=("src/psychophysics_lab/experiments/probe_above_below.py",),
     )
