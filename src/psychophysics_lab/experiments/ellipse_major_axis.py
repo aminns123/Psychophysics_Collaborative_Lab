@@ -574,6 +574,23 @@ def procedure(run):
     )
 
 
+# Review-only declarations; the actual record functions remain authoritative.
+MEASUREMENT_UNITS = {
+    "probe_x_deg": "degrees from fixation",
+    "staircase_repeat": "1-based staircase repeat",
+    "fixed_repeat": "1-based fixed repetition",
+    "presented_display_contrast": "digital increment above background",
+    "aspect_ratio": "minor/major semi-axis ratio (unitless)",
+    "ring": "boolean; False absent, True present",
+}
+REVIEW_INACTIVE_FIELDS = {
+    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
+    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
+                        + ("starting_probe_intensity", "threshold_reversals"),
+}
+# End Review-only declarations.
+
+
 # 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
 # Compatibility for older Python callers; acquisition and Review use trial_events above.
 make_trial = legacy_trial_factory(trial_events)
@@ -592,6 +609,20 @@ def definition(identity="ellipse_major_axis"):
         responses=RESPONSES,
         adaptive=ADAPTIVE_RULE,
         method_planner=lambda settings, seed: make_probe_fixed_schedule(settings, seed, make_conditions),
+        method_reviewer={"constant_stimuli": constant_contrast_method},
+        # Review-only control links; acquisition bindings remain unchanged.
+        stimulus_parameter_controls={
+            "fixation": {"background": "background_intensity"},
+            "first": {"background": "background_intensity", "ring_increment": "ring_increment",
+                      "probe_x_deg": "positions_deg", "probe_y_deg": "major_axis_y_deg",
+                      "ring_y_deg": "major_axis_y_deg", "ring_radius_deg": "ring_radius_deg",
+                      "aspect_ratio": "aspect_ratios", "ring_present": "ring_conditions"},
+            "second": {"background": "background_intensity", "ring_increment": "ring_increment",
+                       "probe_x_deg": "positions_deg", "probe_y_deg": "major_axis_y_deg",
+                       "ring_y_deg": "major_axis_y_deg", "ring_radius_deg": "ring_radius_deg",
+                       "aspect_ratio": "aspect_ratios", "ring_present": "ring_conditions"},
+        },
+        # End Review-only control links.
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,

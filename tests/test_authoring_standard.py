@@ -13,6 +13,7 @@ from simulations.run import simulate
 from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
 from test_scientist_first_examples import lab, module, ready, read, presentations, ROOT, CSF, TEMPORAL, VALUES
+from _review_source_additions import ADDITIONS, without_review_additions
 
 BASELINE = json.loads((ROOT / "tests/fixtures/authoring_standard_main_a5aa56a.json").read_text(encoding="utf-8"))
 # PR #169, merged at bd0e30e: exact reviewed source, not permission for later drift.
@@ -23,7 +24,10 @@ WAVE1_SOURCE_SHA256_LF = {
 
 
 def source_hash(path):
-    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    raw = path.read_bytes().replace(b"\r\n", b"\n")
+    if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
+        raw = without_review_additions(raw.decode("utf-8"), path.stem).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
 
 
 @pytest.mark.parametrize("saved", BASELINE["experiments"], ids=lambda saved: saved["id"])

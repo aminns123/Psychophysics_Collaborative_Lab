@@ -59,7 +59,12 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                 + (f"Matching saved experiment JSON: {saved}. " if saved else "Authority: current TUI/run selection. ")
                 + "Changing a Python default does not overwrite this selected value. "
                 "Edit here through Configure; advanced JSON editing remains available.")
-    if group in {"Responses", "Trial action", "Audio", "Session start (once)"} and not key:
+        if key in description.get("inactive_fields", ()):
+            result.update(status="Inactive for selected method", edit_kind=None,
+                          route="Configure → Contrast selection method",
+                          explanation=(f"{key} is retained but does not control this method's trials or estimator. "
+                                       "Existing settings validation still applies; no value has been changed."))
+    if group in {"Responses", "Trial action", "Audio", "Session start (once)", "Recorded measurements", "Saved data"} and not key:
         result.update(status="Scientific definition", edit_kind=None,
                       route="Advanced source inspection; response keys and timing inputs are editable above")
     return result

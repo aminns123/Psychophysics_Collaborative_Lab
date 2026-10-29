@@ -20,6 +20,8 @@ def definition_line(path, *, key=None, owner=None, function=None):
     for node in ast.walk(tree):
         if key and isinstance(node,ast.Assign) and any(isinstance(target,ast.Name) and target.id==key for target in node.targets):
             return node.lineno
+        if key and isinstance(node,ast.AnnAssign) and isinstance(node.target,ast.Name) and node.target.id==key:
+            return node.lineno
         if function and isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name==function:
             return node.lineno
         if key and isinstance(node,ast.Call) and node.args and isinstance(node.args[0],ast.Constant) and node.args[0].value==key:
@@ -159,7 +161,25 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             targets.append(python(function="primary_rule",
                                   note="Thresholds are estimated from recorded responses; this is the experiment's declared analysis rule"))
         elif group=="Run plan":
-            targets.append(python(function="initialise_experiment",note="Resolved from the experiment planning code and selected settings"))
+            planning = description.get("planning_source")
+            targets.append(dict(kind="python", path=Path(planning["path"]), line=planning["line"],
+                                note="Resolved by the selected method's actual factory; inspection does not execute trials")
+                           if planning and planning.get("path") else
+                           python(function="initialise_experiment",note="Resolved from the experiment planning code and selected settings"))
+        elif group=="Recorded measurements":
+            measurement = description.get("measurement_source")
+            targets.append(dict(kind="python", path=Path(measurement["path"]), line=measurement["line"],
+                                note="Actual per-trial record declaration; units are declared by the experiment")
+                           if measurement and measurement.get("path") else python(key="MEASUREMENT_UNITS"))
+        elif group=="Saved data":
+            path = Path(__file__).parents[1]
+            if label == "Canonical trial table":
+                targets.append(python(path/"data/trials.py", key="TRIAL_COLUMN_DEFINITIONS"))
+            elif label == "Fixed-level results":
+                targets.append(python(path/"methods/contrast.py", owner="ConstantContrastMethod", function="complete"))
+            else:
+                function = {"Per-trial journal": "trial", "Adaptive results": "save_primary"}.get(label, "_initialise")
+                targets.append(python(path/"researcher.py", owner="RunContext", function=function))
         elif group=="Adaptive":
             targets.append(python(key="adaptive",note="Adaptive selection declared by the experiment Python"))
         elif group=="Responses":
