@@ -5,6 +5,7 @@ factory, response paradigm and canonical recorder. It owns presentation,
 accepted responses and scientific completion. No framework file paths required.
 """
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Any
@@ -472,7 +473,7 @@ class RunContext:
             # are independent writes: failure of either must not suppress the other.
             if not hasattr(self, "_action_trials"):
                 self._action_trials = []
-            self._action_trials.append(trace)
+            self._action_trials.append(deepcopy(trace))
             operations = []
             presentation = None
             if accepted_response is not None:
@@ -492,7 +493,7 @@ class RunContext:
                     "phase_events": [e for e in events if e["kind"] in {"show", "response"}],
                     "measurements": observations,
                     "timing_basis": response_data["timing_basis"]}
-                self._presentations.append(presentation)
+                self._presentations.append(deepcopy(presentation))
             operations.append(("trial journal", lambda: append_json_record(
                 self.run_directory / "trial_events.jsonl",
                 {"schema_version": 1, "trial": trace, "presentation": presentation,

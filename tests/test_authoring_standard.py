@@ -25,6 +25,17 @@ WAVE1_SOURCE_SHA256_LF = {
 
 def source_hash(path):
     source = path.read_bytes().replace(b"\r\n", b"\n")
+    if path == ROOT / "src/psychophysics_lab/researcher.py":
+        # Pin the complete corrected file, then verify that undoing exactly
+        # these three ownership changes restores the frozen scientific source.
+        assert hashlib.sha256(source).hexdigest() == "8f6416742fab1958f4ccd68a44d6076048ee6898ac54a70390ed33dad5b9b62a"
+        for updated, historical in (
+            (b"from copy import deepcopy\n", b""),
+            (b"self._action_trials.append(deepcopy(trace))", b"self._action_trials.append(trace)"),
+            (b"self._presentations.append(deepcopy(presentation))", b"self._presentations.append(presentation)"),
+        ):
+            assert source.count(updated) == 1
+            source = source.replace(updated, historical, 1)
     if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
         source = without_review_additions(source.decode("utf-8"), path.stem).encode("utf-8")
     if path in {ROOT / "src/psychophysics_lab/experiments" / (identity + ".py")
