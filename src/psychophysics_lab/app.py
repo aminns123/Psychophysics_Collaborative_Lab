@@ -553,6 +553,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     fatal_capture = start_fatal_fault_capture()
     exit_code: int | None = None
+    launcher_report = None
 
     try:
         exit_code = _main(argv, diagnostic_context=context)
@@ -571,12 +572,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             data_root=context.get("data_root"),
             phase=str(context.get("phase") or "unknown"),
         )
+        launcher_report = report
         if report is not None:
             print(f"\nCrash report saved to: {report}")
         else:
             print("\nPsyCoLab could not write a crash-report file.")
-        print("The Windows launcher will pause so this message remains visible.")
+        print("See the crash report and native startup/incident diagnostics for recovery guidance.")
         return exit_code
     finally:
+        from .diagnostics import notify_launcher_exit
+        notify_launcher_exit(str(context.get("phase") or "unknown"), launcher_report)
         if fatal_capture is not None:
             fatal_capture.close(clean_exit=exit_code in {0, 75, 130})  # 75: internal refresh handoff
