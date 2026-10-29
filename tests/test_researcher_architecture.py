@@ -231,19 +231,47 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
     (tmp_path / "pyproject.toml").write_text("# launcher presence check\n")
     scripts = tmp_path / "scripts"
     scripts.mkdir()
+    shutil.copyfile(ROOT / "scripts/windows_startup.cmd", scripts / "windows_startup.cmd")
+    (tmp_path / "packaging/windows").mkdir(parents=True)
+    shutil.copyfile(ROOT / "packaging/windows/GuidedSetup.cs", tmp_path / "packaging/windows/GuidedSetup.cs")
     (scripts / "launcher_setup.py").write_text("# no installation in this regression fixture\n")
     venv.EnvBuilder(with_pip=False).create(tmp_path / ".venv")
+    import hashlib
+    profile = tmp_path / "requirements/windows-cp311"
+    profile.mkdir(parents=True)
+    (profile / "profile.json").write_text('{"files":{}}')
+    (tmp_path / ".venv/.psycolab-setup.json").write_text(json.dumps({
+        "schema_version":2,"source_root":str(tmp_path),
+        "pyproject_sha256":hashlib.sha256((tmp_path/"pyproject.toml").read_bytes()).hexdigest(),
+        "qualification":{"profile_sha256":hashlib.sha256((profile/"profile.json").read_bytes()).hexdigest()}}))
+    site = subprocess.check_output([str(tmp_path/".venv/Scripts/python.exe"),"-I","-c",
+        "import sysconfig;print(sysconfig.get_path('purelib'))"],text=True).strip()
+    (Path(site)/"fixture.pth").write_text(str(tmp_path),encoding="utf-8")
     package = tmp_path / "psychophysics_lab"
     package.mkdir()
     (package / "__init__.py").write_text("")
+    # Real source runs import this top-level package for synthetic experiments.
+    (tmp_path / "simulations").mkdir()
+    (tmp_path / "simulations/__init__.py").write_text("PROBE = 'reviewed source root'\n")
     (package / "__main__.py").write_text(
-        "import json, sys\nfrom pathlib import Path\n"
+        "import json, sys\nfrom pathlib import Path\nfrom simulations import PROBE\n"
+        "assert PROBE == 'reviewed source root'\n"
+        "assert sys.flags.ignore_environment and sys.flags.no_user_site and sys.dont_write_bytecode\n"
         "Path('received.json').write_text(json.dumps(sys.argv[1:]))\n")
     command = (
         '"' + os.environ.get("COMSPEC", "cmd.exe") + '" /d /c '
         'call run_psycolab.bat --probe-token "a value with spaces" <NUL'
     )
-    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
-        creationflags=subprocess.CREATE_NO_WINDOW)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
+    state = tmp_path / ".venv/.psycolab-setup.json"
+    before = state.read_bytes()
+    commands = [command, ["powershell.exe", "-NoLogo", "-NoProfile",
+        "-ExecutionPolicy", "Restricted", "-Command",
+        "& .\\run_psycolab.bat --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
+    # Restricted applies only to this child process; no policy is changed and
+    # no .ps1 file or bypass is needed to compile/launch the native host.
+    for command in commands:
+        result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
+            creationflags=subprocess.CREATE_NO_WINDOW)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
+        assert state.read_bytes() == before
