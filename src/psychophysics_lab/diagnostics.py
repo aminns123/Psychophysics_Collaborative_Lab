@@ -165,3 +165,25 @@ def start_fatal_fault_capture(
         return FatalFaultCapture(path=path, handle=handle, enabled=True)
     except Exception:
         return None
+
+
+def notify_launcher_exit(phase: str, report: Path | None = None) -> None:
+    """Best-effort exit phase for the native launcher; never writes source/data.
+
+    No retry or scientific state decision depends on this notification. Missing
+    evidence is an unknown incident, not permission to repeat acquisition.
+    """
+    import os
+    import re
+    import json
+    name = os.environ.get("PSYCOLAB_STARTUP_PIPE", "")
+    if os.name != "nt" or not re.fullmatch(r"PsyCoLabStartup-[0-9a-f]{32}", name):
+        return
+    if not re.fullmatch(r"[a-z_]{1,80}", phase):
+        phase = "unknown"
+    try:
+        with open("\\\\.\\pipe\\" + name, "wb", buffering=0) as pipe:
+            notice = {"phase": phase, "report": str(report) if report is not None else None}
+            pipe.write((json.dumps(notice) + "\n").encode("utf-8"))
+    except OSError:
+        pass
