@@ -250,8 +250,13 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
     package = tmp_path / "psychophysics_lab"
     package.mkdir()
     (package / "__init__.py").write_text("")
+    # Real source runs import this top-level package for synthetic experiments.
+    (tmp_path / "simulations").mkdir()
+    (tmp_path / "simulations/__init__.py").write_text("PROBE = 'reviewed source root'\n")
     (package / "__main__.py").write_text(
-        "import json, sys\nfrom pathlib import Path\n"
+        "import json, sys\nfrom pathlib import Path\nfrom simulations import PROBE\n"
+        "assert PROBE == 'reviewed source root'\n"
+        "assert sys.flags.ignore_environment and sys.flags.no_user_site and sys.dont_write_bytecode\n"
         "Path('received.json').write_text(json.dumps(sys.argv[1:]))\n")
     command = (
         '"' + os.environ.get("COMSPEC", "cmd.exe") + '" /d /c '

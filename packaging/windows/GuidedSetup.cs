@@ -61,6 +61,12 @@ public static class SetupEngine
         p.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"]="1";p.EnvironmentVariables["PIP_DISABLE_PIP_VERSION_CHECK"]="1";
         return p;
     }
+    public static string[] ApplicationArguments(IEnumerable<string> args) {
+        // The reviewed source root owns simulations/ and scripts/ as well as src/.
+        // Keep that cwd import path; ignore ambient Python variables/user site.
+        // Qualification itself still uses -I and is never weakened by this.
+        return new[]{"-E","-s","-B","-m","psychophysics_lab"}.Concat(args).ToArray();
+    }
     public static void Run(ProcessStartInfo info,string log,Func<bool> cancelled) {
         if(cancelled())throw new OperationCanceledException();
         info.RedirectStandardOutput=true;info.RedirectStandardError=true;
@@ -158,7 +164,7 @@ public static class SetupEngine
         cancelled=cancelled??(()=>false);
         var record=Load(instance);Validate(instance,record,Path.Combine(Path.GetTempPath(),"psycolab-launch-"+Guid.NewGuid().ToString("N")+".log"),cancelled);
         if(cancelled())throw new OperationCanceledException();
-        string source=Path.Combine(instance,"source");var start=Start(Path.Combine(source,".venv","Scripts","python.exe"),new[]{"-I","-B","-m","psychophysics_lab"},source);start.CreateNoWindow=false;
+        string source=Path.Combine(instance,"source");var start=Start(Path.Combine(source,".venv","Scripts","python.exe"),ApplicationArguments(new string[0]),source);start.CreateNoWindow=false;
         start.EnvironmentVariables["PSYCOLAB_CONFIG_DIR"]=String.IsNullOrWhiteSpace(record.config_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","LaboratoryConfiguration"):record.config_root;
         start.EnvironmentVariables["PSYCOLAB_DATA_DIR"]=String.IsNullOrWhiteSpace(record.data_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"PsyCoLabData"):record.data_root;
         Process.Start(start);
@@ -383,14 +389,14 @@ public static class StartupRecovery
     public class ExitNotice { public string phase,report; }
     public static int LaunchSource(string root,string[] args) {
         var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
-        return Observe(SourceProcess(root,new[]{"-I","-B","-m","psychophysics_lab"}.Concat(args)),root);
+        return Observe(SourceProcess(root,SetupEngine.ApplicationArguments(args)),root);
     }
     public static int LaunchFixed(string instance) {
         try {
             var record=SetupEngine.Load(instance);string root=Path.Combine(instance,"source");
             // Full packaged-source enumeration remains authoritative, including added files.
             SetupEngine.Validate(instance,record,Path.Combine(Path.GetTempPath(),"psycolab-fixed-check-"+Guid.NewGuid().ToString("N")+".log"),()=>false);
-            var start=SourceProcess(root,new[]{"-I","-B","-m","psychophysics_lab"});
+            var start=SourceProcess(root,SetupEngine.ApplicationArguments(new string[0]));
             start.EnvironmentVariables["PSYCOLAB_CONFIG_DIR"]=String.IsNullOrWhiteSpace(record.config_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","LaboratoryConfiguration"):record.config_root;
             start.EnvironmentVariables["PSYCOLAB_DATA_DIR"]=String.IsNullOrWhiteSpace(record.data_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"PsyCoLabData"):record.data_root;
             return Observe(start,root);

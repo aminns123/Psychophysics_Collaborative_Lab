@@ -21,6 +21,15 @@ startup phase is a **startup failure**, not necessarily an unhandled crash (for
 example, invalid command-line input also exits nonzero). This changes only native
 diagnostic classification/text, not acquisition, saved data or retry decisions.
 
+The real qualified-source smoke also exposed an import-path defect masked by
+pytest's configured root path: launching the application with `-I` hid the
+reviewed repository's top-level `simulations` package. Application launch now
+uses `-E -s -B` with that validated source as cwd, preserving normal source imports
+while ignoring ambient Python variables and user-site packages. All application
+launch paths reuse one argument helper; the read-only qualification subprocess
+still uses `-I` unchanged. No package reinstall, Python-path environment override,
+recording change or new execution engine is introduced.
+
 ## Deployment decision and limits
 
 Keep PR #168's native host and its existing locked setup. Do not add a host cache,
