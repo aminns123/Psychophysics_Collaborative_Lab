@@ -15,10 +15,24 @@ HARNESS = r'''
 using System;
 using System.IO;
 class Checks {
- static int Main(string[] a) { try {
+ [STAThread] static int Main(string[] a) { Console.OutputEncoding=new System.Text.UTF8Encoding(false);try {
   if(a[0]=="path")Console.WriteLine(SetupEngine.At(a[1],a[2]));
   if(a[0]=="quote")Console.WriteLine(SetupEngine.Quote(a[1]));
   if(a[0]=="load")Console.WriteLine(SetupEngine.Load(a[1]).id);
+  if(a[0]=="inspect")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Inspect(a[1])));
+  if(a[0]=="diagnose")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Diagnose(a[1])));
+  if(a[0]=="source-launch")return StartupRecovery.LaunchSource(a[1],new[]{"--probe-token",a[2]});
+  if(a[0]=="observed-exit") {
+   using(var timer=new System.Windows.Forms.Timer{Interval=50}) {
+    timer.Tick+=(s,e)=>{foreach(System.Windows.Forms.Form f in System.Windows.Forms.Application.OpenForms)if(f is RecoveryWindow){foreach(System.Windows.Forms.Control panel in f.Controls)foreach(System.Windows.Forms.Control c in panel.Controls)Console.WriteLine(c.Text);f.Close();break;}};
+    timer.Start();Console.WriteLine("application_exit="+StartupRecovery.LaunchSource(a[1],new[]{a[2]}));
+   }
+  }
+  if(a[0]=="recommend") {var d=SetupEngine.Json.Deserialize<StartupRecovery.Diagnosis>(a[1]);Console.WriteLine(StartupRecovery.Recommendation(d,Int32.Parse(a[2]),a[3]=="true"));}
+  if(a[0]=="incident")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Incident(a[1],9,a[2])));
+  if(a[0]=="retained")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Retained(StartupRecovery.Inspect(a[1]),a[2])));
+  if(a[0]=="recovery-form") {var d=SetupEngine.Json.Deserialize<StartupRecovery.Diagnosis>(a[1]);using(var f=new RecoveryWindow(d,new System.Collections.Generic.List<StartupRecovery.Candidate>(),a[2])){foreach(System.Windows.Forms.Control panel in f.Controls)foreach(System.Windows.Forms.Control c in panel.Controls)Console.WriteLine(c.Text);}}
+  if(a[0]=="pipe")using(var pipe=new System.IO.Pipes.NamedPipeServerStream(a[1],System.IO.Pipes.PipeDirection.In)){pipe.WaitForConnection();using(var reader=new StreamReader(pipe))Console.WriteLine(reader.ReadLine());}
   if(a[0]=="verify")SetupEngine.Verify(a[1],SetupEngine.Read<System.Collections.Generic.Dictionary<string,string>>(a[2]),()=>false);
   if(a[0]=="install")SetupEngine.Install(a[1],a[2],a[3],a[4],Console.WriteLine,()=>a[5]=="cancel");
   if(a[0]=="validate")SetupEngine.Validate(a[1],SetupEngine.Load(a[1]),a[2],()=>false);
@@ -47,7 +61,7 @@ def native(tmp_path_factory):
     harness = folder / 'Checks.exe'
     subprocess.run([str(CSC), '/nologo', '/r:' + str(exe), '/out:' + str(harness), str(source)], check=True)
     def run(*args, **kwargs):
-        return subprocess.run([str(harness), *map(str, args)], capture_output=True, text=True, **kwargs)
+        return subprocess.run([str(harness), *map(str, args)], capture_output=True, text=True, encoding='utf-8', errors='replace', **kwargs)
     return run
 
 

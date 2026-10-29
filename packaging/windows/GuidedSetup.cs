@@ -85,15 +85,23 @@ public static class SetupEngine
         string marker=Path.Combine(store,".psycolab-installations.json");Plain(marker);Plain(Path.Combine(store,"setup.lock"));
         if(File.Exists(marker)) { if(Read<Store>(marker).schema_version!=1)throw new IOException("Unsupported installation store. Choose a separate empty folder."); }
         else if(Directory.Exists(store)&&Directory.EnumerateFileSystemEntries(store).Any())throw new IOException("This folder is already in use. Choose a new empty installation store; nothing was changed.");
-        var pack=ReadBundle(bundle);
-        if(pack.schema_version!=1||pack.files==null||pack.source_files==null||pack.interpreter_files==null)throw new IOException("Unsupported installation package.");
         progress("Checking the complete package. No existing installation will be replaced.");
-        Verify(bundle,pack.files,cancelled);
-        if(pack.source_files.Count==0||pack.interpreter_files.Length==0||pack.source_files.Any(entry=>!pack.files.ContainsKey("source/"+entry.Key)||pack.files["source/"+entry.Key]!=entry.Value)||pack.interpreter_files.Any(path=>!pack.files.ContainsKey(path))||!pack.files.ContainsKey("wheels/"+pack.wheel_probe))throw new IOException("The package inventory is inconsistent. Obtain a complete reviewed package.");
-        if(pack.files["tools/conda.exe"]!="147e07937bb6509b69e9630eec6c6a281cd916c246d5fa5851a8b8f3b502f31f")throw new IOException("Unrecognised provisioning tool; obtain a reviewed setup package.");
+        var pack=CheckPackage(bundle,cancelled);
         Directory.CreateDirectory(store);
         using(var guard=new FileStream(Path.Combine(store,"setup.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None)) {
             Save(Path.Combine(store,".psycolab-installations.json"),new{schema_version=1});
+            return InstallVerified(bundle,store,config,data,pack,progress,cancelled);
+        }
+    }
+    public static Bundle CheckPackage(string bundle,Func<bool> cancelled) {
+        var pack=ReadBundle(bundle);
+        if(pack.schema_version!=1||pack.files==null||pack.source_files==null||pack.interpreter_files==null)throw new IOException("Unsupported installation package.");
+        Verify(bundle,pack.files,cancelled);
+        if(pack.source_files.Count==0||pack.interpreter_files.Length==0||pack.source_files.Any(entry=>!pack.files.ContainsKey("source/"+entry.Key)||pack.files["source/"+entry.Key]!=entry.Value)||pack.interpreter_files.Any(path=>!pack.files.ContainsKey(path))||!pack.files.ContainsKey("wheels/"+pack.wheel_probe))throw new IOException("The package inventory is inconsistent. Obtain a complete reviewed package.");
+        if(pack.files["tools/conda.exe"]!="147e07937bb6509b69e9630eec6c6a281cd916c246d5fa5851a8b8f3b502f31f")throw new IOException("Unrecognised provisioning tool; obtain a reviewed setup package.");
+        return pack;
+    }
+    static string InstallVerified(string bundle,string store,string config,string data,Bundle pack,Action<string> progress,Func<bool> cancelled) {
             string instance=Path.Combine(store,"versions",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(instance);
             string source=Path.Combine(instance,"source"),prefix=Path.Combine(instance,"python"),log=Path.Combine(instance,"setup.log");
             LastLog=log;
@@ -124,7 +132,6 @@ public static class SetupEngine
             Save(Path.Combine(instance,"installation.json"),record); // Only verified installations enter the launch list.
             progress("Installation verified. Use Open or create this version's shortcut. Previous versions remain available.");
             return instance;
-        }
     }
     public static Installation Load(string instance) {
         Plain(instance);var r=Read<Installation>(Path.Combine(instance,"installation.json"));
@@ -132,7 +139,11 @@ public static class SetupEngine
     }
     public static void Validate(string instance,Installation record,string log,Func<bool> cancelled) {
         LastLog=log;
-        string source=Path.Combine(instance,"source");Verify(source,record.source_files,cancelled);
+        string source=Path.Combine(instance,"source");ValidateSource(source,record,cancelled);
+        Run(Start(Path.Combine(source,".venv","Scripts","python.exe"),new[]{"-I","-B",Path.Combine(source,"scripts","launcher_setup.py"),"--check"},source),log,cancelled);
+    }
+    public static void ValidateSource(string source,Installation record,Func<bool> cancelled) {
+        Verify(source,record.source_files,cancelled);
         // A new untracked experiment/module must not slip past the source seal.
         var pending=new Stack<string>();pending.Push(source);
         while(pending.Count>0)foreach(string path in Directory.EnumerateFileSystemEntries(pending.Pop())) {
@@ -142,7 +153,6 @@ public static class SetupEngine
                 pending.Push(path);
             }else if(!record.source_files.ContainsKey(relative))throw new IOException("This installation has added or changed source files. Install a reviewed version separately; it was preserved.");
         }
-        Run(Start(Path.Combine(source,".venv","Scripts","python.exe"),new[]{"-I","-B",Path.Combine(source,"scripts","launcher_setup.py"),"--check"},source),log,cancelled);
     }
     public static void Launch(string instance,Func<bool> cancelled=null) {
         cancelled=cancelled??(()=>false);
@@ -216,11 +226,205 @@ public class SetupWindow : Form
     [STAThread] public static int Main(string[] args) {
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
         try {
-            if(args.Length==2&&args[0]=="--launch"){SetupEngine.Launch(SetupEngine.Full(args[1]));return 0;}
+            if(args.Length==2&&args[0]=="--launch")return StartupRecovery.LaunchFixed(SetupEngine.Full(args[1]));
+            if(args.Length>=2&&args[0]=="--source")return StartupRecovery.LaunchSource(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
+            if(args.Length==2&&args[0]=="--recover")return StartupRecovery.Recover(SetupEngine.Full(args[1]));
             string bundle=AppDomain.CurrentDomain.BaseDirectory,store=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","Installations");
             if(args.Length==4&&args[0]=="--bundle"&&args[2]=="--store"){bundle=SetupEngine.Full(args[1]);store=SetupEngine.Full(args[3]);}
             else if(args.Length!=0)throw new ArgumentException("Open PsyCoLab Setup or use a version-specific shortcut.");
             Application.Run(new SetupWindow(bundle,store));return 0;
         }catch(Exception ex){MessageBox.Show(ex.Message+"\nOpen PsyCoLab Setup to install separately or select another retained version. No automatic repair was attempted.","PsyCoLab — recovery",MessageBoxButtons.OK,MessageBoxIcon.Information);return 1;}
+    }
+}
+
+// Startup only: no package resolution, qualification writes, branch changes or acquisition retry.
+public static class StartupRecovery
+{
+    public class Diagnosis {
+        public string category,message,details,root,original_root;
+        public bool healthy,after_application;
+    }
+    public class Candidate { public string root,instance,label;public override string ToString(){return label;} }
+    static Dictionary<string,object> ObjectAt(Dictionary<string,object> d,string key) {
+        return d!=null&&d.ContainsKey(key)?d[key] as Dictionary<string,object>:null;
+    }
+    static string StringAt(Dictionary<string,object> d,string key) {
+        return d!=null&&d.ContainsKey(key)?Convert.ToString(d[key]):null;
+    }
+    static Diagnosis Problem(string root,string category,string message,string details="") {
+        return new Diagnosis{root=root,category=category,message=message,details=details};
+    }
+    public static string Store { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","Installations"); } }
+    public static Diagnosis Inspect(string root) {
+        try {
+            root=SetupEngine.Full(root);SetupEngine.Plain(root);
+            string python=Path.Combine(root,".venv","Scripts","python.exe"),statePath=Path.Combine(root,".venv",".psycolab-setup.json");
+            SetupEngine.Plain(python);SetupEngine.Plain(statePath);
+            string project=Path.Combine(root,"pyproject.toml"),profilePath=Path.Combine(root,"requirements","windows-cp311","profile.json");
+            if(!File.Exists(project)||!File.Exists(profilePath)||!File.Exists(Path.Combine(root,"scripts","launcher_setup.py")))
+                return Problem(root,"source_missing","Required PsyCoLab source or profile files are missing or inaccessible. Ask the administrator to check the reviewed checkout path and permissions.");
+            var profile=SetupEngine.Read<Dictionary<string,object>>(profilePath);
+            var profileFiles=ObjectAt(profile,"files");
+            if(profileFiles==null) return Problem(root,"profile_invalid","The dependency profile cannot be verified. It has not been approved by this launcher.");
+            foreach(var file in profileFiles) {
+                string path=SetupEngine.At(Path.GetDirectoryName(profilePath),file.Key);
+                if(!File.Exists(path)||SetupEngine.Hash(path)!=Convert.ToString(file.Value))return Problem(root,"profile_invalid","A dependency-profile file is missing or changed. Keep this installation and obtain administrator guidance.");
+            }
+            if(!File.Exists(statePath)&&File.Exists(Path.Combine(root,".venv",".psycolab-setup.pending.json")))
+                return Problem(root,"setup_interrupted","Installation was interrupted before qualification completed. This attempt will not be resumed or approved during launch.");
+            if(!File.Exists(python))return Problem(root,"environment_missing","This checkout's Python environment is missing or damaged. No other Python environment will be selected.");
+            if(!File.Exists(statePath))return Problem(root,"qualification_missing","This environment has no qualification record. Its compatibility cannot safely be inferred from installed packages alone.");
+            var state=SetupEngine.Read<Dictionary<string,object>>(statePath);var qualification=ObjectAt(state,"qualification");
+            if(StringAt(state,"schema_version")!="2"||qualification==null)
+                return Problem(root,"qualification_legacy","This environment has an older or incomplete qualification record. Launch will not rewrite it or approve it automatically.");
+            string original=StringAt(state,"source_root");
+            if(String.IsNullOrWhiteSpace(original)||!String.Equals(SetupEngine.Full(original),root,StringComparison.OrdinalIgnoreCase)) {
+                var d=Problem(root,"installation_path_changed","This environment belongs to a different checkout location. Moving or copying an environment does not requalify it.");d.original_root=original;return d;
+            }
+            if(StringAt(qualification,"profile_sha256")!=SetupEngine.Hash(profilePath))
+                return Problem(root,"profile_changed","The selected branch or checkout declares a different interpreter/dependency profile from this environment's qualification.");
+            if(StringAt(state,"pyproject_sha256")!=SetupEngine.Hash(project))
+                return Problem(root,"requirements_changed","This source revision has a different dependency specification. The existing environment was preserved.");
+            return new Diagnosis{root=root,category="check_required",message="Source location and declared environment agree; installed-file checks are still required."};
+        } catch(Exception error) { return Problem(root,"evidence_unreadable","Startup evidence could not be read safely. No correction was attempted.",error.Message); }
+    }
+    public static ProcessStartInfo SourceProcess(string root,IEnumerable<string> args) {
+        var start=SetupEngine.Start(Path.Combine(root,".venv","Scripts","python.exe"),args,root);
+        // Existing explicit laboratory roots remain authoritative for a source checkout.
+        foreach(string key in new[]{"PSYCOLAB_CONFIG_DIR","PSYCOLAB_DATA_DIR"}) {
+            string value=Environment.GetEnvironmentVariable(key);if(!String.IsNullOrWhiteSpace(value))start.EnvironmentVariables[key]=value;
+        }
+        start.EnvironmentVariables["PSYCOLAB_REPO_ROOT"]=root;return start;
+    }
+    public static Diagnosis Diagnose(string root) {
+        var d=Inspect(root);if(d.category!="check_required")return d;
+        try {
+            // A packaged source also retains its existing complete source seal.
+            string instance=Path.GetDirectoryName(root);
+            if(File.Exists(Path.Combine(instance,"installation.json"))) {
+                string source=Path.Combine(instance,"source");
+                if(!String.Equals(SetupEngine.Full(source),SetupEngine.Full(root),StringComparison.OrdinalIgnoreCase))throw new IOException("Unexpected installation layout.");
+                SetupEngine.ValidateSource(root,SetupEngine.Load(instance),()=>false);
+            }
+            var start=SourceProcess(root,new[]{"-I","-B",Path.Combine(root,"scripts","launcher_setup.py"),"--check"});
+            start.RedirectStandardOutput=true;start.RedirectStandardError=true;
+            using(var p=Process.Start(start)) {
+                var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();p.WaitForExit();
+                d.details=output.Result+error.Result;
+                if(p.ExitCode!=0)return Problem(root,"qualification_check_failed","The existing read-only qualification check failed. This may concern installed files, interpreter or editable-source identity; see the diagnostic evidence.",d.details);
+            }
+            d.healthy=true;d.category="healthy";d.message="This checkout passed its existing read-only qualification checks. No installation, repair or requalification was performed.";
+        }catch(Exception error){return Problem(root,"environment_or_source_damaged","This installation could not pass its existing source/environment checks. Nothing was repaired.",error.Message);}
+        return d;
+    }
+    public static List<Candidate> Retained(Diagnosis failure,string store) {
+        var result=new List<Candidate>();if(failure.healthy||failure.after_application)return result;
+        if(!String.IsNullOrWhiteSpace(failure.original_root)&&Directory.Exists(failure.original_root)) {
+            var original=Diagnose(failure.original_root);if(original.healthy)result.Add(new Candidate{root=original.root,label="Verified original checkout: "+original.root});
+        }
+        string versions=Path.Combine(store,"versions");string[] entries;
+        try{entries=Directory.Exists(versions)?Directory.GetDirectories(versions):new string[0];}
+        catch(Exception error){failure.details+="; retained store could not be inspected: "+error.Message;return result;}
+        foreach(string instance in entries)try {
+            SetupEngine.Plain(instance);var record=SetupEngine.Load(instance);
+            // The source seal and existing read-only gate both pass before offering it.
+            string source=Path.Combine(instance,"source");
+            SetupEngine.ValidateSource(source,record,()=>false);
+            if(Diagnose(source).healthy)result.Add(new Candidate{root=source,instance=instance,label=record.ToString()});
+        }catch { /* Unverified entries are not launch choices. */ }
+        return result;
+    }
+    public static bool PackageAvailable(string folder) {
+        try{SetupEngine.CheckPackage(folder,()=>false);return true;}catch{return false;}
+    }
+    public static string Recommendation(Diagnosis d,int retained,bool package) {
+        if(d.healthy)return "cancel";
+        if(!d.after_application&&retained>0)return "retained";
+        if(!d.after_application&&package)return "separate";
+        return "diagnostics";
+    }
+    public static string Reason(string option) {
+        if(option=="cancel")return "The installation already passes its checks. Close recovery and use run_psycolab.bat for ordinary launch.";
+        if(option=="retained")return "A retained installation has already passed its existing read-only checks. Using it preserves the failing checkout and all its evidence.";
+        if(option=="separate")return "This host's sealed package and every required artifact verified. The existing guided setup can create a separate installation without replacing this one.";
+        return "No automatic correction has been established for this failure. Diagnostics give the administrator the verified evidence without changing this installation.";
+    }
+    public static string Instructions(Diagnosis d) {
+        string common="Preserve the source, environment, qualification records, calibration and data. Never edit a qualification record, install dependencies in place or repeat acquisition automatically. ";
+        if(d.after_application)return common+"Inspect the application's existing crash/fatal and incomplete-run records. The exit phase is diagnostic evidence, not authority to resume or repeat an experiment.";
+        if(d.category.StartsWith("qualification_"))return common+"Have the administrator review .venv/.psycolab-setup.json and the captured read-only check output. Missing or older records are not proof that installed packages are qualified. Obtain a separate approved installation if qualification cannot be established.";
+        if(d.category=="installation_path_changed")return common+"Use the original checkout only if it still passes the existing checks. Do not copy an environment or its qualification evidence into another source path.";
+        if(d.category.StartsWith("profile_")||d.category=="requirements_changed")return common+"Compare this revision's pyproject.toml and requirements/windows-cp311 profile with the recorded profile. Compatible scientific-source edits do not by themselves require dependency repair; a changed dependency contract needs a separately approved environment.";
+        if(d.category=="setup_interrupted")return common+"Retain the pending attempt and its setup log. Ordinary launch does not resume provisioning. Use the existing guided installer with a complete verified package to create a separate installation.";
+        return common+"Ask the administrator to check this checkout's path/access and reviewed launcher files. A separate installation requires the complete sealed package, not loose wheels or an arbitrary Python environment. See docs/STARTUP_RECOVERY.md.";
+    }
+    public static Diagnosis Incident(string root,int code,string phase) {
+        string category=phase=="application_startup"?"application_startup_crash":
+            new[]{"post_tui_experiment_launch","synthetic_simulation","uncalibrated_presentation_test","finished"}.Contains(phase)?"experiment_or_operation_failure":"unknown_application_exit";
+        return new Diagnosis{root=root,category=category,after_application=true,message=category=="application_startup_crash"?
+            "PsyCoLab reported an application startup crash. No restart or repair has been attempted.":
+            "PsyCoLab stopped after launch. An experiment may have begun; preserve incomplete runs and use the existing incident reports. No experimental operation will be retried.",details="Exit code: "+code+"; reported application phase: "+(phase??"unavailable")};
+    }
+    static int Observe(ProcessStartInfo start,string root) {
+        string phase=null,applicationReport=null;
+        // One exit notification over a private OS pipe; no marker in source or data.
+        string name="PsyCoLabStartup-"+Guid.NewGuid().ToString("N");
+        using(var pipe=new System.IO.Pipes.NamedPipeServerStream(name,System.IO.Pipes.PipeDirection.In,1,System.IO.Pipes.PipeTransmissionMode.Byte,System.IO.Pipes.PipeOptions.Asynchronous)) {
+            var read=Task.Run(()=>{try{pipe.WaitForConnection();using(var reader=new StreamReader(pipe,Encoding.UTF8)){var notice=SetupEngine.Json.Deserialize<ExitNotice>(reader.ReadLine());phase=notice.phase;applicationReport=notice.report;}}catch(Exception){ /* Missing or malformed evidence remains unknown. */ }});
+            start.EnvironmentVariables["PSYCOLAB_STARTUP_PIPE"]=name;start.CreateNoWindow=false;
+            int code;bool started=false;
+            try{using(var child=Process.Start(start)){started=true;child.WaitForExit();code=child.ExitCode;}}
+            catch(Exception error){var failed=Problem(root,"application_start_failed",started?"Application completion could not be observed. An experiment may still be running; do not retry it.":"Windows could not start the verified application. See diagnostics.",error.Message);failed.after_application=started;Show(failed);return 1;}
+            if(code==0||code==75||code==130)return code;
+            // A late/missing notification is conservatively an unknown incident.
+            read.Wait(250);var incident=Incident(root,code,phase);incident.details+="; application crash report: "+(applicationReport??"not reported");Show(incident);return code;
+        }
+    }
+    public class ExitNotice { public string phase,report; }
+    public static int LaunchSource(string root,string[] args) {
+        var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
+        return Observe(SourceProcess(root,new[]{"-I","-B","-m","psychophysics_lab"}.Concat(args)),root);
+    }
+    public static int LaunchFixed(string instance) {
+        try {
+            var record=SetupEngine.Load(instance);string root=Path.Combine(instance,"source");
+            // Full packaged-source enumeration remains authoritative, including added files.
+            SetupEngine.Validate(instance,record,Path.Combine(Path.GetTempPath(),"psycolab-fixed-check-"+Guid.NewGuid().ToString("N")+".log"),()=>false);
+            var start=SourceProcess(root,new[]{"-I","-B","-m","psychophysics_lab"});
+            start.EnvironmentVariables["PSYCOLAB_CONFIG_DIR"]=String.IsNullOrWhiteSpace(record.config_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","LaboratoryConfiguration"):record.config_root;
+            start.EnvironmentVariables["PSYCOLAB_DATA_DIR"]=String.IsNullOrWhiteSpace(record.data_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"PsyCoLabData"):record.data_root;
+            return Observe(start,root);
+        }catch(Exception error){Show(Problem(instance,"fixed_installation_failed","This fixed-version installation failed validation. Its identity and files were preserved.",error.Message));return 1;}
+    }
+    public static int Recover(string root) {var d=Diagnose(root);Show(d);return d.healthy?0:1;}
+    public static void Show(Diagnosis d) {
+        using(var window=new RecoveryWindow(d,Retained(d,Store),AppDomain.CurrentDomain.BaseDirectory))window.ShowDialog();
+    }
+}
+
+public class RecoveryWindow : Form
+{
+    public RecoveryWindow(StartupRecovery.Diagnosis d,List<StartupRecovery.Candidate> retained,string package) {
+        Text="PsyCoLab startup recovery";Width=800;Height=480;StartPosition=FormStartPosition.CenterScreen;
+        bool available=!d.healthy&&!d.after_application&&StartupRecovery.PackageAvailable(package);
+        string recommended=StartupRecovery.Recommendation(d,retained.Count,available);
+        var layout=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(16),AutoScroll=true};Controls.Add(layout);
+        layout.Controls.Add(new Label{Text=d.message,AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+        layout.Controls.Add(new Label{Text="Recommended because: "+StartupRecovery.Reason(recommended),AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+        if(retained.Count==0)layout.Controls.Add(new Label{Text="No verified retained installation is available for this recovery.",AutoSize=true});
+        if(!available)layout.Controls.Add(new Label{Text="No separate-install action is verified and available for this recovery.",AutoSize=true});
+        if(retained.Count>0) {
+            var choices=new ComboBox{Width=720,DropDownStyle=ComboBoxStyle.DropDownList};foreach(var c in retained)choices.Items.Add(c);choices.SelectedIndex=0;layout.Controls.Add(choices);
+            var launch=new Button{AutoSize=true,Text="Open verified retained installation"+(recommended=="retained"?" [Recommended]":"")};layout.Controls.Add(launch);
+            launch.Click+=(s,e)=>{var selected=(StartupRecovery.Candidate)choices.SelectedItem;Hide();try{if(selected.instance!=null)StartupRecovery.LaunchFixed(selected.instance);else StartupRecovery.LaunchSource(selected.root,new string[0]);}finally{Close();}};
+        }
+        if(available) {
+            var separate=new Button{AutoSize=true,Text="Create separate approved installation"+(recommended=="separate"?" [Recommended]":"")};layout.Controls.Add(separate);
+            separate.Click+=(s,e)=>{try{SetupEngine.CheckPackage(package,()=>false);using(var setup=new SetupWindow(package,StartupRecovery.Store))setup.ShowDialog(this);}catch(Exception error){MessageBox.Show(this,"Package validation failed. No installation was approved.\n"+error.Message,Text);}};
+        }
+        var diagnostics=new Button{AutoSize=true,Text="View diagnostics and administrator instructions"+(recommended=="diagnostics"?" [Recommended]":"")};layout.Controls.Add(diagnostics);
+        diagnostics.Click+=(s,e)=>{try{string path=Path.Combine(Path.GetTempPath(),"psycolab-startup-"+Guid.NewGuid().ToString("N")+".json");SetupEngine.Save(path,new{diagnosis=d,recommendation=recommended,reason=StartupRecovery.Reason(recommended),verified_retained_count=retained.Count,verified_package=available,instructions=StartupRecovery.Instructions(d)});Process.Start("notepad.exe",SetupEngine.Quote(path));}catch(Exception error){MessageBox.Show(this,"Could not open diagnostics.\n"+error.Message,Text);}};
+        var cancel=new Button{AutoSize=true,Text="Cancel"+(recommended=="cancel"?" [Recommended]":"")};layout.Controls.Add(cancel);cancel.Click+=(s,e)=>Close();CancelButton=cancel;
+        layout.Controls.Add(new Label{Text="Cancel performs no recovery action. Source, qualification evidence, calibration and experimental records are preserved.",AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
     }
 }
