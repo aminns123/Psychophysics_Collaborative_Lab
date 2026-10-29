@@ -289,6 +289,14 @@ orientation preference, flanker modulation, temporal-order thresholds, failure
 handling, or another paradigm entirely. Model predictions and recovery errors
 belong in that evaluator, not in the generic runner.
 
+The built-in `teaching_demo` checks the selected procedure's analysis outcome.
+A completed adaptive run with a registered analyser must produce its analysis;
+an incomplete demonstration may instead retain the analyser's declared
+`threshold_unavailable.json` explanation. Fixed-level procedures and models
+without an analyser must not produce a staircase threshold. This checks output
+availability, not agreement with an observer's ground-truth threshold. Custom
+scenarios' explicit `expect_analysis=True` or `False` remain strict.
+
 For specialised validation of canonical records, give the scenario a
 `validator(run_directory)` that returns `Check`-like objects with
 `name`, `passed`, and `detail`. Otherwise it uses PsyCoLab's normal
