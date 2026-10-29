@@ -170,9 +170,21 @@ class LegacyPlanSpelling(ast.NodeTransformer):
 
 
 @pytest.mark.parametrize('identity',OFFICIAL)
-def test_scientific_function_bodies_and_readable_six_section_contract(identity):
+def test_scientific_function_bodies_and_approved_authoring_contract(identity):
     module=importlib.import_module('psychophysics_lab.experiments.'+identity)
     source=Path(module.__file__).read_text(encoding='utf-8')
+    if identity in {'example_experiment', 'probe_above_below'}:
+        # PR #169 adopts A1/A2/B only for these IDs. Current exact-source and
+        # unchanged scientific contracts are guarded in test_authoring_standard;
+        # test_issue165_wave1 compares real current/frozen traces in all modes.
+        positions=[source.index(header) for header in (
+            '# PART A1 — EXPERIMENTAL CHOICES', '# PART A2 — SCIENTIFIC METHODS',
+            '# PART B — FRAMEWORK INTEGRATION')]
+        assert positions==sorted(positions)
+        assert positions[0]<source.index('def trial_events')<positions[1]
+        assert positions[0]<source.index('def trial_measurements')<positions[1]
+        # Retain the Stage C AST checks on the preserved historical reference.
+        source=(ROOT/'tests/fixtures/issue165_wave1'/(identity+'.py')).read_text(encoding='utf-8')
     sections=('PARAMETERS','SESSION START','TRIAL EVENTS','SCIENTIFIC RULES','STOPPING AND RESULTS','FRAMEWORK REGISTRATION')
     positions=[source.index(f'# {i}. {s}') for i,s in enumerate(sections,1)]
     assert positions==sorted(positions)
