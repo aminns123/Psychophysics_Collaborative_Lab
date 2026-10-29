@@ -115,7 +115,8 @@ def test_real_child_exit_is_observed_once_and_never_replayed(native,tmp_path,pha
     assert 'View diagnostics and administrator instructions [Recommended]' in result.stdout
     assert 'Open verified retained installation' not in result.stdout
     assert 'Create separate approved installation' not in result.stdout
-    assert ('application startup crash' in result.stdout)==(phase=='application_startup')
+    assert ('stopped during application startup' in result.stdout)==(phase=='application_startup')
+    assert 'reported an application startup crash' not in result.stdout
     assert (root/'attempts').read_text()=='run\n'
 
 
@@ -180,7 +181,7 @@ def test_recommendation_uses_only_verified_available_options(native,healthy,afte
     assert native('recommend',d,count,str(package).lower()).stdout.strip()==expected
 
 
-@pytest.mark.parametrize('phase,category',[('application_startup','application_startup_crash'),
+@pytest.mark.parametrize('phase,category',[('application_startup','application_startup_failure'),
     ('post_tui_experiment_launch','experiment_or_operation_failure'),
     ('synthetic_simulation','experiment_or_operation_failure'),('unknown','unknown_application_exit')])
 def test_incidents_never_offer_relaunch_or_install(native,tmp_path,phase,category):

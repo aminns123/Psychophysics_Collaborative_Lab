@@ -359,10 +359,10 @@ public static class StartupRecovery
         return common+"Ask the administrator to check this checkout's path/access and reviewed launcher files. A separate installation requires the complete sealed package, not loose wheels or an arbitrary Python environment. See docs/STARTUP_RECOVERY.md.";
     }
     public static Diagnosis Incident(string root,int code,string phase) {
-        string category=phase=="application_startup"?"application_startup_crash":
+        string category=phase=="application_startup"?"application_startup_failure":
             new[]{"post_tui_experiment_launch","synthetic_simulation","uncalibrated_presentation_test","finished"}.Contains(phase)?"experiment_or_operation_failure":"unknown_application_exit";
-        return new Diagnosis{root=root,category=category,after_application=true,message=category=="application_startup_crash"?
-            "PsyCoLab reported an application startup crash. No restart or repair has been attempted.":
+        return new Diagnosis{root=root,category=category,after_application=true,message=category=="application_startup_failure"?
+            "PsyCoLab stopped during application startup. See diagnostics for the reported error. No restart or repair has been attempted.":
             "PsyCoLab stopped after launch. An experiment may have begun; preserve incomplete runs and use the existing incident reports. No experimental operation will be retried.",details="Exit code: "+code+"; reported application phase: "+(phase??"unavailable")};
     }
     static int Observe(ProcessStartInfo start,string root) {

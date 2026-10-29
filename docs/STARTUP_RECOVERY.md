@@ -69,7 +69,7 @@ incomplete or source-seal-mismatched entries are never offered as launch choices
 | Scientific Python edit with unchanged dependency contract | May pass environment checks; **not scientific approval** or a Ready promotion |
 | Missing interpreter, failed process creation, failed existing check | Missing/damaged environment or failed check; diagnostics preserve the specific evidence |
 | Owned pending attempt without successful state | Interrupted setup; ordinary launch never resumes it |
-| Import/startup exception reported by the application | Startup crash; preserve the existing crash/fatal reports |
+| Nonzero exit during the reported application-startup phase | Startup failure; inspect the existing error/crash/fatal evidence without assuming every nonzero exit is an unhandled crash |
 | Experiment/operation phase, unknown phase or no notification | Incident after launch; preserve incomplete runs, never retry acquisition |
 
 The existing check still verifies interpreter/support binaries, full installed

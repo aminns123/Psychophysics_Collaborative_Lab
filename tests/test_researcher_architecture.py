@@ -259,7 +259,12 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
     )
     state = tmp_path / ".venv/.psycolab-setup.json"
     before = state.read_bytes()
-    for _ in range(2):
+    commands = [command, ["powershell.exe", "-NoLogo", "-NoProfile",
+        "-ExecutionPolicy", "Restricted", "-Command",
+        "& .\\run_psycolab.bat --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
+    # Restricted applies only to this child process; no policy is changed and
+    # no .ps1 file or bypass is needed to compile/launch the native host.
+    for command in commands:
         result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
             creationflags=subprocess.CREATE_NO_WINDOW)
         assert result.returncode == 0, result.stdout + result.stderr
