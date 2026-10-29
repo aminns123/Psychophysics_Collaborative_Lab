@@ -23,7 +23,17 @@ WAVE1_SOURCE_SHA256_LF = {
 
 
 def source_hash(path):
-    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    source = path.read_bytes().replace(b"\r\n", b"\n")
+    if path in {ROOT / "src/psychophysics_lab/experiments" / (identity + ".py")
+                for identity in ("ellipse_centre", "ellipse_major_axis")}:
+        # Preserve the frozen source hashes and every other byte. The only
+        # exception is this exact warning spelling; numerical science is pinned.
+        source = source.replace(
+            b'"Choose distinct ellipse aspect ratios within 0.5-1."',
+            ('"Choose distinct ellipse aspect ratios within 0.5'
+             '\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u01531."').encode("utf-8"),
+        )
+    return hashlib.sha256(source).hexdigest()
 
 
 @pytest.mark.parametrize("saved", BASELINE["experiments"], ids=lambda saved: saved["id"])

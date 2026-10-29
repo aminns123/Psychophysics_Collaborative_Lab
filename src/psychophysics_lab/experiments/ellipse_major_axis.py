@@ -443,7 +443,7 @@ def validate_settings(values):
                 or len(set(ratios)) != len(ratios)
                 or any(not 0.5 <= x <= 1 for x in ratios)
             ):
-                yield "Choose distinct ellipse aspect ratios within 0.5Ã¢â‚¬â€œ1."
+                yield "Choose distinct ellipse aspect ratios within 0.5-1."
             elif (values["ring_conditions"] != "base_only"
                   and any(values["ring_radius_deg"] * ratio <= 0.16 for ratio in ratios)):
                 yield (f"Ellipse inner axes must be positive: a={values['ring_radius_deg']:g} deg, "

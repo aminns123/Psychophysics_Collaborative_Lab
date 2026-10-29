@@ -15,7 +15,7 @@ from psychophysics_lab.researcher import RunContext, TrialTimeline
 from simulations.run import simulate
 from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
-from test_stage_b_event_first import frozen_csf_validation_spelling
+from test_stage_b_event_first import frozen_csf_validation_spelling, frozen_ellipse_validation_spelling
 
 ROOT=Path(__file__).resolve().parents[1]
 BASELINE=json.loads((ROOT/'tests/fixtures/stage_c_baseline_20261027.json').read_text())
@@ -195,6 +195,8 @@ def test_scientific_function_bodies_and_approved_authoring_contract(identity):
         node=LegacyPlanSpelling().visit(copy.deepcopy(functions[name]))
         if identity == 'contrast_sensitivity' and name == 'validate_settings':
             node = frozen_csf_validation_spelling(node)
+        if identity in {'ellipse_centre', 'ellipse_major_axis'} and name == 'validate_settings':
+            node = frozen_ellipse_validation_spelling(node)
         assert digest(ast.dump(node,include_attributes=False))==expected,name
     assert module.make_trial.__wrapped__ is module.trial_events
     for event in module.SPEC.session_start.phases:
