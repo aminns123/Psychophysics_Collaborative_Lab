@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "name": "conda-standalone",
+  "version": "25.7.0-h57928b3_0",
+  "filename": "conda.exe",
+  "sha256": "147e07937bb6509b69e9630eec6c6a281cd916c246d5fa5851a8b8f3b502f31f",
+  "container": {
+    "filename": "conda-standalone-25.7.0-h57928b3_0.conda",
+    "source": "https://conda.anaconda.org/conda-forge/win-64/conda-standalone-25.7.0-h57928b3_0.conda",
+    "sha256": "1cc7702b0d1c5173e00054d380d98e978e91e15bfcfc8f4e1593edb197a718d4"
+  },
+  "license": "LicenseRef-CondaStandalone (BSD-3-Clause project plus bundled dependency terms)",
+  "license_source": "https://github.com/conda/conda-standalone/blob/main/LICENSE"
+}

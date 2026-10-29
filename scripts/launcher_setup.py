@@ -365,6 +365,38 @@ def _install_editable(python: Path) -> None:
           "--editable", str(ROOT)])
 
 
+def check_only() -> int:
+    """Read-only launch gate. Never provision, repair metadata, or write state."""
+    try:
+        if (VENV.is_symlink() or STATE.is_symlink() or VENV.resolve().parent != ROOT.resolve()
+                or Path(sys.prefix).resolve() != VENV.resolve()):
+            raise ValueError("Use this installation's own environment; it was not changed.")
+        profile, digest = _profile()
+        state = _load_state()
+        if not isinstance(state.get('qualification'), dict):
+            raise ValueError("Approved setup evidence is missing or unreadable.")
+        if (state.get('schema_version') != 2 or state.get('source_root') != str(ROOT.resolve())
+                or state.get('pyproject_sha256') != _hash_file(PYPROJECT)
+                or state.get('qualification', {}).get('profile_sha256') != digest):
+            raise ValueError("This installation no longer matches its approved setup.")
+        old = state['qualification']
+        recorded = old.get('artifacts', {})
+        if set(recorded) != set(profile['core']) or any(
+            recorded[name] != {key: profile['artifacts'][name][key] for key in ('version', 'filename', 'sha256')}
+            for name in profile['core']):
+            raise ValueError("Approved artifact evidence is missing or changed.")
+        current = _environment_evidence(_venv_python(VENV))
+        if any(current[key] != old[key] for key in ('inventory', 'core_fingerprint', 'interpreter')):
+            raise ValueError("Installed packages or interpreter files changed.")
+        _validate_environment(_venv_python(VENV))
+        print("Approved installation verified; no setup or update performed.")
+        return 0
+    except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+        print(f"Launch refused: {error}. Open PsyCoLab Setup to install a reviewed version separately "
+              "or use a retained version's shortcut. This installation was preserved.")
+        return 1
+
+
 def main() -> int:
     if sys.version_info[:2] != EXPECTED_PYTHON:
         print(f"ERROR: launcher_setup.py must be run with Python 3.11; received {sys.version_info.major}.{sys.version_info.minor}.")
@@ -443,9 +475,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--user-env"]:
+    if sys.argv[1:] == ["--check"]:
+        raise SystemExit(check_only())
+    elif sys.argv[1:] == ["--user-env"]:
         select_environment("USER_env")
     elif sys.argv[1:]:
-        print("Usage: launcher_setup.py [--user-env]")
+        print("Usage: launcher_setup.py [--user-env | --check]")
         raise SystemExit(2)
     raise SystemExit(main())
