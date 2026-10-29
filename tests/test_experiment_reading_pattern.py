@@ -43,9 +43,11 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
         assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     migrated = hasattr(module, "trial_events")
+    scientist_first = identity in {"example_experiment", "probe_above_below"}
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
-    headings = [source.index(f"# {i}. {section}") for i, section in enumerate(sections, 1)]
+    headings = ([source.index("# PART " + part) for part in ("A1", "A2", "B")]
+                if scientist_first else [source.index(f"# {i}. {section}") for i, section in enumerate(sections, 1)])
     assert headings == sorted(headings)
     tree = ast.parse(source)
     positions = {n.name: n.lineno for n in tree.body if isinstance(n, ast.FunctionDef)}
@@ -53,6 +55,11 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     if identity == "contrast_sensitivity_windowed":
         names = ("trial_events", "prepare_stimuli", "procedure", "definition")
+    if scientist_first:
+        names = ("target_position", "trial_events", "trial_measurements", "make_conditions",
+                 "prepare_stimuli", "is_finished", "scientific_resolution", "procedure", "definition")
+        assert headings[0] < source.index('def trial_measurements') < headings[1]
+        assert headings[1] < source.index('def is_finished') < headings[2]
     assert [positions[n] for n in names] == sorted(positions[n] for n in names)
     module = importlib.import_module("psychophysics_lab.experiments." + identity)
     from psychophysics_lab.experiments._internal.source_names import SOURCE_IDS
