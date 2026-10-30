@@ -1855,7 +1855,7 @@ class _ExperimentInputsScreen(Screen):
             visible = {field.key for field in self.visible_fields}
             errors = [reports[field.key]['error'] for field in self.visible_fields if reports[field.key]['error']]
             if any(report['error'] for key, report in reports.items() if key not in visible):
-                errors.append("Scientific inputs need attention. Open Review → Edit experiment inputs / stimuli.")
+                errors.append("Scientific inputs need attention. Open Review → Edit inputs / stimuli.")
         self.query_one('#constraint-summary',Static).update("\n".join(errors))
         # Shader range affects human/test launch, but does not block numerical simulation Review.
         # Submission runs the same validator again; retaining an enabled button
@@ -2380,7 +2380,7 @@ class ReviewScreen(Screen):
             from .review_table import ReviewSettingsTable
             yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens the generic Review parameter editor. Enter/double-click and source links are advanced file actions.",markup=False)
             with Horizontal(classes="buttons"):
-                yield Button("Edit experiment inputs / stimuli", id="review-edit-inputs")
+                yield Button("Edit inputs / stimuli", id="review-edit-inputs")
                 yield Button("Edit selected value",id="review-edit-value",variant="primary")
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")

@@ -17,7 +17,7 @@ responses or a precomputed adaptive schedule.
 
 1. Open Configure, select common run settings, then open Review.
 2. Select a scientific row and choose **Edit selected value** to focus its
-   controlling input. Alternatively choose **Edit experiment inputs / stimuli**
+   controlling input. Alternatively choose **Edit inputs / stimuli**
    to browse all declared inputs and stimulus slots.
 3. Change the value using the existing controls, then **Apply to Review**.
    Review is regenerated from those selected values. Invalid edits stay in the

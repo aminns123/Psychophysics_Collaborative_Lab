@@ -15,7 +15,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
     field = next((f for f in spec.fields if group in {"Experiment", "Adaptive"}
                   and f.display_label == label), None)
     key = field.key if field else target.get("key") if target.get("kind") == "experiment_json" else None
-    result = dict(status="Derived / scientific", route="Review → Edit experiment inputs / stimuli",
+    result = dict(status="Derived / scientific", route="Review → Edit inputs / stimuli",
                   edit_kind="configuration", field=None, slot=None, meaning=meaning,
                   explanation="Calculated by the selected experiment; this row is not an independent input.")
     if group in snapshots:
@@ -32,7 +32,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                 else:
                     result.update(status="Editable stimulus base" if parameter.editable else "Fixed definition",
                         edit_kind="stimulus" if parameter.editable else None, slot=group, field=parameter.key,
-                        route=f"Review → Edit experiment inputs / stimuli → {group} → {parameter.label}",
+                        route=f"Review → Edit inputs / stimuli → {group} → {parameter.label}",
                         explanation=f"Selected base: {base!r}. Effective sample: {value}. "
                                     f"Current Python default: {parameter.default!r}. Source: "
                                     f"{snapshots[group]['file_identity']}. "
@@ -51,7 +51,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
         section = next((name for name, items in grouped_config_fields(spec)
                         if any(f.key == key for f in items)), field.section)
         result.update(edit_kind="experiment" if field.editable else None, field=key,
-                      route=f"{'Configure' if section == 'Universal setup' else 'Review → Edit experiment inputs / stimuli'} → {section} → {field.display_label}")
+                      route=f"{'Configure' if section == 'Universal setup' else 'Review → Edit inputs / stimuli'} → {section} → {field.display_label}")
         if group not in snapshots:
             result["status"] = "Editable experiment" if field.editable else "Fixed definition"
             saved = sources.get("experiment")
