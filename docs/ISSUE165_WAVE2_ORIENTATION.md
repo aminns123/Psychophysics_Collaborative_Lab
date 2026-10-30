@@ -80,6 +80,12 @@ with the preserved historical/other-file checks, and the complete affected
 module plus Wave 2 equivalence tests passed **70 tests**. The final full run and
 CI must pass on the corrected head; this is not a waiver of those checks.
 
+A clean combined Windows checkout also exposed CRLF conversion of the new
+frozen Python reference files. Their hash check now normalizes only CRLF to LF,
+matching the captured canonical source hashes. The immutable references, hashes
+and all scientific comparisons remain unchanged. The combined route/equivalence
+checks are rerun against that actual CRLF checkout rather than assuming LF.
+
 Software equivalence is PASS only after those final checks pass. Independent
 researcher comprehension/native acceptance and physical display/input/audio
 qualification remain **NOT VERIFIED** by these tests. A scientist making a new

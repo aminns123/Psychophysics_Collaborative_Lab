@@ -19,7 +19,9 @@ NAMES = ('orientation_task', 'orientation_adaptive')
 
 
 def frozen(name):
-    raw = (FIXTURES / (name + '.py')).read_bytes()
+    # Baseline captures use LF hashes; Git may check the same Python source out
+    # as CRLF on Windows. Normalize only line endings, never scientific content.
+    raw = (FIXTURES / (name + '.py')).read_bytes().replace(b'\r\n', b'\n')
     manifest = json.loads((FIXTURES / 'baseline.json').read_text())
     assert hashlib.sha256(raw).hexdigest() == manifest['source_sha256'][name]
     # Keep the public callback module identity: only source layout is migrating.
