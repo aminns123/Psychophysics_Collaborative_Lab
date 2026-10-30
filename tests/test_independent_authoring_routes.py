@@ -18,6 +18,7 @@ FIXTURE=ROOT/'tests/fixtures/review_temporal_lab'
 # Executed in a genuinely fresh interpreter against a disposable source copy.
 EXERCISE=r'''
 import asyncio, csv, hashlib, json, sys
+import importlib
 from pathlib import Path
 from textual.widgets import Button, Input, Select, Collapsible, Static
 from psychophysics_lab import extensions as ext
@@ -59,6 +60,15 @@ if route=='external':
     assert ext.status(root,'experiment',identity)=='ready' and not ext._development
 spec=get_experiment(identity)
 stimulus=get_stimulus('auditlab__annulus')
+science=importlib.import_module(spec.procedure.__module__)
+settings=spec.normalise_values({})
+for target in (0,1):
+    events=science.trial_events(settings,{'gap_ms':20,'target':target})
+    cue=next(event for event in events if event.name=='cue')
+    assert cue.instructions=='CUE' and cue.duration_ms==10
+    assert all(event.instructions!='CUE' for event in events if event.name!='cue')
+    order=[event.name for event in events]
+    assert (order.index('annulus')<order.index('cue'))==(target==0)
 assert bool(spec.origin_namespace)==(route=='external')
 assert bool(stimulus.origin_namespace)==(route=='external')
 opened=[]

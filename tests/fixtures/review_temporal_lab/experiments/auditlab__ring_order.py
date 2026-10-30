@@ -1,6 +1,8 @@
 """Independent before/after-cue annulus task; finite software acceptance example.
 
-Scientific conditions are cue gaps in ms. Target alternatives are temporal order,
+Scientific conditions are cue gaps in ms. The cue is the visible word CUE,
+shown with fixation for 10 ms (requested software duration, not photon timing).
+Target alternatives are temporal order,
 not different conditions or staircase tracks. Digital annulus increment above
 0.5 is adjusted by the installed finite teaching rule; no threshold is claimed.
 """
@@ -29,7 +31,7 @@ MEASUREMENT_UNITS = {'cue_gap_ms':'ms', 'annulus_x_deg':'degrees', 'annulus_radi
 
 def trial_events(settings, condition):
     annulus = Show('annulus', stimuli=(Stimulus('ring',x_deg=settings['ring_x_deg']),), duration='flash_ms')
-    cue = Show('cue',slot='cue',duration=10)
+    cue = Show('cue',slot='cue',duration=10,instructions='CUE')
     gap = Show('gap',slot='cue',duration=condition['gap_ms'])
     sequence = [annulus,gap,cue] if condition['target']==0 else [cue,gap,annulus]
     return [Show('fixation',slot='cue',duration=20), *sequence,

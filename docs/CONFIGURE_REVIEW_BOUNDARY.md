@@ -85,7 +85,7 @@ simulations, saved-run reading/validation and source-change Ready invalidation.
 annulus-before/after-cue experiment and its own numerical annulus renderer.
 These sources are in `tests/fixtures/review_temporal_lab/`; neither imports an
 official experiment. Scientific conditions are whole-millisecond cue gaps,
-alternatives are before/after order with B/A keys, and saved custom measurements
+alternatives are before/after a visible CUE label with B/A keys, and saved custom measurements
 include gap, radius, position, exposure, digital increment and target order.
 It explicitly offers the existing finite teaching adaptive method and constant
 stimuli; neither is presented as a validated threshold estimator.
