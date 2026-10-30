@@ -273,12 +273,12 @@ def test_ambiguous_trial_factories_fail_before_method_or_scientific_state_creati
 def test_generic_configure_edit_preserves_bound_background_and_selected_appearance(tmp_path, monkeypatch, identity):
     import asyncio
     from textual.widgets import Button, Input
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
     spec = registry.get_experiment(identity)
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(120,50)) as pilot:
-            config = ExperimentConfigScreen(data_root=app.data_root,participant_id='STAGE_B_UI',session_mode='new',
+            config = ExperimentParametersScreen(data_root=app.data_root,participant_id='STAGE_B_UI',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',
                 defaults=spec.normalise_values({'ring_increment':.03} if identity=='ellipse_major_axis' else {}))
             app.push_screen(config)

@@ -192,7 +192,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             if isinstance(key, str) and key in {f.key for f in spec.fields}:
                 targets.append(experiment(key))
             else:
-                targets.append(python(key="SESSION_START", note="Once-only event declaration; selected input fields are editable in Configure"))
+                targets.append(python(key="SESSION_START", note="Once-only event declaration; selected input fields are editable in the generic Review parameter editor"))
         elif group=="Trial" and label.endswith(" planned display"):
             targets.append(python(Path(__file__).parents[1]/"core/presentation.py",function="presentation_frames",
                 note="Derived frame count from requested duration and monitor refresh rate; edit those inputs"))

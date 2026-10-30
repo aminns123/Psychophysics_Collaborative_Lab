@@ -130,11 +130,11 @@ def test_baseline_uses_full_physical_intensity_headroom_and_does_not_restrict_ov
 
 def test_experiment_form_displays_declared_units(tmp_path):
     from psychophysics_lab.experiments.line_position_baseline import SPEC
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test(size=(110, 42)) as pilot:
-            app.push_screen(ExperimentConfigScreen(data_root=tmp_path/'data', participant_id='T_UNITS',
+            app.push_screen(ExperimentParametersScreen(data_root=tmp_path/'data', participant_id='T_UNITS',
                 session_mode='new', experiment=SPEC, monitor_profile_id='legacy_reference_display', defaults=SPEC.field_defaults()))
             await pilot.pause()
             labels = '\n'.join(str(label.render()) for label in app.screen.query(Label))

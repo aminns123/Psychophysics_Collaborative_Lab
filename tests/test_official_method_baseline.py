@@ -6,7 +6,7 @@ import pytest
 from textual.widgets import Button, DataTable
 
 from psychophysics_lab.experiments._internal.registry import get_experiment
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
 from simulations.run import simulate
 from scripts.validate_run import validate_run
 
@@ -34,7 +34,7 @@ def test_official_selected_method_reaches_review_execution_and_validated_data(tm
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(130, 50)) as pilot:
-            screen = ExperimentConfigScreen(data_root=app.data_root, participant_id="METHOD_MATRIX",
+            screen = ExperimentParametersScreen(data_root=app.data_root, participant_id="METHOD_MATRIX",
                 session_mode="new", experiment=spec, monitor_profile_id="legacy_reference_display", defaults=chosen)
             app.push_screen(screen)
             await pilot.pause()

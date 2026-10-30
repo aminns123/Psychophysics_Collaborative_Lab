@@ -135,7 +135,7 @@ def test_external_file_replacement_keeps_history_and_refuses_unloaded_edits(tmp_
 
 
 def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,monkeypatch):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
     from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
     from psychophysics_lab.researcher import RunContext
     from simulations.run import simulate
@@ -146,7 +146,7 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
         spec = get_experiment('line_position_baseline')
         app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(120,45)) as pilot:
-            screen = ExperimentConfigScreen(data_root=tmp_path/'data', participant_id='JSON_TEST',session_mode='new',
+            screen = ExperimentParametersScreen(data_root=tmp_path/'data', participant_id='JSON_TEST',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',defaults=spec.field_defaults())
             app.push_screen(screen)
             await pilot.pause()

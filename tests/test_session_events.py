@@ -272,12 +272,12 @@ def test_invalid_selected_readiness_fails_before_backend_or_trial(tmp_path, monk
 def test_opt_in_session_rows_route_to_existing_configure_editors(tmp_path, monkeypatch):
     import asyncio
     from textual.widgets import Button, Input
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
     spec = install_opening(monkeypatch)
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data')
         async with app.run_test(size=(120, 45)) as pilot:
-            screen = ExperimentConfigScreen(data_root=app.data_root, participant_id='EVENT_API',
+            screen = ExperimentParametersScreen(data_root=app.data_root, participant_id='EVENT_API',
                 session_mode='new', experiment=spec, monitor_profile_id='legacy_reference_display',
                 defaults=spec.normalise_values({}))
             app.push_screen(screen)

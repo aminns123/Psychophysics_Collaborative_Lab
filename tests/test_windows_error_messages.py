@@ -51,13 +51,13 @@ def test_ellipse_aspect_ratio_bounds_and_readable_error(identity, ratios, valid)
 
 @pytest.mark.parametrize("identity", ["ellipse_centre", "ellipse_major_axis"])
 def test_ellipse_ratio_error_preserves_unsaved_configure_inputs(tmp_path, identity):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
 
     async def scenario():
         spec = get_experiment(identity)
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
         async with app.run_test(size=(130, 50)) as pilot:
-            screen = ExperimentConfigScreen(
+            screen = ExperimentParametersScreen(
                 data_root=app.data_root, participant_id="ELLIPSE_ERROR",
                 session_mode="new", experiment=spec,
                 monitor_profile_id="legacy_reference_display",

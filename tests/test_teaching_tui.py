@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from textual.widgets import Button, Input, Select, Static, TextArea
 from psychophysics_lab.experiments._internal.registry import get_experiment, list_experiments
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen, _source_inventory
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen, _source_inventory
 from psychophysics_lab.ui.stimulus_parameters import JsonPresetEditor, StimulusParametersPanel
 from simulations.scenarios.run import run_scenario
 from scripts.validate_run import validate_run
@@ -20,7 +20,7 @@ def test_json_preset_edit_reload_review_simulate_and_save(tmp_path, size):
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path / "data")
         spec = get_experiment("orientation_task")
         async with app.run_test(size=size) as pilot:
-            app.push_screen(ExperimentConfigScreen(data_root=app.data_root, participant_id="student", session_mode="new",
+            app.push_screen(ExperimentParametersScreen(data_root=app.data_root, participant_id="student", session_mode="new",
                 experiment=spec, monitor_profile_id="legacy_reference_display", defaults=spec.field_defaults()))
             await pilot.pause()
             screen = app.screen

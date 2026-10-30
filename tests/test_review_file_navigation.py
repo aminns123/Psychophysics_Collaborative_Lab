@@ -12,7 +12,7 @@ from psychophysics_lab.config.stimulus_parameters import document_for,resolve_st
 from psychophysics_lab.stimuli.registry import get_stimulus
 from psychophysics_lab.ui.review_files import export_current_json,targets_for_rows
 from psychophysics_lab.ui.settings_review import describe_settings,review_rows
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen,ReviewScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentParametersScreen,ReviewScreen
 from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -26,7 +26,7 @@ def values():
 
 async def review(app,pilot,preset=None):
     spec=get_experiment('line_position_baseline')
-    screen=ExperimentConfigScreen(data_root=app.data_root,participant_id='FILE_NAV',session_mode='new',
+    screen=ExperimentParametersScreen(data_root=app.data_root,participant_id='FILE_NAV',session_mode='new',
         experiment=spec,monitor_profile_id='legacy_reference_display',defaults=values())
     app.push_screen(screen)
     await pilot.pause()
@@ -217,7 +217,7 @@ def test_default_experiment_json_is_linked_without_an_unnecessary_copy(tmp_path)
         spec=get_experiment('example_experiment')
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(240,65)) as pilot:
-            screen=ExperimentConfigScreen(data_root=tmp_path/'data',participant_id='SOURCE_JSON',session_mode='new',
+            screen=ExperimentParametersScreen(data_root=tmp_path/'data',participant_id='SOURCE_JSON',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',defaults=spec.field_defaults())
             app.push_screen(screen)
             await pilot.pause()

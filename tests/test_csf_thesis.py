@@ -147,7 +147,7 @@ def test_shared_presenter_clears_to_the_experiments_background(monkeypatch):
 def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     import asyncio
     from textual.widgets import Input
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
 
     selected = {"n_down":2, "n_up":2, "logUNIT_UP":.1, "logUNIT_DW":.05,
                 "reversal_termination":4, "threshold_reversals":2,
@@ -157,7 +157,7 @@ def test_tui_selected_adaptive_values_control_the_run(tmp_path, monkeypatch):
     async def collect():
         app = PsyCoLabSetupApp(include_historical=True, repo_root=ROOT, data_root=tmp_path/"tui_data")
         async with app.run_test(size=(100, 40)) as pilot:
-            app.push_screen(ExperimentConfigScreen(data_root=tmp_path/"tui_data",
+            app.push_screen(ExperimentParametersScreen(data_root=tmp_path/"tui_data",
                 participant_id="T001", session_mode="new", experiment=SPEC,
                 monitor_profile_id="legacy_reference_display", defaults=SPEC.field_defaults()))
             await pilot.pause()

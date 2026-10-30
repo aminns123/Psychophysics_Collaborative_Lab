@@ -43,8 +43,8 @@ class StimulusValueEditor(Screen):
                 if field.key in self.controlled:
                     from .settings_review import parameter_controller
                     key = parameter_controller(self.panel.configuration.experiment, self.panel.slot, field.key)
-                    yield Static(f"Experiment-controlled: change {key} in Configure; this is a resolved value."
-                                 if key else "Trial-controlled: change the experiment's conditions or strength method in Configure.")
+                    yield Static(f"Experiment-controlled: change {key} in Review's input editor; this is a resolved value."
+                                 if key else "Trial-controlled: change the experiment's conditions or strength method through Review.")
                 if field.kind == "choice":
                     yield Select(
                         [(str(v), v) for v in field.choices],

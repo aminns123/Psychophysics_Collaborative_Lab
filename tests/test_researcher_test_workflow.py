@@ -155,7 +155,7 @@ def test_preview_opener_refuses_non_image_files(tmp_path):
 def test_plain_parameter_editor_previews_and_saves_without_changing_defaults(
     tmp_path, monkeypatch
 ):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
     from psychophysics_lab.ui.stimulus_editor import StimulusValueEditor
     from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
     from psychophysics_lab.ui import preview
@@ -172,7 +172,7 @@ def test_plain_parameter_editor_previews_and_saves_without_changing_defaults(
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path)
         async with app.run_test(size=(110, 45)) as pilot:
             app.push_screen(
-                ExperimentConfigScreen(
+                ExperimentParametersScreen(
                     data_root=tmp_path,
                     participant_id="synthetic_preview",
                     session_mode="new",

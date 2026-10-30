@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from textual.widgets import Button, DataTable, Input, Select, Static
 
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentConfigScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentConfigScreen, ExperimentParametersScreen
 from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
 from psychophysics_lab.ui.stimulus_editor import StimulusValueEditor
 from psychophysics_lab.experiments._internal.registry import get_experiment
@@ -32,6 +32,11 @@ def test_adopt_refreshed_defaults_replaces_retained_snapshot_without_overwriting
                 {"aperture_diameter_deg":1.,"fade_width_deg":.1} if identity.endswith("windowed") else {})
             review.query_one("#back",Button).press()
             await pilot.pause()
+            config.query_one('#review', Button).press()
+            await pilot.pause()
+            app.screen.query_one('#review-edit-inputs', Button).press()
+            await pilot.pause()
+            config = app.screen
             panel=next(p for p in config.query(StimulusParametersPanel) if p.slot==slot)
             if updated.default_config:
                 panel.query_one("#stimulus-preset-"+slot,Select).value="library_defaults"
@@ -104,8 +109,8 @@ async def enter_review(app, pilot, identity, changes=None):
     await pilot.pause()
     config = app.screen
     for key, value in (changes or {}).items():
-        field = next(f for f in config.experiment.fields if f.key == key)
-        config.query_one("#field-" + key.replace("_", "-")).value = value if field.kind == "choice" else str(value)
+        config.defaults[key] = value
+        app.config_drafts.setdefault(config.draft_key, {})[key] = value
     config.query_one("#review", Button).press()
     await pilot.pause()
     assert isinstance(app.screen, ReviewScreen)
@@ -130,7 +135,7 @@ def test_edit_controlling_input_from_resolved_row_and_reload_saved_json(tmp_path
             await pilot.pause()
             assert str(table.get_row_at(row)[3]) == "Experiment-controlled"
             detail = str(review.query_one("#review-file-location", Static).renderable)
-            assert key in detail and "WHERE TO CHANGE: Configure" in detail
+            assert key in detail and "WHERE TO CHANGE: Review" in detail
             button=review.query_one("#review-edit-value", Button)
             button.focus()
             button.scroll_visible(immediate=True,top=True,force=True)
@@ -139,7 +144,7 @@ def test_edit_controlling_input_from_resolved_row_and_reload_saved_json(tmp_path
             app.save_screenshot(filename="review-before-edit.svg",path=tmp_path)
             clicked=await pilot.click("#review-edit-value",offset=(3,1))
             await pilot.pause()
-            assert isinstance(app.screen, ExperimentConfigScreen), (clicked,button.region,type(app.screen).__name__)
+            assert isinstance(app.screen, ExperimentParametersScreen), (clicked,button.region,type(app.screen).__name__)
             widget = app.screen.query_one("#field-" + key.replace("_", "-"), Input)
             assert widget.has_focus
             widget.value = str(new_value)
@@ -191,7 +196,7 @@ def test_stimulus_base_values_open_tui_editor_instead_of_requiring_python(tmp_pa
             editor.query_one("#stimulus-value-name", Input).value = "novice selection"
             editor.query_one("#stimulus-values-save", Button).press()
             await pilot.pause()
-            assert isinstance(app.screen, ExperimentConfigScreen)
+            assert isinstance(app.screen, ExperimentParametersScreen)
             app.screen.query_one("#review", Button).press()
             await pilot.pause()
             assert app.screen is review
