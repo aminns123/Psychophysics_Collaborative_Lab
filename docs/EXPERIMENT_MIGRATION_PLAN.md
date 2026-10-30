@@ -102,7 +102,7 @@ before/after behavioural comparison rather than disabling equivalence checks.
 
 | Wave | Files | Additional proof required before proposing merge |
 |---|---|---|
-| 1 | `example_experiment`, `probe_above_below` | O/A/F; alternating versus selected-seed shuffled targets; state counters/markers; preset overrides; explicit measurement declarations preserving method-specific records. |
+| 1 — complete, PR #169 | `example_experiment`, `probe_above_below` | O/A/F; alternating versus selected-seed shuffled targets; state counters/markers; preset overrides; explicit measurement declarations preserving method-specific records. |
 | 2 | `orientation_task`, `orientation_adaptive` | All supported modes, their different starting-strength sources and finite stopping; zero/subnormal/upper-bound behaviour; tilt mapping and old saved-run meaning. |
 | 3 | Gaussian and circular CSF | A/F; both envelopes, source dependency direction, active-track/target draw order, peak-to-peak convention, estimator and incomplete/boundary flags. No prototype import in official source. |
 | 4 | Both line-position tasks | A/F; geometric estimator, required displacement/frequency, local flanker overlap/sampling and additive headroom, optional onset/accepted-response cues. |
