@@ -1,9 +1,12 @@
 # Official experiment migration plan and scientific field map
 
-**Prepared, not executed.** Governing proposal:
+**Approved family plan; Wave 1 completed in PR #169.** Governing narrative:
 [version-1 authoring standard](EXPERIMENT_AUTHORING_STANDARD.md).
-Baseline: main `a5aa56a9090340f5456b030c97d35ff1b2d1c371`.
-All ten official source files and shared scientific implementations are unchanged.
+The historical design-freeze checkpoint below uses main
+`a5aa56a9090340f5456b030c97d35ff1b2d1c371`; its frozen fixtures remain evidence,
+not a claim that today's source is unchanged. Capture the actual latest merged
+baseline before each remaining wave. Each migration needs its own equivalence
+evidence and review; approval of the narrative does not merge subsequent waves.
 
 ## Inventory and compatibility assessment
 
