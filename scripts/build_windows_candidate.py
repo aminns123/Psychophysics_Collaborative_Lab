@@ -81,7 +81,7 @@ def build(output, cache, label, download=False, *, compiler=None):
     files = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     files = [name for name in files if name]
     # No ignored pointers, environments, laboratory roots or personal files enter a package.
-    if any(name.startswith(('.venv/', 'USER_env/')) or name == '.psycolab_local.json' for name in files):
+    if any(name.startswith(('.venv/', '.venv-dev/', 'USER_env/')) or name == '.psycolab_local.json' for name in files):
         raise ValueError('Protected local files must not be tracked or packaged.')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT))

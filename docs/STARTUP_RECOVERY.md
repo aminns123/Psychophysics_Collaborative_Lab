@@ -7,6 +7,38 @@ actions in the [existing guided Windows setup](WINDOWS_GUIDED_INSTALLATION.md).
 An ordinary launch never invokes setup, pip, Conda, a branch switch or editable
 metadata repair. `run_user_env.bat` remains a separate development terminal tool.
 
+## Maintainer Git checkout on a new PC
+
+The qualified laboratory profile is an exact Conda interpreter build. Installing
+Python 3.11 from python.org does not satisfy that profile. A source-compiled
+recovery host has no installation package, so it cannot create a qualified
+environment on a fresh computer; diagnostics and Cancel alone cannot complete
+first setup.
+
+For source maintenance, use the explicit development setup:
+
+1. Install 64-bit CPython 3.11. A python.org installation is supported here.
+2. Double-click `setup_psycolab_dev.bat` in a Git checkout without a `.venv`.
+   It downloads the project's declared development dependencies into `.venv-dev`
+   and validates imports, dependency compatibility and editable source identity.
+3. Double-click `run_psycolab.bat` to open the normal TUI. Repeat launches only
+   check the development environment; they do not run pip install or write setup
+   records. If dependencies or editable metadata change, rerun the explicit setup.
+
+The recovery window displays this route for eligible Git checkouts. Development
+setup records use a distinct filename and `mode: development`; they do not write
+or substitute for laboratory qualification. The normal launcher selects
+`.venv-dev` only in a Git checkout with **no `.venv` present** and no managed
+installation record. A failing, legacy or damaged `.venv` never falls back to
+development. Preserve it and use a separate Git checkout instead. Managed
+installed snapshots continue to require their existing source seals and locked
+environment checks.
+
+This route supports source maintenance and the ordinary TUI; laboratory software
+qualification and physical apparatus acceptance still require the approved
+installation workflow. The existing experiment, calibration, extension trust and
+data safeguards still apply.
+
 ## Before and after
 
 | Situation | Previous source batch | This change |

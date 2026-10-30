@@ -248,7 +248,7 @@ public static class StartupRecovery
 {
     public class Diagnosis {
         public string category,message,details,root,original_root;
-        public bool healthy,after_application;
+        public bool healthy,after_application,development;
     }
     public class Candidate { public string root,instance,label;public override string ToString(){return label;} }
     static Dictionary<string,object> ObjectAt(Dictionary<string,object> d,string key) {
@@ -261,9 +261,28 @@ public static class StartupRecovery
         return new Diagnosis{root=root,category=category,message=message,details=details};
     }
     public static string Store { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","Installations"); } }
+    public static bool DeveloperCheckout(string root) {
+        if(String.IsNullOrWhiteSpace(root))return false;
+        return (Directory.Exists(Path.Combine(root,".git"))||File.Exists(Path.Combine(root,".git")))
+            &&!File.Exists(Path.Combine(Path.GetDirectoryName(SetupEngine.Full(root)),"installation.json"))
+            &&File.Exists(Path.Combine(root,"scripts","developer_setup.py"));
+    }
+    static bool DevelopmentSelected(string root) {
+        // Never fall back from a failed, damaged or legacy laboratory environment.
+        string qualified=Path.Combine(root,".venv");
+        return DeveloperCheckout(root)&&!Directory.Exists(qualified)&&!File.Exists(qualified)
+            &&Directory.Exists(Path.Combine(root,".venv-dev"));
+    }
     public static Diagnosis Inspect(string root) {
         try {
             root=SetupEngine.Full(root);SetupEngine.Plain(root);
+            if(DevelopmentSelected(root)) {
+                string env=Path.Combine(root,".venv-dev");SetupEngine.Plain(env);
+                SetupEngine.Plain(Path.Combine(env,".psycolab-development.json"));
+                SetupEngine.Plain(Path.Combine(env,"Scripts","python.exe"));
+                if(!File.Exists(Path.Combine(env,"Scripts","python.exe")))return Problem(root,"development_environment_missing","The maintainer environment is incomplete. Run setup_psycolab_dev.bat explicitly.");
+                return new Diagnosis{root=root,category="check_required",development=true,message="Maintainer development checkout; read-only checks are still required. No laboratory qualification is claimed."};
+            }
             string python=Path.Combine(root,".venv","Scripts","python.exe"),statePath=Path.Combine(root,".venv",".psycolab-setup.json");
             SetupEngine.Plain(python);SetupEngine.Plain(statePath);
             string project=Path.Combine(root,"pyproject.toml"),profilePath=Path.Combine(root,"requirements","windows-cp311","profile.json");
@@ -294,8 +313,8 @@ public static class StartupRecovery
             return new Diagnosis{root=root,category="check_required",message="Source location and declared environment agree; installed-file checks are still required."};
         } catch(Exception error) { return Problem(root,"evidence_unreadable","Startup evidence could not be read safely. No correction was attempted.",error.Message); }
     }
-    public static ProcessStartInfo SourceProcess(string root,IEnumerable<string> args) {
-        var start=SetupEngine.Start(Path.Combine(root,".venv","Scripts","python.exe"),args,root);
+    public static ProcessStartInfo SourceProcess(string root,IEnumerable<string> args,bool development=false) {
+        var start=SetupEngine.Start(Path.Combine(root,development?".venv-dev":".venv","Scripts","python.exe"),args,root);
         // Existing explicit laboratory roots remain authoritative for a source checkout.
         foreach(string key in new[]{"PSYCOLAB_CONFIG_DIR","PSYCOLAB_DATA_DIR"}) {
             string value=Environment.GetEnvironmentVariable(key);if(!String.IsNullOrWhiteSpace(value))start.EnvironmentVariables[key]=value;
@@ -312,21 +331,21 @@ public static class StartupRecovery
                 if(!String.Equals(SetupEngine.Full(source),SetupEngine.Full(root),StringComparison.OrdinalIgnoreCase))throw new IOException("Unexpected installation layout.");
                 SetupEngine.ValidateSource(root,SetupEngine.Load(instance),()=>false);
             }
-            var start=SourceProcess(root,new[]{"-I","-B",Path.Combine(root,"scripts","launcher_setup.py"),"--check"});
+            var start=SourceProcess(root,new[]{"-I","-B",Path.Combine(root,"scripts",d.development?"developer_setup.py":"launcher_setup.py"),"--check"},d.development);
             start.RedirectStandardOutput=true;start.RedirectStandardError=true;
             using(var p=Process.Start(start)) {
                 var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();p.WaitForExit();
                 d.details=output.Result+error.Result;
-                if(p.ExitCode!=0)return Problem(root,"qualification_check_failed","The existing read-only qualification check failed. This may concern installed files, interpreter or editable-source identity; see the diagnostic evidence.",d.details);
+                if(p.ExitCode!=0)return Problem(root,d.development?"development_check_failed":"qualification_check_failed",d.development?"The maintainer development check failed. Run setup_psycolab_dev.bat explicitly; ordinary startup does not repair environments.":"The existing read-only qualification check failed. This may concern installed files, interpreter or editable-source identity; see the diagnostic evidence.",d.details);
             }
-            d.healthy=true;d.category="healthy";d.message="This checkout passed its existing read-only qualification checks. No installation, repair or requalification was performed.";
+            d.healthy=true;d.category="healthy";d.message=d.development?"Maintainer development checks passed. This environment has no locked laboratory qualification.":"This checkout passed its existing read-only qualification checks. No installation, repair or requalification was performed.";
         }catch(Exception error){return Problem(root,"environment_or_source_damaged","This installation could not pass its existing source/environment checks. Nothing was repaired.",error.Message);}
         return d;
     }
     public static List<Candidate> Retained(Diagnosis failure,string store) {
         var result=new List<Candidate>();if(failure.healthy||failure.after_application)return result;
         if(!String.IsNullOrWhiteSpace(failure.original_root)&&Directory.Exists(failure.original_root)) {
-            var original=Diagnose(failure.original_root);if(original.healthy)result.Add(new Candidate{root=original.root,label="Verified original checkout: "+original.root});
+            var original=Diagnose(failure.original_root);if(original.healthy&&!original.development)result.Add(new Candidate{root=original.root,label="Verified original checkout: "+original.root});
         }
         string versions=Path.Combine(store,"versions");string[] entries;
         try{entries=Directory.Exists(versions)?Directory.GetDirectories(versions):new string[0];}
@@ -358,6 +377,7 @@ public static class StartupRecovery
     public static string Instructions(Diagnosis d) {
         string common="Preserve the source, environment, qualification records, calibration and data. Never edit a qualification record, install dependencies in place or repeat acquisition automatically. ";
         if(d.after_application)return common+"Inspect the application's existing crash/fatal and incomplete-run records. The exit phase is diagnostic evidence, not authority to resume or repeat an experiment.";
+        if(DeveloperCheckout(d.root)&&!Directory.Exists(Path.Combine(d.root,".venv")))return common+"For this maintainer checkout, explicitly run setup_psycolab_dev.bat once with installed 64-bit CPython 3.11, then open run_psycolab.bat. This creates a separate .venv-dev and does not grant laboratory qualification. For laboratory deployment use the approved environment guide in docs/WINDOWS_ENVIRONMENT.md.";
         if(d.category.StartsWith("qualification_"))return common+"Have the administrator review .venv/.psycolab-setup.json and the captured read-only check output. Missing or older records are not proof that installed packages are qualified. Obtain a separate approved installation if qualification cannot be established.";
         if(d.category=="installation_path_changed")return common+"Use the original checkout only if it still passes the existing checks. Do not copy an environment or its qualification evidence into another source path.";
         if(d.category.StartsWith("profile_")||d.category=="requirements_changed")return common+"Compare this revision's pyproject.toml and requirements/windows-cp311 profile with the recorded profile. Compatible scientific-source edits do not by themselves require dependency repair; a changed dependency contract needs a separately approved environment.";
@@ -389,7 +409,7 @@ public static class StartupRecovery
     public class ExitNotice { public string phase,report; }
     public static int LaunchSource(string root,string[] args) {
         var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
-        return Observe(SourceProcess(root,SetupEngine.ApplicationArguments(args)),root);
+        return Observe(SourceProcess(root,SetupEngine.ApplicationArguments(args),d.development),root);
     }
     public static int LaunchFixed(string instance) {
         try {
@@ -417,6 +437,9 @@ public class RecoveryWindow : Form
         var layout=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(16),AutoScroll=true};Controls.Add(layout);
         layout.Controls.Add(new Label{Text=d.message,AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
         layout.Controls.Add(new Label{Text="Recommended because: "+StartupRecovery.Reason(recommended),AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+        if(!d.healthy&&!d.after_application&&StartupRecovery.DeveloperCheckout(d.root)&&!Directory.Exists(Path.Combine(d.root,".venv"))) {
+            layout.Controls.Add(new Label{Text="Maintaining this Git checkout? Run setup_psycolab_dev.bat once, then open run_psycolab.bat. It uses installed 64-bit Python 3.11 in a separate development environment; laboratory qualification is not granted.",AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+        }
         if(retained.Count==0)layout.Controls.Add(new Label{Text="No verified retained installation is available for this recovery.",AutoSize=true});
         if(!available)layout.Controls.Add(new Label{Text="No separate-install action is verified and available for this recovery.",AutoSize=true});
         if(retained.Count>0) {

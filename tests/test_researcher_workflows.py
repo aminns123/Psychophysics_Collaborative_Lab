@@ -86,9 +86,9 @@ def test_scaffold_is_valid_python_and_never_overwrites(tmp_path):
     before = [p.read_bytes() for p in paths]
     for p in paths:
         if p.suffix == ".py":
-            compile(p.read_text(),str(p),"exec")
+            compile(p.read_text(encoding="utf-8"),str(p),"exec")
         else:
-            json.loads(p.read_text())
+            json.loads(p.read_text(encoding="utf-8"))
     with pytest.raises(ValueError, match="new files"):
         scaffold(tmp_path,"orientation_task")
     assert [p.read_bytes() for p in paths] == before
