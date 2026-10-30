@@ -20,6 +20,10 @@ not a qualified interpreter. A [guided installation candidate](docs/WINDOWS_GUID
 is being qualified for students and managed teaching computers; it is not yet a
 released installer.
 
+Ordinary batch launch never installs or repairs an environment. If it cannot
+start safely, [native startup recovery](docs/STARTUP_RECOVERY.md) explains the
+verified choices and preserves the existing installation.
+
 1. Choose **Experiment**, an experiment, and a display profile.
 2. Configure its conditions, timings, response keys and adaptive settings.
 3. In a stimulus panel, choose **Edit parameters** or **Preview**. Preview opens

@@ -37,7 +37,7 @@ def _environment(root, cache):
 
 def capture_state(app):
     from textual.widgets import Input, Select
-    from .setup import ExperimentConfigScreen, ReviewScreen, DisplayCheckScreen
+    from .setup import _ExperimentInputsScreen, ReviewScreen, DisplayCheckScreen
     from .stimulus_parameters import StimulusParametersPanel
     from .review_files import actual_json_sources
     from ..config.stimulus_parameters import document_for
@@ -47,7 +47,7 @@ def capture_state(app):
     screen = app.screen
     pages = {"StimuliScreen": "stimuli", "ExperimentsScreen": "experiments",
              "HelpScreen": "help", "DataScreen": "data", "DisplayCheckScreen": "display"}
-    if screen is not app.screen_stack[0] and not isinstance(screen, (ExperimentConfigScreen, ReviewScreen)) and type(screen).__name__ not in pages:
+    if screen is not app.screen_stack[0] and not isinstance(screen, (_ExperimentInputsScreen, ReviewScreen)) and type(screen).__name__ not in pages:
         raise ValueError("Save or close this editor/dialog before refreshing")
     home = app.screen_stack[0]
     state = dict(repo_root=str(app.repo_root), data_root=str(app.data_root), run_intent=app.run_intent,
@@ -59,7 +59,7 @@ def capture_state(app):
         state["display_values"] = {w.id: w.value for w in screen.query("Input, Select")
                                    if w.id and w.value is not Select.BLANK}
         state["display_stage"] = screen.active_calibration_stage
-    configuration = next((s for s in reversed(app.screen_stack) if isinstance(s, ExperimentConfigScreen)), None)
+    configuration = next((s for s in reversed(app.screen_stack) if isinstance(s, _ExperimentInputsScreen)), None)
     if isinstance(screen, ReviewScreen):
         request = screen.request
         sources = getattr(screen, "_file_sources", None) or actual_json_sources(app, request)
@@ -74,10 +74,15 @@ def capture_state(app):
         request = SetupRequest(configuration.participant_id, configuration.session_mode, spec.id,
                                configuration.monitor_profile_id, raw, data_root=str(configuration.data_root))
         panels = list(configuration.query(StimulusParametersPanel))
-        stimuli = {p.slot: p.loaded for p in panels if p.loaded}
+        stimuli = ({slot: cached[0] for (*draft_key, slot), cached in app.stimulus_drafts.items()
+                    if tuple(draft_key) == (request.participant_id, spec.id, request.monitor_profile_id)}
+                   if not panels else {p.slot: p.loaded for p in panels if p.loaded})
+        cached_paths = {slot: cached[1] for (*draft_key, slot), cached in app.stimulus_drafts.items()
+                        if tuple(draft_key) == (request.participant_id, spec.id, request.monitor_profile_id)
+                        and cached[1]}
         sources = {"experiment": getattr(configuration, "parameter_json_path", None),
-                   "stimuli": {p.slot: p.path for p in panels if p.path}}
-        state["page"] = "configuration"
+                   "stimuli": {p.slot: p.path for p in panels if p.path} if panels else cached_paths}
+        state["page"] = "parameters" if configuration.scientific_editor else "configuration"
     else:
         return state
     # Values still equal to the loaded defaults follow Python default edits.
@@ -217,7 +222,7 @@ def launch_refreshed(request, root):
 
 async def restore_state(app, state):
     from textual.widgets import Input, Select
-    from .setup import ExperimentConfigScreen, ReviewScreen
+    from .setup import ExperimentConfigScreen, ExperimentParametersScreen, ReviewScreen
     from .parameter_files import file_hash
     from ..config.models import SetupRequest
     from ..experiments._internal.registry import get_experiment
@@ -277,8 +282,19 @@ async def restore_state(app, state):
         configuration.parameter_json_path = Path(name)
         configuration.parameter_json_hash = file_hash(Path(name))
         configuration.parameter_json_pending = False
-    if state["page"] == "review":
-        await app.push_screen(ReviewScreen(request=request))
+    if state["page"] in {"review", "parameters"}:
+        review = ReviewScreen(request=request)
+        await app.push_screen(review)
+        if state["page"] == "parameters":
+            editor = ExperimentParametersScreen(data_root=Path(state["data_root"]),
+                participant_id=request.participant_id, session_mode=request.session_mode,
+                experiment=spec, monitor_profile_id=request.monitor_profile_id,
+                defaults=dict(request.experiment_values), review_return=review)
+            await app.push_screen(editor)
+            if name:
+                editor.parameter_json_path = configuration.parameter_json_path
+                editor.parameter_json_hash = configuration.parameter_json_hash
+                editor.parameter_json_pending = False
 
 
 if __name__ == "__main__":

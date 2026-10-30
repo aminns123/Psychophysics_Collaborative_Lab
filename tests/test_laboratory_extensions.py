@@ -84,7 +84,7 @@ def test_archived_pre_stage_c_extension_retains_legacy_api_and_empty_opening(lab
 def test_new_local_parameter_has_generic_review_edit_route_and_both_methods(lab,tmp_path):
     """Create a local study by extending the documented shared-method example."""
     from textual.widgets import Button,DataTable,Input,Select
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ReviewScreen,ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ReviewScreen,ExperimentParametersScreen
     from simulations.run import simulate
     from scripts.validate_run import validate_run
     identity="demolab__line_strength"
@@ -115,7 +115,7 @@ def test_new_local_parameter_has_generic_review_edit_route_and_both_methods(lab,
             review.query_one("#resolved-settings-table",DataTable).move_cursor(row=row)
             review.query_one("#review-edit-value",Button).press()
             await pilot.pause()
-            assert isinstance(app.screen,ExperimentConfigScreen)
+            assert isinstance(app.screen,ExperimentParametersScreen)
             widget=app.screen.query_one("#field-audit-length-deg",Input)
             assert widget.has_focus
             widget.value="1.4"
@@ -449,7 +449,7 @@ def test_cli_enable_disable_reuses_local_preferences(lab):
 
 def test_external_review_opens_actual_python_and_preset(lab,tmp_path,monkeypatch):
     ready(lab)
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentParametersScreen
     from textual.widgets import Button
     calls=[]
     monkeypatch.setattr('psychophysics_lab.ui.setup.open_source',lambda root,path,**kwargs:calls.append(path))
@@ -457,7 +457,7 @@ def test_external_review_opens_actual_python_and_preset(lab,tmp_path,monkeypatch
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(120,40)) as pilot:
             spec=get_experiment(EXPERIMENT)
-            app.push_screen(ExperimentConfigScreen(data_root=app.data_root,participant_id='TEST',session_mode='new',experiment=spec,monitor_profile_id='legacy_reference_display',defaults=spec.field_defaults()))
+            app.push_screen(ExperimentParametersScreen(data_root=app.data_root,participant_id='TEST',session_mode='new',experiment=spec,monitor_profile_id='legacy_reference_display',defaults=spec.field_defaults()))
             await pilot.pause();app.screen.query_one('#review',Button).press();await pilot.pause()
             screen=app.screen
             assert screen._file_sources['experiment']==lab/'presets/left_right.json'

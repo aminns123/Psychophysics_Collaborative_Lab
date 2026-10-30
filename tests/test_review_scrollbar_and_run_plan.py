@@ -11,7 +11,7 @@ import pytest
 from textual.widgets import Button, DataTable
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.ui.setup import (
-    PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen,
+    PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +37,7 @@ def test_review_table_and_page_scrollbar_have_distinct_rails(tmp_path, monkeypat
                 "staircases_per_condition": 1,
                 "max_trials": 30,
             })
-            configuration = ExperimentConfigScreen(
+            configuration = ExperimentParametersScreen(
                 data_root=app.data_root, participant_id="TEST_ONLY",
                 session_mode="new", experiment=spec,
                 monitor_profile_id="legacy_reference_display", defaults=values,

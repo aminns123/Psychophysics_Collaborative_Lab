@@ -293,7 +293,7 @@ class CalibrationGuideScreen(ModalScreen[None]):
         key, _ = GUIDE_STEPS[self.stage_index]
         profile_id = self.request.monitor_profile_id
         self.app.pop_screen()
-        from .setup import ReviewScreen, DisplayCheckScreen, ExperimentConfigScreen
+        from .setup import ReviewScreen, DisplayCheckScreen, ExperimentParametersScreen
         if isinstance(self.app.screen, ReviewScreen):
             review=self.app.screen
             if key == "contrast":
@@ -304,20 +304,7 @@ class CalibrationGuideScreen(ModalScreen[None]):
                     self.request.participant_id, self.request.experiment_id,
                     self.request.monitor_profile_id
                 )] = dict(self.request.experiment_values)
-                if (len(self.app.screen_stack) >= 2
-                        and isinstance(self.app.screen_stack[-2], ExperimentConfigScreen)):
-                    self.app.pop_screen()
-                else:
-                    from pathlib import Path
-                    self.app.push_screen(ExperimentConfigScreen(
-                        data_root=Path(self.request.data_root or self.app.data_root),
-                        participant_id=self.request.participant_id,
-                        session_mode=self.request.session_mode,
-                        experiment=get_experiment(self.request.experiment_id),
-                        monitor_profile_id=profile_id,
-                        defaults=self.request.experiment_values,
-                        review_return=review,
-                    ))
+                review._edit_experiment_inputs()
                 return
             mapped={"display":"binding","qualification":"qualification"}.get(key,key)
             if any(row['key']==mapped and row.get('action') for row in review.readiness_report['requirements']):
@@ -332,7 +319,7 @@ class CalibrationGuideScreen(ModalScreen[None]):
         if key == "contrast":
             # A guide opened independently of Review should still land on
             # setup, but never turn an experiment-edit request into Calibrate.
-            if not isinstance(self.app.screen, ExperimentConfigScreen):
+            if not isinstance(self.app.screen, ExperimentParametersScreen):
                 self.app.open_hub_page("setup")
             return
         self.app.display_guide_target_profile_id = profile_id

@@ -33,6 +33,18 @@ def frozen_csf_validation_spelling(node):
     return node
 
 
+def frozen_ellipse_validation_spelling(node):
+    """Allow only the exact readable range warning; retain frozen scientific ASTs."""
+    for item in ast.walk(node):
+        if (isinstance(item, ast.Constant) and item.value ==
+                "Choose distinct ellipse aspect ratios within 0.5-1."):
+            item.value = (
+                "Choose distinct ellipse aspect ratios within 0.5"
+                "\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u01531."
+            )
+    return node
+
+
 def read(directory, name):
     return json.loads((directory/name).read_text(encoding='utf-8'))
 
@@ -89,6 +101,8 @@ def test_scientific_function_bodies_are_unchanged_and_trial_definition_is_unique
             node = functions[name]
             if identity == 'contrast_sensitivity' and name == 'validate_settings':
                 node = frozen_csf_validation_spelling(node)
+            if identity == 'ellipse_major_axis' and name == 'validate_settings':
+                node = frozen_ellipse_validation_spelling(node)
             assert digest(ast.dump(node, include_attributes=False)) == expected, name
     assert 'trial_events' in functions and 'make_trial' not in functions
     assert module.make_trial.__wrapped__ is module.trial_events
@@ -259,12 +273,12 @@ def test_ambiguous_trial_factories_fail_before_method_or_scientific_state_creati
 def test_generic_configure_edit_preserves_bound_background_and_selected_appearance(tmp_path, monkeypatch, identity):
     import asyncio
     from textual.widgets import Button, Input
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
     spec = registry.get_experiment(identity)
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(120,50)) as pilot:
-            config = ExperimentConfigScreen(data_root=app.data_root,participant_id='STAGE_B_UI',session_mode='new',
+            config = ExperimentParametersScreen(data_root=app.data_root,participant_id='STAGE_B_UI',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',
                 defaults=spec.normalise_values({'ring_increment':.03} if identity=='ellipse_major_axis' else {}))
             app.push_screen(config)

@@ -100,6 +100,37 @@ callers. This small central adapter wraps the same list; it does not maintain
 another event definition. Acquisition, simulation and Review share the public
 event factory. Existing extensions are not rewritten or automatically trusted.
 
+### Read-only selected-method inspection
+
+An experiment can reuse its existing fixed-method factory in Review:
+
+```python
+method_reviewer={"constant_stimuli": constant_contrast_method}
+```
+
+The factory returns its existing `ConstantContrastMethod`. Review inspects the
+real schedule, preflight bounds, resolution and pure record projection using a
+context that forbids saving, input and trial execution. It never advances the
+method or accepts a response. Older callable `method_reviewer` callbacks retain
+their adaptive-only `(conditions, selected_condition, state)` contract; fixed
+experiments without a declared factory retain the existing planner fallback.
+
+Optional ordinary Python `MEASUREMENT_UNITS` maps journal field names to explicit
+units. Review obtains the actual fields and representative values from the
+existing pure `trial_record` or selected fixed record function. These are journal
+measurements, not additional canonical TSV columns. `REVIEW_INACTIVE_FIELDS`
+can map a method name to retained settings that do not control that method's
+trials or estimator. Such settings remain subject to established validation;
+the declaration does not change defaults, validation, recording or execution.
+Keep `max_trials` active when the fixed planner enforces its safety ceiling.
+
+Use existing `stimulus_parameter_controls` to link an effective renderer input
+to its controlling ConfigField. These links affect inspection/edit navigation;
+they do not bind different acquisition values or infer a control from coincident
+numeric values. None of these optional declarations changes source fingerprinting:
+the complete actual experiment source is still recorded and invalidates readiness
+when changed.
+
 ## Recording and validation
 
 RunContext and the canonical recorder allocate external run folders and save the

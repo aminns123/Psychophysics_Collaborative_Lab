@@ -10,7 +10,7 @@ import sys
 from textual.widgets import Button, Input, Static
 
 from psychophysics_lab.ui import refresh
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentConfigScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentParametersScreen
 from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.stimuli.registry import get_stimulus
@@ -23,7 +23,7 @@ async def configure(app, pilot, to_review=True):
     spec = get_experiment('line_position_baseline')
     values = spec.normalise_values({'probe_vertical_offset_deg': .2, 'positions_deg': '0',
                                    'staircases_per_condition': 1, 'max_trials': 3})
-    screen = ExperimentConfigScreen(data_root=app.data_root, participant_id='REFRESH', session_mode='new',
+    screen = ExperimentParametersScreen(data_root=app.data_root, participant_id='REFRESH', session_mode='new',
         experiment=spec, monitor_profile_id='legacy_reference_display', defaults=values)
     await app.push_screen(screen)
     await pilot.pause()
@@ -91,6 +91,11 @@ def test_restores_review_with_updated_class_defaults_and_back_configuration(tmp_
             assert request.experiment_values['max_trials'] == 3
             resumed.verify_settings_current(request)
             resumed.screen.query_one('#back', Button).press()
+            await pilot.pause()
+            assert not resumed.screen.query(StimulusParametersPanel)
+            resumed.screen.query_one('#review', Button).press()
+            await pilot.pause()
+            resumed.screen.query_one('#review-edit-inputs', Button).press()
             await pilot.pause()
             panel = next(p for p in resumed.screen.query(StimulusParametersPanel) if p.slot == 'first')
             assert panel.current()['document']['parameters']['probe_length_deg'] == 1.73
@@ -224,7 +229,7 @@ def test_refresh_reloads_saved_experiment_json_and_returns_incomplete_configurat
         resumed = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data', refresh_state=state)
         async with resumed.run_test(size=(220,65)) as pilot:
             await pilot.pause()
-            assert isinstance(resumed.screen, ExperimentConfigScreen)
+            assert isinstance(resumed.screen, ExperimentParametersScreen)
             config = resumed.screen
             assert config._field_values()['starting_probe_intensity'] == 1.0
             assert config.parameter_json_path == path

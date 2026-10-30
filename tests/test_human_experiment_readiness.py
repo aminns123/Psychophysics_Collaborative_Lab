@@ -14,7 +14,7 @@ from psychophysics_lab.config.human_readiness import experiment_readiness
 from psychophysics_lab.config.calibration_review import qualify_experiment
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentConfigScreen, DisplayCheckScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentParametersScreen, DisplayCheckScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
 
 
@@ -109,7 +109,7 @@ def test_csf_background_and_starting_contrast_round_trip_through_review(tmp_path
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test(size=(100,30)) as pilot:
-            original=ExperimentConfigScreen(data_root=tmp_path/"data",
+            original=ExperimentParametersScreen(data_root=tmp_path/"data",
                 participant_id="fixture_subject",session_mode="new",
                 experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=selected)
             app.push_screen(original);await pilot.pause()
@@ -169,7 +169,7 @@ def test_editing_current_csf_values_after_review_returns_to_same_form(tmp_path):
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"data")
         async with app.run_test() as pilot:
-            original=ExperimentConfigScreen(data_root=tmp_path/"data",
+            original=ExperimentParametersScreen(data_root=tmp_path/"data",
                 participant_id="fixture_subject",session_mode="new",
                 experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=values())
             app.push_screen(original);await pilot.pause()

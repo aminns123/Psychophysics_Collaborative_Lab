@@ -45,7 +45,9 @@ increment. State defaults, accepted bounds and whether a value is a study choice
 derived quantity or invariant. A digital command is not measured luminance,
 optical contrast, acoustic onset or photon timing.
 
-Use existing `ConfigField` declarations where generic Configure editing is useful.
+Use existing `ConfigField` declarations where generic run-value editing is useful.
+Common run controls appear in Configure; scientific inputs and stimulus editing
+are reached through Review. See [the Configure/Review boundary](CONFIGURE_REVIEW_BOUNDARY.md).
 Plain Python constants/lists remain valid choices; no mandatory TUI toggle or
 second parameter store is introduced. Effective selected values override Python
 defaults. Changing a default does not overwrite a previously selected preset.

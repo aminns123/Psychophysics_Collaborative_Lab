@@ -20,7 +20,7 @@ from psychophysics_lab.ui.calibration_guide import (
     CalibrationGuideScreen, GUIDE_STEPS, guide_statuses
 )
 from psychophysics_lab.ui.setup import (
-    DisplayCheckScreen, ExperimentConfigScreen,
+    DisplayCheckScreen, ExperimentConfigScreen, ExperimentParametersScreen,
     PsyCoLabSetupApp, ReviewScreen
 )
 from psychophysics_lab.ui.profiles import ProfileScreen
@@ -183,7 +183,7 @@ def test_contrast_guidance_returns_to_editable_experiment_without_losing_values(
             assert GUIDE_STEPS[guide.stage_index][0]=="contrast"
             guide.query_one("#guide-open",Button).press()
             await pilot.pause()
-            assert isinstance(app.screen, ExperimentConfigScreen)
+            assert isinstance(app.screen, ExperimentParametersScreen)
             config = app.screen  # focused editor returns to the existing Experiment Review
             assert config.query_one("#field-frequencies-cpd",Input).value=="2,4,8"
             assert float(config.query_one("#field-starting-contrast",Input).value)==pytest.approx(.1)
@@ -217,7 +217,7 @@ def test_contrast_guidance_from_standalone_review_opens_editor(tmp_path, monkeyp
             guide._render_stage()
             guide.query_one("#guide-open", Button).press()
             await pilot.pause()
-            assert isinstance(app.screen, ExperimentConfigScreen)
+            assert isinstance(app.screen, ExperimentParametersScreen)
             assert app.screen.query_one("#field-frequencies-cpd", Input).value == "2,4,8"
             assert float(app.screen.query_one("#field-background-intensity", Input).value) == pytest.approx(.25)
             assert float(app.screen.query_one("#field-starting-contrast", Input).value) == pytest.approx(.1)

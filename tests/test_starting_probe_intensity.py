@@ -116,12 +116,12 @@ def test_step_scale_explains_real_updates_and_does_not_invent_steps_to_backgroun
 
 
 def test_live_tui_and_review_show_absolute_input_and_derived_step_scale(tmp_path):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen, ReviewScreen
     async def scenario():
         spec = get_experiment('line_position_baseline')
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path)
         async with app.run_test(size=(130,50)) as pilot:
-            screen = ExperimentConfigScreen(data_root=tmp_path, participant_id='INTENSITY', session_mode='new',
+            screen = ExperimentParametersScreen(data_root=tmp_path, participant_id='INTENSITY', session_mode='new',
                 experiment=spec, monitor_profile_id='legacy_reference_display', defaults=values_for(spec.id))
             app.push_screen(screen)
             await pilot.pause()

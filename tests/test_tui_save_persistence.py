@@ -12,7 +12,7 @@ from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.local import load_presets, config_root
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.ui.setup import (
-    DisplayCheckScreen, ExperimentConfigScreen, PsyCoLabSetupApp,
+    DisplayCheckScreen, ExperimentParametersScreen, PsyCoLabSetupApp,
 )
 from psychophysics_lab.ui.profiles import ProfileScreen
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
@@ -130,7 +130,7 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
         defaults = experiment.field_defaults()
         async with app.run_test(size=(100, 30)) as pilot:
             app.push_screen(
-                ExperimentConfigScreen(
+                ExperimentParametersScreen(
                     data_root=tmp_path / "data", participant_id="T001",
                     session_mode="new", experiment=experiment,
                     monitor_profile_id="legacy_reference_display", defaults=defaults,

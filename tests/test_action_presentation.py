@@ -178,3 +178,51 @@ def test_first_trial_flip_finishes_session_dwell_in_final_provenance(monkeypatch
         context.close()
     last = json.loads(path.read_text())['events'][-1]
     assert last['next_flip_s'] == last['software_onset_s'] + last['actual_display_duration_s']
+
+
+@pytest.mark.parametrize('abort_next_trial', [False, True])
+def test_native_trial_summaries_match_durable_boundary(monkeypatch, tmp_path, abort_next_trial):
+    """Real phase player may finish a previous screen's dwell on the next trial."""
+    import json
+    from pathlib import Path
+    from dataclasses import replace
+    from psychophysics_lab.researcher import RunContext, ParticipantAbort
+    from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
+    from psychophysics_lab.experiments._internal.registry import get_experiment
+    display, _, handlers = fake_presentation(monkeypatch)
+    display.metadata = {'physical_display_used': False, 'test_backend': 'injected native phase player'}
+    clock = {'now': 0.}
+    monkeypatch.setattr('psychophysics_lab.core.presentation.time.perf_counter', lambda: clock['now'])
+    def dispatch():
+        clock['now'] += .01
+        if getattr(display, '_last_visual_event', {}).get('kind') == 'response':
+            display.held.discard('LEFT')  # injected key release before a fresh answer
+            handlers['on_key_press']('LEFT', 0)
+    display.window.dispatch_events = dispatch
+    display.window.close = lambda: None
+    monkeypatch.setattr('psychophysics_lab.core.presentation.Presentation', lambda *a, **kw: display)
+    spec = replace(get_experiment('contrast_sensitivity'), session_start=[])
+    values = spec.normalise_values({'fixation_ms': 1, 'grating_ms': 1})
+    context = RunContext(values, display.profile, spec, tmp_path,
+        data_kind='uncalibrated_presentation_test',
+        stimulus_snapshots=resolve_stimuli(spec, values, repo_root=Path(__file__).resolve().parents[1]))
+    try:
+        context.initialise(expected_trials=3 if abort_next_trial else 2, resolution={'task': 'native journal ownership regression'})
+        for _ in range(2):
+            context.play_trial([Show('fixation', slot='fixation', duration=1),
+                CollectResponse(actions=('left', 'right'), slot='fixation')], target=0, condition=2)
+        if abort_next_trial:
+            display.window.has_exit = True
+            with pytest.raises(ParticipantAbort):
+                context.play_trial([Show('fixation', slot='fixation', duration=1),
+                    CollectResponse(actions=('left', 'right'), slot='fixation')], target=0, condition=2)
+        else:
+            context.complete()
+    finally:
+        context.close()
+    records = [json.loads(line) for line in (tmp_path/'trial_events.jsonl').read_text().splitlines()]
+    assert json.loads((tmp_path/'trial_actions.json').read_text())['trials'] == [r['trial'] for r in records]
+    assert json.loads((tmp_path/'trial_presentations.json').read_text())['trials'] == [r['presentation'] for r in records if r['presentation'] is not None]
+    assert context.accepted_trials == 2
+    assert all(r['presentation']['phase_events'][0]['actual_display_duration_s'] > 0
+               for r in records if r['presentation'] is not None)
