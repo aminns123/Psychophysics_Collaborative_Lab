@@ -79,6 +79,39 @@ custom parameter names. The test performs Test → Ready, generic Configure →
 Review → edit → validation/cancellation, source navigation, two deterministic
 simulations, saved-run reading/validation and source-change Ready invalidation.
 
+### Both authoring locations, with a laboratory-owned stimulus
+
+`tests/test_independent_authoring_routes.py` additionally runs a newly authored
+annulus-before/after-cue experiment and its own numerical annulus renderer.
+These sources are in `tests/fixtures/review_temporal_lab/`; neither imports an
+official experiment. Scientific conditions are whole-millisecond cue gaps,
+alternatives are before/after order with B/A keys, and saved custom measurements
+include gap, radius, position, exposure, digital increment and target order.
+It explicitly offers the existing finite teaching adaptive method and constant
+stimuli; neither is presented as a validated threshold estimator.
+
+The same definitions are exercised in fresh interpreters in both supported
+layouts, with only their declared relative source paths adjusted:
+
+- A Python experiment inside a disposable copy of `src/psychophysics_lab/experiments/`,
+  plus its stimulus class in that copy's `stimulus_library.py`. Normal discovery
+  finds them without a registry, contribution-list or TUI edit. This does not
+  add a new curated official experiment to the released repository.
+- A separate, explicitly trusted `PsyCoLab_Extensions/experiments/` folder and
+  its own `stimulus_library.py`. Before Test → Ready, ordinary simulation cannot
+  select the draft. Trust is mandatory; it is not inferred from opening Review.
+
+For each layout and each method the tests exercise the actual shared screens,
+generic input and stimulus editors, missing/invalid draft correction, local
+experiment/stimulus preset save and reload, fresh-process F5 checking/restoration,
+two deterministic canonical simulations, 20-column data, custom measurements,
+provenance and saved-run reading/validation. Source links must open the exact
+laboratory Python file, including when a same-named decoy exists in the project.
+The external case performs actual synthetic Test → Ready and verifies deliberate
+source-change invalidation and disabling trust. Unqualified human acquisition
+remains blocked. All source/UI/registry bytes are checked for unexpected writes
+before the deliberate private source-change test.
+
 Existing tests of scientific inputs now target the Review editor. Their
 scientific assertions, frozen references, bounds and safety checks are retained.
 The new root-navigation tests additionally verify that Configure has no hidden
