@@ -57,7 +57,7 @@ class StimulusParametersPanel(Vertical):
         with Horizontal(classes="buttons"):
             yield Button("Edit in TUI", id="stimulus-values-" + self.slot)
             yield Button("Adopt current class defaults", id="stimulus-defaults-" + self.slot,
-                         tooltip="Replace this selected stimulus snapshot with the currently loaded Python defaults. Experiment-controlled values still come from Configure.")
+                         tooltip="Replace this selected stimulus snapshot with the currently loaded Python defaults. Experiment-controlled values still come from the Review parameter editor.")
             yield Button("Edit JSON in editor", id="stimulus-file-" + self.slot)
             yield Button("Reload saved JSON", id="stimulus-file-reload-" + self.slot)
             yield Button("Preview", id="stimulus-preview-" + self.slot)
@@ -117,7 +117,7 @@ class StimulusParametersPanel(Vertical):
         fields = self.configuration.experiment.stimulus_field_bindings.get(self.slot, {})
         if not fields and selected is not None:
             return selected
-        # Bound inputs come from Configure, including after returning from
+        # Bound inputs come from the generic input editor, including after returning from
         # Review. Keep every unbound selected appearance parameter intact.
         values = (dict(selected["document"]["parameters"]) if selected is not None
                   else {f.key: f.default for f in self.stimulus.parameters})

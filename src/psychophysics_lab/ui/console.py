@@ -25,6 +25,7 @@ CONTEXTS = {
     "DataScreen": ("data", "DATA / RUNS"),
     "HelpScreen": ("help", "LEARN / HELP"),
     "ExperimentConfigScreen": ("setup", "EXPERIMENT / 02 CONFIGURE"),
+    "ExperimentParametersScreen": ("setup", "EXPERIMENT / 03 REVIEW / EDIT INPUTS"),
     "ReviewScreen": ("setup", "EXPERIMENT / 03 REVIEW"),
     "ChangeDisplayScreen": ("setup", "EXPERIMENT / DISPLAY"),
     "VirtualObserverOptionsScreen": ("setup", "EXPERIMENT / VIRTUAL OBSERVER"),
@@ -76,9 +77,9 @@ class LaboratoryNavigation(VerticalScroll):
             yield NavigationButton(label, active=key == self.section, id='nav-'+key, tooltip=label)
             if key == 'setup':
                 name = next((type(page).__name__ for page in reversed(self.app.screen_stack)
-                             if type(page).__name__ in {'ExperimentConfigScreen', 'ReviewScreen'}), '')
+                             if type(page).__name__ in {'ExperimentConfigScreen', 'ReviewScreen', 'ExperimentParametersScreen'}), '')
                 yield NavigationButton('Configure', child=True, active=name == 'ExperimentConfigScreen', id='path-configure')
-                yield NavigationButton('Review', child=True, active=name == 'ReviewScreen', id='path-review')
+                yield NavigationButton('Review', child=True, active=name in {'ReviewScreen', 'ExperimentParametersScreen'}, id='path-review')
         context = self.title.split(' / ')[-1].title() if '/' in self.title else ''
         if self.title in {'EXPERIMENT / 01 SETUP', 'EXPERIMENT / 02 CONFIGURE', 'EXPERIMENT / 03 REVIEW'}:
             context = ''
@@ -99,7 +100,7 @@ class LaboratoryNavigation(VerticalScroll):
             button.caption = short if width < 100 else label
             button.update_marker()
         if self.query('#path-review'):
-            self.query_one('#path-review').disabled = not any(type(s).__name__ in {'ExperimentConfigScreen','ReviewScreen'} for s in self.app.screen_stack)
+            self.query_one('#path-review').disabled = not any(type(s).__name__ in {'ExperimentConfigScreen','ExperimentParametersScreen','ReviewScreen'} for s in self.app.screen_stack)
 
     def on_button_pressed(self, event):
         identity = event.button.id or ''
@@ -108,7 +109,7 @@ class LaboratoryNavigation(VerticalScroll):
             self.app.open_hub_page(identity[4:])
         elif identity.startswith('path-'):
             event.stop()
-            if identity == 'path-review' and type(self.app.screen).__name__ == 'ExperimentConfigScreen':
+            if identity == 'path-review' and type(self.app.screen).__name__ in {'ExperimentConfigScreen', 'ExperimentParametersScreen'}:
                 # A Review-to-Edit configuration can sit above the existing
                 # Review. Apply/validate its current draft before returning;
                 # popping straight to the old Review silently discards edits.

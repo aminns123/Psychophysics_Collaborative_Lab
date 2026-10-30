@@ -7,7 +7,7 @@ from textual.widgets import Button, Input, Static
 
 from psychophysics_lab.ui.console import PAGES
 from psychophysics_lab.ui.setup import (
-    PsyCoLabSetupApp, ExperimentConfigScreen, ReviewScreen, ChangeDisplayScreen,
+    PsyCoLabSetupApp, ExperimentConfigScreen, ExperimentParametersScreen, ReviewScreen, ChangeDisplayScreen,
     CodeViewScreen,
 )
 from psychophysics_lab.ui.calibration_review import (
@@ -133,6 +133,13 @@ def test_nested_pages_keep_sidebar_back_actions_and_configuration(tmp_path, monk
             assert isinstance(configuration, ExperimentConfigScreen)
             check_shell(app, 'setup')
             configuration.query_one('#field-trial-count', Input).value = '3'
+            assert not configuration.query(StimulusParametersPanel)
+            configuration.query_one('#review', Button).press()
+            await pilot.pause()
+            app.screen.query_one('#review-edit-inputs', Button).press()
+            await pilot.pause()
+            configuration = app.screen
+            assert isinstance(configuration, ExperimentParametersScreen)
             panel = configuration.query(StimulusParametersPanel).first()
             source = ROOT / 'src/psychophysics_lab/stimulus_library.py'
             profile = app.monitor_profiles['legacy_reference_display']

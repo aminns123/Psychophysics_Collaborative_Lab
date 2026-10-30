@@ -6,7 +6,7 @@ import pytest
 from textual.widgets import Button, Input
 
 from psychophysics_lab.experiments._internal.registry import get_experiment
-from psychophysics_lab.ui.setup import ExperimentConfigScreen, PsyCoLabSetupApp
+from psychophysics_lab.ui.setup import ExperimentParametersScreen, PsyCoLabSetupApp
 from psychophysics_lab.experiments.contrast_sensitivity import make_conditions
 from simulations.registry import get_simulation
 
@@ -20,7 +20,7 @@ def test_csf_config_exposes_selected_cpd_repetitions_and_initial_rule(tmp_path,s
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/"psy_data")
         async with app.run_test(size=size) as pilot:
-            screen=ExperimentConfigScreen(
+            screen=ExperimentParametersScreen(
                 data_root=tmp_path/"psy_data",participant_id="H001",
                 session_mode="new",experiment=experiment,
                 monitor_profile_id="legacy_reference_display",defaults=defaults

@@ -269,7 +269,7 @@ class ExperimentQualificationScreen(Screen):
         if (event.button.id or '').startswith('qualification-resolve-'):
             key=event.button.id.removeprefix('qualification-resolve-')
             spec,values=self._spec_values()
-            from .setup import ReviewScreen,ExperimentConfigScreen
+            from .setup import ReviewScreen,ExperimentParametersScreen
             parent=self.app.screen_stack[-2]
             if isinstance(parent,ReviewScreen) and parent.request.experiment_id==spec.id:
                 self.app.pop_screen(); parent.resolve_requirement(key); return
@@ -282,7 +282,7 @@ class ExperimentQualificationScreen(Screen):
                 from .profiles import ProfileScreen
                 self.app.push_screen(ProfileScreen(profile=self.profile,focus_field='profile-binding'))
             elif key=='contrast':
-                self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,participant_id='synthetic_preview',session_mode='new',experiment=spec,monitor_profile_id=self.profile.id,defaults=values or spec.field_defaults(),focus_field='starting_probe_intensity' if spec.id=='legacy_contrast_sensitivity' else None))
+                self.app.push_screen(ExperimentParametersScreen(data_root=self.app.data_root,participant_id='synthetic_preview',session_mode='new',experiment=spec,monitor_profile_id=self.profile.id,defaults=values or spec.field_defaults(),focus_field='starting_probe_intensity' if spec.id=='legacy_contrast_sensitivity' else None))
             else: self.app.push_screen(PhysicalVerificationScreen(self.profile,experiment_id=spec.id,focus_category=key+'_status'))
             return
         if event.button.id=='qualification-back':

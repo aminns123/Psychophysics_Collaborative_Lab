@@ -27,8 +27,8 @@ def test_generic_sections_retain_every_scientific_field_once():
     groups = grouped_config_fields(spec)
     assert groups[0][0] == "Universal setup"
     assert [field.key for _, fields in groups for field in fields] == [
-        "contrast_method", "background_intensity", "max_trials",
-        "n_down", "fixed_repetitions", "frequencies_cpd",
+        "contrast_method", "max_trials",
+        "n_down", "fixed_repetitions", "frequencies_cpd", "background_intensity",
         "custom_study_condition", "fixation_ms",
     ]
     mapping = {group: {field.key for field in fields} for group, fields in groups}

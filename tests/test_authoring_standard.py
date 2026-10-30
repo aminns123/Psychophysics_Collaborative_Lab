@@ -1,4 +1,4 @@
-"""Design-freeze gates; official files stay the accepted, untouched baseline."""
+"""Design-freeze contracts plus the explicitly approved Wave 1 source revisions."""
 import ast
 from dataclasses import asdict, replace
 import hashlib
@@ -13,18 +13,51 @@ from simulations.run import simulate
 from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
 from test_scientist_first_examples import lab, module, ready, read, presentations, ROOT, CSF, TEMPORAL, VALUES
+from _review_source_additions import ADDITIONS, without_review_additions
 
 BASELINE = json.loads((ROOT / "tests/fixtures/authoring_standard_main_a5aa56a.json").read_text(encoding="utf-8"))
+# PR #169, merged at bd0e30e: exact reviewed source, not permission for later drift.
+WAVE1_SOURCE_SHA256_LF = {
+    "example_experiment": "ce1bc50264b3ef7e0b2b5c7e7f6a16d3dd641ee22c008e23e9cc18c454fd9f2e",
+    "probe_above_below": "246b7ac6ad7d96970d6e755e52a05a6159d10fa756c510ec1f6647d8e34f72c4",
+}
 
 
 def source_hash(path):
-    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    source = path.read_bytes().replace(b"\r\n", b"\n")
+    if path == ROOT / "src/psychophysics_lab/researcher.py":
+        # Pin the complete corrected file, then verify that undoing exactly
+        # these three ownership changes restores the frozen scientific source.
+        assert hashlib.sha256(source).hexdigest() == "8f6416742fab1958f4ccd68a44d6076048ee6898ac54a70390ed33dad5b9b62a"
+        for updated, historical in (
+            (b"from copy import deepcopy\n", b""),
+            (b"self._action_trials.append(deepcopy(trace))", b"self._action_trials.append(trace)"),
+            (b"self._presentations.append(deepcopy(presentation))", b"self._presentations.append(presentation)"),
+        ):
+            assert source.count(updated) == 1
+            source = source.replace(updated, historical, 1)
+    if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
+        source = without_review_additions(source.decode("utf-8"), path.stem).encode("utf-8")
+    if path in {ROOT / "src/psychophysics_lab/experiments" / (identity + ".py")
+                for identity in ("ellipse_centre", "ellipse_major_axis")}:
+        # Preserve the frozen source hashes and every other byte. The only
+        # exception is this exact warning spelling; numerical science is pinned.
+        source = source.replace(
+            b'"Choose distinct ellipse aspect ratios within 0.5-1."',
+            ('"Choose distinct ellipse aspect ratios within 0.5'
+             '\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u01531."').encode("utf-8"),
+        )
+    return hashlib.sha256(source).hexdigest()
 
 
 @pytest.mark.parametrize("saved", BASELINE["experiments"], ids=lambda saved: saved["id"])
-def test_all_ten_official_sources_and_contracts_remain_the_accepted_main(saved):
+def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(saved):
     spec = registry.get_experiment(saved["id"])
-    assert source_hash(ROOT / saved["source"]) == saved["source_sha256_lf"]
+    expected = WAVE1_SOURCE_SHA256_LF.get(saved["id"], saved["source_sha256_lf"])
+    assert source_hash(ROOT / saved["source"]) == expected
+    if saved["id"] in WAVE1_SOURCE_SHA256_LF:
+        historical = ROOT / "tests/fixtures/issue165_wave1" / (saved["id"] + ".py")
+        assert source_hash(historical) == saved["source_sha256_lf"]
     assert json.loads(json.dumps([asdict(field) for field in spec.fields])) == saved["fields"]
     assert json.loads(json.dumps(asdict(spec.response_paradigm))) == saved["responses"]
     assert list(spec.calibration_requirements) == saved["calibration"]

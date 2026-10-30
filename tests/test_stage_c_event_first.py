@@ -15,7 +15,7 @@ from psychophysics_lab.researcher import RunContext, TrialTimeline
 from simulations.run import simulate
 from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
-from test_stage_b_event_first import frozen_csf_validation_spelling
+from test_stage_b_event_first import frozen_csf_validation_spelling, frozen_ellipse_validation_spelling
 
 ROOT=Path(__file__).resolve().parents[1]
 BASELINE=json.loads((ROOT/'tests/fixtures/stage_c_baseline_20261027.json').read_text())
@@ -170,9 +170,21 @@ class LegacyPlanSpelling(ast.NodeTransformer):
 
 
 @pytest.mark.parametrize('identity',OFFICIAL)
-def test_scientific_function_bodies_and_readable_six_section_contract(identity):
+def test_scientific_function_bodies_and_approved_authoring_contract(identity):
     module=importlib.import_module('psychophysics_lab.experiments.'+identity)
     source=Path(module.__file__).read_text(encoding='utf-8')
+    if identity in {'example_experiment', 'probe_above_below'}:
+        # PR #169 adopts A1/A2/B only for these IDs. Current exact-source and
+        # unchanged scientific contracts are guarded in test_authoring_standard;
+        # test_issue165_wave1 compares real current/frozen traces in all modes.
+        positions=[source.index(header) for header in (
+            '# PART A1 — EXPERIMENTAL CHOICES', '# PART A2 — SCIENTIFIC METHODS',
+            '# PART B — FRAMEWORK INTEGRATION')]
+        assert positions==sorted(positions)
+        assert positions[0]<source.index('def trial_events')<positions[1]
+        assert positions[0]<source.index('def trial_measurements')<positions[1]
+        # Retain the Stage C AST checks on the preserved historical reference.
+        source=(ROOT/'tests/fixtures/issue165_wave1'/(identity+'.py')).read_text(encoding='utf-8')
     sections=('PARAMETERS','SESSION START','TRIAL EVENTS','SCIENTIFIC RULES','STOPPING AND RESULTS','FRAMEWORK REGISTRATION')
     positions=[source.index(f'# {i}. {s}') for i,s in enumerate(sections,1)]
     assert positions==sorted(positions)
@@ -183,6 +195,8 @@ def test_scientific_function_bodies_and_readable_six_section_contract(identity):
         node=LegacyPlanSpelling().visit(copy.deepcopy(functions[name]))
         if identity == 'contrast_sensitivity' and name == 'validate_settings':
             node = frozen_csf_validation_spelling(node)
+        if identity in {'ellipse_centre', 'ellipse_major_axis'} and name == 'validate_settings':
+            node = frozen_ellipse_validation_spelling(node)
         assert digest(ast.dump(node,include_attributes=False))==expected,name
     assert module.make_trial.__wrapped__ is module.trial_events
     for event in module.SPEC.session_start.phases:

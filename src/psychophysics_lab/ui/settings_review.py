@@ -1,8 +1,17 @@
 """Read the experiment's own planning functions; no alternative scientific model."""
 import json
 import sys
+import inspect
+from collections.abc import Mapping
 from pathlib import Path
 from ..researcher import RunContext
+
+
+def _source_position(function):
+    try:
+        return {"path": inspect.getsourcefile(function), "line": inspect.getsourcelines(function)[1]}
+    except (OSError, TypeError):
+        return {}
 
 
 class _ParameterReads(dict):
@@ -70,32 +79,50 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         event_factory = getattr(module, "make_trial", None)
     names = ("prepare_stimuli",)
     method = values.get("contrast_method")
+    reviewer = (spec.method_reviewer.get(method) if isinstance(spec.method_reviewer, Mapping)
+                else spec.method_reviewer if method == "adaptive" else None)
     if not ((method == "constant_stimuli" and callable(spec.method_planner))
-            or (method == "adaptive" and callable(spec.method_reviewer))):
+            or callable(reviewer)):
         names += ("make_conditions", "initialise_experiment", "choose_condition")
     if not callable(event_factory) or not all(callable(getattr(module, name, None)) for name in names):
         result["note"] = "Selected parameters shown; this procedure supplies no separate trial-planning functions."
         return result
     run = _PlanningContext(values, profile, spec, Path(), synthetic=True, seed=0, stimulus_snapshots=snapshots)
-    if values.get("contrast_method") == "constant_stimuli" and callable(spec.method_planner):
+    record_function = None
+    if method == "constant_stimuli" and (callable(reviewer) or callable(spec.method_planner)):
         # Review must inspect the selected fixed-level schedule, not invent a
         # staircase just because this CSF experiment supports adaptive trials.
-        schedule = spec.method_planner(values, run.seed)
-        unique = list(dict.fromkeys(row["value"] for row in schedule))
-        conditions = [{"id": i, "value": value} for i, value in enumerate(unique, 1)]
+        selected_method = reviewer(run) if callable(reviewer) else None
+        if selected_method is not None:
+            from ..methods.contrast import ConstantContrastMethod
+            if not isinstance(selected_method, ConstantContrastMethod):
+                raise TypeError("Fixed method reviewer must return its existing ConstantContrastMethod.")
+            result["planning_source"] = _source_position(reviewer)
+        schedule = selected_method.schedule if selected_method is not None else spec.method_planner(values, run.seed)
+        unique = {}
+        for row in schedule:
+            unique.setdefault(row["value"], {key: value for key, value in row.items()
+                                            if key not in {"id", "repeat", "target", "contrast"}})
+        conditions = [dict(item, id=i) for i, item in enumerate(unique.values(), 1)]
         condition = schedule[0]
         state = {}
-        run.initialise(expected_trials=len(schedule),
-                       resolution={"trial_selection_method": "constant_stimuli",
-                                   "planned_trials": len(schedule),
-                                   "fixed_contrast_levels": list(dict.fromkeys(row["contrast"] for row in schedule)),
-                                   "fixed_repetitions_per_level_per_condition": values["fixed_repetitions"]})
+        if selected_method is None:
+            run.initialise(expected_trials=len(schedule),
+                           resolution={"trial_selection_method": "constant_stimuli",
+                                       "planned_trials": len(schedule),
+                                       "fixed_contrast_levels": list(dict.fromkeys(row["contrast"] for row in schedule)),
+                                       "fixed_repetitions_per_level_per_condition": values["fixed_repetitions"]})
+        else:
+            # The existing factory resolves its real preflight and metadata.
+            # Do not advance the schedule, collect input or accept a response.
+            state = selected_method.state
+            record_function = selected_method._record
         representative_note = ("Constant stimuli: scientific conditions remain unchanged; "
                                f"{len(schedule)} planned presentations at the selected fixed levels. "
                                "This is one seeded sample; no adaptive staircase or threshold estimate.")
-    elif values.get("contrast_method") == "adaptive" and callable(spec.method_reviewer):
+    elif method == "adaptive" and callable(reviewer):
         # New teaching methods declare their own execution-free preview.
-        conditions, condition, state = spec.method_reviewer(run)
+        conditions, condition, state = reviewer(run)
         representative_note = (
             "Adaptive teaching method: illustrative selected trial with "
             "current starting digital strength; no threshold claim."
@@ -110,6 +137,17 @@ def describe_settings(spec, values, snapshots, *, profile=None):
         module.prepare_selection(run, condition)
     prepare = getattr(module, "prepare_method_stimuli", module.prepare_stimuli)
     stimuli = prepare(run, condition, state)
+    units = getattr(module, "MEASUREMENT_UNITS", {})
+    if units:
+        if method != "constant_stimuli":
+            record_function = record_function or getattr(module, "trial_record", None)
+        if record_function is not None:
+            record = (record_function(run, condition) if method == "constant_stimuli"
+                      else record_function(run, condition, state))
+            result["measurements"] = {name: {"sample": value, "units": units.get(name, "Units not declared")}
+                                      for name, value in record.get("measurements", {}).items()}
+            result["measurement_source"] = _source_position(record_function)
+    result["inactive_fields"] = tuple(getattr(module, "REVIEW_INACTIVE_FIELDS", {}).get(method, ()))
     # Capture dependency reads before converting the returned mappings for display.
     reads = {slot: set(keys) for slot, keys in run.parameter_reads.items()}
     from ..core.timeline import as_trial_timeline
@@ -173,8 +211,14 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         return (f"Meaning: {meaning} | Setting: {field.key} "
                 f"| Selected in TUI/saved setup; original {base} = {defaults[field.key]!r}")
     controls = set(spec.adaptive.controls) if spec.adaptive else set()
-    rows = [("Experiment", field.display_label, str(values[field.key]), origin(field))
-            for field in spec.fields if field.key not in controls]
+    method = values.get("contrast_method", "adaptive")
+    adaptive = method == "adaptive"
+    inactive = set(description.get("inactive_fields", ()))
+    def field_origin(field):
+        return origin(field) + (" | Not used by the selected method; existing settings validation still applies."
+                                if field.key in inactive else "")
+    rows = [("Experiment", field.display_label, str(values[field.key]), field_origin(field))
+            for field in spec.fields if field.key not in controls or not adaptive]
     # Input settings have one authoritative, editable row. Derived contrast
     # summaries must not duplicate the same selected intensity or staircase rule.
     field_keys = {field.key for field in spec.fields}
@@ -188,7 +232,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
         or (row[:2] == ("Adaptive scale", "Response rule")
             and {"n_down", "n_up"} <= field_keys)
     ))
-    if spec.adaptive and values.get("contrast_method", "adaptive") == "adaptive":
+    if spec.adaptive and adaptive:
         rows.append(("Adaptive", "Algorithm", spec.adaptive.algorithm_id, "Selected by experiment Python"))
         rows.extend(("Adaptive", field.display_label, str(values[field.key]), origin(field))
                     for field in spec.fields if field.key in controls)
@@ -217,7 +261,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             if controller:
                 control = next(f for f in spec.fields if f.key == controller)
                 source = (f"Derived / experiment-controlled by {controller} ({control.display_label}). "
-                          f"Change Configure → {control.section} → {control.label}; "
+                          f"Change Review → Edit inputs / stimuli → {control.section} → {control.label}; "
                           "the stimulus Python default or preset is overridden. " + source)
             elif field.key in description["overrides"].get(slot, {}):
                 usage = ("Trial-controlled; value shown for one representative trial"
@@ -248,6 +292,11 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                  else "Number of condition/staircase entries")
         rows.append(("Conditions", label, str(len(description["conditions"])),
                      "Experiment's selected condition values"))
+        if adaptive:
+            distinct = {str(c.get("value", c.get("frequency_cpd", c.get("id"))))
+                        for c in description["conditions"]}
+            rows.append(("Conditions", "Number of distinct scientific conditions", str(len(distinct)),
+                         "Independent staircase repeats do not add scientific conditions"))
         keys = dict.fromkeys(key for c in description["conditions"] for key in c if key not in {"id","repeat"})
         for key in keys:
             distinct = list(dict.fromkeys(str(c[key]) for c in description["conditions"] if key in c))
@@ -308,6 +357,12 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     }
     def plan_rows(mapping, prefix=""):
         for key, value in mapping.items():
+            # Structured conditions and schedule counts already have dedicated
+            # rows. The saved general protocol can describe inactive methods;
+            # retain it in the description, not as a selected fixed-run rule.
+            if not prefix and (key in {"schedule", "condition_definitions"}
+                               or (method == "constant_stimuli" and key == "protocol" and isinstance(value, dict))):
+                continue
             label = f"{prefix} / {key}" if prefix else str(key)
             if isinstance(value, dict):
                 yield from plan_rows(value, label)
@@ -341,6 +396,21 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             else:
                 yield ("Run plan", label, rendered, "Resolved by experiment initialise_experiment")
     rows.extend(plan_rows(description.get("resolution", {})))
+    for name, measurement in description.get("measurements", {}).items():
+        rows.append(("Recorded measurements", f"{name} ({measurement['units']})", str(measurement["sample"]),
+                     "Per-trial journal measurement; representative trial value, not an additional canonical column"))
+    from ..data.trials import TRIAL_COLUMNS, TRIAL_DATA_DICTIONARY_FILENAME
+    rows.extend([
+        ("Saved data", "Canonical trial table", "trials.tsv", f"{len(TRIAL_COLUMNS)} columns; meanings and units in {TRIAL_DATA_DICTIONARY_FILENAME}"),
+        ("Saved data", "Per-trial journal", "trial_events.jsonl", "Chronological events, prepared stimuli and custom measurements; retained on interruption"),
+        ("Saved data", "Run settings and provenance", "manifest.json; experiment_config.json; resolved_experiment.json", "Source identities, selected settings and resolved scientific definitions"),
+    ])
+    if "primary_estimator" in description.get("resolution", {}):
+        rows.append(("Saved data", "Adaptive results", "adaptive_session.json; primary_thresholds.json",
+                     "Track history and declared primary estimator; incomplete conditions are excluded"))
+    elif method == "constant_stimuli":
+        rows.append(("Saved data", "Fixed-level results", "resolved_experiment.json / observed_level_accuracy",
+                     "Accepted-response counts and accuracy per condition/strength; no staircase threshold"))
     return rows
 
 
@@ -363,6 +433,7 @@ def probe_intensity_rows(spec, values, *, conditions=None):
             or down <= 0 or up <= 0):
         raise ValueError("Use finite 0..1 intensities (probe at or above background, background below 1) and positive log steps.")
     difference = intensity - background
+    adaptive = values.get("contrast_method", "adaptive") == "adaptive"
     module = sys.modules[spec.procedure.__module__]
     try:
         # Some study conditions are still incomplete while typing. The shared
@@ -376,14 +447,18 @@ def probe_intensity_rows(spec, values, *, conditions=None):
             ("Intensity", "Background intensity", f"{background:.10g}", digital_note),
             ("Contrast", "Starting difference from background", f"{difference:.10g}", "probe intensity minus background; adaptive/recorded strength"),
             ("Contrast", "Relative digital contrast", f"{difference/background:.10g}" if background else "undefined at black background", "(probe-background)/background; not luminance Weber contrast")]
+    if not adaptive:
+        rows = [("Intensity", "Background intensity", f"{background:.10g}", digital_note)]
     if bounds:
-        rows.append(("Intensity", "Maximum nominal probe intensity", ", ".join(f"{background+b:.10g}" for b in sorted(set(bounds))), "Experiment's additive headroom; outward updates hold at the ceiling"))
-        if any(b <= 0 or difference > b for b in bounds):
+        rows.append(("Intensity", "Maximum nominal probe intensity", ", ".join(f"{background+b:.10g}" for b in sorted(set(bounds))), "Experiment's resolved local additive headroom; digital command, not measured luminance"))
+        if adaptive and any(b <= 0 or difference > b for b in bounds):
             rows.append(("Intensity", "Starting intensity check", "Outside at least one condition's headroom", "Review settings; no value was clipped"))
             return rows
         maximum = min(bounds)
     else:
         rows.append(("Intensity", "Maximum nominal probe intensity", "Resolve study conditions first", "The experiment defines condition-specific headroom"))
+        return rows
+    if not adaptive:
         return rows
     next_down = bounded_log_step(difference, -down, maximum=maximum)
     next_up = bounded_log_step(difference, up, maximum=maximum)

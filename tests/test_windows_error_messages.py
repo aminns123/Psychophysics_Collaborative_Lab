@@ -1,8 +1,10 @@
 """Readable feedback must retain validation, isolation and readiness safeguards."""
+import asyncio
 import json
 from pathlib import Path
 
 import pytest
+from textual.widgets import Button, Input, Static
 
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from simulations.run import simulate
@@ -26,6 +28,55 @@ def test_csf_frequency_bounds_and_readable_error(identity, frequencies, valid):
             spec.normalise_values(values)
         assert str(error.value).isascii()
     assert values == {"frequencies_cpd": frequencies}
+
+
+@pytest.mark.parametrize("identity", ["ellipse_centre", "ellipse_major_axis"])
+@pytest.mark.parametrize("ratios,valid", [
+    ("0.5,1", True), ("0.499,0.75", False), ("0.75,1.001", False),
+    ("0.5,0.5", False), ("0.5,nan", False), ("0.5,inf", False),
+])
+def test_ellipse_aspect_ratio_bounds_and_readable_error(identity, ratios, valid):
+    spec = get_experiment(identity)
+    values = {"ring_increment": .05, "aspect_ratios": ratios}
+    original = dict(values)
+    if valid:
+        assert spec.normalise_values(values)["aspect_ratios"] == ratios
+    else:
+        with pytest.raises(ValueError, match="0.5-1") as error:
+            spec.normalise_values(values)
+        assert "Choose distinct ellipse aspect ratios within 0.5-1." in str(error.value)
+        assert str(error.value).isascii()
+    assert values == original  # Validation never replaces a researcher's draft.
+
+
+@pytest.mark.parametrize("identity", ["ellipse_centre", "ellipse_major_axis"])
+def test_ellipse_ratio_error_preserves_unsaved_configure_inputs(tmp_path, identity):
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
+
+    async def scenario():
+        spec = get_experiment(identity)
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        async with app.run_test(size=(130, 50)) as pilot:
+            screen = ExperimentParametersScreen(
+                data_root=app.data_root, participant_id="ELLIPSE_ERROR",
+                session_mode="new", experiment=spec,
+                monitor_profile_id="legacy_reference_display",
+                defaults=spec.normalise_values({"ring_increment": .05}),
+            )
+            app.push_screen(screen)
+            await pilot.pause()
+            screen.query_one("#field-aspect-ratios", Input).value = "0.49,1"
+            screen.query_one("#field-fixation-ms", Input).value = "777"
+            await pilot.pause()
+            screen.query_one("#review", Button).press()
+            await pilot.pause()
+            assert app.screen is screen
+            message = str(screen.query_one("#config-status", Static).render())
+            assert "Choose distinct ellipse aspect ratios within 0.5-1." in message
+            assert screen.query_one("#field-aspect-ratios", Input).value == "0.49,1"
+            assert screen.query_one("#field-fixation-ms", Input).value == "777"
+
+    asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("fault,error_type", [

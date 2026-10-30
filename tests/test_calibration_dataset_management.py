@@ -17,7 +17,7 @@ from psychophysics_lab.config.calibration_review import save_verification
 from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.input_constraints import experiment_constraints
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen,ReviewScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentParametersScreen,ReviewScreen
 from psychophysics_lab.ui.luminance_data import LuminanceDataScreen
 from psychophysics_lab.core.presentation_testing import PresentationTestRequest,run_presentation_test,MARKER
 
@@ -155,7 +155,7 @@ def test_current_background_is_an_editable_digital_command_not_a_locked_pair(tmp
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'human')
         async with app.run_test(size=(100,30)) as pilot:
-            editor=ExperimentConfigScreen(data_root=tmp_path/'human',participant_id='H001',
+            editor=ExperimentParametersScreen(data_root=tmp_path/'human',participant_id='H001',
                 session_mode='new',experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=source)
             app.push_screen(editor); await pilot.pause()
             editor.query_one('#field-background-intensity',Input).value='.25'

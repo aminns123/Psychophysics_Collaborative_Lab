@@ -123,7 +123,7 @@ class ExperimentSpec:
     # Appended to preserve existing positional constructor arguments.
     origin_namespace: str = ""
     method_planner: Callable | None = None
-    method_reviewer: Callable | None = None
+    method_reviewer: Callable | Mapping[str, Callable] | None = None
     # Review-only links from resolved renderer inputs to editable experiment
     # settings. Unlike stimulus_field_bindings these do not alter resolution.
     stimulus_parameter_controls: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
@@ -168,8 +168,12 @@ class ExperimentSpec:
                 raise ValueError("Stimulus parameter controls must reference declared slots and experiment fields.")
         if self.adaptive is not None:
             self.adaptive.validate({item.key for item in self.fields})
-        if self.method_reviewer is not None and not callable(self.method_reviewer):
-            raise TypeError('Experiment method reviewer must be callable.')
+        if isinstance(self.method_reviewer, Mapping):
+            if any(not isinstance(key, str) or not callable(value)
+                   for key, value in self.method_reviewer.items()):
+                raise TypeError('Experiment method reviewers require method names and callable factories.')
+        elif self.method_reviewer is not None and not callable(self.method_reviewer):
+            raise TypeError('Experiment method reviewer must be callable or a method/factory mapping.')
         if self.method_planner is not None and not callable(self.method_planner):
             raise TypeError("Experiment method planner must be callable.")
         if self.procedure is not None and not callable(self.procedure):
