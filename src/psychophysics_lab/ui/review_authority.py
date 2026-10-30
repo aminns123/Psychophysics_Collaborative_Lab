@@ -64,6 +64,16 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                           route="Configure → Contrast selection method",
                           explanation=(f"{key} is retained but does not control this method's trials or estimator. "
                                        "Existing settings validation still applies; no value has been changed."))
+        if field.editable:
+            try:
+                field.coerce(values.get(key))
+            except (ValueError, TypeError):
+                missing = field.default is None and values.get(key) in (None, "")
+                result.update(status="Missing required input" if missing else "Invalid selected input",
+                              edit_kind="experiment", field=key,
+                              route=f"Review → Edit inputs / stimuli → {section} → {field.display_label}",
+                              explanation="Correct this selected input in the generic editor, then apply to Review. "
+                                          "The draft is retained; execution still requires the existing validation.")
     if group in {"Responses", "Trial action", "Audio", "Session start (once)", "Recorded measurements", "Saved data"} and not key:
         result.update(status="Scientific definition", edit_kind=None,
                       route="Advanced source inspection; response keys and timing inputs are editable above")
