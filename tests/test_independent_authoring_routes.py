@@ -98,6 +98,9 @@ async def scenario():
         review=app.screen
         assert isinstance(review,ReviewScreen) and not review.configuration_error, (type(review).__name__, getattr(review,"configuration_error",None))
         assert {'Conditions','Responses','Trial','Recorded measurements','Saved data','ring'} <= {r[0] for r in review._review_rows}
+        assert all('Units not declared' not in r[1] for r in review._review_rows if r[0]=='Recorded measurements')
+        inactive='starting_strength' if method=='constant_stimuli' else 'fixed_contrasts'
+        assert next(a for a in review._row_authorities if a['field']==inactive)['status']=='Inactive for selected method'
         assert any(r[1]=='Cue gaps (ms)' for r in review._review_rows)
         assert any('before_cue' in r[2] and 'after_cue' in r[2] for r in review._review_rows)
         measurement=next(i for i,r in enumerate(review._review_rows) if r[0]=='Recorded measurements' and r[1]=='cue_gap_ms (ms)')

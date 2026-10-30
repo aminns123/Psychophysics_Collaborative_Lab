@@ -27,7 +27,12 @@ RESPONSES = ResponseParadigm('annulus_order', ('before_cue','after_cue'), ('B','
 SESSION_START = [WaitForKey('ready',key='SPACE',slot='cue'), Show('settle',slot='cue',duration=10)]
 MEASUREMENT_UNITS = {'cue_gap_ms':'ms', 'annulus_x_deg':'degrees', 'annulus_radius_deg':'degrees',
                      'requested_flash_ms':'ms', 'requested_increment':'digital increment above 0.5',
-                     'target_order':'0=before, 1=after'}
+                     'target_order':'0=before, 1=after', 'fixed_repeat':'count within gap and increment',
+                     'presented_display_contrast':'digital increment above 0.5'}
+REVIEW_INACTIVE_FIELDS = {
+    'adaptive': ('fixed_contrasts','fixed_repetitions'),
+    'constant_stimuli': ('starting_strength','trial_count','n_down','n_up','down_factor','up_factor'),
+}
 
 def trial_events(settings, condition):
     annulus = Show('annulus', stimuli=(Stimulus('ring',x_deg=settings['ring_x_deg']),), duration='flash_ms')
