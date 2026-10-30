@@ -81,12 +81,12 @@ def test_failed_second_patch_releases_partial_allocations_and_allows_retry(monke
 
 @pytest.mark.parametrize('identity',['example_experiment','probe_above_below'])
 def test_real_tui_review_can_display_the_entire_example_trial(tmp_path,identity):
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen,ReviewScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentParametersScreen,ReviewScreen
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path)
         spec=get_experiment(identity)
         async with app.run_test(size=(120,45)) as pilot:
-            screen=ExperimentConfigScreen(data_root=tmp_path,participant_id='STRESS_REVIEW',session_mode='new',
+            screen=ExperimentParametersScreen(data_root=tmp_path,participant_id='STRESS_REVIEW',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',defaults=spec.field_defaults())
             app.push_screen(screen)
             await pilot.pause()
@@ -127,7 +127,7 @@ def test_large_seed_survives_json_tui_trial_order_and_saved_manifest(tmp_path):
     import random
     from textual.widgets import Input
     from psychophysics_lab.ui.parameter_files import load_experiment_json
-    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentConfigScreen
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp,ExperimentParametersScreen
     from simulations.run import simulate
     seed=2**63-1
     spec=get_experiment('orientation_task')
@@ -139,7 +139,7 @@ def test_large_seed_survives_json_tui_trial_order_and_saved_manifest(tmp_path):
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(120,45)) as pilot:
-            screen=ExperimentConfigScreen(data_root=tmp_path/'data',participant_id='LARGE_SEED',session_mode='new',
+            screen=ExperimentParametersScreen(data_root=tmp_path/'data',participant_id='LARGE_SEED',session_mode='new',
                 experiment=spec,monitor_profile_id='legacy_reference_display',defaults=loaded)
             app.push_screen(screen)
             await pilot.pause()

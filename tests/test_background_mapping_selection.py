@@ -13,7 +13,7 @@ from psychophysics_lab.config.background_mapping import mapping_choices, configu
 from psychophysics_lab.config.preflight import validate_setup
 from psychophysics_lab.config.models import SetupRequest
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentParametersScreen
 
 
 def measured(*, kind='genuine', endpoint=True):
@@ -32,7 +32,7 @@ def selected_values():
 
 
 def editor_for(p, data, defaults=None):
-    return ExperimentConfigScreen(data_root=data,participant_id='H001',session_mode='new',
+    return ExperimentParametersScreen(data_root=data,participant_id='H001',session_mode='new',
         experiment=CSF_SPEC,monitor_profile_id=p.id,defaults=defaults or selected_values())
 
 

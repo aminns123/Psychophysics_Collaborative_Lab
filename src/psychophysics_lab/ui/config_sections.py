@@ -1,8 +1,8 @@
 """Presentation-only grouping of experiment configuration fields.
 
-Every parameter remains researcher-editable before acquisition. Universal
-setup decisions are shown first; scientific condition/geometry/timing inputs
-remain in named, expandable sections. Review explains their resolved effect.
+Configure renders only Universal setup. The same declared fields, validators
+and stimulus controls are available in Review's generic parameter editor.
+Scientific condition/geometry/timing groups never appear in Configure.
 
 The grouping cannot change ConfigField keys, defaults, scientific validation,
 saved settings or trial data; experiment authors may keep declaring sections.
@@ -15,8 +15,7 @@ from collections import OrderedDict
 # Shared setup *roles*. No experiment ID or grating-specific parameter is
 # assumed. A local study may define entirely different scientific conditions.
 _COMMON_SETUP_KEYS = frozenset({
-    "contrast_method", "background_intensity", "starting_probe_intensity",
-    "starting_strength", "max_trials", "trial_count", "random_seed",
+    "contrast_method", "max_trials", "trial_count", "random_seed",
 })
 
 
@@ -24,7 +23,7 @@ def grouped_config_fields(experiment):
     """Return ordered (section, fields) pairs for any ExperimentSpec.
 
     An unknown field declared in the default 'Experiment' section is not
-    discarded: it becomes an expandable experiment-specific parameter.
+    discarded: it belongs to Review's generic scientific input editor.
     All schema fields are returned exactly once, without mutating the spec.
     """
     adaptive_controls = set(experiment.adaptive.controls) if experiment.adaptive else set()

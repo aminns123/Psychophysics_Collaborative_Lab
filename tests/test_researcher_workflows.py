@@ -14,7 +14,7 @@ from psychophysics_lab.adaptive.steps import paired_step
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.experiments._internal.responses import LEFT_RIGHT, TWO_INTERVAL, ResponseParadigm
 from _manual_authoring_fixture import scaffold
-from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen
+from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ExperimentConfigScreen, ExperimentParametersScreen
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -135,6 +135,13 @@ def test_small_screen_navigation_and_opt_in_calculation(tmp_path,size):
             await pilot.pause(.2)
             screen=app.screen
             assert isinstance(screen,ExperimentConfigScreen)
+            assert not screen.query('#calculate-up')
+            screen.query_one('#review',Button).press()
+            await pilot.pause()
+            app.screen.query_one('#review-edit-inputs',Button).press()
+            await pilot.pause()
+            screen=app.screen
+            assert isinstance(screen,ExperimentParametersScreen)
             assert len(screen.query("#calculate-up")) == len(screen.query("#calculate-down")) == 1
             nav=screen.query_one("#hub-nav")
             before=nav.region

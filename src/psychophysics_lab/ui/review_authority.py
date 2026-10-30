@@ -15,7 +15,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
     field = next((f for f in spec.fields if group in {"Experiment", "Adaptive"}
                   and f.display_label == label), None)
     key = field.key if field else target.get("key") if target.get("kind") == "experiment_json" else None
-    result = dict(status="Derived / scientific", route="Configure → relevant scientific inputs",
+    result = dict(status="Derived / scientific", route="Review → Edit experiment inputs / stimuli",
                   edit_kind="configuration", field=None, slot=None, meaning=meaning,
                   explanation="Calculated by the selected experiment; this row is not an independent input.")
     if group in snapshots:
@@ -28,17 +28,17 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                 if parameter.key in parameter_sources(description, group):
                     result.update(status="Trial-controlled", explanation=(
                         "The experiment sets this value for each trial. Change its scientific conditions or "
-                        "selected strength method in Configure; editing a stimulus default will be overridden."))
+                        "selected inputs in Review; editing a stimulus default will be overridden."))
                 else:
                     result.update(status="Editable stimulus base" if parameter.editable else "Fixed definition",
                         edit_kind="stimulus" if parameter.editable else None, slot=group, field=parameter.key,
-                        route=f"Configure → Experiment-specific stimulus parameters → {group} → {parameter.label}",
+                        route=f"Review → Edit experiment inputs / stimuli → {group} → {parameter.label}",
                         explanation=f"Selected base: {base!r}. Effective sample: {value}. "
                                     f"Current Python default: {parameter.default!r}. Source: "
                                     f"{snapshots[group]['file_identity']}. "
                                     "The selected snapshot/preset takes precedence over later Python default edits. "
                                     "Use Edit selected value for this run, or press Adopt current class defaults "
-                                    "in Configure to replace the retained snapshot with refreshed defaults.")
+                                    "in the Review parameter editor to replace the retained snapshot with refreshed defaults.")
                     if parameter.key in description["overrides"].get(group, {}):
                         result["explanation"] += " The experiment reads this base and transforms it during trials."
                 return result
@@ -51,14 +51,14 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
         section = next((name for name, items in grouped_config_fields(spec)
                         if any(f.key == key for f in items)), field.section)
         result.update(edit_kind="experiment" if field.editable else None, field=key,
-                      route=f"Configure → {section} → {field.display_label}")
+                      route=f"{'Configure' if section == 'Universal setup' else 'Review → Edit experiment inputs / stimuli'} → {section} → {field.display_label}")
         if group not in snapshots:
             result["status"] = "Editable experiment" if field.editable else "Fixed definition"
             saved = sources.get("experiment")
             result["explanation"] = (f"Acquisition uses the current selected experiment setting {key}={values[key]!r}. "
                 + (f"Matching saved experiment JSON: {saved}. " if saved else "Authority: current TUI/run selection. ")
                 + "Changing a Python default does not overwrite this selected value. "
-                "Edit here through Configure; advanced JSON editing remains available.")
+                "Use the generic input editor; advanced JSON editing remains available.")
         if key in description.get("inactive_fields", ()):
             result.update(status="Inactive for selected method", edit_kind=None,
                           route="Configure → Contrast selection method",

@@ -1658,7 +1658,53 @@ class HelpScreen(HubPage):
             self.app.push_screen(CodeViewScreen(title="Extending PsyCoLab", path=path))
 
 
-class ExperimentConfigScreen(Screen):
+class _ExperimentInputsScreen(Screen):
+    scientific_editor = False
+
+    @property
+    def visible_fields(self):
+        from .config_sections import grouped_config_fields
+        return tuple(field for group, fields in grouped_config_fields(self.experiment)
+                     if self.scientific_editor or group == "Universal setup" for field in fields)
+
+    def _raw_values(self):
+        values = self.experiment.field_defaults() | self.defaults
+        values.update(self.app.config_drafts.get(self.draft_key, {}))
+        for field in self.visible_fields:
+            raw = self.query_one("#" + _field_widget_id(field)).value
+            values[field.key] = None if _is_blank_select_value(raw) else raw
+        return values
+
+    def _apply_values(self, values):
+        self.defaults.update(values)
+        self.app.config_drafts[self.draft_key] = dict(values)
+        for field in self.visible_fields:
+            value = values[field.key]
+            self.query_one("#" + _field_widget_id(field)).value = (value if field.kind == "choice"
+                else "" if value is None else str(value))
+
+    def _selected_stimuli(self, values):
+        from .stimulus_parameters import StimulusParametersPanel
+        panels = list(self.query(StimulusParametersPanel))
+        if panels:
+            return {panel.slot: panel.current() for panel in panels}
+        from ..config.stimulus_parameters import resolve_stimuli, load_parameters, snapshot, document_for
+        from ..stimuli.registry import get_stimulus
+        selected = {}
+        for slot in self.experiment.stimulus_slots:
+            cached = self.app.stimulus_drafts.get((*self.draft_key, slot))
+            if cached:
+                saved, path = cached
+                if path and load_parameters(path, get_stimulus(saved['document']['stimulus_id']))['file_sha256'] != saved['file_sha256']:
+                    raise ValueError(f"{slot}: JSON changed; reload it in Review before running.")
+                bindings = self.experiment.stimulus_field_bindings.get(slot, {})
+                if bindings:
+                    params = dict(saved['document']['parameters']) | {key: values[field] for key, field in bindings.items()}
+                    saved = snapshot(document_for(get_stimulus(saved['document']['stimulus_id']), params),
+                        file_identity=saved['file_identity'], file_sha256=saved.get('file_sha256'))
+                selected[slot] = saved
+        return resolve_stimuli(self.experiment, values, selected, repo_root=self.app.repo_root)
+
     def __init__(
         self,
         *,
@@ -1698,11 +1744,12 @@ class ExperimentConfigScreen(Screen):
             with Horizontal(classes="buttons"):
                 yield Button("Back", id="back")
                 yield Button("Change display / Calibrate", id="change-display")
-                yield Button("Review", id="review", variant="primary")
-            with Horizontal(classes="buttons"):
-                yield Button("Edit experiment JSON", id="experiment-json-edit")
-                yield Button("Reload saved JSON", id="experiment-json-reload")
-                yield Button("Open experiment Python", id="experiment-python")
+                yield Button("Apply to Review" if self.scientific_editor else "Review", id="review", variant="primary")
+            if self.scientific_editor:
+                with Horizontal(classes="buttons"):
+                    yield Button("Edit experiment JSON", id="experiment-json-edit")
+                    yield Button("Reload saved JSON", id="experiment-json-reload")
+                    yield Button("Open experiment Python", id="experiment-python")
             yield Static("", id="config-status")
             yield Static("", id="constraint-summary", markup=False)
         with VerticalScroll(id="config-body"):
@@ -1714,13 +1761,14 @@ class ExperimentConfigScreen(Screen):
             from .config_sections import grouped_config_fields
             from .stimulus_parameters import StimulusParametersPanel
             yield Static(
-                "GENERAL SETUP — choose the method and run limits here. "
-                "Open experiment-specific sections to edit scientific inputs. "
-                "Review explains every parameter in the context of this experiment "
-                "and shows derived geometry, conditions, timing and clipping.",
+                ("Edit declared experiment and stimulus inputs; apply to regenerate Review."
+                 if self.scientific_editor else
+                 "Universal setup — choose the method and run limits. Open Review for scientific parameters, stimuli and their generic editors."),
                 classes="field-help",
             )
             for group, fields in grouped_config_fields(self.experiment):
+                if not self.scientific_editor and group != "Universal setup":
+                    continue
                 with Collapsible(
                     title=group,
                     collapsed=group != "Universal setup",
@@ -1751,7 +1799,7 @@ class ExperimentConfigScreen(Screen):
                         from ..adaptive.steps import NOTICE
                         yield Static(NOTICE, classes="field-help")
                         yield Static("", id="step-status", markup=False)
-            if self.experiment.stimulus_slots:
+            if self.scientific_editor and self.experiment.stimulus_slots:
                 with Collapsible(title="Experiment-specific stimulus parameters", collapsed=True):
                     yield Static(
                         "These controls modify the selected stimulus library definitions. "
@@ -1793,16 +1841,21 @@ class ExperimentConfigScreen(Screen):
     def _refresh_constraints(self):
         if not self.is_mounted: return
         from ..config.input_constraints import experiment_constraints
-        raw={field.key:self.query_one("#"+_field_widget_id(field)).value for field in self.experiment.fields}
+        raw=self._raw_values()
         profile=self.app.monitor_profiles[self.monitor_profile_id]
         reports,errors=experiment_constraints(self.experiment,profile,raw)
-        for field in self.experiment.fields:
+        for field in self.visible_fields:
             report=reports[field.key]; widget=self.query_one("#"+_field_widget_id(field))
             widget.set_class(bool(report['error']),"invalid-input")
             widget.tooltip=report['domain']+"\n"+report['error']
             self.query_one("#domain-"+field.key.replace('_','-'),Static).update(report['domain']+("\nINVALID: "+report['error'] if report['error'] else ""))
         # Keep this universal field/error summary free of per-experiment geometry
         # prose. The same science is resolved from the chosen stimulus in Review.
+        if not self.scientific_editor:
+            visible = {field.key for field in self.visible_fields}
+            errors = [reports[field.key]['error'] for field in self.visible_fields if reports[field.key]['error']]
+            if any(report['error'] for key, report in reports.items() if key not in visible):
+                errors.append("Scientific inputs need attention. Open Review → Edit experiment inputs / stimuli.")
         self.query_one('#constraint-summary',Static).update("\n".join(errors))
         # Shader range affects human/test launch, but does not block numerical simulation Review.
         # Submission runs the same validator again; retaining an enabled button
@@ -1813,7 +1866,7 @@ class ExperimentConfigScreen(Screen):
         """Validate inputs in Setup; explain derived probe science in Review."""
         if not self.is_mounted:
             return
-        if {"starting_probe_intensity", "background_intensity"} <= {
+        if self.scientific_editor and {"starting_probe_intensity", "background_intensity"} <= {
             field.key for field in self.experiment.fields
         }:
             self.query_one("#contrast-live-validation", Static).update(
@@ -1828,10 +1881,7 @@ class ExperimentConfigScreen(Screen):
         applied = getattr(self, "applied_review_values", None)
         if applied is not None:
             self.applied_review_values = None
-            for field in self.experiment.fields:
-                if field.key in applied:
-                    value = applied[field.key]
-                    self.query_one("#" + _field_widget_id(field)).value = value if field.kind == "choice" else str(value)
+            self._apply_values(applied)
             self._refresh_contrast_help()
         current = self.app.monitor_profiles.get(self.monitor_profile_id)
         if current is not None:
@@ -1906,11 +1956,7 @@ class ExperimentConfigScreen(Screen):
         return f"Calculated {direction} = {result:.8g} log10 units. Review this opt-in setting before starting."
 
     def remember_draft(self) -> None:
-        raw = {}
-        for field in self.experiment.fields:
-            widget = self.query_one("#" + _field_widget_id(field))
-            value = widget.value
-            raw[field.key] = None if _is_blank_select_value(value) else value
+        raw = self._raw_values()
         self.app.config_drafts[self.draft_key] = raw
         self.app.mapping_drafts[self.draft_key] = {
             "pending": bool(getattr(self, "_mapping_requires_confirmation", False)),
@@ -1944,8 +1990,9 @@ class ExperimentConfigScreen(Screen):
 
     def _field_values(self, *, allow_incomplete=False):
         values = {}
+        raw_values = self._raw_values()
         for field in self.experiment.fields:
-            raw = self.query_one("#"+_field_widget_id(field)).value
+            raw = raw_values[field.key]
             if _is_blank_select_value(raw): raw = None
             try:
                 values[field.key] = field.coerce(raw)
@@ -1958,7 +2005,7 @@ class ExperimentConfigScreen(Screen):
         from .settings_review import describe_settings
         from .stimulus_parameters import StimulusParametersPanel
         values = self.experiment.normalise_values(self._field_values())
-        snapshots = {panel.slot: panel.current() for panel in self.query(StimulusParametersPanel)}
+        snapshots = self._selected_stimuli(values)
         return describe_settings(self.experiment, values, snapshots, profile=self.app.monitor_profiles[self.monitor_profile_id])
 
     def _open_experiment_json(self):
@@ -1981,8 +2028,7 @@ class ExperimentConfigScreen(Screen):
         validate_setup(SetupRequest(self.participant_id,self.session_mode,self.experiment.id,self.monitor_profile_id,values),
             self.experiment,self.app.monitor_profiles[self.monitor_profile_id],mode="configuration")
         with self.prevent(Input.Changed, Select.Changed):
-            for field in self.experiment.fields:
-                self.query_one("#"+_field_widget_id(field)).value = values[field.key] if field.kind=="choice" else str(values[field.key])
+            self._apply_values(values)
         self.parameter_json_path, self.parameter_json_hash, self.parameter_json_pending = path, file_hash(path), False
         self.remember_draft()
         self._refresh_constraints()
@@ -1991,11 +2037,16 @@ class ExperimentConfigScreen(Screen):
     def _parameter_files(self):
         from .stimulus_parameters import StimulusParametersPanel
         files = {str(panel.path):panel.loaded["file_sha256"] for panel in self.query(StimulusParametersPanel) if panel.path and panel.loaded}
+        if not self.scientific_editor:
+            for slot in self.experiment.stimulus_slots:
+                cached = self.app.stimulus_drafts.get((*self.draft_key, slot))
+                if cached and cached[1]:
+                    files[str(cached[1])] = cached[0]['file_sha256']
         if getattr(self,"parameter_json_path",None) and hasattr(self,"parameter_json_hash"):
             files[str(self.parameter_json_path)] = self.parameter_json_hash
         return files
 
-    def _collect(self) -> dict[str, Any]:
+    def _check_selected_files(self):
         from .parameter_files import ensure_unchanged
         if getattr(self,"parameter_json_pending",False):
             raise ValueError("Reload saved experiment JSON before Review.")
@@ -2003,19 +2054,13 @@ class ExperimentConfigScreen(Screen):
             ensure_unchanged({str(self.parameter_json_path):self.parameter_json_hash})
         if getattr(self, '_mapping_requires_confirmation', False):
             raise ValueError("Display or mapping changed. Select a saved background pair or explicitly select Manual before Review.")
-        values: dict[str, Any] = {}
-        for field in self.experiment.fields:
-            widget_id = _field_widget_id(field)
-            if field.kind == "choice":
-                raw = self.query_one(f"#{widget_id}", Select).value
-                if _is_blank_select_value(raw):
-                    raw = None
-            else:
-                raw = self.query_one(f"#{widget_id}", Input).value
-            values[field.key] = field.coerce(raw)
+
+    def _collect(self) -> dict[str, Any]:
+        self._check_selected_files()
+        values = self._field_values()
         values = self.experiment.normalise_values(values)
         from .stimulus_parameters import StimulusParametersPanel
-        self.stimulus_snapshots = {panel.slot: panel.current() for panel in self.query(StimulusParametersPanel)}
+        self.stimulus_snapshots = self._selected_stimuli(values)
 
         profile = self.app.monitor_profiles[self.monitor_profile_id]
         request = SetupRequest(self.participant_id, self.session_mode, self.experiment.id,
@@ -2123,10 +2168,7 @@ class ExperimentConfigScreen(Screen):
                     values = validate_setup(SetupRequest(self.participant_id, self.session_mode,
                         self.experiment.id, self.monitor_profile_id, values), self.experiment,
                         self.app.monitor_profiles[self.monitor_profile_id], mode="configuration").experiment_values
-                    for field in self.experiment.fields:
-                        self.query_one("#" + _field_widget_id(field)).value = (
-                            values[field.key] if field.kind == "choice" else str(values[field.key])
-                        )
+                    self._apply_values(values)
                     self.remember_draft()
                     self._mapping_manual = False
                 notice = f"Preset '{name}' {verb} successfully."
@@ -2146,6 +2188,30 @@ class ExperimentConfigScreen(Screen):
             return
 
         status = self.query_one("#config-status", Static)
+        if not self.scientific_editor:
+            # Review can inspect an incomplete draft; its run paths still use
+            # the unchanged strict validators. Required study inputs live there.
+            raw = self._field_values(allow_incomplete=True)
+            try:
+                for field in self.visible_fields:
+                    raw[field.key] = field.coerce(raw[field.key])
+            except (ValueError, TypeError) as exc:
+                status.update(str(exc))
+                return
+            self.remember_draft()
+            draft_error = None
+            try:
+                self._check_selected_files()
+                snapshots = self._selected_stimuli(raw)
+            except (ValueError, TypeError, KeyError, OSError) as exc:
+                snapshots = {}
+                draft_error = str(exc)
+            request = SetupRequest(
+                self.participant_id, self.session_mode, self.experiment.id,
+                self.monitor_profile_id, raw, data_root=str(self.data_root), stimulus_snapshots=snapshots)
+            self.app.review_parameter_files[self.app.settings_key(request)] = self._parameter_files()
+            self.app.push_screen(ReviewScreen(request=request, draft_error=draft_error))
+            return
         try:
             values = self._collect()
             request = SetupRequest(
@@ -2176,9 +2242,10 @@ class ExperimentConfigScreen(Screen):
             self.remember_draft()
             if self.review_return is not None:
                 for screen in self.app.screen_stack:
-                    if isinstance(screen, ExperimentConfigScreen) and screen is not self and screen.draft_key == self.draft_key:
+                    if isinstance(screen, _ExperimentInputsScreen) and screen is not self and screen.draft_key == self.draft_key:
                         screen.applied_review_values = dict(values)
                 self.review_return.request = request
+                self.review_return.draft_error = None
                 self.review_return.reviewed_profile_snapshot = self.app.monitor_profiles[request.monitor_profile_id].to_dict()
                 self.app.pop_screen()
             else:
@@ -2188,6 +2255,15 @@ class ExperimentConfigScreen(Screen):
             self.app.notify(str(exc), title="Review blocked: check inputs", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
                 _report_ui_exception(self.app, exc, phase="tui_experiment_config_review")
+
+
+class ExperimentConfigScreen(_ExperimentInputsScreen):
+    """Universal setup only; scientific controls are reached through Review."""
+
+
+class ExperimentParametersScreen(_ExperimentInputsScreen):
+    """Review's generic editor: existing ConfigFields, stimulus controls and validation."""
+    scientific_editor = True
 
 
 class ChangeDisplayScreen(Screen):
@@ -2251,9 +2327,10 @@ class ChangeDisplayScreen(Screen):
 
 
 class ReviewScreen(Screen):
-    def __init__(self, *, request: SetupRequest) -> None:
+    def __init__(self, *, request: SetupRequest, draft_error=None) -> None:
         super().__init__()
         self.request = request
+        self.draft_error = draft_error
         self.reviewed_profile_snapshot = None
 
     def compose_content(self) -> ComposeResult:
@@ -2301,8 +2378,9 @@ class ReviewScreen(Screen):
                 id="review-experiment-context", markup=False, classes="info-card",
             )
             from .review_table import ReviewSettingsTable
-            yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens Configure. Enter/double-click and source links are advanced file actions.",markup=False)
+            yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens the generic Review parameter editor. Enter/double-click and source links are advanced file actions.",markup=False)
             with Horizontal(classes="buttons"):
+                yield Button("Edit experiment inputs / stimuli", id="review-edit-inputs")
                 yield Button("Edit selected value",id="review-edit-value",variant="primary")
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
@@ -2311,7 +2389,7 @@ class ReviewScreen(Screen):
             yield Static("",id="review-file-location",markup=False)
             yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
                          "while retaining selected settings and stimulus snapshots. To adopt a new stimulus Python "
-                         "default, press Adopt current class defaults in Configure. Experiment-controlled values "
+                         "default, press Adopt current class defaults in the Review parameter editor. Experiment-controlled values "
                          "still come from the experiment inputs.", id="review-refresh-help",markup=False)
             yield Static("",id="resolved-settings-note",markup=False)
             with Vertical(id="human-review-checks"):
@@ -2333,7 +2411,10 @@ class ReviewScreen(Screen):
                 yield Static("", id="readiness-technical", markup=False)
 
     def _summary_text(self, experiment, profile):
-        prospective = _prospective_run_path(self.request, experiment, profile)
+        try:
+            prospective = _prospective_run_path(self.request, experiment, profile)
+        except (ValueError, TypeError, KeyError):
+            prospective = "Not allocated: complete the scientific inputs in Review first."
         lines = [
             "[b]Review experiment[/b]",
             "",
@@ -2377,9 +2458,19 @@ class ReviewScreen(Screen):
         from .settings_review import describe_settings, review_rows
         spec = get_experiment(self.request.experiment_id)
         from ..config.stimulus_parameters import resolve_stimuli
-        snapshots = resolve_stimuli(spec,self.request.experiment_values,self.request.stimulus_snapshots,repo_root=self.app.repo_root)
-        description = describe_settings(spec,self.request.experiment_values,snapshots,
-            profile=self.app.monitor_profiles[self.request.monitor_profile_id])
+        self.configuration_error = None
+        try:
+            if self.draft_error:
+                raise ValueError(self.draft_error)
+            self.request = validate_setup(self.request, spec,
+                self.app.monitor_profiles[self.request.monitor_profile_id], mode="configuration")
+            snapshots = resolve_stimuli(spec,self.request.experiment_values,self.request.stimulus_snapshots,repo_root=self.app.repo_root)
+            description = describe_settings(spec,self.request.experiment_values,snapshots,
+                profile=self.app.monitor_profiles[self.request.monitor_profile_id])
+        except (ValueError, TypeError, KeyError) as exc:
+            self.configuration_error = str(exc)
+            snapshots = self.request.stimulus_snapshots
+            description = {"stimuli": {}, "overrides": {}, "note": "Incomplete/invalid draft: " + str(exc)}
         from .review_files import actual_json_sources,targets_for_rows
         from .parameter_files import file_hash
         from rich.text import Text
@@ -2387,8 +2478,11 @@ class ReviewScreen(Screen):
         if getattr(self,"_file_request_key",None)!=key:
             self._file_sources=actual_json_sources(self.app,self.request)
             self._file_request_key=key
-        rows=review_rows(spec,self.request.experiment_values,snapshots,description,
-            refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz)
+        rows = ([("Experiment", field.display_label, str(self.request.experiment_values.get(field.key)),
+                  f"Declared input {field.key}. {field.help_text}") for field in spec.fields]
+                if self.configuration_error else
+                review_rows(spec,self.request.experiment_values,snapshots,description,
+                    refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz))
         self._file_targets=targets_for_rows(spec,snapshots,description,rows,self._file_sources,self.app.repo_root)
         from .review_authority import authority_for_row
         self._review_rows = rows
@@ -2435,12 +2529,18 @@ class ReviewScreen(Screen):
             self.query_one("#review-status",Static).update(authority["route"])
             return
         spec = get_experiment(self.request.experiment_id)
-        self.app.push_screen(ExperimentConfigScreen(data_root=self.app.data_root,
+        self.app.push_screen(ExperimentParametersScreen(data_root=self.app.data_root,
             participant_id=self.request.participant_id, session_mode=self.request.session_mode,
             experiment=spec, monitor_profile_id=self.request.monitor_profile_id,
             defaults=dict(self.request.experiment_values), review_return=self,
             focus_field=authority["field"] if authority["edit_kind"] == "experiment" else None,
             focus_stimulus=(authority["slot"],authority["field"]) if authority["edit_kind"] == "stimulus" else None))
+
+    def _edit_experiment_inputs(self):
+        self.app.push_screen(ExperimentParametersScreen(data_root=Path(self.request.data_root or self.app.data_root),
+            participant_id=self.request.participant_id, session_mode=self.request.session_mode,
+            experiment=get_experiment(self.request.experiment_id), monitor_profile_id=self.request.monitor_profile_id,
+            defaults=dict(self.request.experiment_values), review_return=self))
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
@@ -2523,11 +2623,10 @@ class ReviewScreen(Screen):
         for slot,path in sources["stimuli"].items():
             self.app.stimulus_drafts[(*draft_key,slot)]=(candidate.stimulus_snapshots[slot],path)
         for screen in self.app.screen_stack:
-            if isinstance(screen,ExperimentConfigScreen) and getattr(screen,"draft_key",None)==draft_key:
+            if isinstance(screen,_ExperimentInputsScreen) and getattr(screen,"draft_key",None)==draft_key:
                 screen.applied_review_values=dict(values)
                 with screen.prevent(Input.Changed,Select.Changed):
-                    for field in spec.fields:
-                        screen.query_one("#"+_field_widget_id(field)).value=values[field.key] if field.kind=="choice" else str(values[field.key])
+                    screen._apply_values(values)
                 if sources["experiment"]:
                     screen.parameter_json_path=sources["experiment"]
                     screen.parameter_json_hash=files[str(sources["experiment"])]
@@ -2602,6 +2701,12 @@ class ReviewScreen(Screen):
                         if not needed else
                         "TEST SETUP NEEDS ATTENTION: " + "; ".join(row["detail"] for row in needed))
         self.query_one("#selected-run-readiness", Static).update(status)
+        if getattr(self, "configuration_error", None):
+            self.query_one("#selected-run-readiness", Static).update("Run blocked: " + self.configuration_error)
+        for identity in ("run", "run-simulation", "run-presentation-test", "run-researcher-override"):
+            button = self.query_one("#" + identity, Button)
+            button.disabled = bool(getattr(self, "configuration_error", None)) or (
+                identity == "run-simulation" and not report["simulation_available"])
 
     def on_screen_resume(self):
         if not self.is_mounted:
@@ -2717,7 +2822,7 @@ class ReviewScreen(Screen):
                 kwargs["values"] = self.request.experiment_values
             self.app.push_screen(cls(profile, **kwargs))
         elif row["destination"] == "settings":
-            self.app.push_screen(ExperimentConfigScreen(data_root=Path(self.request.data_root or self.app.data_root),
+            self.app.push_screen(ExperimentParametersScreen(data_root=Path(self.request.data_root or self.app.data_root),
                 participant_id=self.request.participant_id,session_mode=self.request.session_mode,
                 experiment=get_experiment(self.request.experiment_id),monitor_profile_id=profile.id,
                 defaults=self.request.experiment_values,review_return=self,focus_field=row.get("field")))
@@ -2742,6 +2847,10 @@ class ReviewScreen(Screen):
         if _handle_nav(self, event):
             return
         button_id = event.button.id
+        if button_id == "review-edit-inputs":
+            event.stop()
+            self._edit_experiment_inputs()
+            return
         if button_id and button_id.startswith("resolve-"):
             event.stop()
             self.resolve_requirement(button_id.removeprefix("resolve-"))
@@ -2775,6 +2884,8 @@ class ReviewScreen(Screen):
         event.stop()
         try:
             if button_id in {"run", "run-simulation", "run-presentation-test", "run-researcher-override"}:
+                if self.configuration_error:
+                    raise ValueError(self.configuration_error)
                 self.app.verify_settings_current(self.request)
             if button_id == "review-calibration-guide":
                 from .calibration_guide import CalibrationGuideScreen
@@ -2953,7 +3064,7 @@ class PsyCoLabSetupApp(App):
                 and not _is_blank_select_value(w.value)
             }
         for screen in self.screen_stack:
-            if isinstance(screen, ExperimentConfigScreen):
+            if isinstance(screen, _ExperimentInputsScreen):
                 screen.remember_draft()
         if page == "setup":
             while len(self.screen_stack) > 1:

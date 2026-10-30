@@ -261,7 +261,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
             if controller:
                 control = next(f for f in spec.fields if f.key == controller)
                 source = (f"Derived / experiment-controlled by {controller} ({control.display_label}). "
-                          f"Change Configure → {control.section} → {control.label}; "
+                          f"Change Review → Edit experiment inputs / stimuli → {control.section} → {control.label}; "
                           "the stimulus Python default or preset is overridden. " + source)
             elif field.key in description["overrides"].get(slot, {}):
                 usage = ("Trial-controlled; value shown for one representative trial"
