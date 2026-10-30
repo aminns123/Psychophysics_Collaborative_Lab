@@ -37,7 +37,17 @@ from psychophysics_lab.researcher import (
     RecordState,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: identify negative versus positive Gabor tilt (codes 0/1; F/J).
+# The selected stimulus's absolute orientation_deg gives the tilt magnitude;
+# target 0 uses its negative sign, target 1 its positive sign. See choose_condition.
+# These target rows are balanced (odd counts retain one extra target 0), then
+# shuffled with random_seed. They are not independent scientific factors/tracks.
+# The historical canonical stimulus_condition is the signed angle (original/A)
+# or fixed-mode tilt_sign cell label; do not reinterpret saved values.
+# Units: requested ms, orientation degrees, nominal digital modulation C in [0,1].
+# Renderer mapping: I = 0.5 + 0.5*C*envelope*cos(orientation phase).
+# No finite teaching mode estimates a threshold or establishes optical contrast.
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
     ConfigField("trial_count", "Accepted trials", "int", 6, minimum=1, maximum=500, help_text='Accepted-response goal for the finite teaching/original path; fixed mode derives its own count from levels, conditions and repetitions.'),
@@ -120,7 +130,7 @@ STIMULUS_SLOTS["ready_fixation"] = "fixation"
 STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
 
-# 2. SESSION START — ONCE
+# Session opening — once, SPACE is not a scientific answer
 # Edit the Python list directly. SESSION_START = [] disables the opening.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
@@ -129,7 +139,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological trial events — all supported methods use this same list
 # One fresh flat event list per selected condition; effective strengths are prepared below.
 
 
@@ -147,6 +157,38 @@ def trial_events(settings, condition):
     ]
 
 
+# Acquisition requirements are scientific declarations, not a UI policy.
+CALIBRATION_REQUIREMENTS = ("geometry",)
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
+
+# Existing accepted-state journal observations (no new custom measurement keys).
+# Canonical target, response, correctness, strength, geometry and timing remain
+# automatically recorded; fixed mode retains fixed_repeat / presented strength.
+STATE_UNITS = {
+    "contrast": "nominal digital Gabor modulation",
+    "down_factor": "multiplier", "up_factor": "multiplier",
+}
+
+def trial_state(settings, condition, state):
+    """Existing pre-response state observations; requested digital values, not photometry."""
+    return {
+        "contrast": state["contrast"],
+        "down_factor": settings["down_factor"],
+        "up_factor": settings["up_factor"],
+    }
+
+
+def response_instructions(responses):
+    return f'Negative tilt: {responses.keys[0]}   Positive tilt: {responses.keys[1]}   Escape: abort'
+
+
+# Adaptive starts from selected STIMULUS contrast, not starting_strength.
+# Its own next_contrast rule and finite stopping remain in A2. Fixed uses its
+# selected schedule. There is no original mode and no reversal threshold claim.
+
+
+# PART A2 — SCIENTIFIC METHODS
+
 def prepare_stimuli(run, condition, state):
     # Fixed strengths arrive as a selected trial value. Adaptive continues to
     # read the historically tested state['contrast'] and original orientation.
@@ -162,9 +204,6 @@ def prepare_stimuli(run, condition, state):
             orientation_deg=orientation, contrast=strength
         )
     }
-
-
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
 
 
 SCIENTIFIC_SPEC = {'version': 'orientation_adaptive-2', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'TUI consecutive up/down factors; demonstration only.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
@@ -222,36 +261,6 @@ def update_experiment(run, condition, state, response, trial):
     return state
 
 
-def initialise_experiment(run, conditions):
-    count = run.values["trial_count"]
-    targets = [c["target"] for c in conditions]
-    timeline = TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values)
-    run.initialise(
-        expected_trials=count,
-        resolution={
-            "task": "Report negative or positive tilt using the configured keys",
-            "targets": targets,
-            "response_keys": run.responses.keys,
-            "stimulus_slots": run.stimulus_snapshots,
-            "presentation": "ordered fixation/target/interval/response; software times only",
-            "trial_timeline": timeline.to_dict(),
-            "timeline_source": __file__.rsplit("/", 1)[-1].rsplit("\\", 1)[-1],
-            "trial_order_seed": run.values["random_seed"],
-        },
-    )
-    contrast = run.stimulus_parameters()["contrast"]
-    adaptive = (
-        run.adaptive(
-            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)},
-            run.values["max_trials"],
-            starting_values={0: contrast}
-        )
-        if run.spec.adaptive
-        else None
-    )
-    return {"contrast": contrast, "adaptive": adaptive}
-
-
 def make_fixed_schedule(settings, seed):
     return fixed_teaching_schedule(
         settings, seed, maximum=1.0, condition="tilt_sign"
@@ -268,21 +277,10 @@ def validate_method_settings(values):
             yield str(exc)
 
 
-# 5. STOPPING AND RESULTS
+# Stopping and results
 # Stop at trial_count accepted responses, not reversal convergence. The fixed
 # method stops when its condition/level/repetition schedule is exhausted.
 # Both are teaching demonstrations without a scientific threshold estimator.
-
-
-def trial_record(run, condition, state):
-    return {
-        "state": {
-            "contrast": state["contrast"],
-            "down_factor": run.values["down_factor"],
-            "up_factor": run.values["up_factor"],
-        },
-        "instructions": f"Negative tilt: {run.responses.keys[0]}   Positive tilt: {run.responses.keys[1]}   Escape: abort",
-    }
 
 
 def is_finished(run, conditions, state):
@@ -311,6 +309,54 @@ def adaptive_method(run):
     )
 
 
+def scientific_resolution(run, conditions):
+    targets = [c["target"] for c in conditions]
+    timeline = TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values)
+    return {
+        "task": "Report negative or positive tilt using the configured keys",
+        "targets": targets,
+        "response_keys": run.responses.keys,
+        "stimulus_slots": run.stimulus_snapshots,
+        "presentation": "ordered fixation/target/interval/response; software times only",
+        "trial_timeline": timeline.to_dict(),
+        "timeline_source": __file__.rsplit("/", 1)[-1].rsplit("\\", 1)[-1],
+        "trial_order_seed": run.values["random_seed"],
+    }
+
+
+def initial_state(run):
+    count = run.values["trial_count"]
+    contrast = run.stimulus_parameters()["contrast"]
+    adaptive = (
+        run.adaptive(
+            {0: StaircaseConfig(run.values["n_down"], run.values["n_up"], count + 1)},
+            run.values["max_trials"],
+            starting_values={0: contrast}
+        )
+        if run.spec.adaptive
+        else None
+    )
+    return {"contrast": contrast, "adaptive": adaptive}
+
+
+
+ADAPTIVE_RULE = AdaptiveSelection(
+    "consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor"))
+
+
+# PART B — FRAMEWORK INTEGRATION
+# Same RunContext, canonical record, shared method adapters and public ID.
+def initialise_experiment(run, conditions):
+    run.initialise(expected_trials=run.values["trial_count"],
+                   resolution=scientific_resolution(run, conditions))
+    return initial_state(run)
+
+
+def trial_record(run, condition, state):
+    return {"state": trial_state(run.values, condition, state),
+            "instructions": response_instructions(run.responses)}
+
+
 def procedure(run):
     return run_contrast_experiment(
         run,
@@ -324,7 +370,7 @@ def procedure(run):
     )
 
 
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 # Central compatibility for callers expecting make_trial(...).resolve(...).
 make_trial = legacy_trial_factory(trial_events)
 
@@ -336,8 +382,6 @@ def definition(
     adaptive=True,
     source_path=__file__,
 ):
-    # EDIT DECLARATIONS: geometry is required for degrees; digital contrast is
-    # not an optical contrast threshold. Add luminance/timing for tasks needing it.
     return experiment(
         id=identity,
         name=identity.replace("_", " ").title(),
@@ -347,15 +391,13 @@ def definition(
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         method_planner=make_fixed_schedule, validator=validate_method_settings,
         responses=RESPONSES,
-        calibration_requirements=("geometry",),
-        monitor_capabilities=("display_binding", "resolution"),
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
         supports_simulation=True,
         adaptive=(
-            AdaptiveSelection(
-                "consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor")
-            )
+            ADAPTIVE_RULE
             if adaptive
             else None
         ),

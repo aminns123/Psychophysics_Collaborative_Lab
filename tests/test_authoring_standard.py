@@ -23,6 +23,9 @@ WAVE1_SOURCE_SHA256_LF = {
 }
 
 
+WAVE2_SOURCE_SHA256_LF = {'orientation_task': 'ea33ec9025ae13c3991d10a4b5636aff284b53391404b81f9e9509eec7e5f023', 'orientation_adaptive': 'b88fcfdb9fa81e03542865ca0839e935dc2304cd12dbeede0e2163b00d82cc90'}
+
+
 def source_hash(path):
     source = path.read_bytes().replace(b"\r\n", b"\n")
     if path == ROOT / "src/psychophysics_lab/researcher.py":
@@ -53,10 +56,13 @@ def source_hash(path):
 @pytest.mark.parametrize("saved", BASELINE["experiments"], ids=lambda saved: saved["id"])
 def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(saved):
     spec = registry.get_experiment(saved["id"])
-    expected = WAVE1_SOURCE_SHA256_LF.get(saved["id"], saved["source_sha256_lf"])
+    expected = WAVE2_SOURCE_SHA256_LF.get(saved["id"], WAVE1_SOURCE_SHA256_LF.get(saved["id"], saved["source_sha256_lf"]))
     assert source_hash(ROOT / saved["source"]) == expected
     if saved["id"] in WAVE1_SOURCE_SHA256_LF:
         historical = ROOT / "tests/fixtures/issue165_wave1" / (saved["id"] + ".py")
+        assert source_hash(historical) == saved["source_sha256_lf"]
+    if saved["id"] in WAVE2_SOURCE_SHA256_LF:
+        historical = ROOT / "tests/fixtures/issue165_wave2" / (saved["id"] + ".py")
         assert source_hash(historical) == saved["source_sha256_lf"]
     assert json.loads(json.dumps([asdict(field) for field in spec.fields])) == saved["fields"]
     assert json.loads(json.dumps(asdict(spec.response_paradigm))) == saved["responses"]
