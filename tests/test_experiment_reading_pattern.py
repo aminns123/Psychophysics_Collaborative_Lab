@@ -43,7 +43,8 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
         assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     migrated = hasattr(module, "trial_events")
-    scientist_first = identity in {"example_experiment", "probe_above_below"}
+    scientist_first = identity in {
+        "example_experiment", "probe_above_below", "orientation_task", "orientation_adaptive"}
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
     headings = ([source.index("# PART " + part) for part in ("A1", "A2", "B")]
@@ -55,7 +56,18 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     if identity == "contrast_sensitivity_windowed":
         names = ("trial_events", "prepare_stimuli", "procedure", "definition")
-    if scientist_first:
+    if identity in {"orientation_task", "orientation_adaptive"}:
+        # Wave 2 retains the scientific differences between these two methods.
+        # The immutable six-section references are still checked by Stage C;
+        # exact new sources and full before/after traces are guarded separately.
+        names = ("trial_events", "trial_state", "prepare_stimuli", "make_conditions",
+                 "choose_condition", "interpret_response", "finish_experiment",
+                 "scientific_resolution", "initial_state", "initialise_experiment",
+                 "trial_record", "procedure", "definition")
+        assert headings[0] < source.index('def trial_state') < headings[1]
+        assert headings[1] < source.index('def prepare_stimuli') < headings[2]
+        assert headings[1] < source.index('def finish_experiment') < headings[2]
+    elif scientist_first:
         names = ("target_position", "trial_events", "trial_measurements", "make_conditions",
                  "prepare_stimuli", "is_finished", "scientific_resolution", "procedure", "definition")
         assert headings[0] < source.index('def trial_measurements') < headings[1]

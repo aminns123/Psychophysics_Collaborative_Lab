@@ -74,6 +74,12 @@ Windows/portability results and exact-head CI links accompany the PR. The full
 suite retains frozen Stage C output comparisons and real injected-display phase
 player, readiness-abort, source invalidation and legacy extension regressions.
 
+The initial full run exposed two further reading-order guards still limited to
+Wave 1. It was stopped, those guards were updated for exactly these two sources
+with the preserved historical/other-file checks, and the complete affected
+module plus Wave 2 equivalence tests passed **70 tests**. The final full run and
+CI must pass on the corrected head; this is not a waiver of those checks.
+
 Software equivalence is PASS only after those final checks pass. Independent
 researcher comprehension/native acceptance and physical display/input/audio
 qualification remain **NOT VERIFIED** by these tests. A scientist making a new
