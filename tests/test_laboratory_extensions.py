@@ -347,6 +347,11 @@ def test_tui_catalogue_review_and_source_navigation(lab,tmp_path):
             app.open_hub_page('experiments');await pilot.pause()
             assert 'demolab' in str(app.screen.query_one('#extensions-status',Static).render())
             app.open_hub_page('stimuli');await pilot.pause()
+            # The bundle now has two independent stimulus classes. Select the
+            # established reference explicitly; catalogue sort order is not a
+            # scientific or source-navigation contract.
+            app.screen.query_one('#author-component',Select).value=STIMULUS
+            await pilot.pause()
             assert app.screen.query_one('#author-component',Select).value==STIMULUS
     asyncio.run(scenario())
 
