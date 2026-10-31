@@ -290,16 +290,19 @@ class ExperimentsScreen(HubPage):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
             yield Static("LEARNING & EXAMPLES", classes="section-title")
-            yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. The old left/right example is a worked example, not a new-file template.")
+            yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. Start with A1 experimental choices, A2 scientific methods, then B framework integration. The local starters are executable worked examples, not protocol generators.")
             yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
-                yield Button("Read example experiment.py", id="read-example-experiment")
+                yield Button("A1/A2/B: basic discrimination", id="read-example-experiment")
+                yield Button("A1/A2/B: adaptive / fixed", id="read-method-example")
+                yield Button("Local laboratory starters", id="read-local-starters")
                 yield Button("Optional example settings preset", id="read-example-timeline")
                 yield Button("Read contrast sensitivity experiment", id="read-csf-timeline")
             yield Static(
                 "[b]ONE experiment structure[/b]\n"
-                "Make experiments/<task>.py with conditions, TrialTimeline, procedure "
-                "and SPEC. Declare defaults in that Python file; JSON presets are optional. "
+                "One ordinary experiments/<task>.py: A1 choices, units, targets, events and measurements; "
+                "A2 selection, scoring, updates, stopping and results; B existing runner and SPEC. "
+                "Configure is universal; scientific inputs are edited through Review. JSON presets are optional. "
                 "No auto-generation or separate JSON experiment editor.")
             yield Static("SUBMIT AN EXISTING EXPERIMENT", classes="section-title")
             yield Static("Already wrote the Python experiment? "
@@ -343,11 +346,13 @@ class ExperimentsScreen(HubPage):
                 title="Learn PsyCoLab — standalone guide",
                 path=self.app.repo_root / "docs/LEARN_PSYCOLAB.md"))
             return
-        if event.button.id in {"read-example-experiment", "read-example-timeline", "read-csf-timeline"}:
+        if event.button.id in {"read-example-experiment", "read-example-timeline", "read-csf-timeline", "read-method-example", "read-local-starters"}:
             event.stop()
             examples = {
                 "read-example-experiment": "src/psychophysics_lab/experiments/example_experiment.py",
                 "read-example-timeline": "configs/experiments/example_experiment.json",
+                "read-method-example": "examples/laboratory_extensions/experiments/demolab__line_strength.py",
+                "read-local-starters": "examples/laboratory_extensions/METHODS.md",
                 "read-csf-timeline": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
@@ -1625,7 +1630,7 @@ class HelpScreen(HubPage):
             yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
             yield Button("Analyse saved run data (Python example)", id="learn-data-reader")
             yield Static("SCIENTIFIC AUTHORING", classes="section-title")
-            yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/.\nRestart after Python edits; parameter edits preview immediately.")
+            yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/: A1 experimental choices, A2 scientific methods, B framework integration. Begin with the two executable laboratory starters in the walkthrough.\nRestart after Python edits; parameter edits preview immediately.")
             yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
             with Collapsible(title="Advanced authoring references", collapsed=True):
                 yield Button("Authoring structure and ID rules", id="authoring-contract")
@@ -2379,13 +2384,17 @@ class ReviewScreen(Screen):
             )
             from .review_table import ReviewSettingsTable
             yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens the generic Review parameter editor. Enter/double-click and source links are advanced file actions.",markup=False)
-            with Horizontal(classes="buttons"):
+            yield Static("EDITABLE = selected input · DERIVED / TRIAL-CONTROLLED = computed by the experiment · "
+                         "INACTIVE = retained for another method. Missing/invalid inputs must be corrected before running. "
+                         "Software Test → Ready does not qualify physical apparatus.",
+                         id="review-authority-legend", markup=False, classes="field-help")
+            with Horizontal(classes="buttons", id="review-table-actions"):
                 yield Button("Edit inputs / stimuli", id="review-edit-inputs")
                 yield Button("Edit selected value",id="review-edit-value",variant="primary")
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
                 yield Button("Reload files and review",id="review-reload-files")
-            yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell")
+            yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell", zebra_stripes=True)
             yield Static("",id="review-file-location",markup=False)
             yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
                          "while retaining selected settings and stimulus snapshots. To adopt a new stimulus Python "
@@ -2501,7 +2510,11 @@ class ReviewScreen(Screen):
         for row,target,authority in zip(rows,self._file_targets,self._row_authorities):
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
                      else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
-            table.add_row(*row[:3],authority["status"],Text(address,style="underline bright_cyan"))
+            # Wrap scientific content, retaining exact values and source targets.
+            # File paths stay compact in the table; full addresses remain below.
+            table.add_row(*row[:3], authority["status"],
+                          Text(address,style="underline bright_cyan",no_wrap=True,overflow="ellipsis"),
+                          height=None)
         table.move_cursor(row=min(cursor.row,max(0,len(rows)-1)),column=min(cursor.column,4))
         self.query_one("#resolved-settings-note",Static).update(description["note"])
         self._show_file_location(table.cursor_row)

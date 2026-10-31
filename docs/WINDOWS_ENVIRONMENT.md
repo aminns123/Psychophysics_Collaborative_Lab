@@ -1,6 +1,12 @@
 # Reproducible Windows software environment
 
-This is the existing source/developer installation route. The separate
+Maintaining a Git checkout with an installed python.org CPython 3.11? Use
+`setup_psycolab_dev.bat` once, then `run_psycolab.bat`; see the
+[maintainer setup route](STARTUP_RECOVERY.md#maintainer-git-checkout-on-a-new-pc).
+Its separate `.venv-dev` is a development environment without laboratory
+qualification. The exact qualified laboratory installation follows below.
+
+This is the qualified source installation route. The separate
 [guided Windows candidate](WINDOWS_GUIDED_INSTALLATION.md) provides installation,
 ordinary launch and retained-version choices without student commands. It remains
 private pending qualification and redistribution clearance; do not replace a

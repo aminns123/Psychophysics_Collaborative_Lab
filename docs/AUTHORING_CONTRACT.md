@@ -22,32 +22,30 @@ arrays in degrees and return intensity arrays. Scientific equations, masks,
 geometry and contrast conventions belong in the stimulus class or named
 scientific methods, with units stated explicitly.
 
-## The six-section experiment narrative
+## Recommended A1/A2/B experiment narrative
 
-The proposed [version-1 A1/A2/B authoring standard](EXPERIMENT_AUTHORING_STANDARD.md)
-is at the Issue #165 design-freeze checkpoint. Its external reference examples
-are executable; approval and family migration remain separate. The ten current
-official sources below remain the accepted implementation until reviewed
-migrations are approved. See the [migration plan](EXPERIMENT_MIGRATION_PLAN.md).
+Use the approved [version-1 authoring standard](EXPERIMENT_AUTHORING_STANDARD.md)
+for every new experiment. Begin with the [researcher walkthrough](LEARN_PSYCOLAB.md)
+and two [executable laboratory starters](../examples/laboratory_extensions/METHODS.md).
 
-All ten official experiments and the bundled extension starters now use:
+1. **A1 — Experimental choices:** scientific question, parameters/units/bounds,
+   conditions, target alternatives/placement, keys, session/trial events and
+   declared measurements. This is the normal starting point for study edits.
+2. **A2 — Scientific methods:** condition/track construction and selection,
+   randomisation, scoring, effective strength conversion, response updates,
+   stopping and estimators. Changes here require deliberate scientific validation.
+3. **B — Framework integration:** connect the declarations to existing execution,
+   recorder, Review hooks and SPEC. Normally leave this unchanged.
 
-1. **PARAMETERS:** ConfigField declarations, response alternatives, stimulus slots
-   and defaults. Read selected settings from `run.values` or `settings`.
-2. **SESSION START — ONCE:** `SESSION_START`, passed to
-   `experiment(session_start=SESSION_START)`. An empty list disables it.
-3. **TRIAL EVENTS — REPEATED:** `trial_events(settings, condition)` returns an
-   ordinary flat event list. Nearby `prepare_stimuli(run, condition, state)`
-   resolves the current condition and latest adaptive strength into slot parameters.
-4. **SCIENTIFIC RULES — CONDITIONS AND UPDATES:** conditions, seeded selection,
-   response interpretation and explicit response-dependent stimulus updates.
-5. **STOPPING AND RESULTS:** termination, scientific measurements, estimators
-   where applicable and the procedure connecting these rules to RunContext.
-6. **FRAMEWORK REGISTRATION — MINIMAL AND LAST:** the final `SPEC` connection.
+These are sections of one ordinary Python file. Do not invent wrappers, a new
+condition manager or empty functions merely to fill a heading. Keep consequential
+science in A1/A2 and pass the same event factory to Review and execution.
 
-This is a reading structure, not a requirement to invent empty functions or use
-the same scientific loop in every study. See the
-[Stage C comparison and evidence](STAGE_C_EVENT_FIRST.md).
+The official `example_experiment` and `probe_above_below` already use this
+narrative. The other eight retain their accepted six-section implementations
+pending separate family migrations; those sources and older extension APIs remain
+supported. Historical [Stage C evidence](STAGE_C_EVENT_FIRST.md) is retained, not
+the primary new-author tutorial. See the [migration plan](EXPERIMENT_MIGRATION_PLAN.md).
 
 ## Chronological events and scientific updates
 

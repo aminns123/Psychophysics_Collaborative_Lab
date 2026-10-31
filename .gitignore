@@ -10,6 +10,7 @@ htmlcov/
 
 # Local virtual environments / build artefacts
 .venv/
+.venv-dev/
 .venv.incompatible-*/
 build/
 dist/

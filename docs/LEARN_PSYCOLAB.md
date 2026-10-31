@@ -1,4 +1,18 @@
-# From stimulus idea to a tested experiment
+# Your first PsyCoLab experiment
+
+Start in **Learn / Help → Read the short walkthrough**, or **Build Experiments**.
+Read the basic discrimination example first, then the adaptive/fixed example.
+Both are executable ordinary Python, using the approved
+[A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md). New science normally belongs
+in your own trusted laboratory folder, not an edited official reference.
+
+Configure supplies universal run controls. **Review → Edit inputs / stimuli**
+edits the declared scientific inputs and stimulus values for this run. Review's
+table explains effective values, units, authority, selected method, events and
+outputs; selecting a row gives full details and its actual source location.
+Unsaved drafts are not a successful validation. Correct errors and apply to
+Review before running. Saved presets never overwrite Python defaults.
+
 
 ## 1. Draw the stimulus
 
@@ -40,48 +54,80 @@ inspect all relevant conditions with previews and **Try the experiment**.
 
 ## 2. Describe the experiment
 
-Open one file in `src/psychophysics_lab/experiments/`:
+### First: basic discrimination
 
-- `orientation_task.py`: fixed-trial orientation judgement.
-- `contrast_sensitivity.py`: adaptive spatial 2AFC left/right grating-location task.
-- `line_position_baseline.py`: single-interval, binary above/below line judgment.
-- `ellipse_major_axis.py`: two-interval forced-choice (2IFC) line detection.
+Open [demolab__left_right.py](../examples/laboratory_extensions/experiments/demolab__left_right.py)
+or **Build Experiments → A1/A2/B: basic discrimination** (the official teaching
+counterpart). Read these three sections, in order:
 
-Read PARAMETERS → SESSION START → TRIAL EVENTS → SCIENTIFIC RULES → STOPPING
-AND RESULTS → FRAMEWORK REGISTRATION. Every official experiment follows this
-six-section narrative. `trial_events(settings, condition)` gives the flat display
-and response order. Keep the participant's alternatives, units, adaptive change,
-stopping rule and primary estimator explicit. The TUI supplies the chosen values.
-Do not copy an example's scientific choices unless they fit your study.
-Use [psychophysical terminology](PSYCHOPHYSICS_METHODS_AND_TERMINOLOGY.md)
-to distinguish two-response judgments from two-interval stimulus sequences;
-`2AFTC` is not the name of the temporal paradigm.
+1. **A1 — Experimental choices:** the question, `FIELDS` with ms/degree units,
+   `RESPONSES` (left/right, F/J), selected stimulus, once-only `SESSION_START`,
+   `trial_events` and `trial_measurements`. The target rows alternate left/right;
+   there is no independent factor or staircase in this local basic example.
+2. **A2 — Scientific methods:** `make_conditions`, `choose_condition` (signed
+   line offset), `interpret_response`, the correct-answer counter and stopping
+   at the accepted-response goal. There is no threshold estimator.
+3. **B — Framework integration:** existing RunContext execution, projection into
+   canonical records and SPEC. Normally leave these connections unchanged.
 
-For a new file, export `SPEC` with its matching experiment ID. Discovery needs no
-registry edit. Fixed-trial and adaptive loops may differ. Repeated recording
-machinery is shared; each experiment still declares strength, steps, gamut and
-extra measurements at its recording call.
+The timeline is fixation → marker → line → blank → response → marker.
+Markers observe state; they are not additional displayed intervals or answers.
+Change exposure in `FIELDS`, or edit a flat `trial_events` list. A1's
+`trial_measurements(settings, condition)` saves requested `line_offset_deg` in
+the existing journal, with units declared beside it. Accepted responses, keys,
+correctness and resolved presentation are already recorded automatically.
 
-For a quick scientific review, read `SESSION_START`, `trial_events()` and `prepare_stimuli()`,
-then read response/adaptation and `finish_experiment()`. Expand the settings when
-changing the study. Keep fixed-trial loops simple; they need no dummy adaptive
-stage. Dictionary declarations beside the framework connection explain what the
-saved columns mean; a digital increment and a peak-to-peak grating modulation are
-different quantities even if they use the same compatibility column name.
+### Next: one experiment, adaptive or constant stimuli
 
-All official experiments start with fixation, a participant SPACE keypress and
-1,000 ms settling, once before Trial 1. Edit the `SESSION_START` Python list to
-change the key/duration, or write `SESSION_START=[]` to disable it. Readiness is
-not an answer and never updates a staircase. Older `make_trial()`/TrialTimeline
-definitions still work through the same framework.
+Open [demolab__line_strength.py](../examples/laboratory_extensions/experiments/demolab__line_strength.py)
+or **Build Experiments → A1/A2/B: adaptive / fixed**. It uses the installed line
+stimulus and existing shared methods, not a copied staircase engine.
 
-For a new local study, begin with the uniquely identified
-[laboratory starter](../examples/laboratory_extensions/METHODS.md). It shows
-ordinary list composition, optional onset/accepted-response beeps, stimulus
-selection, response meaning and stopping. The companion strength example names
-the adaptive next-value rule. Neither requires a TUI source change. Official
-reference protocols require reviewed changes; keep new scientific variations in
-your own extension namespace.
+| Scientific concept | Meaning in this example | Where to inspect/change |
+|---|---|---|
+| Conditions | Positive eccentricities 1° and 2° | A1 `eccentricities_deg`; A2 parsing/selection |
+| Alternatives | Left/right, codes 0/1, F/J | A1 `RESPONSES` and signed placement in `trial_events` |
+| Strength | Digital increment: `I_line = 0.5 + increment`, range 0–0.5 | A2 `prepare_stimuli`; not calibrated optical contrast |
+| Adaptive track | One shared finite teaching track across the scheduled target rows | A2 imported `TeachingAdaptiveMethod` and selected n-down/n-up factors |
+| Fixed repetition | One presentation in an eccentricity × strength cell | A2 `make_fixed_schedule`; not a separate staircase or a repeat per side |
+| Stopping/results | Adaptive: accepted-response goal; fixed: exhausted schedule; accuracy, no threshold | A2 stopping comments and method factories |
+| Measurements | Fixed repeat and presented increment; both modes also save canonical responses/strength and resolved geometry | A1 units/declaration; B forwards the existing record |
+
+Choose the method with the shared Configure control; edit its levels/rules in
+Review's generic editor. The default fixed plan is 2 eccentricities × 3 levels ×
+5 repetitions = 30 presentations. Targets are balanced within each cell to
+within one for odd repetitions. Zero increment is an intentional catch.
+The finite adaptive demonstration stops at `trial_count`, not reversal convergence;
+increasing its trial goal does not turn it into a validated threshold procedure.
+
+### Make your own local study
+
+In **Build Experiments → Laboratory extensions**, choose a separate location
+such as `PsyCoLab_Extensions`. **Create starter at this location** preserves any
+existing files. Read its Python, then deliberately enable the trusted folder.
+Trust grants code execution; it is not scientific or hardware qualification.
+
+Use your own namespace/IDs for a new study. Read the local
+[starter instructions](../examples/laboratory_extensions/METHODS.md), including
+the matching manifest, filenames, SPEC IDs and custom stimulus. Preview the local
+stimulus and mark its tested source Ready; Test the experiment and mark that
+tested revision Ready. Use Refresh (F5) after saved Python edits. Changed source
+or scientific dependencies invalidate stale Ready evidence; retest deliberately.
+Refresh retains selected values/drafts rather than adopting changed defaults.
+
+For source inspection, select the actual external file in Build Experiments or
+Review. An identically named repository file is not a substitute. A project
+experiment file exporting SPEC is also discovered without a registry/TUI edit;
+official source changes still need review. Older make_trial/TrialTimeline files
+remain compatible. The remaining six-section official files are scientific
+references pending family migration, not the recommended new-author template.
+
+Every official experiment has once-only SPACE readiness and 1,000 ms settling.
+Local examples show how to edit the list or use `SESSION_START=[]`. Readiness
+is not an answer and never updates a staircase. Optional `Beep(550, 35)` on Show
+or `Beep(750, 35)` on CollectResponse requests sound; it does not establish
+measured audiovisual synchronisation. Validate every scientific modification,
+including keys, positions, durations, strengths, stopping and measurements.
 
 ## 3. Try the actual trials
 

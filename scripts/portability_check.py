@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 FORBIDDEN_TRACKED_PREFIXES = (
     ".venv/",
+    ".venv-dev/",
     ".vscode/",
     ".pytest_cache/",
     ".psycolab_logs/",
@@ -27,7 +28,7 @@ FORBIDDEN_TRACKED_PREFIXES = (
 
 # Match directory components so nested local folders are rejected too.
 LOCAL_DIRECTORY_NAMES = {
-    ".venv", ".vscode", ".idea", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".venv", ".venv-dev", ".vscode", ".idea", ".pytest_cache", ".mypy_cache", ".ruff_cache",
     ".psycolab_logs", "local_psychophysics_config", "local_psychophysics_data",
     "psycolab_data",
 }

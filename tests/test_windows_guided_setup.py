@@ -43,7 +43,7 @@ class Checks {
   if(a[0]=="roundtrip") { var p=SetupEngine.Start(a[1],new[]{"-I","-c","import sys;print(ascii(sys.argv[1]))",a[2]},a[3]);p.RedirectStandardOutput=true;using(var child=System.Diagnostics.Process.Start(p)){Console.Write(child.StandardOutput.ReadToEnd());child.WaitForExit();if(child.ExitCode!=0)throw new Exception("child failed");} }
   if(a[0]=="fail-process")SetupEngine.Run(SetupEngine.Start(a[1],new[]{"-I","-c","raise SystemExit(9)"},a[2]),a[3],()=>false);
   return 0;
- }catch(Exception e){Console.Error.WriteLine(e.Message);return 1;} }
+ }catch(Exception e){Console.Error.WriteLine(e.GetType().Name+": "+e.Message);return 1;} }
 }
 '''
 
@@ -132,7 +132,7 @@ def test_unexpected_source_is_rejected_before_executing_python(native, tmp_path)
     assert result.returncode == 1 and 'added or changed source' in result.stderr
     assert not (tmp_path / 'check.log').exists()
     result = native('launch-cancel', instance)
-    assert result.returncode == 1 and 'canceled' in result.stderr.lower()
+    assert result.returncode == 1 and 'OperationCanceledException' in result.stderr
 
 
 def test_process_failure_retains_diagnostic_log(native, tmp_path):

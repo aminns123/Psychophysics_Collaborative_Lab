@@ -173,18 +173,20 @@ class LegacyPlanSpelling(ast.NodeTransformer):
 def test_scientific_function_bodies_and_approved_authoring_contract(identity):
     module=importlib.import_module('psychophysics_lab.experiments.'+identity)
     source=Path(module.__file__).read_text(encoding='utf-8')
-    if identity in {'example_experiment', 'probe_above_below'}:
-        # PR #169 adopts A1/A2/B only for these IDs. Current exact-source and
+    if identity in {'example_experiment', 'probe_above_below', 'orientation_task', 'orientation_adaptive'}:
+        # Reviewed family migrations adopt A1/A2/B only for these four IDs. Current exact-source and
         # unchanged scientific contracts are guarded in test_authoring_standard;
-        # test_issue165_wave1 compares real current/frozen traces in all modes.
+        # test_issue165_wave1 / wave2 compare real current/frozen traces in all modes.
         positions=[source.index(header) for header in (
             '# PART A1 — EXPERIMENTAL CHOICES', '# PART A2 — SCIENTIFIC METHODS',
             '# PART B — FRAMEWORK INTEGRATION')]
         assert positions==sorted(positions)
         assert positions[0]<source.index('def trial_events')<positions[1]
-        assert positions[0]<source.index('def trial_measurements')<positions[1]
+        measurement_function = 'def trial_state' if identity.startswith('orientation_') else 'def trial_measurements'
+        assert positions[0]<source.index(measurement_function)<positions[1]
         # Retain the Stage C AST checks on the preserved historical reference.
-        source=(ROOT/'tests/fixtures/issue165_wave1'/(identity+'.py')).read_text(encoding='utf-8')
+        wave = 'issue165_wave2' if identity.startswith('orientation_') else 'issue165_wave1'
+        source=(ROOT/'tests/fixtures'/wave/(identity+'.py')).read_text(encoding='utf-8')
     sections=('PARAMETERS','SESSION START','TRIAL EVENTS','SCIENTIFIC RULES','STOPPING AND RESULTS','FRAMEWORK REGISTRATION')
     positions=[source.index(f'# {i}. {s}') for i,s in enumerate(sections,1)]
     assert positions==sorted(positions)

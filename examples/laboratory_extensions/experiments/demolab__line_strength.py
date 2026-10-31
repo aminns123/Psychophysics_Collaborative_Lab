@@ -21,7 +21,12 @@ from psychophysics_lab.researcher import (
 )
 
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: can the participant identify the line's side at each eccentricity?
+# Conditions = positive eccentricities (degrees); targets = left/right, not tracks.
+# Adaptive: finite response goal, one shared teaching track, not convergence.
+# Fixed: repetitions per eccentricity/strength cell, NOT per response alternative.
+# Keep the command mapping I_line = 0.5 + increment when editing these choices.
 FIELDS = (
     ConfigField("eccentricities_deg", "Line eccentricities", "text", "1,2",
                 units="degrees", section="Stimulus conditions",
@@ -31,12 +36,14 @@ FIELDS = (
     ConfigField("stimulus_ms", "Line duration", "int", 200, minimum=1, units="ms", section="Timing"),
 ) + teaching_method_fields(strengths="0,0.1,0.3", label="Line increment above grey 0.5") + teaching_adaptive_fields()
 RESPONSES = ResponseParadigm("line_side", ("left", "right"), ("F", "J"))
+CALIBRATION_REQUIREMENTS = ("geometry",)
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
 
 STIMULUS_SLOTS = {"target":"line", "ready_fixation":"fixation"}
 STIMULUS_DEFAULTS = {"target":LinePatch.SPEC.id, "ready_fixation":"fixation_cross"}
 
 
-# 2. SESSION START — ONCE
+# Session opening — once
 # Set SESSION_START = [] to disable it; no TUI source changes are needed.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation", instructions="Press SPACE when ready"),
@@ -44,7 +51,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological trial events — both methods use this same definition
 def trial_events(settings, condition):
     x = (-1 if condition["target"] == 0 else 1) * condition["value"]
     return [
@@ -62,9 +69,26 @@ def prepare_stimuli(run, condition, state):
     return {"target": run.stimulus_parameters(intensity=.5 + condition["contrast"])}
 
 
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+# Fixed-mode custom journal measurements already written by fixed_teaching_record.
+# Adaptive mode saves the shared engine's accepted-response states/history instead.
+# Both modes save target, condition, actual strength, response and resolved stimulus.
+MEASUREMENT_UNITS = {
+    "fixed_repeat": "presentation within an eccentricity/increment cell, starting at 1",
+    "presented_display_contrast": "digital I_line - 0.5 (not optical contrast)",
+}
+
+
+def trial_measurements(settings, condition):
+    """Fixed-mode observations, matching the existing canonical method record."""
+    return {"fixed_repeat": condition["repeat"],
+            "presented_display_contrast": condition["contrast"]}
+
+
+# PART A2 — SCIENTIFIC METHODS
 # TeachingAdaptiveMethod owns the declared n-down/n-up counters and factors.
 # It updates strength after each accepted response, bounded to [0, .5]; no copied engine.
+ADAPTIVE_RULE = AdaptiveSelection("consecutive_up_down",
+    controls=("n_down", "n_up", "down_factor", "up_factor", "max_trials"))
 
 
 def eccentricities(settings):
@@ -108,7 +132,7 @@ def validate_settings(settings):
         yield str(exc)
 
 
-# 5. STOPPING AND RESULTS
+# Stopping and outputs
 # Adaptive stops at trial_count accepted responses. Fixed stops at the scheduled
 # condition/level/repetition count. Both report responses/accuracy, not a threshold.
 
@@ -116,7 +140,7 @@ def validate_settings(settings):
 def fixed_method(run):
     schedule = make_fixed_schedule(run.values, run.seed)
     return ConstantContrastMethod(run, schedule=schedule, condition_field="value",
-        record=fixed_teaching_record, resolution={
+        record=fixed_record, resolution={
             "trial_selection_method": "constant_stimuli", "controlled_quantity": "digital_line_increment",
             "digital_intensity_mapping": "I_line = 0.5 + increment; background = 0.5",
             "fixed_repetitions_per_level_per_condition": run.values["fixed_repetitions"],
@@ -125,25 +149,39 @@ def fixed_method(run):
         })
 
 
+def adaptive_method(run):
+    return TeachingAdaptiveMethod(run, make_conditions=make_conditions,
+                                  choose=choose_condition, maximum=.5)
+
+
+# PART B — FRAMEWORK INTEGRATION
+# Project declared measurements into the existing record; retain every old field.
+def fixed_record(run, condition):
+    return fixed_teaching_record(run, condition) | {
+        "measurements": trial_measurements(run.values, condition)}
+
+
 def procedure(run):
     return run_contrast_experiment(run, methods={
-        "adaptive": lambda: TeachingAdaptiveMethod(run, make_conditions=make_conditions,
-                                                   choose=choose_condition, maximum=.5),
+        "adaptive": lambda: adaptive_method(run),
         "constant_stimuli": lambda: fixed_method(run),
     }, prepare_stimuli=prepare_stimuli, trial_events=trial_events, interpret_response=interpret_response)
 
 
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 make_trial = legacy_trial_factory(trial_events)
 
 
 SPEC = experiment(
     id="demolab__line_strength", name="Line strength at two eccentricities",
     description=__doc__, procedure=procedure, session_start=SESSION_START, fields=FIELDS, responses=RESPONSES,
-    adaptive=AdaptiveSelection("consecutive_up_down", controls=("n_down", "n_up", "down_factor", "up_factor", "max_trials")),
+    adaptive=ADAPTIVE_RULE,
     method_planner=make_fixed_schedule, validator=validate_settings,
-    method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
-    calibration_requirements=("geometry",), monitor_capabilities=("display_binding", "resolution"),
+    method_reviewer={
+        "adaptive": lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
+        "constant_stimuli": fixed_method,
+    },
+    calibration_requirements=CALIBRATION_REQUIREMENTS, monitor_capabilities=MONITOR_CAPABILITIES,
     stimulus_slots=STIMULUS_SLOTS, stimulus_defaults=STIMULUS_DEFAULTS,
     supports_simulation=True, source_paths=("experiments/demolab__line_strength.py",),
 )

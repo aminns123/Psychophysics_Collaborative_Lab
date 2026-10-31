@@ -3,10 +3,10 @@ from textual.widgets import DataTable
 
 
 REVIEW_TABLE_COLUMNS = (
-    ("Group", 8),
+    ("Group", 18),
     ("Parameter / units", 28),
-    ("Effective value", 16),
-    ("Status / authority", 24),
+    ("Effective value", 24),
+    ("Status / authority", 28),
     ("Advanced source", 28),
 )
 
@@ -22,7 +22,7 @@ def copy_review_table(source, destination):
     for label, width in REVIEW_TABLE_COLUMNS:
         destination.add_column(label, width=width)
     for index in range(source.row_count):
-        destination.add_row(*source.get_row_at(index))
+        destination.add_row(*source.get_row_at(index), height=None)
     if source.row_count:
         destination.move_cursor(row=min(coordinate.row, source.row_count - 1),
                                 column=min(coordinate.column, len(REVIEW_TABLE_COLUMNS) - 1))

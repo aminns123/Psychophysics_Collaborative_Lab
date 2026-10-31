@@ -106,7 +106,7 @@ def test_single_python_file_can_be_staged_and_fingerprinted_without_companion(tm
 def test_public_adaptive_policy_is_visible_in_the_experiment_source(identity):
     from psychophysics_lab.experiments._internal.registry import get_experiment
     spec=get_experiment(identity)
-    source=(ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text()
+    source=(ROOT / f"src/psychophysics_lab/experiments/{identity}.py").read_text(encoding="utf-8")
     defaults=spec.field_defaults()
     for key in ("n_down","n_up","reversal_termination","staircases_per_condition"):
         assert key in defaults and key in source
@@ -163,10 +163,10 @@ def test_discovery_registers_a_new_python_file_without_companion_or_manual_list(
     from psychophysics_lab.experiments._internal import contributions as loader, registry
     from psychophysics_lab.stimuli import registry as stimuli
     # Make a real importable single-file experiment outside the checkout.
-    source = (ROOT / "src/psychophysics_lab/experiments/example_experiment.py").read_text()
+    source = (ROOT / "src/psychophysics_lab/experiments/example_experiment.py").read_text(encoding="utf-8")
     source = source.replace('identity="example_experiment"', 'identity="new_task"')
     source = source.replace('default_config=f"configs/experiments/{identity}.json",', '')
-    (tmp_path / "new_task.py").write_text(source)
+    (tmp_path / "new_task.py").write_text(source, encoding="utf-8")
     monkeypatch.setattr(package, "__path__", [str(tmp_path), *package.__path__])
     monkeypatch.setattr(loader, "__file__", str(tmp_path / "_internal/contributions.py"))
     monkeypatch.setattr(loader, "_loaded", False)
@@ -220,11 +220,16 @@ def test_python_procedure_storyboard_does_not_replay_a_retired_json_plan(tmp_pat
 
 
 @pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows batch launcher")
-def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
+@pytest.mark.parametrize("development", [False, True])
+def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, development, monkeypatch):
     import os
     import shutil
     import subprocess
     import venv
+    import logging
+    import tempfile
+    from _windows_launcher_process import run_launcher
+    diagnostic = logging.getLogger(__name__)
     # Run the actual batch entry point, using a hardware-free fake app and a
     # no-install setup hook. The real local environment is never changed.
     shutil.copyfile(ROOT / "run_psycolab.bat", tmp_path / "run_psycolab.bat")
@@ -235,17 +240,28 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
     (tmp_path / "packaging/windows").mkdir(parents=True)
     shutil.copyfile(ROOT / "packaging/windows/GuidedSetup.cs", tmp_path / "packaging/windows/GuidedSetup.cs")
     (scripts / "launcher_setup.py").write_text("# no installation in this regression fixture\n")
-    venv.EnvBuilder(with_pip=False).create(tmp_path / ".venv")
+    environment = tmp_path / (".venv-dev" if development else ".venv")
+    diagnostic.warning("launcher development=%s: creating temporary environment %s", development, environment)
+    venv.EnvBuilder(with_pip=False).create(environment)
+    diagnostic.warning("launcher development=%s: temporary environment created", development)
     import hashlib
     profile = tmp_path / "requirements/windows-cp311"
     profile.mkdir(parents=True)
     (profile / "profile.json").write_text('{"files":{}}')
-    (tmp_path / ".venv/.psycolab-setup.json").write_text(json.dumps({
-        "schema_version":2,"source_root":str(tmp_path),
-        "pyproject_sha256":hashlib.sha256((tmp_path/"pyproject.toml").read_bytes()).hexdigest(),
-        "qualification":{"profile_sha256":hashlib.sha256((profile/"profile.json").read_bytes()).hexdigest()}}))
-    site = subprocess.check_output([str(tmp_path/".venv/Scripts/python.exe"),"-I","-c",
-        "import sysconfig;print(sysconfig.get_path('purelib'))"],text=True).strip()
+    if development:
+        (tmp_path / ".git").mkdir()
+        (scripts / "developer_setup.py").write_text("import sys\nassert sys.argv[1:] == ['--check']\n")
+        (environment / ".psycolab-development.json").write_text('{"mode":"development"}')
+    else:
+        (environment / ".psycolab-setup.json").write_text(json.dumps({
+            "schema_version":2,"source_root":str(tmp_path),
+            "pyproject_sha256":hashlib.sha256((tmp_path/"pyproject.toml").read_bytes()).hexdigest(),
+            "qualification":{"profile_sha256":hashlib.sha256((profile/"profile.json").read_bytes()).hexdigest()}}))
+    diagnostic.warning("launcher development=%s: querying temporary interpreter", development)
+    site_result = run_launcher([str(environment/"Scripts/python.exe"),"-I","-c",
+        "import sysconfig;print(sysconfig.get_path('purelib'))"],cwd=tmp_path,timeout=45)
+    assert site_result.returncode == 0, site_result.stdout + site_result.stderr
+    site = site_result.stdout.strip()
     (Path(site)/"fixture.pth").write_text(str(tmp_path),encoding="utf-8")
     package = tmp_path / "psychophysics_lab"
     package.mkdir()
@@ -262,16 +278,34 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path):
         '"' + os.environ.get("COMSPEC", "cmd.exe") + '" /d /c '
         'call run_psycolab.bat --probe-token "a value with spaces" <NUL'
     )
-    state = tmp_path / ".venv/.psycolab-setup.json"
+    state = environment / (".psycolab-development.json" if development else ".psycolab-setup.json")
     before = state.read_bytes()
     commands = [command, ["powershell.exe", "-NoLogo", "-NoProfile",
         "-ExecutionPolicy", "Restricted", "-Command",
         "& .\\run_psycolab.bat --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
     # Restricted applies only to this child process; no policy is changed and
     # no .ps1 file or bypass is needed to compile/launch the native host.
-    for command in commands:
-        result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
-            creationflags=subprocess.CREATE_NO_WINDOW)
-        assert result.returncode == 0, result.stdout + result.stderr
-        assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
-        assert state.read_bytes() == before
+    with tempfile.TemporaryDirectory(prefix='psy-batch-collision-') as folder:
+        bootstrap = Path(folder)
+        # Force the historical two-RANDOM name to collide. The old launcher
+        # opens a modal rather than launching; a private occupied directory must
+        # also remain untouched by the atomic allocator.
+        monkeypatch.setenv('RANDOM', '17')
+        legacy = bootstrap/'PsyCoLab-launch-17-17.exe'
+        legacy.write_bytes(b'preserve unrelated retained bootstrap')
+        occupied = bootstrap/'PsyCoLab-launch-17-17-1'
+        occupied.mkdir()
+        sentinel = occupied/'preserve.txt'
+        sentinel.write_bytes(b'not owned by this launch')
+        for command in commands:
+            diagnostic.warning("launcher development=%s: command starting: %r", development, command)
+            try:
+                result = run_launcher(command, cwd=tmp_path, timeout=45, bootstrap_root=bootstrap)
+            except subprocess.TimeoutExpired as error:
+                pytest.fail(f'Launcher exceeded its original 45-second deadline.\n{error.output}\n{error.stderr}', pytrace=False)
+            diagnostic.warning("launcher development=%s: command returned %s", development, result.returncode)
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
+            assert state.read_bytes() == before
+            assert legacy.read_bytes() == b'preserve unrelated retained bootstrap'
+            assert sentinel.read_bytes() == b'not owned by this launch'
