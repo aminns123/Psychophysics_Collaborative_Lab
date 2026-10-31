@@ -2379,13 +2379,17 @@ class ReviewScreen(Screen):
             )
             from .review_table import ReviewSettingsTable
             yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens the generic Review parameter editor. Enter/double-click and source links are advanced file actions.",markup=False)
-            with Horizontal(classes="buttons"):
+            yield Static("EDITABLE = selected input · DERIVED / TRIAL-CONTROLLED = computed by the experiment · "
+                         "INACTIVE = retained for another method. Missing/invalid inputs must be corrected before running. "
+                         "Software Test → Ready does not qualify physical apparatus.",
+                         id="review-authority-legend", markup=False, classes="field-help")
+            with Horizontal(classes="buttons", id="review-table-actions"):
                 yield Button("Edit inputs / stimuli", id="review-edit-inputs")
                 yield Button("Edit selected value",id="review-edit-value",variant="primary")
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
                 yield Button("Reload files and review",id="review-reload-files")
-            yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell")
+            yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell", zebra_stripes=True)
             yield Static("",id="review-file-location",markup=False)
             yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
                          "while retaining selected settings and stimulus snapshots. To adopt a new stimulus Python "
@@ -2501,7 +2505,11 @@ class ReviewScreen(Screen):
         for row,target,authority in zip(rows,self._file_targets,self._row_authorities):
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
                      else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
-            table.add_row(*row[:3],authority["status"],Text(address,style="underline bright_cyan"))
+            # Wrap scientific content, retaining exact values and source targets.
+            # File paths stay compact in the table; full addresses remain below.
+            table.add_row(*row[:3], authority["status"],
+                          Text(address,style="underline bright_cyan",no_wrap=True,overflow="ellipsis"),
+                          height=None)
         table.move_cursor(row=min(cursor.row,max(0,len(rows)-1)),column=min(cursor.column,4))
         self.query_one("#resolved-settings-note",Static).update(description["note"])
         self._show_file_location(table.cursor_row)

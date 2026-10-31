@@ -94,7 +94,7 @@ class ReviewTableFullscreen(Screen):
                 "Expanded Review table  ·  Select a row; Enter or double-click opens its source.  Esc returns.",
                 id="expanded-review-note", markup=False,
             )
-            yield ReviewSettingsTable(id="expanded-settings-table", cursor_type="cell")
+            yield ReviewSettingsTable(id="expanded-settings-table", cursor_type="cell", zebra_stripes=True)
             yield Static("", id="expanded-review-location", markup=False)
             yield Footer()
 
@@ -118,8 +118,10 @@ class ReviewTableFullscreen(Screen):
         target = self.review._file_targets[row]
         authority = self.review._row_authorities[row]
         path = target.get("path")
+        record = self.review._review_rows[row]
         self.query_one("#expanded-review-location", Static).update(
             f"{authority['status']} · {authority['route']}\n"
+            f"{record[0]} · {record[1]}\nVALUE: {record[2]}\n"
             f"{authority['meaning']}\n{authority['explanation']}\n"
             f"{path or 'Selected run snapshot'} : {target.get('line', 1)}  ·  {target.get('note', '')}"
         )

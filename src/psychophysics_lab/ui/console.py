@@ -264,7 +264,17 @@ Checkbox > .toggle--button { color: #aaaaaa; background: #080808; }
 #console-workspace DataTable { height: 22; width: 100%; background: #080808; color: #eeeeee; scrollbar-size: 1 1; scrollbar-background: #151515; scrollbar-color: #666666; }
 #console-workspace #resolved-settings-table { height: 14; }
 .console-compact #console-workspace #resolved-settings-table { height: 8; }
+/* Keep the established shell and narrow-screen routes. Only Review's toolbar
+   uses spare width; its same controls stack vertically on compact terminals. */
+#console-workspace #review-table-actions { layout: grid; grid-size: 2;
+    grid-columns: 1fr 1fr; grid-rows: 3; height: 9; }
+#console-workspace #review-table-actions Button { width: 100%; }
+.console-compact #console-workspace #review-table-actions { layout: vertical; height: auto; }
+#console-workspace #review-file-location { border-left: solid #555555;
+    padding: 0 1; margin-top: 1; }
+#console-workspace #review-authority-legend { color: #bbbbbb; }
 DataTable > .datatable--header { background: #333333; color: #ffffff; }
+DataTable > .datatable--odd-row { background: #101010; }
 DataTable > .datatable--cursor { background: #cccccc; color: #080808; }
 #console-workspace TextArea { height: 20; width: 100%; border: solid #444444; }
 /* Calibration status is semantic, not decoration. Text and symbols accompany colour. */
