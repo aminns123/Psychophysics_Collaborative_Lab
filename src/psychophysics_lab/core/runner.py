@@ -177,7 +177,9 @@ def _run_artifact_fingerprints(run_dir: Path) -> dict[str, str]:
 
 
 def _software_provenance(repo_root: Path) -> dict:
+    from .environment import environment_evidence
     return {
+        "environment": environment_evidence(repo_root),
         "psycolab_version": source_version,
         "installed_distribution_version": _safe_version("psychophysics-lab"),
         "python_version": platform.python_version(),

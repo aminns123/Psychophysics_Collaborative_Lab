@@ -14,6 +14,14 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 
 ## Start
 
+For a **maintainer Git checkout on a new PC**, install 64-bit CPython 3.11,
+double-click **setup_psycolab_dev.bat** once, then double-click
+**run_psycolab.bat**. Setup downloads the declared development dependencies
+into a separate `.venv-dev`. This development environment has no locked
+laboratory qualification. A checkout with an existing laboratory `.venv`
+keeps that environment's qualification gate; use a separate checkout for
+development. See [startup recovery](docs/STARTUP_RECOVERY.md).
+
 For a source installation, follow the [approved Windows environment guide](docs/WINDOWS_ENVIRONMENT.md),
 then double-click **run_psycolab.bat**. An arbitrary Python 3.11 installation is
 not a qualified interpreter. A [guided installation candidate](docs/WINDOWS_GUIDED_INSTALLATION.md)
@@ -132,3 +140,12 @@ CLI has no built-in `csf_baseline` or `csf_short_censored` scenario; list
 actual registered scenarios with `python -m simulations --list-scenarios
 --experiment all`. Simulation validates software/provenance, not physical
 stimulus output or human psychometric performance.
+
+### Writing your first experiment
+
+Begin with [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) and the two executable
+[laboratory starters](examples/laboratory_extensions/METHODS.md). The approved
+[A1/A2/B standard](docs/EXPERIMENT_AUTHORING_STANDARD.md) puts experimental choices,
+scientific methods and minimal framework integration in one ordinary Python file.
+Use a uniquely identified local extension for new science; Configure stays
+universal and Review derives scientific inputs from the experiment declarations.

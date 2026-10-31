@@ -8,28 +8,27 @@ and a once-only SPACE readiness / 1,000 ms settling fixation. Write
 `SESSION_START=[]` to disable the opening. Existing external sources are not
 rewritten. See the [Stage C evidence](../../../docs/STAGE_C_EVENT_FIRST.md).
 
-## Read every official experiment in this order
+## Begin with the scientist-first A1/A2/B narrative
 
-1. **PARAMETERS:** declared ConfigFields, response meanings, stimulus identities
-   and selected defaults. Settings passed by Configure override these defaults.
-2. **SESSION START — ONCE:** edit the key, settling duration or entire list here.
-   The session-only ready slot contains fixation, without a task probe.
-3. **TRIAL EVENTS — REPEATED:** the flat `trial_events(settings, condition)`
-   list gives the actual display order, durations, response and optional cues.
-   `prepare_stimuli` maps the current condition and strength to renderer parameters.
-4. **SCIENTIFIC RULES — CONDITIONS AND UPDATES:** condition construction,
-   randomisation, correctness and the response-dependent next stimulus.
-5. **STOPPING AND RESULTS:** completion, safety ceiling, recording, result
-   calculations and the procedure. Finite teaching tasks do not acquire a
-   scientific threshold merely because an adaptive method is selected.
-6. **FRAMEWORK REGISTRATION — MINIMAL AND LAST:** `SPEC` and compatibility
-   connection. A new supported experiment requires no TUI source change.
+Read the approved [authoring standard](../../../docs/EXPERIMENT_AUTHORING_STANDARD.md)
+and [walkthrough](../../../docs/LEARN_PSYCOLAB.md) first. In one Python file:
 
-Start with `orientation_task.py` for a finite teaching task,
-`contrast_sensitivity.py` for interleaved reversal-completion staircases and
-`ellipse_major_axis.py` for two temporal intervals. The two line-position
-experiments share a spatial question but retain their distinct geometry.
-`ellipse_centre.py` is another two-interval geometry.
+1. **A1 — Experimental choices:** question, factors, units, alternatives,
+   placement, keys, session/trial events and declared measurements.
+2. **A2 — Scientific methods:** selection, scoring, response-dependent strengths,
+   bounds, stopping and scientific results.
+3. **B — Framework integration:** existing runner, recorder, Review hooks and SPEC.
+
+Start with the migrated `example_experiment.py` or `probe_above_below.py`, and
+the two executable [local starters](../../../examples/laboratory_extensions/METHODS.md).
+Configure contains universal controls; scientific values remain editable in Review.
+No TUI edit is needed for a new supported experiment or stimulus.
+
+The eight remaining official experiments retain their six-section scientific
+baseline until their family wave is approved. Read their session/trial events,
+scientific rules and stopping functions without treating their historical layout
+as the new authoring template. The [migration plan](../../../docs/EXPERIMENT_MIGRATION_PLAN.md)
+keeps each wave separately reviewed; this onboarding update does not migrate them.
 
 `contrast_sensitivity_windowed.py` explicitly declares its circular-windowed
 grating and event order. Its named shared CSF functions deliberately reuse

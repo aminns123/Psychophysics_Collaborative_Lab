@@ -1,9 +1,12 @@
 # Official experiment migration plan and scientific field map
 
-**Prepared, not executed.** Governing proposal:
+**Approved family plan; Wave 1 completed in PR #169.** Governing narrative:
 [version-1 authoring standard](EXPERIMENT_AUTHORING_STANDARD.md).
-Baseline: main `a5aa56a9090340f5456b030c97d35ff1b2d1c371`.
-All ten official source files and shared scientific implementations are unchanged.
+The historical design-freeze checkpoint below uses main
+`a5aa56a9090340f5456b030c97d35ff1b2d1c371`; its frozen fixtures remain evidence,
+not a claim that today's source is unchanged. Capture the actual latest merged
+baseline before each remaining wave. Each migration needs its own equivalence
+evidence and review; approval of the narrative does not merge subsequent waves.
 
 ## Inventory and compatibility assessment
 
@@ -102,7 +105,7 @@ before/after behavioural comparison rather than disabling equivalence checks.
 
 | Wave | Files | Additional proof required before proposing merge |
 |---|---|---|
-| 1 | `example_experiment`, `probe_above_below` | O/A/F; alternating versus selected-seed shuffled targets; state counters/markers; preset overrides; explicit measurement declarations preserving method-specific records. |
+| 1 — complete, PR #169 | `example_experiment`, `probe_above_below` | O/A/F; alternating versus selected-seed shuffled targets; state counters/markers; preset overrides; explicit measurement declarations preserving method-specific records. |
 | 2 | `orientation_task`, `orientation_adaptive` | All supported modes, their different starting-strength sources and finite stopping; zero/subnormal/upper-bound behaviour; tilt mapping and old saved-run meaning. |
 | 3 | Gaussian and circular CSF | A/F; both envelopes, source dependency direction, active-track/target draw order, peak-to-peak convention, estimator and incomplete/boundary flags. No prototype import in official source. |
 | 4 | Both line-position tasks | A/F; geometric estimator, required displacement/frequency, local flanker overlap/sampling and additive headroom, optional onset/accepted-response cues. |
