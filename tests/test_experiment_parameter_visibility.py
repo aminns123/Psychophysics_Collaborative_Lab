@@ -155,7 +155,7 @@ def test_all_public_experiment_fields_precede_scientific_execution(module):
     migrated = hasattr(module, "trial_events")
     parameters = "# 1. PARAMETERS" if migrated else "# 1. SETTINGS AND STIMULI"
     following = "# 2. SESSION START" if migrated else "# 2. CONDITIONS AND TRIAL ORDER"
-    if module.SPEC.id in {"example_experiment", "probe_above_below"}:
+    if module.SPEC.id in {"example_experiment", "probe_above_below", "orientation_task", "orientation_adaptive"}:
         parameters, following = "# PART A1", "SESSION_START = ["
     assert source.index(parameters) < source.index("FIELDS = (")
     assert source.index("FIELDS = (") < source.index(following) < source.index("def procedure")
