@@ -1,0 +1,234 @@
+[
+  {
+    "identity": "line_position_baseline",
+    "method": "adaptive",
+    "seed": 0,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 19,
+    "rows_sha256": "d70b75149f038781a0a8a0f1da18f7cea27462780f51e5e71739adeaddb0df38",
+    "files_sha256": {
+      "adaptive_history.json": "acc9f43c6ad7e22457622f1c2e063382971c3a4f64128eaaed0a381c35cd81cf",
+      "adaptive_session.json": "184d6f8c5cd1ae3be7f83597a0db4c6ddc1db5094112339f3c622cdd585064a1",
+      "primary_thresholds.json": "c17777bb172347970a80323be323e70867668325f905df24f10a98b4abfd3d82",
+      "resolved_experiment.json": "141bdb4b9d0a603c3dce33b1f920424ab10f2f93a8efeaa02bb9ca18a97aa16c",
+      "trial_actions.json": "d7c0db352cb645e40e4c9d71780f09c88d05de43a3e4adaf12a0ebf7c6fa7724",
+      "trial_presentations.json": "3c8d21c51c05da2fd404a4f1e62086b5501a0de4cc492876e26482cee6d7c97f"
+    }
+  },
+  {
+    "identity": "line_position_baseline",
+    "method": "adaptive",
+    "seed": 19,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 20,
+    "rows_sha256": "ce7a61a68dd71971e3b20c9ec6b5de64a74083eb23868eea89faac36fda6733f",
+    "files_sha256": {
+      "adaptive_history.json": "889fdf8a4b16c649a397753f465035f748f0f53d4dc4bd99dd6c1f4d870726d9",
+      "adaptive_session.json": "07b88d220ed45c8f5f1bb81d54c7b656de060ffcaf283062a275f0377fc060ac",
+      "primary_thresholds.json": "41459c8a479b8da930f8dc2e6806dbfacc14ae94513784d582ba0e70c383c4f0",
+      "resolved_experiment.json": "4077b72da1955ab08d52d2d6e8622823f9550600e6dcbaa0d509b6e2cde333ae",
+      "trial_actions.json": "5e88d95c3cb8ff50a1acb3009e1bef927e0969617fd1dedfe4d02e2af8435362",
+      "trial_presentations.json": "009a77bb1d35667c54c93c9d061413f2d6c8cde686aa7fb8197d891df49f34af"
+    }
+  },
+  {
+    "identity": "line_position_baseline",
+    "method": "constant_stimuli",
+    "seed": 0,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "4adabb2daba086463a36161f293d2f4299a5c33c9851ee1e7fb43dac27ab8364",
+    "files_sha256": {
+      "resolved_experiment.json": "181fcfb7e4ad6a03c14871e4897017fda0ed49261ae7ece715d7143afaac392c",
+      "trial_actions.json": "8cf6637a7507003da8c2476caee1b9c7b924638c8dde05a49c7e257b185b5eda",
+      "trial_presentations.json": "03858dcc7c9691381964fd90bb286db2865362008993faa76fe7adb7ea712fa7"
+    }
+  },
+  {
+    "identity": "line_position_baseline",
+    "method": "constant_stimuli",
+    "seed": 19,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "74b4adfa261d6a2407010440dcd9ea82289de3b6b9d7ab5df45a781286367fd3",
+    "files_sha256": {
+      "resolved_experiment.json": "743cd66cf63059ae5a425eb4ca1314b9cf67ae47156977113929a91debf70870",
+      "trial_actions.json": "826f38eaa2f7752355ce1e5564d92076f8835e6c7c93ad0dcd9b3ce9fe4dc324",
+      "trial_presentations.json": "82645d587f81d7a41dc21347ed83479ec37fb8c40a7d7a8d5d330365286c61ae"
+    }
+  },
+  {
+    "identity": "line_position_flanker",
+    "method": "adaptive",
+    "seed": 0,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "flanker_cpd": 2.0,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 19,
+    "rows_sha256": "d70b75149f038781a0a8a0f1da18f7cea27462780f51e5e71739adeaddb0df38",
+    "files_sha256": {
+      "adaptive_history.json": "acc9f43c6ad7e22457622f1c2e063382971c3a4f64128eaaed0a381c35cd81cf",
+      "adaptive_session.json": "184d6f8c5cd1ae3be7f83597a0db4c6ddc1db5094112339f3c622cdd585064a1",
+      "primary_thresholds.json": "c17777bb172347970a80323be323e70867668325f905df24f10a98b4abfd3d82",
+      "resolved_experiment.json": "22134cdcf4772581af5b447c9fbdaefb0f1135a494df9178ccf549f406b1cc2c",
+      "trial_actions.json": "5abcac1a8904f73fd3a5453282548f205e4556157c2094a2bfccff6fc6187b5c",
+      "trial_presentations.json": "3c8d21c51c05da2fd404a4f1e62086b5501a0de4cc492876e26482cee6d7c97f"
+    }
+  },
+  {
+    "identity": "line_position_flanker",
+    "method": "adaptive",
+    "seed": 19,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "flanker_cpd": 2.0,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 20,
+    "rows_sha256": "ce7a61a68dd71971e3b20c9ec6b5de64a74083eb23868eea89faac36fda6733f",
+    "files_sha256": {
+      "adaptive_history.json": "889fdf8a4b16c649a397753f465035f748f0f53d4dc4bd99dd6c1f4d870726d9",
+      "adaptive_session.json": "07b88d220ed45c8f5f1bb81d54c7b656de060ffcaf283062a275f0377fc060ac",
+      "primary_thresholds.json": "41459c8a479b8da930f8dc2e6806dbfacc14ae94513784d582ba0e70c383c4f0",
+      "resolved_experiment.json": "0fb5e421674990597c4a07e8c616a185497f54441a29fe6cd1ed86f1fc0aa4ab",
+      "trial_actions.json": "867a2097934010dc1ae5de9a15fb2693140c02271601338f0a5c6e3eaa82625c",
+      "trial_presentations.json": "009a77bb1d35667c54c93c9d061413f2d6c8cde686aa7fb8197d891df49f34af"
+    }
+  },
+  {
+    "identity": "line_position_flanker",
+    "method": "constant_stimuli",
+    "seed": 0,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "flanker_cpd": 2.0,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "4adabb2daba086463a36161f293d2f4299a5c33c9851ee1e7fb43dac27ab8364",
+    "files_sha256": {
+      "resolved_experiment.json": "80416a3cb58fca0773eef660aaa8392f69fc406c5a2be1d2466b91074892bdb1",
+      "trial_actions.json": "41f6db5d80ed36a8ff1f627f9dbcbcee7834dc1e5f0f31538af7dd1d4d86efdc",
+      "trial_presentations.json": "03858dcc7c9691381964fd90bb286db2865362008993faa76fe7adb7ea712fa7"
+    }
+  },
+  {
+    "identity": "line_position_flanker",
+    "method": "constant_stimuli",
+    "seed": 19,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "positions_deg": "-.2,.2",
+      "probe_vertical_offset_deg": 0.4,
+      "flanker_cpd": 2.0,
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "74b4adfa261d6a2407010440dcd9ea82289de3b6b9d7ab5df45a781286367fd3",
+    "files_sha256": {
+      "resolved_experiment.json": "f059a7af5b195f50c3d2cdb4339e6488fbf49e9f68987d8060de0b84a902dbd7",
+      "trial_actions.json": "e8a5acd1a193f1a96a913beec8017c2681fb425a11f39e362a84235ddb049813",
+      "trial_presentations.json": "82645d587f81d7a41dc21347ed83479ec37fb8c40a7d7a8d5d330365286c61ae"
+    }
+  }
+]
