@@ -173,7 +173,21 @@ class LegacyPlanSpelling(ast.NodeTransformer):
 def test_scientific_function_bodies_and_approved_authoring_contract(identity):
     module=importlib.import_module('psychophysics_lab.experiments.'+identity)
     source=Path(module.__file__).read_text(encoding='utf-8')
-    if identity in {'example_experiment', 'probe_above_below', 'orientation_task', 'orientation_adaptive'}:
+    from _scientist_first_migrations import migration_reference
+    reference = migration_reference(ROOT, identity)
+    if reference is not None:
+        positions=[source.index(header) for header in (
+            '# PART A1 — EXPERIMENTAL CHOICES', '# PART A2 — SCIENTIFIC METHODS',
+            '# PART B — FRAMEWORK INTEGRATION')]
+        assert positions == sorted(positions)
+        assert positions[0] < source.index('def trial_events') < positions[1]
+        if 'def trial_measurements' in source:
+            assert positions[0] < source.index('def trial_measurements') < positions[1]
+        assert positions[1] < source.index('def prepare_stimuli') < positions[2]
+        assert positions[2] < source.index('def procedure')
+        # Preserve every historical AST assertion below on the exact reference.
+        source = reference.read_text(encoding='utf-8')
+    elif identity in {'example_experiment', 'probe_above_below', 'orientation_task', 'orientation_adaptive'}:
         # Reviewed family migrations adopt A1/A2/B only for these four IDs. Current exact-source and
         # unchanged scientific contracts are guarded in test_authoring_standard;
         # test_issue165_wave1 / wave2 compare real current/frozen traces in all modes.

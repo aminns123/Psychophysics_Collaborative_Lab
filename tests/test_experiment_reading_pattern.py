@@ -43,7 +43,9 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
         assert module.SPEC.stimulus_slots["grating"] != shared.SPEC.stimulus_slots["grating"]
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     migrated = hasattr(module, "trial_events")
-    scientist_first = identity in {
+    from _scientist_first_migrations import migration_reference
+    reference = migration_reference(ROOT, identity)
+    scientist_first = reference is not None or identity in {
         "example_experiment", "probe_above_below", "orientation_task", "orientation_adaptive"}
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
@@ -56,7 +58,14 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     if identity == "contrast_sensitivity_windowed":
         names = ("trial_events", "prepare_stimuli", "procedure", "definition")
-    if identity in {"orientation_task", "orientation_adaptive"}:
+    if reference is not None:
+        names = tuple(n for n in ("trial_events", "prepare_stimuli", "make_conditions", "procedure", "definition") if n in positions)
+        assert headings[0] < source.index('def trial_events') < headings[1]
+        assert headings[1] < source.index('def prepare_stimuli') < headings[2]
+        if 'def trial_measurements' in source:
+            assert headings[0] < source.index('def trial_measurements') < headings[1]
+        assert headings[2] < source.index('def procedure')
+    elif identity in {"orientation_task", "orientation_adaptive"}:
         # Wave 2 retains the scientific differences between these two methods.
         # The immutable six-section references are still checked by Stage C;
         # exact new sources and full before/after traces are guarded separately.
