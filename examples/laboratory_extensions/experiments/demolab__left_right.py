@@ -18,7 +18,10 @@ from psychophysics_lab.researcher import (
     UpdateState,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: which side contains the line? Targets alternate left/right; no staircase.
+# Timing is requested ms, displacement is degrees, commands are digital intensity.
+# Selected values override Python defaults; changing this source requires Test → Ready.
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIELDS = (
     ConfigField("trial_count", "Number of trials", "int", 6, minimum=1, maximum=200),
@@ -42,6 +45,8 @@ FIELDS = (
 
 
 RESPONSES = ResponseParadigm("line_position", ("left", "right"), ("F", "J"))
+CALIBRATION_REQUIREMENTS = ("geometry",)
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
 STIMULUS_SLOTS = {"target": "simple_line"}
 STIMULUS_DEFAULTS = {"target": "demolab__line"}
 
@@ -52,7 +57,7 @@ STIMULUS_SLOTS["ready_fixation"] = "fixation"
 STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
 
-# 2. SESSION START — ONCE
+# Session opening — once, before scientific responses
 # Edit the Python list directly. SESSION_START = [] disables the opening.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
@@ -61,7 +66,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological events — repeated for the currently selected target
 # One fresh flat event list per selected condition; effective strengths are prepared below.
 
 
@@ -88,7 +93,22 @@ def prepare_stimuli(run, condition, state):
     return {"target": run.stimulus_parameters(offset_deg=condition["offset_deg"])}
 
 
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
+# Requested geometry saved in the existing per-trial journal; canonical columns stay unchanged.
+MEASUREMENT_UNITS = {"line_offset_deg": "degrees"}
+STATE_UNITS = {"correct_count": "responses"}
+
+
+def trial_measurements(settings, condition):
+    return {"line_offset_deg": condition["offset_deg"]}
+
+
+def response_instructions(responses):
+    return f"Left: {responses.keys[0]}   Right: {responses.keys[1]}"
+
+
+# PART A2 — SCIENTIFIC METHODS
+# Scheduled rows encode target alternatives, not scientific factors or tracks.
+# The stimulus preset supplies displacement magnitude; choose_condition supplies its sign.
 
 
 SCIENTIFIC_SPEC = {'version': 'demolab__left_right-1', 'response': 'Two named alternatives; target/response alternative equality.', 'quantity': 'Teaching stimulus digital commands and geometry; no calibrated optical threshold claim.', 'conditions': 'Explicit condition order in make_conditions; shuffled only where its seed is declared.', 'adaptive': 'None; fixed-trial demonstration.', 'stopping': 'Configured accepted response count, not a threshold convergence criterion.', 'exclusions': 'No retrospective deletion; timeout/abort/error preserved as run status.', 'estimator': 'No scientific threshold estimate; response/accuracy records only.'}
@@ -123,29 +143,7 @@ def update_experiment(run, condition, state, response, trial):
     return dict(trial.state)
 
 
-def initialise_experiment(run, conditions):
-    run.initialise(
-        expected_trials=len(conditions),
-        resolution={
-            "task": "Report whether the line is left or right.",
-            "condition_order": [c["target"] for c in conditions],
-            "trial_timeline": TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values).to_dict(),
-            "measurement_units": {"line_offset_deg": "degrees", "correct_count": "responses"},
-        },
-    )
-    return {"correct_count": 0}
-
-
-# 5. STOPPING AND RESULTS
-
-
-def trial_record(run, condition, state):
-    offset = condition["offset_deg"]
-    return {
-        "state": state | {"line_offset_deg": offset},
-        "measurements": {"line_offset_deg": offset},
-        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    }
+# Stop after the scheduled accepted responses; no threshold estimator.
 
 
 def is_finished(run, conditions, state):
@@ -154,6 +152,36 @@ def is_finished(run, conditions, state):
 
 def finish_experiment(run, conditions, state):
     run.complete()
+
+
+def initial_state():
+    return {"correct_count": 0}
+
+
+def scientific_resolution(run, conditions):
+    return {
+        "task": "Report whether the line is left or right.",
+        "condition_order": [c["target"] for c in conditions],
+        "trial_timeline": TrialTimeline(trial_events(run.values, {"target": 0})).resolve(run.values).to_dict(),
+        "measurement_units": MEASUREMENT_UNITS | STATE_UNITS,
+    }
+
+
+# PART B — FRAMEWORK INTEGRATION
+# Connect the science above to the same canonical RunContext; no new execution engine.
+
+def initialise_experiment(run, conditions):
+    run.initialise(expected_trials=len(conditions), resolution=scientific_resolution(run, conditions))
+    return initial_state()
+
+
+def trial_record(run, condition, state):
+    offset = condition["offset_deg"]
+    return {
+        "state": state | {"line_offset_deg": offset},
+        "measurements": trial_measurements(run.values, condition),
+        "instructions": response_instructions(run.responses),
+    }
 
 
 def procedure(run):
@@ -174,7 +202,7 @@ def procedure(run):
     finish_experiment(run, conditions, state)
 
 
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 # Central compatibility for callers expecting make_trial(...).resolve(...).
 make_trial = legacy_trial_factory(trial_events)
 
@@ -189,8 +217,8 @@ def definition(identity="demolab__left_right", stimulus=STIMULUS_DEFAULTS["targe
         default_config="presets/left_right.json",
         fields=FIELDS, scientific_spec=SCIENTIFIC_SPEC,
         responses=RESPONSES,
-        calibration_requirements=("geometry",),
-        monitor_capabilities=("display_binding", "resolution"),
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
         supports_simulation=True,

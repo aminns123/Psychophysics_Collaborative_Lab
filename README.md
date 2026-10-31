@@ -140,3 +140,12 @@ CLI has no built-in `csf_baseline` or `csf_short_censored` scenario; list
 actual registered scenarios with `python -m simulations --list-scenarios
 --experiment all`. Simulation validates software/provenance, not physical
 stimulus output or human psychometric performance.
+
+### Writing your first experiment
+
+Begin with [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) and the two executable
+[laboratory starters](examples/laboratory_extensions/METHODS.md). The approved
+[A1/A2/B standard](docs/EXPERIMENT_AUTHORING_STANDARD.md) puts experimental choices,
+scientific methods and minimal framework integration in one ordinary Python file.
+Use a uniquely identified local extension for new science; Configure stays
+universal and Review derives scientific inputs from the experiment declarations.

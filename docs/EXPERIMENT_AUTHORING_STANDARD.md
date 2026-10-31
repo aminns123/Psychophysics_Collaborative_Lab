@@ -1,10 +1,11 @@
 # PsyCoLab experiment authoring standard — version 1
 
-**Design-freeze proposal for maintainer sign-off, Issue #165 / PR #167.**
-The current official experiments at main `a5aa56a` remain the accepted scientific
-baseline. This PR selects one narrative and qualifies its reference examples;
-it does not authorise or perform the official migration. Independent researcher
-usability remains NOT VERIFIED until a real researcher completes the exercise.
+**Approved version-1 narrative, Issue #165.** Use A1/A2/B for new experiments.
+Official science remains the accepted implementation on the current merged
+baseline; the family migration is separately reviewed. The two Wave 1 teaching
+files are migrated. Independent novice comprehension remains NOT VERIFIED.
+Begin with the [short walkthrough](LEARN_PSYCOLAB.md) and
+[basic / adaptive-and-fixed local examples](../examples/laboratory_extensions/METHODS.md).
 
 > A scientist describes the experiment in the order they think about the
 > science. PsyCoLab safely executes, validates and records it.
@@ -29,12 +30,11 @@ required. Small ordinary functions returning flat lists/dictionaries are enough.
 Do not create a wrapper merely to fill a section or enforce identical function
 names/counts on scientifically different studies.
 
-The executable reference candidate is
+The detailed executable Gaussian reference is
 [`demolab__csf_two_part.py`](../examples/scientist_first/experiments/demolab__csf_two_part.py).
 The contrasting
 [`demolab__temporal_order.py`](../examples/scientist_first/experiments/demolab__temporal_order.py)
-uses the same narrative for a fixed temporal-order task. These become the
-accepted authoring examples only after maintainer sign-off; neither replaces an
+uses the same narrative for a fixed temporal-order task. These illustrate the accepted narrative; neither replaces an
 official experiment or establishes a new scientifically validated protocol.
 
 ## Part A1: what a scientist normally changes
@@ -265,8 +265,7 @@ Gaussian reference, the measurement boundary and the family-based migration
 plan**, with the documented independent-usability limitation. A merge alone is
 not a physical apparatus qualification or proof of novice comprehension.
 
-Stop at this design-freeze checkpoint until reviewed and approved. Thereafter,
-follow [five independent family waves](EXPERIMENT_MIGRATION_PLAN.md), capturing
+The narrative is approved; individual migrations still require review. Follow [five independent family waves](EXPERIMENT_MIGRATION_PLAN.md), capturing
 each wave's actual current-main baseline before editing. Each requires its own
 review, full Windows checks and explicit merge decision. Completion of one wave
 does not approve or merge the next. Stage 4 native/independent acceptance and
