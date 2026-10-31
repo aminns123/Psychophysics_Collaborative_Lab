@@ -32,7 +32,13 @@ from psychophysics_lab.researcher import (
     UpdateAdaptive,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: is the probe above or below fixation at each horizontal position?
+# Position (degrees) is a condition; above/below is the target alternative.
+# Independent adaptive repeats are tracks; fixed repeats are cell presentations.
+# DO NOT CONFUSE: strength is I_probe - I_background, NOT grating modulation.
+# A2 retains local headroom/overlap checks and the geometric reversal estimator.
+
 FIELDS = (
     ConfigField(
         "positions_deg",
@@ -148,7 +154,7 @@ STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
 STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
-# 2. SESSION START — ONCE
+# Session opening — once; readiness is not an accepted scientific response
 # Edit the Python list directly. SESSION_START = [] disables the opening.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
@@ -157,7 +163,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological events — repeated from the current condition and strength
 # One fresh flat event list per selected condition; effective strengths are prepared below.
 
 
@@ -170,6 +176,58 @@ def trial_events(settings, condition):
         CollectResponse(actions=('above', 'below'), slot='fixation', beep=cue),
     ]
 
+
+ADAPTIVE_RULE = AdaptiveSelection(
+    "consecutive_up_down",
+    controls=(
+        "n_down",
+        "n_up",
+        "logUNIT_UP",
+        "logUNIT_DW",
+        "initial_one_down_limit",
+        "staircases_per_condition",
+        "reversal_termination",
+        "max_trials",
+    ),
+    step_calculator="garcia_perez_1998",
+    step_parameterization="log10_display_contrast",
+)
+
+
+TRIAL_COLUMN_MEANINGS = {
+    "presented_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Presented digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "next_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Post-response digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
+}
+
+CALIBRATION_REQUIREMENTS = ("geometry", "luminance", "timing")
+
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
+
+ACQUISITION_BLOCK_REASON = "Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition."
+
+
+def trial_measurements(settings, condition):
+    """Existing requested journal values; no new canonical columns."""
+    return {
+        "probe_x_deg": condition["x_deg"],
+        "staircase_repeat": condition["repeat"],
+    }
+
+
+def response_instructions(responses):
+    return f"Above: {responses.keys[0]}   Below: {responses.keys[1]}   Escape stops"
+
+
+# PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
     settings = run.values
@@ -197,9 +255,6 @@ def prepare_stimuli(run, condition, state):
     return {"fixation": fixation, "first": first}
 
 
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
-
-
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
     "version": "line_position_baseline-5",
@@ -212,23 +267,6 @@ SCIENTIFIC_SPEC = {
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
     "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting.",
 }
-
-
-ADAPTIVE_RULE = AdaptiveSelection(
-    "consecutive_up_down",
-    controls=(
-        "n_down",
-        "n_up",
-        "logUNIT_UP",
-        "logUNIT_DW",
-        "initial_one_down_limit",
-        "staircases_per_condition",
-        "reversal_termination",
-        "max_trials",
-    ),
-    step_calculator="garcia_perez_1998",
-    step_parameterization="log10_display_contrast",
-)
 
 
 def make_conditions(settings):
@@ -383,41 +421,9 @@ def validate_settings(values):
     yield from validate_probe_fixed_settings(values, make_conditions)
 
 
-# 5. STOPPING AND RESULTS
+# Stopping, scientific estimators and results
 # Require completed reversals for the primary adaptive result; a safety ceiling
 # is incomplete. Fixed levels report responses/accuracy without a threshold fit.
-
-
-TRIAL_COLUMN_MEANINGS = {
-    "presented_display_contrast": {
-        "units_or_encoding": "digital_probe_increment",
-        "meaning": "Presented digital line increment above background.",
-        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-    },
-    "next_display_contrast": {
-        "units_or_encoding": "digital_probe_increment",
-        "meaning": "Post-response digital line increment above background.",
-        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-    },
-    "stimulus_condition": {"units_or_encoding": "horizontal probe coordinate in degrees"},
-}
-
-
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements={
-            "probe_x_deg": condition["x_deg"],
-            "staircase_repeat": condition["repeat"],
-        },
-        instructions=f"Above: {run.responses.keys[0]}   Below: {run.responses.keys[1]}   Escape stops",
-    )
 
 
 def is_finished(run, conditions, state):
@@ -473,6 +479,22 @@ def constant_contrast_method(run):
     )
 
 
+# PART B — FRAMEWORK INTEGRATION
+# FRAMEWORK CONNECTION: same runner, recorder, Review hooks and public identity.
+# Scientific choices/measurements are above; normally leave these bindings alone.
+def trial_record(run, condition, state):
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=maximum_contrast(settings, condition),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements=trial_measurements(settings, condition),
+        instructions=response_instructions(run.responses),
+    )
+
 def procedure(run):
     # Scientific timeline and stimulus conversion stay above. The method
     # chooses the probe increment; RunContext still records the same TSV.
@@ -487,8 +509,7 @@ def procedure(run):
         interpret_response=interpret_response,
     )
 
-
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 # Central compatibility for callers expecting make_trial(...).resolve(...).
 make_trial = legacy_trial_factory(trial_events)
 
@@ -511,9 +532,9 @@ def definition(identity="line_position_baseline"):
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
-        calibration_requirements=("geometry", "luminance", "timing"),
-        monitor_capabilities=("display_binding", "resolution"),
-        acquisition_block_reason="Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition.",
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
+        acquisition_block_reason=ACQUISITION_BLOCK_REASON,
         trial_column_overrides=TRIAL_COLUMN_MEANINGS,
         source_paths=("src/psychophysics_lab/experiments/line_position_baseline.py",),
     )
