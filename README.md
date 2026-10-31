@@ -143,8 +143,9 @@ stimulus output or human psychometric performance.
 
 ### Writing your first experiment
 
-Begin with [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) and the two executable
-[laboratory starters](examples/laboratory_extensions/METHODS.md). The approved
+Begin with [Learn PsyCoLab](docs/LEARN_PSYCOLAB.md) and the three executable
+[progressive laboratory lessons](examples/laboratory_extensions/LESSONS.md):
+Beginner → Intermediate → Advanced, keeping one left/right task. The approved
 [A1/A2/B standard](docs/EXPERIMENT_AUTHORING_STANDARD.md) puts experimental choices,
 scientific methods and minimal framework integration in one ordinary Python file.
 Use a uniquely identified local extension for new science; Configure stays

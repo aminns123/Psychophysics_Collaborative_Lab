@@ -20,11 +20,11 @@ and [walkthrough](../../../docs/LEARN_PSYCOLAB.md) first. In one Python file:
 3. **B — Framework integration:** existing runner, recorder, Review hooks and SPEC.
 
 Start with the migrated `example_experiment.py` or `probe_above_below.py`, and
-the two executable [local starters](../../../examples/laboratory_extensions/METHODS.md).
+the three [progressive local lessons](../../../examples/laboratory_extensions/LESSONS.md).
 Configure contains universal controls; scientific values remain editable in Review.
 No TUI edit is needed for a new supported experiment or stimulus.
 
-The eight remaining official experiments retain their six-section scientific
+Remaining official families retain their accepted scientific
 baseline until their family wave is approved. Read their session/trial events,
 scientific rules and stopping functions without treating their historical layout
 as the new authoring template. The [migration plan](../../../docs/EXPERIMENT_MIGRATION_PLAN.md)

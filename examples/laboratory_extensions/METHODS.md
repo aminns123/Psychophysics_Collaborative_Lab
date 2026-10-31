@@ -1,4 +1,10 @@
-# Two executable scientist-first laboratory examples
+# Established compatibility examples
+
+New learners: use the [three progressive lessons](LESSONS.md) first.
+The two older worked examples below are retained unchanged for existing labs;
+they are supplementary, not a competing authoring standard.
+
+# Two established executable examples
 
 ## Begin with the simple left/right experiment
 
