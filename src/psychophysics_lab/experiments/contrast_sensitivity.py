@@ -34,7 +34,14 @@ from psychophysics_lab.researcher import (
     UpdateAdaptive,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: which side contains the grating at each selected spatial frequency?
+# Frequency (cycles/degree) is a condition; left/right is the target alternative.
+# Adaptive repeats are independent tracks per frequency. Fixed repeats are
+# presentations in frequency/strength cells, not staircases. Selection order,
+# independent target draws and the median/arithmetic estimator are explicit in A2.
+# DO NOT CONFUSE: peak-to-peak DIGITAL modulation with measured optical contrast.
+
 # Defaults below populate the TUI; run.values contains the selections for this run.
 FIXATION_MS = 500
 GRATING_MS = 300
@@ -229,7 +236,7 @@ STIMULUS_DEFAULTS = {
 PARADIGM = "two_alternative_forced_choice"
 
 
-# 2. SESSION START — ONCE
+# Session opening — once; readiness is not an accepted scientific response
 # Approved Stage B opening. Edit Python directly; SESSION_START = [] disables it.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
@@ -238,7 +245,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological events — repeated from the current condition and strength
 # Build a fresh flat plan for each selected condition; never freeze future contrasts.
 
 
@@ -263,38 +270,6 @@ def trial_events(settings, condition):
 # selected stimulus classes/presets supply the remaining validated parameters.
 
 
-def prepare_stimuli(run, condition, state):
-    background = run.values["background_intensity"]
-    return {
-        "grating": run.stimulus_parameters(
-            "grating",
-            sigma_deg=run.values["grating_sigma_deg"],
-            cutoff_sigmas=run.values["grating_cutoff_sigmas"],
-            spatial_frequency_cpd=condition["frequency_cpd"],
-            contrast=condition["contrast"],
-            background=background,
-        ),
-        "fixation": run.stimulus_parameters("fixation", background=background),
-    }
-
-
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
-# select condition -> render its current strength -> interpret answer -> update next strength.
-
-
-SCIENTIFIC_SPEC = {
-    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "csf-spatial-3",
-    "response": "Left or right grating location; researcher-selected offset and target/response alternative equality.",
-    "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
-    "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
-    "adaptive": "TUI-selected consecutive n-down/n-up log10 changes, initial phase and reversal limit. No guaranteed target probability for arbitrary settings.",
-    "stopping": "Each staircase completes at its reversal limit; global response ceiling is incomplete termination.",
-    "exclusions": "No post-hoc response exclusion. Timeout/abort/errors preserve accepted input. Adaptive strength saturates at the declared digital bound (flat holds are not reversals); invalid physical renderer commands are rejected without silent clipping.",
-    "estimator": "Median final TUI-selected presented reversal contrasts per complete staircase; mean across all configured staircases of a complete frequency.",
-}
-
-
 ADAPTIVE_RULE = AdaptiveSelection(
     "consecutive_up_down",
     controls=(
@@ -310,6 +285,100 @@ ADAPTIVE_RULE = AdaptiveSelection(
     step_calculator="garcia_perez_1998",
     step_parameterization="log10_display_contrast",
 )
+
+
+TRIAL_COLUMN_MEANINGS = {
+    "presented_display_contrast": {
+        "units_or_encoding": "digital_peak_to_peak",
+        "meaning": "Presented digital peak-to-peak sinusoidal modulation.",
+        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+    },
+    "next_display_contrast": {
+        "units_or_encoding": "digital_peak_to_peak",
+        "meaning": "Post-response digital peak-to-peak sinusoidal modulation.",
+        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
+    },
+    "stimulus_condition": {"units_or_encoding": "cycles/degree"},
+}
+
+
+MEASUREMENT_UNITS = {
+    "spatial_frequency_cpd": "cycles/degree",
+    "staircase_repeat": "1-based staircase repeat",
+    "grating_x_deg": "degrees from fixation",
+    "fixed_repeat": "1-based fixed repetition",
+    "presented_display_contrast": "digital peak-to-peak modulation",
+}
+
+
+REVIEW_INACTIVE_FIELDS = {
+    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
+    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
+                        + ("starting_contrast", "threshold_reversals"),
+}
+
+CALIBRATION_REQUIREMENTS = ("geometry", "luminance", "timing")
+
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
+
+ACQUISITION_BLOCK_REASON = "Scientific acquisition requires the researcher to assess the selected display, raster geometry, effective contrast/luminance, response mapping and physical timing for this protocol. The declared default frequencies are editable choices, not a required published experiment. Use the explicit researcher override if proceeding without protocol qualification."
+
+
+def trial_measurements(settings, condition):
+    """Existing requested journal values; no new canonical columns."""
+    return {
+        "spatial_frequency_cpd": condition["frequency_cpd"],
+        "staircase_repeat": condition["repeat"],
+        "grating_x_deg": (
+            -settings["grating_offset_deg"] if condition["target"] == 0
+            else settings["grating_offset_deg"]
+        ),
+    }
+
+
+def response_instructions(responses):
+    return f"Left: {responses.keys[0]}   Right: {responses.keys[1]}"
+
+
+def fixed_trial_measurements(settings, condition):
+    """Existing requested journal values; no new canonical columns."""
+    return {
+        "spatial_frequency_cpd": condition["frequency_cpd"],
+        "fixed_repeat": condition["repeat"],
+        "presented_display_contrast": condition["contrast"],
+    }
+
+
+# PART A2 — SCIENTIFIC METHODS
+
+def prepare_stimuli(run, condition, state):
+    background = run.values["background_intensity"]
+    return {
+        "grating": run.stimulus_parameters(
+            "grating",
+            sigma_deg=run.values["grating_sigma_deg"],
+            cutoff_sigmas=run.values["grating_cutoff_sigmas"],
+            spatial_frequency_cpd=condition["frequency_cpd"],
+            contrast=condition["contrast"],
+            background=background,
+        ),
+        "fixation": run.stimulus_parameters("fixation", background=background),
+    }
+
+# select condition -> render its current strength -> interpret answer -> update next strength.
+
+
+SCIENTIFIC_SPEC = {
+    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
+    "version": "csf-spatial-3",
+    "response": "Left or right grating location; researcher-selected offset and target/response alternative equality.",
+    "quantity": "Digital peak-to-peak grating modulation; not optical Michelson contrast.",
+    "conditions": "TUI frequency list; independent staircases, uniform active selection, independent equiprobable target sides.",
+    "adaptive": "TUI-selected consecutive n-down/n-up log10 changes, initial phase and reversal limit. No guaranteed target probability for arbitrary settings.",
+    "stopping": "Each staircase completes at its reversal limit; global response ceiling is incomplete termination.",
+    "exclusions": "No post-hoc response exclusion. Timeout/abort/errors preserve accepted input. Adaptive strength saturates at the declared digital bound (flat holds are not reversals); invalid physical renderer commands are rejected without silent clipping.",
+    "estimator": "Median final TUI-selected presented reversal contrasts per complete staircase; mean across all configured staircases of a complete frequency.",
+}
 
 
 def make_conditions(settings):
@@ -545,23 +614,8 @@ def validate_monitor(settings, profile):
         validate_requested_cpd(frequencies, geometry, orientation_rad=math.pi / 2)
 
 
-# 5. STOPPING AND RESULTS
+# Stopping, scientific estimators and results
 # Reversal completion and response ceiling remain distinct; fixed levels have no staircase estimator.
-
-
-TRIAL_COLUMN_MEANINGS = {
-    "presented_display_contrast": {
-        "units_or_encoding": "digital_peak_to_peak",
-        "meaning": "Presented digital peak-to-peak sinusoidal modulation.",
-        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
-    },
-    "next_display_contrast": {
-        "units_or_encoding": "digital_peak_to_peak",
-        "meaning": "Post-response digital peak-to-peak sinusoidal modulation.",
-        "notes": "Stored before Gaussian weighting: background + (strength/2) * Gaussian * sine. Not historical C_disp or calibrated optical contrast.",
-    },
-    "stimulus_condition": {"units_or_encoding": "cycles/degree"},
-}
 
 
 def is_finished(run, conditions, state):
@@ -582,41 +636,6 @@ def primary_rule(settings, conditions):
             },
             "units": "digital_peak_to_peak",
         }
-
-
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements={
-            "spatial_frequency_cpd": condition["frequency_cpd"],
-            "staircase_repeat": condition["repeat"],
-            "grating_x_deg": (
-                -settings["grating_offset_deg"] if condition["target"] == 0
-                else settings["grating_offset_deg"]
-            ),
-        },
-        instructions=f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    )
-
-
-def fixed_trial_record(run, condition):
-    """Only the strength source differs; the canonical 20-column log is shared."""
-    return {
-        "state": {"contrast": condition["contrast"]},
-        "record_from_state": {"presented_display_contrast": "contrast"},
-        "measurements": {
-            "spatial_frequency_cpd": condition["frequency_cpd"],
-            "fixed_repeat": condition["repeat"],
-            "presented_display_contrast": condition["contrast"],
-        },
-        "instructions": f"Left: {run.responses.keys[0]}   Right: {run.responses.keys[1]}",
-    }
 
 
 def finish_experiment(run, conditions, state):
@@ -694,6 +713,31 @@ def adaptive_contrast_method(run, *, initialise=None):
     )
 
 
+# PART B — FRAMEWORK INTEGRATION
+# FRAMEWORK CONNECTION: same runner, recorder, Review hooks and public identity.
+# Scientific choices/measurements are above; normally leave these bindings alone.
+def trial_record(run, condition, state):
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=maximum_contrast(settings, condition),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements=trial_measurements(settings, condition),
+        instructions=response_instructions(run.responses),
+    )
+
+def fixed_trial_record(run, condition):
+    """Only the strength source differs; the canonical 20-column log is shared."""
+    return {
+        "state": {"contrast": condition["contrast"]},
+        "record_from_state": {"presented_display_contrast": "contrast"},
+        "measurements": fixed_trial_measurements(run.values, condition),
+        "instructions": response_instructions(run.responses),
+    }
+
 def procedure(run):
     # The researcher edits conditions, stimulus and timing here; the common
     # policy interface handles strength selection and response-dependent state.
@@ -709,24 +753,7 @@ def procedure(run):
         interpret_response=interpret_response,
     )
 
-
-# Review-only declarations; the actual record functions remain authoritative.
-MEASUREMENT_UNITS = {
-    "spatial_frequency_cpd": "cycles/degree",
-    "staircase_repeat": "1-based staircase repeat",
-    "grating_x_deg": "degrees from fixation",
-    "fixed_repeat": "1-based fixed repetition",
-    "presented_display_contrast": "digital peak-to-peak modulation",
-}
-REVIEW_INACTIVE_FIELDS = {
-    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
-    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
-                        + ("starting_contrast", "threshold_reversals"),
-}
-# End Review-only declarations.
-
-
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 # Compatibility for older Python callers; acquisition and Review use trial_events above.
 make_trial = legacy_trial_factory(trial_events)
 
@@ -756,9 +783,9 @@ def definition(identity="contrast_sensitivity"):
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
-        calibration_requirements=("geometry", "luminance", "timing"),
-        monitor_capabilities=("display_binding", "resolution"),
-        acquisition_block_reason="Scientific acquisition requires the researcher to assess the selected display, raster geometry, effective contrast/luminance, response mapping and physical timing for this protocol. The declared default frequencies are editable choices, not a required published experiment. Use the explicit researcher override if proceeding without protocol qualification.",
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
+        acquisition_block_reason=ACQUISITION_BLOCK_REASON,
         trial_column_overrides=TRIAL_COLUMN_MEANINGS,
         source_paths=("src/psychophysics_lab/experiments/contrast_sensitivity.py",),
     )

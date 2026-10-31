@@ -1,0 +1,13 @@
+{
+  "commit": "8f493fa0a54cbe57109943120b5e410e77c0541a",
+  "experiments": {
+    "contrast_sensitivity": {
+      "before_sha256_lf": "359a37e715311393907a5125f4477a8e469b9fd192e59b54f8566e5d9c425a25",
+      "after_sha256_lf": "c78205beddd433662585400fc0c95b11779e551dbe7e6ab07578ece27a9f7961"
+    },
+    "contrast_sensitivity_windowed": {
+      "before_sha256_lf": "5f513f3f3f7bd3df3e51fe42921fbc4ee2f63107c3c6c76c0a1dee5e12fa9127",
+      "after_sha256_lf": "c07093a918b2b8744d0268df87db404f2e7e6882cfaeb1047876c6031a254490"
+    }
+  }
+}
