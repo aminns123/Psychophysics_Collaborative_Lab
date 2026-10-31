@@ -53,3 +53,5 @@ def inline_measurement_declarations(node, functions):
             arguments = {parameter.arg: value for parameter, value in zip(function.args.args, call.args)}
             return BindArguments(arguments).visit(copy.deepcopy(body[0].value))
     return Inline().visit(copy.deepcopy(node))
+
+
