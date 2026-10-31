@@ -319,6 +319,7 @@ public static class StartupRecovery
         foreach(string key in new[]{"PSYCOLAB_CONFIG_DIR","PSYCOLAB_DATA_DIR"}) {
             string value=Environment.GetEnvironmentVariable(key);if(!String.IsNullOrWhiteSpace(value))start.EnvironmentVariables[key]=value;
         }
+        start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]="unknown";
         start.EnvironmentVariables["PSYCOLAB_REPO_ROOT"]=root;return start;
     }
     public static Diagnosis Diagnose(string root) {
@@ -409,7 +410,9 @@ public static class StartupRecovery
     public class ExitNotice { public string phase,report; }
     public static int LaunchSource(string root,string[] args) {
         var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
-        return Observe(SourceProcess(root,SetupEngine.ApplicationArguments(args),d.development),root);
+        var start=SourceProcess(root,SetupEngine.ApplicationArguments(args),d.development);
+        start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
+        return Observe(start,root);
     }
     public static int LaunchFixed(string instance) {
         try {
@@ -417,6 +420,7 @@ public static class StartupRecovery
             // Full packaged-source enumeration remains authoritative, including added files.
             SetupEngine.Validate(instance,record,Path.Combine(Path.GetTempPath(),"psycolab-fixed-check-"+Guid.NewGuid().ToString("N")+".log"),()=>false);
             var start=SourceProcess(root,SetupEngine.ApplicationArguments(new string[0]));
+            start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]="locked";
             start.EnvironmentVariables["PSYCOLAB_CONFIG_DIR"]=String.IsNullOrWhiteSpace(record.config_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","LaboratoryConfiguration"):record.config_root;
             start.EnvironmentVariables["PSYCOLAB_DATA_DIR"]=String.IsNullOrWhiteSpace(record.data_root)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"PsyCoLabData"):record.data_root;
             return Observe(start,root);
