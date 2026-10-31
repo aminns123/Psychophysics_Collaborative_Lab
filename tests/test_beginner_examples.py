@@ -69,10 +69,10 @@ def test_new_scaffolds_start_from_simple_science_not_oriented_grating(tmp_path):
     assert set(item.key for item in stimulus.parameters) == {
         "size_deg", "length_deg", "width_deg", "intensity"
     }
-    assert "Gaussian-windowed" not in stimulus_file.read_text()
-    assert "make_trial_order" in experiment_file.read_text()
-    assert "NotImplementedError" in experiment_file.read_text()
-    assert "left/right line task" not in experiment_file.read_text()
+    assert "Gaussian-windowed" not in stimulus_file.read_text(encoding="utf-8")
+    assert "make_trial_order" in experiment_file.read_text(encoding="utf-8")
+    assert "NotImplementedError" in experiment_file.read_text(encoding="utf-8")
+    assert "left/right line task" not in experiment_file.read_text(encoding="utf-8")
     with pytest.raises(ValueError, match="new files"):
         scaffold(tmp_path, "my_white_line", kind="pair")
 

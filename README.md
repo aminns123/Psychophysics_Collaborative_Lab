@@ -14,6 +14,14 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 
 ## Start
 
+For a **maintainer Git checkout on a new PC**, install 64-bit CPython 3.11,
+double-click **setup_psycolab_dev.bat** once, then double-click
+**run_psycolab.bat**. Setup downloads the declared development dependencies
+into a separate `.venv-dev`. This development environment has no locked
+laboratory qualification. A checkout with an existing laboratory `.venv`
+keeps that environment's qualification gate; use a separate checkout for
+development. See [startup recovery](docs/STARTUP_RECOVERY.md).
+
 For a source installation, follow the [approved Windows environment guide](docs/WINDOWS_ENVIRONMENT.md),
 then double-click **run_psycolab.bat**. An arbitrary Python 3.11 installation is
 not a qualified interpreter. A [guided installation candidate](docs/WINDOWS_GUIDED_INSTALLATION.md)

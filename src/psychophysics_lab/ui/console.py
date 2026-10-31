@@ -174,6 +174,12 @@ async def install_console(screen):
             'SourceView':'SOURCE','CodeViewScreen':'SOURCE','JsonPresetEditor':'PRESET','StimulusValueEditor':'STIMULUS VALUES'
         }[type(screen).__name__]
     screen.console_section = section
+    from ..core.environment import environment_evidence, environment_notice
+    if not hasattr(screen.app, '_environment_evidence'):
+        screen.app._environment_evidence = environment_evidence(screen.app.repo_root)
+    await screen.query_one('#console-content').mount(
+        Static(environment_notice(screen.app._environment_evidence),
+               id='environment-role-status', markup=False, classes='info-card'), before=0)
     screen.add_class('laboratory-console')
     for button in screen.query('#console-workspace Button'):
         if button.tooltip is None:

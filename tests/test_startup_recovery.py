@@ -76,6 +76,54 @@ def test_repeated_read_only_check_allows_environment_compatible_source_changes(n
     assert json.loads(native('diagnose',root).stdout)['category']=='requirements_changed'
 
 
+def developer_source(tmp_path):
+    root=tmp_path/'maintainer with spaces é';root.mkdir()
+    (root/'.git').mkdir();(root/'scripts').mkdir()
+    (root/'scripts/developer_setup.py').write_text('import sys\nassert sys.argv[1:] == ["--check"]\n')
+    venv.EnvBuilder(with_pip=False).create(root/'.venv-dev')
+    return root
+
+
+def test_native_source_uses_explicit_development_environment(native,tmp_path):
+    root=developer_source(tmp_path)
+    before={str(p):sha(p) for p in root.rglob('*') if p.is_file()}
+    for _ in range(2):
+        result=json.loads(native('diagnose',root).stdout)
+        assert result['healthy'] and result['development']
+        assert 'no locked laboratory qualification' in result['message']
+    assert before=={str(p):sha(p) for p in root.rglob('*') if p.is_file()}
+    (root/'scripts/developer_setup.py').write_text('raise SystemExit(7)')
+    result=json.loads(native('diagnose',root).stdout)
+    assert not result['healthy'] and result['category']=='development_check_failed'
+
+
+def test_development_never_replaces_failed_qualified_or_packaged_source(native,tmp_path):
+    root=developer_source(tmp_path)
+    (root/'.venv').mkdir()
+    assert not json.loads(native('diagnose',root).stdout)['healthy']
+    (root/'.venv').rmdir()
+    (root.parent/'installation.json').write_text('{}')
+    assert not json.loads(native('diagnose',root).stdout)['healthy']
+
+
+def test_development_is_not_offered_as_a_qualified_retained_installation(native,tmp_path):
+    dev=developer_source(tmp_path)
+    current=source(tmp_path/'qualified')
+    record=current/'.venv/.psycolab-setup.json'
+    state=json.loads(record.read_text());state['source_root']=str(dev)
+    record.write_text(json.dumps(state))
+    assert json.loads(native('retained',current,tmp_path/'empty-store').stdout)==[]
+
+
+def test_fresh_git_checkout_recovery_explains_maintainer_setup(native,tmp_path):
+    root=developer_source(tmp_path)
+    # Inspection cannot approve a fresh environment: the real Python gate still runs.
+    d=json.loads(native('inspect',root).stdout)
+    form=native('recovery-form',json.dumps(d),tmp_path).stdout
+    assert 'setup_psycolab_dev.bat once' in form
+    assert 'laboratory qualification is not granted' in form
+
+
 def test_failed_existing_check_is_never_repaired(native,tmp_path):
     root=source(tmp_path,real_python=True)
     hook=root/'scripts/launcher_setup.py';hook.write_text('raise SystemExit(7)')

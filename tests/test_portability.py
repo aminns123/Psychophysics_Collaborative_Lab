@@ -75,7 +75,7 @@ def test_shared_runtime_files_do_not_contain_author_specific_path_literals():
 
 @pytest.mark.parametrize("name", ["tmp/archive-audit/dependency.whl", "temp/probe.py",
                                  ".idea/workspace.xml", "local_psychophysics_data/S001/trials.tsv",
-                                 "run.log", "state.json.tmp", ".venv.incompatible-old/file.py",
+                                 "run.log", "state.json.tmp", ".venv.incompatible-old/file.py", ".venv-dev/file.py",
                                  "desktop.ini", "nested/Thumbs.db", ".DS_Store", ".env",
                                  "nested/.env.local", ".psycolab_local.json", ".psycolab_preferences.lock",
                                  "local_psychophysics_config/profiles/display/current/luminance.json",
