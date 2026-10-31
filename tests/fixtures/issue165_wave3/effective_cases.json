@@ -1,0 +1,222 @@
+[
+  {
+    "identity": "contrast_sensitivity",
+    "method": "adaptive",
+    "seed": 0,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 19,
+    "rows_sha256": "726c61d46a86a3d67c7a2fe8aa1d640935c7cfde9b1dbb03e7b25dd6eff2bc09",
+    "files_sha256": {
+      "adaptive_history.json": "cbbc8bf42efc19df5710b6acd797f87590618bf67b4d4415ebcd14f6f0bcb72f",
+      "adaptive_session.json": "a9dea8d0899ae96e9c33fd965a1638ae2f8c0a12f7d9a9bdf6c71d2ab7665e52",
+      "primary_thresholds.json": "c1dc8538c9b825109e0b3a6f169d64ef34029d855332564de8f9d77d11530b5b",
+      "resolved_experiment.json": "67e7dc74f9ac49c162045eebd2b6729001a6796400e594138b97ed7d93b2f164",
+      "trial_actions.json": "3680a7308f4efbf6197ce7863ec22f6944454026dfeff8a5b0cb382021125d5d",
+      "trial_presentations.json": "c863107b7ea5ee196eadf83361b28c2902c8cfe97ad5698d612145397d6c6353"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity",
+    "method": "adaptive",
+    "seed": 19,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 20,
+    "rows_sha256": "672aacc0fb767f6b16543fb10f53b0fa29332f6fc63eff71c80553da6a055959",
+    "files_sha256": {
+      "adaptive_history.json": "488a69fdf0927f0ae20ef53198f3597e97c1b5a215fa70f07a852cb71b1a6b5e",
+      "adaptive_session.json": "96d7979cd976c7d83ff1a43312c3bbc1075793a1500143a15afd97b0bd9cfea0",
+      "primary_thresholds.json": "7c40100717b1c5c8eddc1b2ab9117b3b51a23ca6a9b6075be36ddaffbe7bc42f",
+      "resolved_experiment.json": "dfc7ee90ff8c34f25435991a1fa73849b388f006c327c6645137a0dc05588705",
+      "trial_actions.json": "98e8d19cd74cf55e05da1c1d04cf4143c763351741760541f821d5c08247cbf7",
+      "trial_presentations.json": "d5807174d4336f3cd4d7411f89c15b559dd0dba8a71fbd7884ae410fe72f23a4"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity",
+    "method": "constant_stimuli",
+    "seed": 0,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "9df04bb4e540a3ec7af66097d243764b7b85b2b97a717091830923f36fea4493",
+    "files_sha256": {
+      "resolved_experiment.json": "585fc2a31000242be8c8b05dd0aff35ac9d6400a7ed75370cef2657c8e585bbe",
+      "trial_actions.json": "9ae2ce94e298ebc95291fb636cad97dfbe3dde4f14de5a1587fa432f72651c0f",
+      "trial_presentations.json": "44644116277652abe4d565d386b1ace2d3a62c28e49c53efee9205ee14a064dc"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity",
+    "method": "constant_stimuli",
+    "seed": 19,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "234544a013c580b756c4d4837d487b1060ef8a9be9472b7a3956459a2b30e780",
+    "files_sha256": {
+      "resolved_experiment.json": "e0e49952c14af99de4616f439e65c8ab10bcffb2e13703e03419108c40618081",
+      "trial_actions.json": "729b5319a26654dfa077a1b42fda69a2502087cca0401f875eb8d24d845016a6",
+      "trial_presentations.json": "0ef90edd13ab8b1dac8e68926b55cb492c9ad6dafdc06d76fd75dab3754bbc09"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity_windowed",
+    "method": "adaptive",
+    "seed": 0,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 19,
+    "rows_sha256": "726c61d46a86a3d67c7a2fe8aa1d640935c7cfde9b1dbb03e7b25dd6eff2bc09",
+    "files_sha256": {
+      "adaptive_history.json": "cbbc8bf42efc19df5710b6acd797f87590618bf67b4d4415ebcd14f6f0bcb72f",
+      "adaptive_session.json": "a9dea8d0899ae96e9c33fd965a1638ae2f8c0a12f7d9a9bdf6c71d2ab7665e52",
+      "primary_thresholds.json": "c1dc8538c9b825109e0b3a6f169d64ef34029d855332564de8f9d77d11530b5b",
+      "resolved_experiment.json": "832b4083509b74cb1008bf2921c0a3349c383fe7df45c15c8c0a6813e8dde2b8",
+      "trial_actions.json": "55746a24b07fd967cbed39814a4111a08e75d764704760381b4099f9b2feda89",
+      "trial_presentations.json": "c863107b7ea5ee196eadf83361b28c2902c8cfe97ad5698d612145397d6c6353"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity_windowed",
+    "method": "adaptive",
+    "seed": 19,
+    "values": {
+      "contrast_method": "adaptive",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 20,
+    "rows_sha256": "672aacc0fb767f6b16543fb10f53b0fa29332f6fc63eff71c80553da6a055959",
+    "files_sha256": {
+      "adaptive_history.json": "488a69fdf0927f0ae20ef53198f3597e97c1b5a215fa70f07a852cb71b1a6b5e",
+      "adaptive_session.json": "96d7979cd976c7d83ff1a43312c3bbc1075793a1500143a15afd97b0bd9cfea0",
+      "primary_thresholds.json": "7c40100717b1c5c8eddc1b2ab9117b3b51a23ca6a9b6075be36ddaffbe7bc42f",
+      "resolved_experiment.json": "d65d231731820e0d9a95f6f6e4f1ea998b7941056193a5cc5e98520ee569b88f",
+      "trial_actions.json": "1e12b117bd62dc16ab208d4d85190a4efd312abb76493ec72bc77faf6d262328",
+      "trial_presentations.json": "d5807174d4336f3cd4d7411f89c15b559dd0dba8a71fbd7884ae410fe72f23a4"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity_windowed",
+    "method": "constant_stimuli",
+    "seed": 0,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "9df04bb4e540a3ec7af66097d243764b7b85b2b97a717091830923f36fea4493",
+    "files_sha256": {
+      "resolved_experiment.json": "a7fd7133a32243915630a2b684aef825fbcef5f7973b425052bdfaecdadb73e7",
+      "trial_actions.json": "58facc9e2e88cb5fc3c9246ba978681ffc1af1d00574c79b7c08d268fdbaec19",
+      "trial_presentations.json": "44644116277652abe4d565d386b1ace2d3a62c28e49c53efee9205ee14a064dc"
+    }
+  },
+  {
+    "identity": "contrast_sensitivity_windowed",
+    "method": "constant_stimuli",
+    "seed": 19,
+    "values": {
+      "contrast_method": "constant_stimuli",
+      "max_trials": 512,
+      "staircases_per_condition": 1,
+      "frequencies_cpd": "2,4",
+      "n_down": 1,
+      "n_up": 1,
+      "initial_one_down_limit": 2,
+      "reversal_termination": 4,
+      "threshold_reversals": 2,
+      "fixed_contrasts": "0,.01",
+      "fixed_repetitions": 2
+    },
+    "status": "completed",
+    "accepted": 8,
+    "rows_sha256": "234544a013c580b756c4d4837d487b1060ef8a9be9472b7a3956459a2b30e780",
+    "files_sha256": {
+      "resolved_experiment.json": "62ca1223897c1c68d41faf03fb53198903e20167df23bb69988d920b65780199",
+      "trial_actions.json": "0b63bd7c0cf6f22006e3514d3b8a23350767d9eb267a14ea50f4edabb2f186d9",
+      "trial_presentations.json": "0ef90edd13ab8b1dac8e68926b55cb492c9ad6dafdc06d76fd75dab3754bbc09"
+    }
+  }
+]
