@@ -25,6 +25,12 @@ WAVE1_SOURCE_SHA256_LF = {
 
 def source_hash(path):
     source = path.read_bytes().replace(b"\r\n", b"\n")
+    if path == ROOT / "src/psychophysics_lab/core/runner.py":
+        # Exact additive software evidence; removing only these two lines must
+        # restore the immutable scientific runner hash below.
+        assert hashlib.sha256(source).hexdigest() == '1b3d4c18ab6aff6d16d7076480014f4a150587c7fd0734d402349b875cf14614'
+        source = source.replace(b'    from .environment import environment_evidence\n', b'', 1)
+        source = source.replace(b'        "environment": environment_evidence(repo_root),\n', b'', 1)
     if path == ROOT / "src/psychophysics_lab/researcher.py":
         # Pin the complete corrected file, then verify that undoing exactly
         # these three ownership changes restores the frozen scientific source.
