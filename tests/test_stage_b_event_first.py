@@ -99,6 +99,9 @@ def test_scientific_function_bodies_are_unchanged_and_trial_definition_is_unique
     for name, expected in BASELINE['functions'][identity].items():
         if name not in {'make_trial','procedure','definition'}:
             node = functions[name]
+            from _scientist_first_migrations import migration_reference, inline_measurement_declarations
+            if name in {'trial_record', 'fixed_trial_record'} and migration_reference(ROOT, identity) is not None:
+                node = inline_measurement_declarations(node, functions)
             if identity == 'contrast_sensitivity' and name == 'validate_settings':
                 node = frozen_csf_validation_spelling(node)
             if identity == 'ellipse_major_axis' and name == 'validate_settings':
