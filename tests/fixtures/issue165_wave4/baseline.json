@@ -1,0 +1,13 @@
+{
+  "commit": "8f493fa0a54cbe57109943120b5e410e77c0541a",
+  "experiments": {
+    "line_position_baseline": {
+      "before_sha256_lf": "6023013c4d3ecb9bebdd0aee95f87c4697a4e771a3f5574e26d149166b093294",
+      "after_sha256_lf": "9396564a0d9ff39e7456c77df8bcf73e53ed05ff78965aded3c58ccaebaf342a"
+    },
+    "line_position_flanker": {
+      "before_sha256_lf": "1e61bcf7a97349efdc998874c9518a80417fd50335d7f7165d67535083d096d1",
+      "after_sha256_lf": "a309b26bc59d5797a8bf1652eff47411f56e1d869937f36a499ab82b75817b2c"
+    }
+  }
+}

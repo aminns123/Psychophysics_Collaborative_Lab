@@ -290,12 +290,15 @@ class ExperimentsScreen(HubPage):
                 yield Button("Inspect definition", id="view-exp-definition")
                 yield Button("Inspect runtime", id="view-exp-runtime")
             yield Static("LEARNING & EXAMPLES", classes="section-title")
-            yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. Start with A1 experimental choices, A2 scientific methods, then B framework integration. The local starters are executable worked examples, not protocol generators.")
+            yield Static("[b]Read the standalone learning guide first[/b]\nA stimulus is appearance; an experiment is placement, sequence and responses. Start with A1 experimental choices, A2 scientific methods, then B framework integration. Follow Beginner → Intermediate → Advanced below: the same left/right task, adding conditions, existing methods and a custom stimulus.")
             yield Button("Learn PsyCoLab — from white line to experiment", id="learn-experiments")
             with Horizontal(classes="buttons"):
-                yield Button("A1/A2/B: basic discrimination", id="read-example-experiment")
+                yield Button("Beginner: simple left/right", id="lesson-beginner")
+                yield Button("Intermediate: conditions / strength", id="lesson-intermediate")
+                yield Button("Advanced: custom study", id="lesson-advanced")
+                yield Button("Official teaching reference", id="read-example-experiment")
                 yield Button("A1/A2/B: adaptive / fixed", id="read-method-example")
-                yield Button("Local laboratory starters", id="read-local-starters")
+                yield Button("Three-lesson guide and exercises", id="read-local-starters")
                 yield Button("Optional example settings preset", id="read-example-timeline")
                 yield Button("Read contrast sensitivity experiment", id="read-csf-timeline")
             yield Static(
@@ -346,13 +349,16 @@ class ExperimentsScreen(HubPage):
                 title="Learn PsyCoLab — standalone guide",
                 path=self.app.repo_root / "docs/LEARN_PSYCOLAB.md"))
             return
-        if event.button.id in {"read-example-experiment", "read-example-timeline", "read-csf-timeline", "read-method-example", "read-local-starters"}:
+        if event.button.id in {"lesson-beginner", "lesson-intermediate", "lesson-advanced", "read-example-experiment", "read-example-timeline", "read-csf-timeline", "read-method-example", "read-local-starters"}:
             event.stop()
             examples = {
+                "lesson-beginner": "examples/laboratory_extensions/experiments/demolab__lesson1_side.py",
+                "lesson-intermediate": "examples/laboratory_extensions/experiments/demolab__lesson2_strength.py",
+                "lesson-advanced": "examples/laboratory_extensions/experiments/demolab__lesson3_study.py",
                 "read-example-experiment": "src/psychophysics_lab/experiments/example_experiment.py",
                 "read-example-timeline": "configs/experiments/example_experiment.json",
                 "read-method-example": "examples/laboratory_extensions/experiments/demolab__line_strength.py",
-                "read-local-starters": "examples/laboratory_extensions/METHODS.md",
+                "read-local-starters": "examples/laboratory_extensions/LESSONS.md",
                 "read-csf-timeline": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
             }
             self.app.inspect_source(self.app.repo_root / examples[event.button.id])
@@ -1630,7 +1636,7 @@ class HelpScreen(HubPage):
             yield Button("Read the short walkthrough", id="learn-guide", variant="primary")
             yield Button("Analyse saved run data (Python example)", id="learn-data-reader")
             yield Static("SCIENTIFIC AUTHORING", classes="section-title")
-            yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/: A1 experimental choices, A2 scientific methods, B framework integration. Begin with the two executable laboratory starters in the walkthrough.\nRestart after Python edits; parameter edits preview immediately.")
+            yield Static("[b]Two places to edit the science[/b]\nStimulus drawing: one class in stimulus_library.py.\nExperiment design: one Python file in experiments/: A1 experimental choices, A2 scientific methods, B framework integration. Follow Beginner → Intermediate → Advanced in the walkthrough; all three keep the left/right task.\nRestart after Python edits; parameter edits preview immediately.")
             yield Static("Preview opens an appearance image. Try uses the real monitor and keyboard, with separate test records. Simulation uses a virtual observer. Calibrate prepares the display for participant data.")
             with Collapsible(title="Advanced authoring references", collapsed=True):
                 yield Button("Authoring structure and ID rules", id="authoring-contract")

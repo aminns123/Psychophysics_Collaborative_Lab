@@ -12,7 +12,14 @@ from psychophysics_lab.researcher import (
     ConfigField, WaitForKey, Show, Stimulus, CollectResponse, legacy_trial_factory,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: which side contains the grating at each selected spatial frequency?
+# Frequency (cycles/degree) is a condition; left/right is the target alternative.
+# Adaptive repeats are independent tracks per frequency. Fixed repeats are
+# presentations in frequency/strength cells, not staircases. Selection order,
+# independent target draws and the median/arithmetic estimator are explicit in A2.
+# DO NOT CONFUSE: peak-to-peak DIGITAL modulation with measured optical contrast.
+
 # Reuse the exact CSF ConfigFields for frequency, timing, side offset, method,
 # response keys, background and adaptive steps. Replace only Gaussian-envelope
 # fields with the explicit circular controls below; no defaults are redefined.
@@ -55,7 +62,7 @@ RESPONSES = csf.RESPONSES
 PARADIGM = csf.PARADIGM
 
 
-# 2. SESSION START — ONCE
+# Session opening — once; readiness is not an accepted scientific response
 # SESSION_START = [] disables readiness without changing the scientific trial.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation", instructions="Press SPACE when ready"),
@@ -63,7 +70,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological events — repeated from the current condition and strength
 def trial_events(settings, condition):
     offset = settings["grating_offset_deg"]
     x = -offset if condition["target"] == 0 else offset
@@ -73,6 +80,13 @@ def trial_events(settings, condition):
         CollectResponse(actions=("left", "right"), slot="fixation"),
     ]
 
+
+# Shared journal values: frequency (cycles/degree), adaptive staircase repeat
+# and grating x (degrees); fixed mode records cell repeat and presented digital
+# modulation. The one-way Gaussian dependency owns those named record functions.
+
+
+# PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
     settings = run.values
@@ -89,7 +103,6 @@ def prepare_stimuli(run, condition, state):
         ),
         "fixation": run.stimulus_parameters("fixation", background=background),
     }
-
 
 def grating_resolution(settings):
     """Accurate stimulus provenance, shared by adaptive and fixed-level CSF."""
@@ -111,8 +124,6 @@ def grating_resolution(settings):
         "grating_flat_radius_deg": radius-fade,
     }
 
-
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
 # These public scientific functions own frequency/side selection, fixed schedules
 # and post-response log steps. The circular envelope does not change those rules.
 make_conditions = csf.make_conditions
@@ -148,7 +159,7 @@ def validate_settings(values):
                "decrease fade width or increase aperture diameter.")
 
 
-# 5. STOPPING AND RESULTS
+# Stopping, scientific estimators and results
 # Reversal completion, safety ceiling, canonical units and estimator are shared;
 # grating_resolution above records the circular support instead of Gaussian sigma.
 is_finished = csf.is_finished
@@ -182,6 +193,11 @@ def fixed_contrast_method(run):
     )
 
 
+# PART B — FRAMEWORK INTEGRATION
+# FRAMEWORK CONNECTION: same runner, recorder, Review hooks and public identity.
+# Scientific choices/measurements are above; normally leave these bindings alone.
+
+
 def procedure(run):
     return run_contrast_experiment(
         run,
@@ -194,8 +210,7 @@ def procedure(run):
         interpret_response=interpret_response,
     )
 
-
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 make_trial = legacy_trial_factory(trial_events)
 
 

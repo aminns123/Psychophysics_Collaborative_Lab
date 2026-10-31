@@ -1,0 +1,13 @@
+{
+  "commit": "8f493fa0a54cbe57109943120b5e410e77c0541a",
+  "experiments": {
+    "ellipse_centre": {
+      "before_sha256_lf": "4f25134220281aef7d27b3078305173ab07765303c215b6b69cdc112126c88e5",
+      "after_sha256_lf": "3d5aa78748c5a6f89727ec982f2dc20b03dbf226b2a0470aa1410863e6006293"
+    },
+    "ellipse_major_axis": {
+      "before_sha256_lf": "7b0f3948726e775eab91f44c324e95ee2f0bae745bd6c972b57a1eab3711cc2d",
+      "after_sha256_lf": "6b7998dc284ba77201fb990f4e409c0f9155f590f995e1924a5e2585e425e745"
+    }
+  }
+}

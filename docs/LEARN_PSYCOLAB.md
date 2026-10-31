@@ -1,8 +1,8 @@
 # Your first PsyCoLab experiment
 
 Start in **Learn / Help → Read the short walkthrough**, or **Build Experiments**.
-Read the basic discrimination example first, then the adaptive/fixed example.
-Both are executable ordinary Python, using the approved
+Start with the three [progressive left/right lessons](../examples/laboratory_extensions/LESSONS.md):
+Beginner → Intermediate → Advanced. Each is executable ordinary Python, using the approved
 [A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md). New science normally belongs
 in your own trusted laboratory folder, not an edited official reference.
 
@@ -54,7 +54,7 @@ inspect all relevant conditions with previews and **Try the experiment**.
 
 ## 2. Describe the experiment
 
-### First: basic discrimination
+### Supplement: established compatibility example
 
 Open [demolab__left_right.py](../examples/laboratory_extensions/experiments/demolab__left_right.py)
 or **Build Experiments → A1/A2/B: basic discrimination** (the official teaching

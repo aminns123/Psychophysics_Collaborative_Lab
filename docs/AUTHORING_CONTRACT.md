@@ -26,7 +26,7 @@ scientific methods, with units stated explicitly.
 
 Use the approved [version-1 authoring standard](EXPERIMENT_AUTHORING_STANDARD.md)
 for every new experiment. Begin with the [researcher walkthrough](LEARN_PSYCOLAB.md)
-and two [executable laboratory starters](../examples/laboratory_extensions/METHODS.md).
+and three [progressive left/right lessons](../examples/laboratory_extensions/LESSONS.md).
 
 1. **A1 — Experimental choices:** scientific question, parameters/units/bounds,
    conditions, target alternatives/placement, keys, session/trial events and
@@ -41,10 +41,9 @@ These are sections of one ordinary Python file. Do not invent wrappers, a new
 condition manager or empty functions merely to fill a heading. Keep consequential
 science in A1/A2 and pass the same event factory to Review and execution.
 
-The official `example_experiment` and `probe_above_below` already use this
-narrative. The other eight retain their accepted six-section implementations
-pending separate family migrations; those sources and older extension APIs remain
-supported. Historical [Stage C evidence](STAGE_C_EVENT_FIRST.md) is retained, not
+The approved family migrations use this narrative. Remaining official families
+retain their accepted implementation until their separate PRs are approved;
+those sources and older extension APIs remain supported. Historical [Stage C evidence](STAGE_C_EVENT_FIRST.md) is retained, not
 the primary new-author tutorial. See the [migration plan](EXPERIMENT_MIGRATION_PLAN.md).
 
 ## Chronological events and scientific updates
