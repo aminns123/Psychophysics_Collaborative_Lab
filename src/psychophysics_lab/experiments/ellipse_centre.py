@@ -32,7 +32,15 @@ from psychophysics_lab.researcher import (
     Beep,
 )
 
-# 1. PARAMETERS
+# PART A1 — EXPERIMENTAL CHOICES
+# Question: which temporal interval contains the probe in this ellipse scene?
+# Geometry/ring settings define conditions; first/second are target alternatives.
+# Independent adaptive repeats are tracks; fixed repeats are cell presentations.
+# DO NOT CONFUSE: strength is the probe digital increment above background.
+# Read fixation -> interval one -> ISI -> interval two -> response below.
+# Both requested onset cues remain in the event list; they do not identify target.
+# Ring increment and geometry are scientific inputs, never auto-invented defaults.
+
 FIELDS = (
     ConfigField("fixation_ms", "Fixation duration", "int", 500, minimum=1, units="ms", help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.'),
     ConfigField(
@@ -170,7 +178,7 @@ STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
 STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
-# 2. SESSION START — ONCE
+# Session opening — once; readiness is not an accepted scientific response
 # Edit the Python list directly. SESSION_START = [] disables the opening.
 SESSION_START = [
     WaitForKey("ready", key="SPACE", slot="ready_fixation",
@@ -179,7 +187,7 @@ SESSION_START = [
 ]
 
 
-# 3. TRIAL EVENTS — REPEATED
+# Chronological events — repeated from the current condition and strength
 # One fresh flat event list per selected condition; effective strengths are prepared below.
 
 
@@ -198,6 +206,75 @@ def trial_events(settings, condition):
         CollectResponse(actions=('first', 'second'), slot='fixation'),
     ]
 
+
+ADAPTIVE_RULE = AdaptiveSelection(
+    "consecutive_up_down",
+    controls=(
+        "n_down",
+        "n_up",
+        "logUNIT_UP",
+        "logUNIT_DW",
+        "initial_one_down_limit",
+        "staircases_per_condition",
+        "reversal_termination",
+        "max_trials",
+    ),
+    step_calculator="garcia_perez_1998",
+    step_parameterization="log10_display_contrast",
+)
+
+
+TRIAL_COLUMN_MEANINGS = {
+    "presented_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Presented digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "next_display_contrast": {
+        "units_or_encoding": "digital_probe_increment",
+        "meaning": "Post-response digital line increment above background.",
+        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
+    },
+    "stimulus_condition": {"units_or_encoding": "x=degrees;ratio=minor/major axis;ring=0 or 1"},
+}
+
+
+MEASUREMENT_UNITS = {
+    "probe_x_deg": "degrees from fixation",
+    "staircase_repeat": "1-based staircase repeat",
+    "fixed_repeat": "1-based fixed repetition",
+    "presented_display_contrast": "digital increment above background",
+    "aspect_ratio": "minor/major semi-axis ratio (unitless)",
+    "ring": "boolean; False absent, True present",
+}
+
+
+REVIEW_INACTIVE_FIELDS = {
+    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
+    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
+                        + ("starting_probe_intensity", "threshold_reversals"),
+}
+
+CALIBRATION_REQUIREMENTS = ("geometry", "luminance", "timing")
+
+MONITOR_CAPABILITIES = ("display_binding", "resolution")
+
+ACQUISITION_BLOCK_REASON = "Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition."
+
+
+def trial_measurements(settings, condition):
+    """Existing requested journal values; no new canonical columns."""
+    return {
+        "probe_x_deg": condition["x_deg"],
+        "staircase_repeat": condition["repeat"],
+    }
+
+
+def response_instructions(responses):
+    return f"First interval: {responses.keys[0]}   Second interval: {responses.keys[1]}   Escape stops"
+
+
+# PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
     settings = run.values
@@ -230,9 +307,6 @@ def prepare_stimuli(run, condition, state):
     return {"fixation": fixation, "first": first, "second": second}
 
 
-# 4. SCIENTIFIC RULES — CONDITIONS AND UPDATES
-
-
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
     "version": "ellipse_centre-5",
@@ -245,23 +319,6 @@ SCIENTIFIC_SPEC = {
     "estimator": "Median final retained presented reversals; mean across all complete repeats.",
     "geometry": "Degrees; probe dimensions are selected stimulus parameters; ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
 }
-
-
-ADAPTIVE_RULE = AdaptiveSelection(
-    "consecutive_up_down",
-    controls=(
-        "n_down",
-        "n_up",
-        "logUNIT_UP",
-        "logUNIT_DW",
-        "initial_one_down_limit",
-        "staircases_per_condition",
-        "reversal_termination",
-        "max_trials",
-    ),
-    step_calculator="garcia_perez_1998",
-    step_parameterization="log10_display_contrast",
-)
 
 
 def make_conditions(settings):
@@ -431,41 +488,9 @@ def validate_settings(values):
     yield from validate_probe_fixed_settings(values, make_conditions)
 
 
-# 5. STOPPING AND RESULTS
+# Stopping, scientific estimators and results
 # Reversal completion is the adaptive goal; the global response ceiling is
 # incomplete termination. Fixed levels have no staircase threshold estimator.
-
-
-TRIAL_COLUMN_MEANINGS = {
-    "presented_display_contrast": {
-        "units_or_encoding": "digital_probe_increment",
-        "meaning": "Presented digital line increment above background.",
-        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-    },
-    "next_display_contrast": {
-        "units_or_encoding": "digital_probe_increment",
-        "meaning": "Post-response digital line increment above background.",
-        "notes": "Stored directly as I_probe - I_background before subpixel area coverage. Not historical C_disp or calibrated optical contrast.",
-    },
-    "stimulus_condition": {"units_or_encoding": "x=degrees;ratio=minor/major axis;ring=0 or 1"},
-}
-
-
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements={
-            "probe_x_deg": condition["x_deg"],
-            "staircase_repeat": condition["repeat"],
-        },
-        instructions=f"First interval: {run.responses.keys[0]}   Second interval: {run.responses.keys[1]}   Escape stops",
-    )
 
 
 def is_finished(run, conditions, state):
@@ -521,6 +546,22 @@ def constant_contrast_method(run):
     )
 
 
+# PART B — FRAMEWORK INTEGRATION
+# FRAMEWORK CONNECTION: same runner, recorder, Review hooks and public identity.
+# Scientific choices/measurements are above; normally leave these bindings alone.
+def trial_record(run, condition, state):
+    settings = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"],
+        condition["id"],
+        contrast=condition["contrast"],
+        maximum=maximum_contrast(settings, condition),
+        log_up=settings["logUNIT_UP"],
+        log_down=settings["logUNIT_DW"],
+        measurements=trial_measurements(settings, condition),
+        instructions=response_instructions(run.responses),
+    )
+
 def procedure(run):
     # Scientific timeline and stimulus conversion stay above. The method
     # chooses the probe increment; RunContext still records the same TSV.
@@ -535,25 +576,7 @@ def procedure(run):
         interpret_response=interpret_response,
     )
 
-
-# Review-only declarations; the actual record functions remain authoritative.
-MEASUREMENT_UNITS = {
-    "probe_x_deg": "degrees from fixation",
-    "staircase_repeat": "1-based staircase repeat",
-    "fixed_repeat": "1-based fixed repetition",
-    "presented_display_contrast": "digital increment above background",
-    "aspect_ratio": "minor/major semi-axis ratio (unitless)",
-    "ring": "boolean; False absent, True present",
-}
-REVIEW_INACTIVE_FIELDS = {
-    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
-    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
-                        + ("starting_probe_intensity", "threshold_reversals"),
-}
-# End Review-only declarations.
-
-
-# 6. FRAMEWORK REGISTRATION — MINIMAL AND LAST
+# Compatibility and registration
 # Central compatibility for callers expecting make_trial(...).resolve(...).
 make_trial = legacy_trial_factory(trial_events)
 
@@ -588,9 +611,9 @@ def definition(identity="ellipse_centre"):
         supports_simulation=True,
         stimulus_slots=STIMULUS_SLOTS,
         stimulus_defaults=STIMULUS_DEFAULTS,
-        calibration_requirements=("geometry", "luminance", "timing"),
-        monitor_capabilities=("display_binding", "resolution"),
-        acquisition_block_reason="Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition.",
+        calibration_requirements=CALIBRATION_REQUIREMENTS,
+        monitor_capabilities=MONITOR_CAPABILITIES,
+        acquisition_block_reason=ACQUISITION_BLOCK_REASON,
         trial_column_overrides=TRIAL_COLUMN_MEANINGS,
         source_paths=("src/psychophysics_lab/experiments/ellipse_centre.py",),
     )
