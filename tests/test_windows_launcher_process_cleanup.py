@@ -113,3 +113,6 @@ def test_genuine_bootstrap_compile_failure_retains_report_and_is_not_approved():
         assert 'error CS' in diagnostic and 'Native bootstrap log' in diagnostic
         reports=list(bootstrap.glob('PsyCoLab-launch-*/bootstrap.log'))
         assert len(reports)==1 and 'error CS' in reports[0].read_text()
+        released=source.with_name('released source')
+        assert source.parent==released.parent==workspace
+        source.rename(released)  # Prove native working-directory handles are closed.

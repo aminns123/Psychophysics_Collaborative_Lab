@@ -86,6 +86,10 @@ The accompanying test-only `_windows_launcher_process.py`:
 - Gives test commands closed input and retains the 45-second command deadline.
 - Owns only the fixture's worker/descendants, closing that job on success, failure
   or timeout. It never enumerates/kills arbitrary machine applications.
+- Retains verified process handles before termination, waits for their signaled
+  state, releases handles and checks job accounting before removing fixture files.
+  Termination requests alone are asynchronous; see Microsoft's
+  [process termination contract](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess).
 - Also bounds the temporary-interpreter query. It neither changes production
   launch/recovery nor approves qualification or suppresses a failed command.
 
@@ -107,6 +111,13 @@ the local fault reproduction. The final correction removes the hard diagnostic
 exit, retains ordinary faulthandler/verbose CI observability, and uses true
 process-tree ownership to bound failed launcher commands. No timeout is increased.
 Final hosted Windows/portability evidence is recorded in the PR.
+
+The first correction head passed hosted CI (2,617 / one skip), but the complete
+local Windows 11 run exposed a native teardown race (2,615 / two skips / one
+failure): the fallback child still held its working directory during deletion.
+The test owner now waits on retained, verified process handles and explicitly
+releases them; the regression immediately renames that directory to prove it is
+unlocked. This is a test-lifecycle repair; the production batch fix is unchanged.
 
 Application/scientific source, locked profiles, installations, environment roles,
 acquisition/calibration protections and participant data are outside this change.

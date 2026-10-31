@@ -15,6 +15,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 
 
 class _BasicLimits(ctypes.Structure):
@@ -36,6 +37,18 @@ class _ExtendedLimits(ctypes.Structure):
                 ('peak_process_memory', ctypes.c_size_t), ('peak_job_memory', ctypes.c_size_t)]
 
 
+class _Accounting(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_longlong) for name in
+                ('total_user', 'total_kernel', 'period_user', 'period_kernel')] + [
+                (name, wintypes.DWORD) for name in
+                ('page_faults', 'total_processes', 'active_processes', 'terminated_processes')]
+
+
+class _ProcessIds(ctypes.Structure):
+    _fields_ = [('assigned', wintypes.DWORD), ('listed', wintypes.DWORD),
+                ('ids', ctypes.c_size_t * 128)]
+
+
 def _kernel():
     api = ctypes.WinDLL('kernel32', use_last_error=True)
     api.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
@@ -46,6 +59,17 @@ def _kernel():
     api.AssignProcessToJobObject.restype = wintypes.BOOL
     api.CloseHandle.argtypes = [wintypes.HANDLE]
     api.CloseHandle.restype = wintypes.BOOL
+    api.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    api.TerminateJobObject.restype = wintypes.BOOL
+    api.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int,
+                                              ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+    api.QueryInformationJobObject.restype = wintypes.BOOL
+    api.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    api.OpenProcess.restype = wintypes.HANDLE
+    api.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)]
+    api.IsProcessInJob.restype = wintypes.BOOL
+    api.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    api.WaitForSingleObject.restype = wintypes.DWORD
     return api
 
 
@@ -84,14 +108,59 @@ def run_launcher(command, *, cwd, timeout, bootstrap_root=None):
             except subprocess.TimeoutExpired:
                 code = None
         finally:
-            api.CloseHandle(job)
-            # On assignment failure the gated worker has spawned no descendants.
-            if process is not None:
-                if process.poll() is None:
-                    process.kill()
-                process.wait(timeout=5)
-                if not process.stdin.closed:
-                    process.stdin.close()
+            handles = []
+            try:
+                # Termination is asynchronous. Closing the job alone can return
+                # while a dying descendant still holds its working directory.
+                # Wait on observed kernel state before fixture files are removed.
+                # Retain handles *before* requesting termination. A job's PID
+                # list/accounting can change before each process is signaled.
+                members = _ProcessIds()
+                if not api.QueryInformationJobObject(job, 3, ctypes.byref(members),
+                                                     ctypes.sizeof(members), None):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                for pid in members.ids[:members.listed]:
+                    handle = api.OpenProcess(0x101000, False, pid)  # SYNCHRONIZE | QUERY_LIMITED_INFORMATION
+                    if handle:
+                        if api.WaitForSingleObject(handle, 0) == 0:
+                            api.CloseHandle(handle)
+                            continue
+                        belongs = wintypes.BOOL()
+                        if not api.IsProcessInJob(handle, job, ctypes.byref(belongs)) or not belongs.value:
+                            api.CloseHandle(handle)
+                            raise RuntimeError('A test job member could not be verified before termination.')
+                        handles.append(handle)
+                    elif ctypes.get_last_error() != 87:  # ERROR_INVALID_PARAMETER: process already gone
+                        raise ctypes.WinError(ctypes.get_last_error())
+                if not api.TerminateJobObject(job, 1):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                deadline = time.monotonic() + 5
+                for handle in handles:
+                    remaining = max(0, int((deadline-time.monotonic())*1000))
+                    if api.WaitForSingleObject(handle, remaining) != 0:
+                        raise TimeoutError('A private launcher test process did not finish termination.')
+                while True:
+                    accounting = _Accounting()
+                    if not api.QueryInformationJobObject(job, 1, ctypes.byref(accounting),
+                                                         ctypes.sizeof(accounting), None):
+                        raise ctypes.WinError(ctypes.get_last_error())
+                    if accounting.active_processes == 0:
+                        break
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError('The private launcher test job did not finish termination.')
+                    time.sleep(.01)
+            finally:
+                for handle in handles:
+                    api.CloseHandle(handle)
+                api.CloseHandle(job)
+                # On assignment failure the gated worker has spawned no descendants.
+                if process is not None:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
+                    process._handle.Close()
+                    if not process.stdin.closed:
+                        process.stdin.close()
         output.seek(0)
         error.seek(0)
         stdout = output.read().decode(locale.getencoding(), errors='replace')
