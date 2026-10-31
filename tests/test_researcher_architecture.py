@@ -221,11 +221,15 @@ def test_python_procedure_storyboard_does_not_replay_a_retired_json_plan(tmp_pat
 
 @pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows batch launcher")
 @pytest.mark.parametrize("development", [False, True])
-def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, development):
+def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, development, monkeypatch):
     import os
     import shutil
     import subprocess
     import venv
+    import logging
+    import tempfile
+    from _windows_launcher_process import run_launcher
+    diagnostic = logging.getLogger(__name__)
     # Run the actual batch entry point, using a hardware-free fake app and a
     # no-install setup hook. The real local environment is never changed.
     shutil.copyfile(ROOT / "run_psycolab.bat", tmp_path / "run_psycolab.bat")
@@ -237,7 +241,9 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, 
     shutil.copyfile(ROOT / "packaging/windows/GuidedSetup.cs", tmp_path / "packaging/windows/GuidedSetup.cs")
     (scripts / "launcher_setup.py").write_text("# no installation in this regression fixture\n")
     environment = tmp_path / (".venv-dev" if development else ".venv")
+    diagnostic.warning("launcher development=%s: creating temporary environment %s", development, environment)
     venv.EnvBuilder(with_pip=False).create(environment)
+    diagnostic.warning("launcher development=%s: temporary environment created", development)
     import hashlib
     profile = tmp_path / "requirements/windows-cp311"
     profile.mkdir(parents=True)
@@ -251,8 +257,11 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, 
             "schema_version":2,"source_root":str(tmp_path),
             "pyproject_sha256":hashlib.sha256((tmp_path/"pyproject.toml").read_bytes()).hexdigest(),
             "qualification":{"profile_sha256":hashlib.sha256((profile/"profile.json").read_bytes()).hexdigest()}}))
-    site = subprocess.check_output([str(environment/"Scripts/python.exe"),"-I","-c",
-        "import sysconfig;print(sysconfig.get_path('purelib'))"],text=True).strip()
+    diagnostic.warning("launcher development=%s: querying temporary interpreter", development)
+    site_result = run_launcher([str(environment/"Scripts/python.exe"),"-I","-c",
+        "import sysconfig;print(sysconfig.get_path('purelib'))"],cwd=tmp_path,timeout=45)
+    assert site_result.returncode == 0, site_result.stdout + site_result.stderr
+    site = site_result.stdout.strip()
     (Path(site)/"fixture.pth").write_text(str(tmp_path),encoding="utf-8")
     package = tmp_path / "psychophysics_lab"
     package.mkdir()
@@ -276,9 +285,27 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, 
         "& .\\run_psycolab.bat --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
     # Restricted applies only to this child process; no policy is changed and
     # no .ps1 file or bypass is needed to compile/launch the native host.
-    for command in commands:
-        result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True, timeout=45,
-            creationflags=subprocess.CREATE_NO_WINDOW)
-        assert result.returncode == 0, result.stdout + result.stderr
-        assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
-        assert state.read_bytes() == before
+    with tempfile.TemporaryDirectory(prefix='psy-batch-collision-') as folder:
+        bootstrap = Path(folder)
+        # Force the historical two-RANDOM name to collide. The old launcher
+        # opens a modal rather than launching; a private occupied directory must
+        # also remain untouched by the atomic allocator.
+        monkeypatch.setenv('RANDOM', '17')
+        legacy = bootstrap/'PsyCoLab-launch-17-17.exe'
+        legacy.write_bytes(b'preserve unrelated retained bootstrap')
+        occupied = bootstrap/'PsyCoLab-launch-17-17-1'
+        occupied.mkdir()
+        sentinel = occupied/'preserve.txt'
+        sentinel.write_bytes(b'not owned by this launch')
+        for command in commands:
+            diagnostic.warning("launcher development=%s: command starting: %r", development, command)
+            try:
+                result = run_launcher(command, cwd=tmp_path, timeout=45, bootstrap_root=bootstrap)
+            except subprocess.TimeoutExpired as error:
+                pytest.fail(f'Launcher exceeded its original 45-second deadline.\n{error.output}\n{error.stderr}', pytrace=False)
+            diagnostic.warning("launcher development=%s: command returned %s", development, result.returncode)
+            assert result.returncode == 0, result.stdout + result.stderr
+            assert json.loads((tmp_path / "received.json").read_text()) == ["--probe-token", "a value with spaces"]
+            assert state.read_bytes() == before
+            assert legacy.read_bytes() == b'preserve unrelated retained bootstrap'
+            assert sentinel.read_bytes() == b'not owned by this launch'
