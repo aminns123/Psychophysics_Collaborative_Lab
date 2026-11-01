@@ -161,3 +161,75 @@ def test_trials_declare_exact_layers_and_target_alternative_in_python(
     assert all(v.slot != "first" and v.slot != "second"
                for event in events if hasattr(event, "placements")
                for v in event.placements)
+
+
+@pytest.mark.parametrize("flanker_present,ring_present", [
+    (False, False), (False, True), (True, False), (True, True),
+])
+def test_real_angular_viewport_layer_placement_matches_historical_pixels(
+    flanker_present, ring_present
+):
+    """Exercise the actual display-angle and edge-clipping coordinate planner.
+
+    This tests not only mathematical masks but independently cropped raster
+    bounds and pixel-centre placement through the shipping compositor.
+    No physical monitor, photometer, pyglet window or participant is required.
+    """
+    from types import SimpleNamespace
+    from psychophysics_lab.core.presentation import (
+        plan_visible_stimulus, render_values, render_layered_phase
+    )
+    from psychophysics_lab.core.timeline import Show
+
+    profile = SimpleNamespace(
+        physical_width_m=.16, physical_height_m=.12,
+        viewing_distance_m=.5, geometry_status="unverified",
+    )
+    resolution = (320, 240)
+    bg = .5
+    old = parameters(DetectionScene)
+    old.update(background=bg, contrast=.03,
+               probe_present=True, probe_x_deg=.35, probe_y_deg=.25,
+               probe_length_deg=1., probe_width_deg=.013,
+               ring_present=ring_present, ring_radius_deg=.8,
+               ring_y_deg=.25, ring_increment=.06, aspect_ratio=.75,
+               flanker_present=flanker_present, flanker_cpd=2.)
+    old_view, old_coords, steps = plan_visible_stimulus(
+        profile, resolution, DetectionScene.SPEC, old, Stimulus("legacy")
+    )
+    old_image = render_values(
+        DetectionScene.SPEC, old, pixels=old_view["raster_px"],
+        coordinates=old_coords, pixel_steps=steps
+    )
+
+    fixation = parameters(GaussianSceneFixation) | {"background": bg}
+    probe = parameters(ProbeLine) | {
+        "background": bg, "display_contrast": .03/(1-bg),
+    }
+    ring = parameters(EllipseRing) | {
+        "background": bg, "display_contrast": .06/(1-bg),
+        "outer_radius_deg": .8, "aspect_ratio": .75,
+    }
+    flanker = parameters(FlankerGrating) | {
+        "background": bg, "spatial_frequency_cpd": 2.,
+    }
+    placements = []
+    if flanker_present:
+        placements.append(Stimulus("flanker", -3., 0.))
+    if ring_present:
+        placements.append(Stimulus("ellipse", 0., .25))
+    placements += [Stimulus("probe", .35, .25, blend="add"),
+                   Stimulus("fixation")]
+    phase = Show("comparison", duration=100, stimuli=tuple(placements))
+    selected = {
+        "flanker": ("flanker_grating", flanker),
+        "ellipse": ("ellipse_ring", ring),
+        "probe": ("probe_line", probe),
+        "fixation": ("gaussian_scene_fixation", fixation),
+    }
+    px, py, image, _ = render_layered_phase(
+        profile, resolution, phase, selected, bg
+    )
+    assert (px, py) == tuple(old_view["origin_px"])
+    assert image.shape == old_image.shape
+    np.testing.assert_allclose(image, old_image, rtol=0, atol=4e-14)
