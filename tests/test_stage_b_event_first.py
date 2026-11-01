@@ -278,7 +278,10 @@ def test_review_and_acquisition_read_the_same_python_event_function(tmp_path, mo
     traces = read(a.run_directory,'trial_actions.json')['trials']
     assert all(t['plan']['phases'][0]['duration_ms']==17 for t in traces)
     assert len(calls)>=1+a.accepted_trials
-    assert {0, 1} <= set(calls)  # both targets examined by real headroom preflight
+    if identity == 'ellipse_major_axis':
+        assert {0, 1} <= set(calls)  # real probe headroom checks both targets
+    else:
+        assert set(calls) <= {0, 1}  # CSF chooses alternatives stochastically
 
 
 def test_ambiguous_trial_factories_fail_before_method_or_scientific_state_creation():
