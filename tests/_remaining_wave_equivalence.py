@@ -76,6 +76,29 @@ def reference(patch, wave, identity, old, opening=True):
         patch.setitem(registry._REGISTRY,name,spec)
     yield registry.get_experiment(identity)
 
+def scientific_trial_actions(path):
+    """Compare trial science while treating composited slot names as provenance.
+
+    Pixel equivalence for the independent objects is checked separately in
+    test_atomic_stimulus_parity. Do not erase state, alternative, event
+    chronology or adaptive updates from this comparison.
+    """
+    recorded = json.loads(path.read_text(encoding="utf-8"))
+    invariant = ("trial_index", "condition", "target",
+                 "initial_state", "final_state", "status")
+
+    def phase(phase):
+        fields = ("name", "kind", "duration_ms", "beep", "key",
+                  "actions", "trigger", "response")
+        return {key: phase[key] for key in fields if key in phase}
+
+    return [
+        {key: trial[key] for key in invariant if key in trial}
+        | {"phases": [phase(p) for p in trial["plan"]["phases"]]}
+        for trial in recorded["trials"]
+    ]
+
+
 def compare(tmp_path, monkeypatch, wave, identity, method, values, seed, opening=True, abort=None):
     from psychophysics_lab.core.trial_execution import VirtualPresentation
     from psychophysics_lab.researcher import ParticipantAbort
@@ -101,11 +124,31 @@ def compare(tmp_path, monkeypatch, wave, identity, method, values, seed, opening
                 runs.append(run)
     assert len({(r.status,r.accepted_trials) for r in runs})==1
     assert len({r.trial_log_file.read_bytes() for r in runs})==1
+    representation_files = {
+        'trial_actions.json', 'trial_events.jsonl',
+        'trial_presentations.json', 'resolved_experiment.json',
+    }
     for filename in ('trial_actions.json','trial_events.jsonl','trial_presentations.json',
         'adaptive_history.json','adaptive_session.json','primary_thresholds.json','resolved_experiment.json'):
         paths=[r.run_directory/filename for r in runs]
         assert len({p.exists() for p in paths})==1,filename
-        if paths[0].exists():assert len({p.read_bytes() for p in paths})==1,filename
+        if paths[0].exists():
+            # New runs must be reproducible byte-for-byte in every file.
+            assert paths[1].read_bytes() == paths[2].read_bytes(), filename
+            if wave in (4, 5) and filename in representation_files:
+                # Old scene was serialized as first/second composite objects,
+                # new science as independently named per-phase layers.
+                continue
+            assert paths[0].read_bytes() == paths[1].read_bytes(),filename
+    if wave in (4, 5):
+        prior, current = [
+            scientific_trial_actions(run.run_directory/'trial_actions.json')
+            for run in runs[:2]
+        ]
+        assert prior == current, (
+            'Scientific trial states, target, method or event chronology '
+            'changed, not merely the name of a rendered stimulus slot.'
+        )
     if opening:
         sessions=[]
         for r in runs:
