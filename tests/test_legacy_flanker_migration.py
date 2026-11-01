@@ -25,7 +25,7 @@ def test_supported_flanker_trial_phase_order_and_response_mapping():
         "fixation_ms": 340, "stimulus_ms": 180,
         "flanker_cpd": 3.4, "probe_vertical_offset_deg":.5, "auditory_cues": False,
     })
-    phases = flanker.make_trial(values, {}).resolve(values).phases
+    phases = flanker.make_trial(values, {'x_deg': 0., 'target': 0, 'contrast': .01}).resolve(values).phases
     assert [(p.name, p.duration_ms) for p in phases] == [
         ("fixation", 340), ("probe", 180), ("answer", 0)
     ]
