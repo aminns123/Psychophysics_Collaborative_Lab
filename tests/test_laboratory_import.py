@@ -61,6 +61,23 @@ def test_bad_namespace_and_missing_spec_rejected_without_writes(tmp_path, lab):
     assert not list((lab / "experiments").glob("*.py"))
 
 
+def test_conventional_spec_id_mismatch_is_explained_before_copy(tmp_path, lab):
+    file = tmp_path / "demolab__ellipse.py"
+    file.write_text(
+        'SPEC = experiment(id="ellipse", name="An ellipse")\\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="SPEC.id"):
+        import_experiment(tmp_path, file)
+    file.write_text(
+        'def definition(identity="ellipse"):\\n'
+        '    return experiment(id=identity)\\n'
+        'SPEC = definition()\\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="default ID"):
+        import_experiment(tmp_path, file)
+    assert not (lab / "experiments" / file.name).exists()
+
+
 def test_disabled_laboratory_cannot_import(tmp_path, lab, monkeypatch):
     monkeypatch.setattr(extensions, "configured", lambda repo_root, data_root=None: None)
     file = tmp_path / "demolab__my_study.py"
