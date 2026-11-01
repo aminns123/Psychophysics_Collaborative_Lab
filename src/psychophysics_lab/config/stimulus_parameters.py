@@ -176,7 +176,7 @@ def migrate_legacy_detection_snapshots(spec, values, snapshots):
     return migrated
 
 def resolve_stimuli(spec, values, snapshots=None, *, repo_root=None):
-    """Resolve each independent slot. Old CSF values remain authoritative on legacy calls."""
+    """Resolve current atomic slots; migrate only explicitly supported old setups."""
     snapshots = migrate_legacy_detection_snapshots(spec, values, snapshots or {})
     if set(snapshots) - set(spec.stimulus_slots):
         raise ValueError("Stimulus configuration contains an unknown experiment slot.")
