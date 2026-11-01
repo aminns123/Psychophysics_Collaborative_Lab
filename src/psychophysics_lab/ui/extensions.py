@@ -72,12 +72,12 @@ class ExtensionsPanel(Vertical):
                     )
                     self.refresh_status()
                     self.query_one('#extensions-status', Static).update(
-                        'IMPORTED AS DRAFT: ' + imported['path'] + '\\n'
-                        + imported['note'] + '\\n'
+                        'IMPORTED AS DRAFT: ' + imported['path'] + '\n'
+                        + imported['note'] + '\n'
                         'Custom stimulus classes must be declared in the existing '
                         'laboratory stimulus_library.py; they are never silently copied.'
                     )
-                    self.app.inspect_source(imported['path'])
+                    self.app.inspect_source(__import__('pathlib').Path(imported['path']))
                 return
             location = self.query_one('#extensions-root', Input).value
             if event.button.id == 'extensions-starter':
