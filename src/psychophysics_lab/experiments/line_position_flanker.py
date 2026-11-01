@@ -288,7 +288,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected independently by the researcher.",
+    "geometry": "ProbeLine width/length and FlankerGrating dimensions/amplitude belong to independent library classes. The experiment places the flanker at x=-3 degrees, chooses its frequency, positions the probe above/below, and draws the Gaussian fixation last. Default flanker peak-to-peak digital modulation is .018.",
 }
 
 
