@@ -66,10 +66,10 @@ class AuthoringPanel(Vertical):
             yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
             yield Button("Mark Ready", id="author-ready")
             if self.kind == "experiment":
+                yield Button("Prepare official contribution", id="author-contribute")
                 yield Button("What does Test check?", id="author-test-info")
                 yield Button("Save Test as reference", id="author-save-reference")
                 yield Button("Compare with reference", id="author-compare-reference")
-            if self.kind == "experiment":
                 yield Button("Retire experiment", variant="warning", id="author-retire")
                 yield Button("Restore retired", id="author-restore")
             yield Button("Refresh list", id="author-refresh")
@@ -113,6 +113,9 @@ class AuthoringPanel(Vertical):
         self.query_one("#author-restore", Button).disabled = status != "retired"
         self.query_one("#author-test", Button).disabled = status is None or status == "retired"
         self.query_one("#author-ready", Button).disabled = status is None or status == "retired"
+        self.query_one("#author-contribute", Button).disabled = (
+            status != "ready" or name not in getattr(self, "_external", {})
+        )
         for action in ("author-save-reference", "author-compare-reference"):
             self.query_one("#" + action, Button).disabled = status is None or status == "retired"
 
@@ -180,6 +183,28 @@ class AuthoringPanel(Vertical):
         name = self.query_one("#author-component", Select).value
         if name is Select.BLANK:
             self.query_one("#author-result", Static).update("Choose a component first.")
+            return
+        if identity == "author-contribute" and self.kind == "experiment":
+            if name not in getattr(self, "_external", {}):
+                self.query_one("#author-result", Static).update(
+                    "This is already a published repository experiment; "
+                    "only an external laboratory experiment needs official contribution."
+                )
+                return
+            try:
+                from ..laboratory_import import prepare_official_contribution
+                folder = prepare_official_contribution(self.app.repo_root, str(name))
+                self.query_one("#author-result", Static).update(
+                    "OFFICIAL CONTRIBUTION PACKAGE PREPARED: " + str(folder) + "\n"
+                    "The exact local experiment source, relevant laboratory stimuli and "
+                    "source hashes are preserved for review. Nothing has been merged or "
+                    "copied into PsyCoLab's official experiments. Ask a maintainer to "
+                    "review the proposed IDs, science and source and submit a pull request."
+                )
+            except (ValueError, OSError, KeyError) as exc:
+                self.query_one("#author-result", Static).update(
+                    "Could not prepare contribution: " + str(exc)
+                )
             return
         if identity == "author-save-reference" and self.kind == "experiment":
             try:

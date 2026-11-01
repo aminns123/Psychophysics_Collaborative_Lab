@@ -244,6 +244,20 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
     if identity in {"line_position_baseline","line_position_flanker","ellipse_major_axis","ellipse_centre"}:
         values = {"max_trials":4,"probe_vertical_offset_deg":.5} if identity.startswith("line_") else {"max_trials":4,"ring_increment":.1}
         if identity == "line_position_flanker": values["flanker_cpd"] = 2.
+    if identity == "ellipse_modular_centre":
+        # The generic interface smoke test must not run the full default
+        # 3-ratio x 4-staircase adaptive protocol (up to 10,000 trials).
+        # A bounded fixed-level run still exercises independent stimuli,
+        # both target intervals, interpretation, recording and validation.
+        # The full adaptive algorithm has its own dedicated method tests.
+        values = {
+            "contrast_method": "constant_stimuli",
+            "aspect_ratios": "1",
+            "staircases_per_condition": 1,
+            "fixed_contrasts": "0.04",
+            "fixed_repetitions": 2,
+            "max_trials": 4,
+        }
     calls = []
     event_name = "trial_events" if hasattr(module, "trial_events") else "make_trial"
     prepare, make_trial = module.prepare_stimuli, getattr(module, event_name)
