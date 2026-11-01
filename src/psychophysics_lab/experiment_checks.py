@@ -46,7 +46,10 @@ def check_experiment(spec, selected_values: Mapping[str, Any]) -> tuple[Software
     def run(name, operation):
         try:
             detail = operation()
-        except (ValueError, TypeError, KeyError, AttributeError, ImportError) as exc:
+        except Exception as exc:
+            # A newly authored Python callback can fail in many ordinary ways.
+            # Keep the generic Test actionable rather than crashing the TUI;
+            # never catch BaseException (KeyboardInterrupt/SystemExit).
             results.append(SoftwareCheck(name, False, f"{type(exc).__name__}: {exc}"))
         else:
             results.append(SoftwareCheck(name, True, str(detail)))
