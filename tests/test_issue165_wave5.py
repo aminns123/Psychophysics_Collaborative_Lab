@@ -53,7 +53,17 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
     # response semantics, analysis units and acquisition requirements. Their
     # per-stimulus parameter slots and source-navigation rows intentionally
     # differ because one old scene became several independent objects.
-    assert results[0]['conditions']==results[1]['conditions']
+    # The new presentation preflight adds a per-condition *derived safety
+    # ceiling*. It is not a change to the scientific factor levels or targets.
+    # Preserve every historical condition field, and test the new ceiling.
+    assert results[0]['conditions'] == [
+        {key: value for key, value in condition.items()
+         if key != 'maximum_probe_increment'}
+        for condition in results[1]['conditions']
+    ]
+    background = case['values'].get('background_intensity', .5)
+    assert all(0 < c['maximum_probe_increment'] <= 1-background
+               for c in results[1]['conditions'])
     assert results[0]['session_phases']==results[1]['session_phases']
     assert [
         {key: p[key] for key in ('name','kind','duration_ms') if key in p}
