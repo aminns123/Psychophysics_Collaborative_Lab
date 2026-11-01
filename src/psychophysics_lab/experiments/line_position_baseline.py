@@ -27,6 +27,7 @@ from psychophysics_lab.researcher import (
     WaitForKey,
     legacy_trial_factory,
     Show,
+    Stimulus,
     CollectResponse,
     Beep,
     UpdateAdaptive,
@@ -145,9 +146,11 @@ RESPONSES = ResponseParadigm(
     "line_position_baseline", ("above", "below"), ("UP", "DOWN")
 )
 # Historical compound scene retained until independent components match its pixels.
+# Each named object is independently drawn. Their order and positions
+# are scientist-owned events below, not one monolithic scene renderer.
 STIMULI = {
-    "fixation": "detection_scene",
-    "first": "detection_scene",
+    "fixation": "gaussian_scene_fixation",
+    "probe": "probe_line",
     "ready_fixation": "gaussian_fixation",
 }
 PARADIGM = "two_alternative_forced_choice"
@@ -172,7 +175,12 @@ def trial_events(settings, condition):
     cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
     return [
         Show('fixation', slot='fixation', duration='fixation_ms'),
-        Show('probe', slot='first', duration='stimulus_ms', beep=cue),
+        Show('probe', duration='stimulus_ms', beep=cue, stimuli=(
+            Stimulus("probe", x_deg=condition["x_deg"],
+                     y_deg=(settings["probe_vertical_offset_deg"] if condition["target"] == 0
+                            else -settings["probe_vertical_offset_deg"]), blend="add"),
+            Stimulus("fixation"),
+        )),
         CollectResponse(actions=('above', 'below'), slot='fixation', beep=cue),
     ]
 
@@ -230,30 +238,30 @@ def response_instructions(responses):
 # PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
+    """Actual separate image objects, in raw-increment-equivalent units.
+
+    The historical staircase outputs a digital increment, not headroom fraction.
+    ProbeLine displays headroom fraction, so transform only at its input.
+    The experiment, trials, response meanings and threshold units stay raw.
+    """
     settings = run.values
     background = settings["background_intensity"]
-    common = dict(
-        background=background,
-        contrast=condition["contrast"],
-        probe_x_deg=condition["x_deg"],
-        probe_y_deg=(
-            settings["probe_vertical_offset_deg"]
-            if condition["target"] == 0
-            else -settings["probe_vertical_offset_deg"]
+    headroom = 1. - background
+    digital_increment = condition["contrast"]
+    if digital_increment > headroom:
+        raise ValueError("Probe increment exceeds remaining digital headroom.")
+    probe_fraction = digital_increment / headroom if headroom else 0.
+    resolved = {
+        "fixation": run.stimulus_parameters(
+            "fixation", background=background, size_deg=14.,
+            increment=.09, sigma_deg=.035,
         ),
-        ring_present=False,
-        flanker_present=False,
-    )
-    fixation = run.stimulus_parameters(
-        "fixation",
-        background=background,
-        probe_present=False,
-        ring_present=False,
-        flanker_present=False,
-    )
-    first = run.stimulus_parameters("first", **common, probe_present=True)
-    return {"fixation": fixation, "first": first}
-
+        "probe": run.stimulus_parameters(
+            "probe", background=background, display_contrast=probe_fraction,
+            length_deg=1., width_deg=.013,
+        ),
+    }
+    return resolved
 
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
