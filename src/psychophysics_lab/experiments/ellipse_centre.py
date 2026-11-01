@@ -308,19 +308,16 @@ def prepare_stimuli(run, condition, state):
     ring_fraction = v["ring_increment"] / headroom if headroom else 0.
     return {
         "fixation": run.stimulus_parameters(
-            "fixation", background=background, size_deg=14.,
-            increment=.09, sigma_deg=.035,
+            "fixation", background=background,
         ),
         "ellipse": run.stimulus_parameters(
-            "ellipse", background=background, size_deg=14.,
+            "ellipse", background=background,
             outer_radius_deg=v["ring_radius_deg"],
             aspect_ratio=condition["aspect_ratio"],
-            inner_inset_deg=.16, orientation_deg=0.,
             display_contrast=ring_fraction,
         ),
         "probe": run.stimulus_parameters(
-            "probe", background=background, length_deg=1.,
-            width_deg=.013, display_contrast=probe_fraction,
+            "probe", background=background, display_contrast=probe_fraction,
         ),
     }
 
