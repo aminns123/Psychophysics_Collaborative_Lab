@@ -96,13 +96,17 @@ def test_ellipse_geometry_uses_researcher_selected_radius_and_vertical_centre(mo
     assert next(f for f in module.SPEC.fields if f.key == y_key).units == "degrees"
     condition = module.make_conditions(values)[0] | {"target": 0, "contrast": 0.01}
     stimuli = module.prepare_stimuli(StubRun(values), condition, {})
-    assert stimuli["first"]["ring_radius_deg"] == radius
-    assert stimuli["second"]["ring_radius_deg"] == radius
-    assert stimuli["first"]["probe_y_deg"] == y
-    assert stimuli["first"]["ring_y_deg"] == y
-    assert stimuli["second"]["probe_y_deg"] == y
-    assert stimuli["second"]["ring_y_deg"] == y
-    assert stimuli["first"]["probe_x_deg"] == condition["x_deg"]
+    assert stimuli["ellipse"]["outer_radius_deg"] == radius
+    phases = module.trial_events(values, condition)
+    for name in ("interval_one", "interval_two"):
+        placements = next(p.placements for p in phases if p.name == name)
+        ring = next(p for p in placements if p.slot == "ellipse")
+        assert ring.x_deg == 0
+        assert ring.y_deg == y
+    target_phase = next(p for p in phases if p.name == "interval_one")
+    probe_placement = next(p for p in target_phase.placements if p.slot == "probe")
+    assert probe_placement.x_deg == condition["x_deg"]
+    assert probe_placement.y_deg == y
 
 
 @pytest.mark.parametrize("module", [centre, axis])
