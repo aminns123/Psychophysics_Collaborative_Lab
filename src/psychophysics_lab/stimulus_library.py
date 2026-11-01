@@ -978,6 +978,65 @@ class ProbeLine(LibraryStimulus):
     )
 
 
+class FlankerGrating(LibraryStimulus):
+    """One sinusoidal rectangular flanker; placement belongs to the experiment.
+
+    For the older line-position design, place its centre at x=-3 degrees,
+    choose 5x5 degrees and amplitude .009. A zero-amplitude flanker is
+    optically absent but still occupies a declared software layer.
+    """
+
+    PARAMETERS = (
+        ConfigField("size_deg", "Minimum raster diameter", "float", 5.,
+                    minimum=.1, maximum=45, units="degrees"),
+        ConfigField("width_deg", "Flanker width", "float", 5.,
+                    minimum=.01, maximum=40, units="degrees"),
+        ConfigField("height_deg", "Flanker height", "float", 5.,
+                    minimum=.01, maximum=40, units="degrees"),
+        ConfigField("background", "Digital background", "float", .5,
+                    minimum=0, maximum=1, units="digital command"),
+        ConfigField("spatial_frequency_cpd", "Flanker spatial frequency", "float", 2.,
+                    minimum=.01, maximum=32, units="cycles/degree"),
+        ConfigField("amplitude", "Digital sinusoidal amplitude", "float", .009,
+                    minimum=0, maximum=1, units="digital amplitude"),
+    )
+
+    @staticmethod
+    def validate(p):
+        if p["amplitude"] > min(p["background"], 1 - p["background"]):
+            raise ValueError(
+                "Flanker amplitude exceeds available signed digital gamut "
+                "around the selected background."
+            )
+
+    @staticmethod
+    def alpha(p, x, y):
+        return ((abs(x) <= p["width_deg"]/2) &
+                (abs(y) <= p["height_deg"]/2)).astype(float)
+
+    @staticmethod
+    def render(p, x, y):
+        coverage = FlankerGrating.alpha(p, x, y)
+        return (p["background"] + coverage * p["amplitude"] *
+                np.sin(2*np.pi*p["spatial_frequency_cpd"]*x))
+
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": max(p["size_deg"],
+                                          p["width_deg"], p["height_deg"])}
+
+    SPEC = StimulusSpec(
+        id="flanker_grating", display_name="Flanker grating",
+        description="An independently positioned rectangular sinusoidal grating.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="flanker_grating", render=render,
+        validator=validate, geometry=geometry.__func__,
+        layer_alpha=alpha.__func__,
+        spatial_frequencies=lambda p: (p["spatial_frequency_cpd"],),
+        calibration_requirements=("geometry", "luminance"),
+    )
+
+
 class GaussianFixationSpot(LibraryStimulus):
     """One Gaussian fixation mark; spatially localized alpha, not an opaque patch."""
 

@@ -66,6 +66,10 @@ class AuthoringPanel(Vertical):
             yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
             yield Button("Mark Ready", id="author-ready")
             if self.kind == "experiment":
+                yield Button("Prepare official contribution", id="author-contribute")
+                yield Button("What does Test check?", id="author-test-info")
+                yield Button("Save Test as reference", id="author-save-reference")
+                yield Button("Compare with reference", id="author-compare-reference")
                 yield Button("Retire experiment", variant="warning", id="author-retire")
                 yield Button("Restore retired", id="author-restore")
             yield Button("Refresh list", id="author-refresh")
@@ -109,6 +113,11 @@ class AuthoringPanel(Vertical):
         self.query_one("#author-restore", Button).disabled = status != "retired"
         self.query_one("#author-test", Button).disabled = status is None or status == "retired"
         self.query_one("#author-ready", Button).disabled = status is None or status == "retired"
+        self.query_one("#author-contribute", Button).disabled = (
+            status != "ready" or name not in getattr(self, "_external", {})
+        )
+        for action in ("author-save-reference", "author-compare-reference"):
+            self.query_one("#" + action, Button).disabled = status is None or status == "retired"
 
     def on_select_changed(self, event: Select.Changed):
         if event.select.id == "author-component":
@@ -154,12 +163,61 @@ class AuthoringPanel(Vertical):
         if not identity.startswith("author-"):
             return
         event.stop()
+        if identity == "author-test-info" and self.kind == "experiment":
+            self.query_one("#author-result", Static).update(
+                "SOFTWARE TEST (automatic; no custom test Python needed):\n"
+                "1. Parse effective experiment settings and check scientific parameter validators.\n"
+                "2. Check every declared stimulus ID/family and session-start event.\n"
+                "3. Check the selected method and simulate its actual trial events/responses.\n"
+                "4. Validate saved data and report pass/fail in USER_env_data.\n"
+                "5. Mark Ready only after this exact source revision passes.\n\n"
+                "RESEARCHER REVIEW (not automated): confirm intended stimulus geometry, "
+                "overlap order, conditions, response mapping, thresholds and contrast units; "
+                "then qualify the actual display, luminance, timing and input devices. "
+                "Ready is software readiness, NOT scientific approval."
+            )
+            return
         if identity == "author-refresh":
             self.refresh_inventory()
             return
         name = self.query_one("#author-component", Select).value
         if name is Select.BLANK:
             self.query_one("#author-result", Static).update("Choose a component first.")
+            return
+        if identity == "author-contribute" and self.kind == "experiment":
+            if name not in getattr(self, "_external", {}):
+                self.query_one("#author-result", Static).update(
+                    "This is already a published repository experiment; "
+                    "only an external laboratory experiment needs official contribution."
+                )
+                return
+            try:
+                from ..laboratory_import import prepare_official_contribution
+                folder = prepare_official_contribution(self.app.repo_root, str(name))
+                self.query_one("#author-result", Static).update(
+                    "OFFICIAL CONTRIBUTION PACKAGE PREPARED: " + str(folder) + "\n"
+                    "The exact local experiment source, relevant laboratory stimuli and "
+                    "source hashes are preserved for review. Nothing has been merged or "
+                    "copied into PsyCoLab's official experiments. Ask a maintainer to "
+                    "review the proposed IDs, science and source and submit a pull request."
+                )
+            except (ValueError, OSError, KeyError) as exc:
+                self.query_one("#author-result", Static).update(
+                    "Could not prepare contribution: " + str(exc)
+                )
+            return
+        if identity == "author-save-reference" and self.kind == "experiment":
+            try:
+                from ..experiment_reference import save_reference
+                path = save_reference(self.app.repo_root, str(name))
+                self.query_one("#author-result", Static).update(
+                    f"REFERENCE SAVED (software only): {path}\n"
+                    "Use Compare with reference after changing Python or settings. "
+                    "PsyCoLab compares synthetic events and records for you; "
+                    "the researcher decides whether differences are intentional."
+                )
+            except (ValueError, OSError, KeyError) as exc:
+                self.query_one("#author-result", Static).update(str(exc))
             return
         if identity == "author-retire" and self.kind == "experiment":
             external = name in getattr(self, "_external", {})
@@ -226,6 +284,18 @@ class AuthoringPanel(Vertical):
             message = (result.stdout + result.stderr).strip()
             if result.returncode:
                 message = "Validation failed. Edit the component and try again.\n" + message
+            elif operation == "author-compare-reference":
+                from ..experiment_reference import compare_latest_reference
+                comparison = compare_latest_reference(self.app.repo_root, name)
+                if comparison["same_scientific_behaviour"]:
+                    message += "\nREFERENCE COMPARISON: No changes detected in the synthetic trial records/events."
+                else:
+                    message += "\nREFERENCE COMPARISON: Behaviour differences require researcher review:"
+                    message += "".join("\n- " + item for item in comparison["differences"])
+                if comparison["source_changed_since_reference"]:
+                    message += "\nScientific source/dependencies changed since the stored reference."
+                message += "\nReference: " + comparison["reference_path"]
+                message += "\nThis is software evidence, not scientific or physical qualification."
             elif operation == "author-ready":
                 # New modules enter the same registries. Existing imported
                 # modules require a restart to avoid stale cross-module references.

@@ -36,6 +36,19 @@ def migration_reference(root, identity):
         for path, key in ((before, "before_sha256_lf"), (after, "after_sha256_lf")):
             raw = path.read_bytes().replace(b"\r\n", b"\n")
             if key == "after_sha256_lf":
+                if identity == "contrast_sensitivity_windowed":
+                    # Issue #196: reverse only the approved CSF Review fix.
+                    # Keep the original scientific source checksum intact.
+                    approved = (
+                        "        # Do not inherit Gaussian CSF's method_reviewer. Review must call the\n"
+                        "        # circular factory, which supplies aperture-specific resolution\n"
+                        "        # instead of requesting Gaussian sigma/cutoff fields removed above.\n"
+                        '        method_reviewer={"constant_stimuli": fixed_contrast_method},\n'
+                    )
+                    assert raw.count(approved.encode("utf-8")) == 1, identity
+                    raw = raw.replace(approved.encode("utf-8"), b"", 1)
+
+                # Undo only the reviewed single-STIMULI declarations.
                 raw = historical_one_map_source(root, identity, raw)
             assert hashlib.sha256(raw).hexdigest() == contract[key], (identity, key)
         return before
