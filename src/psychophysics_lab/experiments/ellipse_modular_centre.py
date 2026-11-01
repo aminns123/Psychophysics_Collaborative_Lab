@@ -23,7 +23,7 @@ from psychophysics_lab.methods.probe import unique_probe_conditions, fixed_probe
 from psychophysics_lab.researcher import (
     AdaptiveSelection, Beep, CollectResponse, ConfigField, ResponseParadigm,
     Show, StaircaseConfig, Step, Stimulus, UpdateAdaptive, WaitForKey,
-    experiment, legacy_trial_factory,
+    experiment,
 )
 
 
@@ -440,7 +440,6 @@ def procedure(run):
     )
 
 
-make_trial = legacy_trial_factory(trial_events)  # for older test/preview callers
 SPEC = experiment(
     id=EXPERIMENT_ID, name=EXPERIMENT_NAME,
     description="Independent ring, probe and Gaussian fixation with ordered occlusion.",
