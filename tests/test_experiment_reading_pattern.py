@@ -106,8 +106,20 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
 
     assert module.SPEC.id == SOURCE_IDS.get(identity, identity)
     assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == tuple(f for f in module.FIELDS if f.key != "response_keys")
-    assert dict(module.SPEC.stimulus_slots) == module.STIMULUS_SLOTS
-    assert dict(module.SPEC.stimulus_defaults) == module.STIMULUS_DEFAULTS
+    if hasattr(module, "STIMULI"):
+        # The one-map contract derives families from actual stimulus specs;
+        # there is no second researcher-maintained registry dictionary.
+        from psychophysics_lab.stimuli.registry import get_stimulus
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULI
+        assert dict(module.SPEC.stimulus_slots) == {
+            slot: get_stimulus(stimulus_id).family
+            for slot, stimulus_id in module.STIMULI.items()
+        }
+        assert "STIMULUS_SLOTS" not in source
+        assert "STIMULUS_DEFAULTS" not in source
+    else:
+        assert dict(module.SPEC.stimulus_slots) == module.STIMULUS_SLOTS
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULUS_DEFAULTS
     assert module.SPEC.response_paradigm == module.RESPONSES
 
 
