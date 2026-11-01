@@ -115,7 +115,10 @@ def prepare_state(state, root):
     from ..config.models import SetupRequest
     from ..config.monitor import load_monitor_profiles
     from ..config.preflight import validate_setup
-    from ..config.stimulus_parameters import document_for, load_parameters, snapshot, resolve_stimuli
+    from ..config.stimulus_parameters import (
+        document_for, load_parameters, snapshot, resolve_stimuli,
+        migrate_legacy_detection_snapshots,
+    )
     from ..experiments._internal.registry import get_experiment, list_experiments
     from ..stimuli.registry import get_stimulus, list_stimuli
     from .parameter_files import load_experiment_json, file_hash
@@ -136,11 +139,46 @@ def prepare_state(state, root):
               else spec.field_defaults() | state["overrides"])
     stimuli = dict(state["stimuli"])
     for slot in state["follow_defaults"]:
+        if slot not in spec.stimulus_slots:
+            # Historical snapshots are translated below, never rebound to a
+            # new module's defaults just because an old handoff said "follow".
+            continue
         stimulus = get_stimulus(stimuli[slot]["document"]["stimulus_id"])
         stimuli[slot] = snapshot(document_for(stimulus), file_identity="library_defaults")
     for slot, name in sources["stimuli"].items():
-        document = json.loads(Path(name).read_text(encoding="utf-8-sig"))
-        stimuli[slot] = load_parameters(Path(name), get_stimulus(document["stimulus_id"]))
+        path = Path(name)
+        raw = path.read_bytes()
+        document = json.loads(raw.decode("utf-8-sig"))
+        if slot in spec.stimulus_slots:
+            stimuli[slot] = load_parameters(path, get_stimulus(document["stimulus_id"]))
+        elif (slot in {"first", "second", "fixation"}
+              and spec.id in {"line_position_baseline", "line_position_flanker",
+                              "ellipse_centre", "ellipse_major_axis"}
+              and document.get("schema_version") == 1
+              and document.get("stimulus_id") == "detection_scene"
+              and isinstance(document.get("parameters"), dict)):
+            # Read only the archived-format configuration *as data*, without
+            # importing or re-registering its retired DetectionScene renderer.
+            # Migration below owns interpreting the documented fields.
+            import hashlib
+            stimuli[slot] = snapshot(
+                document, file_identity=path.name,
+                file_sha256=hashlib.sha256(raw).hexdigest(),
+            )
+        else:
+            raise ValueError(
+                f"{slot}: saved stimulus JSON does not belong to the current "
+                "experiment; use the explicit legacy import if applicable."
+            )
+    stimuli = migrate_legacy_detection_snapshots(spec, values, stimuli)
+    # Old JSON files remain untouched evidence, never editable as new slots.
+    sources = dict(sources) | {
+        "stimuli": {
+            slot: file for slot, file in sources["stimuli"].items()
+            if slot in spec.stimulus_slots and
+            stimuli.get(slot, {}).get("file_identity") != "migrated_legacy_detection_scene"
+        },
+    }
     # Field bindings remain owned by the experiment. Never leave old bound
     # values inside a separately saved stimulus snapshot.
     for slot, bindings in spec.stimulus_field_bindings.items():
@@ -164,7 +202,8 @@ def prepare_state(state, root):
                           monitor_profile_hash=None)
         if request.monitor_profile_id not in load_monitor_profiles(root):
             raise ValueError("The selected display profile is no longer available")
-    return state | {"prepared_request": asdict(request), "files": files}
+    return state | {"prepared_request": asdict(request), "files": files,
+                    "sources": sources}
 
 
 def check_refresh(state, root):
