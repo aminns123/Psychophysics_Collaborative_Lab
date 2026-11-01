@@ -141,7 +141,7 @@ def _execute_user_action(repo_root: Path, operation: str, identity: str, values:
         from .data.session import atomic_write_json
         report = root / "software_test_reports" / (spec.id + ".json")
         report.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(report, software_check_payload(
+        evidence = software_check_payload(
             spec, checks,
             synthetic_run={
                 "passed": complete and not failures,
@@ -150,7 +150,16 @@ def _execute_user_action(repo_root: Path, operation: str, identity: str, values:
                 "run_directory": str(artifacts.run_directory),
             },
             data_checks=run_checks,
-        ))
+        )
+        # The human's reference snapshots retain the exact selected science,
+        # synthetic seed and active scientific source dependencies. Never store
+        # any participant data or silently mark a reference as approved.
+        from .experiment_reference import source_digest
+        evidence.update(
+            selected_values=dict(selected), synthetic_seed=123,
+            source_digest=source_digest(repo_root, spec),
+        )
+        atomic_write_json(report, evidence)
         print(f"Saved software-only report: {report}")
         print(f"Saved-run integrity checks: {len(run_checks)-len(failures)}/{len(run_checks)} passed")
         if not complete or failures:
