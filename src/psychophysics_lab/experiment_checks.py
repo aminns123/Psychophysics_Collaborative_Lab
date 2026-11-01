@@ -67,8 +67,8 @@ def check_experiment(spec, selected_values: Mapping[str, Any]) -> tuple[Software
 
         slots = dict(spec.stimulus_slots)
         defaults = dict(spec.stimulus_defaults)
-        if not slots:
-            raise ValueError("No stimulus slots declared. Define the experiment's stimulus selection.")
+        if not slots and not defaults:
+            return "No visual stimuli declared; response-only studies may be valid."
         if set(defaults) != set(slots):
             raise ValueError(
                 "Stimulus slots and defaults disagree: "
@@ -132,7 +132,7 @@ def software_check_payload(spec, checks, *, synthetic_run=None, data_checks=()):
         "scientific_validation": "researcher_review_required",
         "generic_contract_checks": [item.to_dict() for item in checks],
         "synthetic_run": synthetic_run,
-        "saved_run_validation": [item.to_dict() for item in data_checks],
+        "saved_run_validation": [asdict(item) for item in data_checks],
         "researcher_acceptance_questions": list(RESEARCHER_ACCEPTANCE),
         "note": (
             "One selected configuration and synthetic observer were checked. "
