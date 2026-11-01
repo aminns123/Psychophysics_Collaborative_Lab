@@ -94,7 +94,7 @@ def test_ellipse_geometry_uses_researcher_selected_radius_and_vertical_centre(mo
     })
     assert next(f for f in module.SPEC.fields if f.key == "ring_radius_deg").units == "degrees"
     assert next(f for f in module.SPEC.fields if f.key == y_key).units == "degrees"
-    condition = module.make_conditions(values)[0] | {"target": 0, "contrast": 0.01}
+    condition = module.make_conditions(values)[0] | {"target": 0, "contrast": 0.01, "ring": True}
     stimuli = module.prepare_stimuli(StubRun(values), condition, {})
     assert stimuli["ellipse"]["outer_radius_deg"] == radius
     phases = module.trial_events(values, condition)
