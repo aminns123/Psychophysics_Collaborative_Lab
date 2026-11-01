@@ -245,3 +245,53 @@ def test_independent_flanker_pixels_reconstruct_legacy_scene_before_fixation():
     reconstructed = (independent * (1-envelope) +
                      min(1., legacy["background"]+.09)*envelope)
     np.testing.assert_allclose(original, reconstructed, atol=2e-15)
+
+
+def test_independent_ring_and_probe_match_legacy_isolated_pixels():
+    """Establish primitive parity without changing additive historical overlap.
+
+    Both old shapes use raw digital increments; the new stimuli use a
+    headroom-normalised contrast. For isolated bright stimuli, converting
+    C = increment/(1-background) makes the underlying pixel commands equal.
+    The old compound fixation is applied exactly after the isolated mark.
+    """
+    from psychophysics_lab.stimulus_library import DetectionScene
+
+    x, y = np.meshgrid(np.linspace(-1.5, 1.5, 121),
+                       np.linspace(-1.5, 1.5, 121))
+    dx, dy = .025, .025
+    steps = (np.full_like(x, dx), np.full_like(y, dy))
+    background = .25
+    legacy = {field.key: field.default for field in DetectionScene.PARAMETERS}
+    legacy.update(background=background, flanker_present=False,
+                  ring_radius_deg=.9, ring_y_deg=.2, aspect_ratio=.75,
+                  ring_increment=.06, contrast=.04,
+                  probe_x_deg=.21, probe_y_deg=-.25,
+                  probe_width_deg=.013, probe_length_deg=.133)
+
+    ring = {field.key: field.default for field in EllipseRing.PARAMETERS}
+    ring.update(background=background, outer_radius_deg=.9,
+                aspect_ratio=.75, inner_inset_deg=.16,
+                orientation_deg=0, display_contrast=.06/(1-background))
+    ring_only = EllipseRing.render(ring, x, y-.2)
+    old_ring = DetectionScene.render(
+        legacy | {"ring_present": True, "probe_present": False},
+        x, y, pixel_steps=steps,
+    )
+
+    probe = {field.key: field.default for field in ProbeLine.PARAMETERS}
+    probe.update(background=background, width_deg=.013,
+                 length_deg=.133, display_contrast=.04/(1-background))
+    probe_only = ProbeLine.render(
+        probe, x-.21, y+.25, pixel_steps=steps,
+    )
+    old_probe = DetectionScene.render(
+        legacy | {"ring_present": False, "probe_present": True},
+        x, y, pixel_steps=steps,
+    )
+    envelope = np.exp(-(x*x+y*y)/(2*.035**2))
+    def old_fixation(image):
+        return image*(1-envelope) + min(1., background+.09)*envelope
+
+    np.testing.assert_allclose(old_ring, old_fixation(ring_only), atol=2e-15)
+    np.testing.assert_allclose(old_probe, old_fixation(probe_only), atol=2e-15)
