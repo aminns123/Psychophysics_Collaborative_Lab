@@ -31,6 +31,25 @@ SECTIONS = (
 @pytest.mark.parametrize("identity", EXPERIMENTS)
 def test_every_researcher_file_has_the_same_actual_reading_order(identity):
     module = importlib.import_module("psychophysics_lab.experiments." + identity)
+    if identity == "ellipse_modular_centre":
+        # The new, expressly reviewed contract has ONE STIMULI mapping and
+        # no redundant definition() or 6-section historical adapter.
+        # Preserve all pre-existing migration/source assertions below.
+        source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
+        a1, a2, b = (source.index(header) for header in
+                     ("# ── A1", "# ── A2", "# ── B"))
+        assert a1 < source.index("STIMULI =") < source.index("def trial_events") < a2
+        assert a2 < source.index("def make_conditions") < source.index("def prepare_stimuli") < b
+        assert b < source.index("def procedure") < source.index("SPEC = experiment")
+        assert module.SPEC.id == identity
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULI
+        from psychophysics_lab.stimuli.registry import get_stimulus
+        assert dict(module.SPEC.stimulus_slots) == {
+            name: get_stimulus(stimulus_id).family
+            for name, stimulus_id in module.STIMULI.items()
+        }
+        assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == module.FIELDS
+        return
     if identity == "contrast_sensitivity_windowed":
         # This variant deliberately imports the common trial engine rather
         # than duplicating it just to satisfy a source-layout convention.
@@ -153,6 +172,18 @@ def test_scientific_interfaces_are_readable_without_identical_main_loops():
     procedures = []
     for identity in EXPERIMENTS:
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
+        if identity == "ellipse_modular_centre":
+            # New A1/A2/B study uses a generic contrast-method strategy. Do
+            # not demand deprecated make_trial/initialise_experiment aliases.
+            for public in ("trial_events", "interval_stimuli", "prepare_stimuli",
+                           "make_conditions", "interpret_response",
+                           "adaptive_method", "constant_method", "procedure"):
+                assert callable(getattr(module, public))
+            procedures.append(ast.dump(
+                ast.parse(inspect.getsource(module.procedure)).body[0],
+                include_attributes=False,
+            ))
+            continue
         for name, arguments in contracts.items():
             if name in {"update_experiment", "is_finished"} and not hasattr(module, name):
                 # A study using the public contrast-method strategy may own

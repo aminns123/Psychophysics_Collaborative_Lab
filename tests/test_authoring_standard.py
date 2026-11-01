@@ -34,7 +34,28 @@ def source_hash(path):
         assert hashlib.sha256(source).hexdigest() == '1b3d4c18ab6aff6d16d7076480014f4a150587c7fd0734d402349b875cf14614'
         source = source.replace(b'    from .environment import environment_evidence\n', b'', 1)
         source = source.replace(b'        "environment": environment_evidence(repo_root),\n', b'', 1)
+    if path == ROOT / "src/psychophysics_lab/stimulus_library.py":
+        # PR #202 adds only new, opt-in classes before the pre-existing class
+        # inventory; preserve the exact historical source digest beneath them.
+        marker = b"\n# --- OPT-IN MODULAR STIMULI ---"
+        if marker in source:
+            before, after = source.split(marker, 1)
+            existing = b"def library_stimulus_specs():"
+            assert existing in after
+            source = before + after[after.index(existing):]
     if path == ROOT / "src/psychophysics_lab/researcher.py":
+        # The optional one-map authoring API is explicitly additive; undo
+        # its exact declared signature/body before verifying frozen science.
+        old_signature = b"session_start=(), stimulus_field_bindings=None):"
+        new_signature = b"session_start=(), stimulus_field_bindings=None, stimuli=None):"
+        assert source.count(new_signature) == 1
+        source = source.replace(new_signature, old_signature, 1)
+        begin = b'    """Build a registered experiment without the historical four-file adapter.\n'
+        finish = b"    if responses is not None"
+        assert source.count(begin) == 1
+        head, tail = source.split(begin, 1)
+        assert finish in tail
+        source = head + b'    """Build a registered experiment without the historical four-file adapter."""\n' + tail[tail.index(finish):]
         # Pin the complete corrected file, then verify that undoing exactly
         # these three ownership changes restores the frozen scientific source.
         assert hashlib.sha256(source).hexdigest() == "8f6416742fab1958f4ccd68a44d6076048ee6898ac54a70390ed33dad5b9b62a"

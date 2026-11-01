@@ -29,6 +29,9 @@ class StimulusSpec:
     geometry: Callable | None = None
     required_support: Callable | None = None
     pixel_coverage: bool = False
+    # Optional optical-coverage mask for ordered transparent-layer composition.
+    # Opaque legacy stimulus specs retain None and their original presentation.
+    layer_alpha: Callable | None = None
 
     def validate_parameters(self, values):
         if not isinstance(values, dict):
