@@ -26,6 +26,7 @@ from psychophysics_lab.researcher import (
     WaitForKey,
     legacy_trial_factory,
     Show,
+    Stimulus,
     CollectResponse,
     UpdateAdaptive,
     Beep,
@@ -185,9 +186,9 @@ RESPONSES = ResponseParadigm("ellipse_major_axis", ("first", "second"), ("1", "2
 # Historical additive scene semantics remain unchanged pending visual parity.
 STIMULI = {
     "ready_fixation": "gaussian_fixation",
-    "fixation": "detection_scene",
-    "first": "detection_scene",
-    "second": "detection_scene",
+    "fixation": "gaussian_scene_fixation",
+    "ellipse": "ellipse_ring",
+    "probe": "probe_line",
 }
 PARADIGM = "two_interval_forced_choice"
 FIELDS += probe_contrast_fields()
@@ -206,6 +207,23 @@ SESSION_START = [
 # Build a fresh flat plan for each selected condition; never freeze future contrasts.
 
 
+def interval_stimuli(settings, condition, interval):
+    """Back-to-front visible objects; old ring overwrites, probe adds.
+
+    Position and overlap rules are visible here rather than embedded in a
+    combined DetectionScene. The final fixation blends over earlier marks.
+    """
+    layers = []
+    if condition["ring"]:
+        layers.append(Stimulus("ellipse", x_deg=0.,
+                              y_deg=settings["major_axis_y_deg"]))
+    if condition["target"] == interval:
+        layers.append(Stimulus("probe", x_deg=condition["x_deg"],
+                              y_deg=settings["major_axis_y_deg"], blend="add"))
+    layers.append(Stimulus("fixation"))
+    return tuple(layers)
+
+
 def trial_events(settings, condition):
     """Fixation -> interval 1 -> ISI -> interval 2 -> first/second answer."""
     # Preserve the existing optional cue at BOTH interval onsets.
@@ -216,17 +234,13 @@ def trial_events(settings, condition):
     )
     return [
         Show("fixation", slot="fixation", duration="fixation_ms"),
-        Show("interval_one", slot="first", duration="stimulus_ms", beep=cue),
+        Show("interval_one", duration="stimulus_ms", beep=cue,
+             stimuli=interval_stimuli(settings, condition, 0)),
         Show("inter_interval", slot="fixation", duration="isi_ms"),
-        Show("interval_two", slot="second", duration="stimulus_ms", beep=cue),
-        CollectResponse(actions=("first", "second"), slot="fixation",
-                        beep=None),  # Optional accepted-answer cue; silent by default.
+        Show("interval_two", duration="stimulus_ms", beep=cue,
+             stimuli=interval_stimuli(settings, condition, 1)),
+        CollectResponse(actions=("first", "second"), slot="fixation", beep=None),
     ]
-
-
-# Effective appearance: the current condition supplies strength and target;
-# selected stimulus classes/presets supply the remaining validated parameters.
-
 
 ADAPTIVE_RULE = AdaptiveSelection(
     "consecutive_up_down",
@@ -298,34 +312,35 @@ def response_instructions(responses):
 # PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
-    settings = run.values
-    background = settings["background_intensity"]
-    common = dict(
-        background=background,
-        contrast=condition["contrast"],
-        probe_x_deg=condition["x_deg"],
-        probe_y_deg=settings["major_axis_y_deg"],
-        ring_radius_deg=settings["ring_radius_deg"],
-        ring_y_deg=settings["major_axis_y_deg"],
-        aspect_ratio=condition["aspect_ratio"],
-        ring_present=condition["ring"],
-        ring_increment=settings["ring_increment"],
-        flanker_present=False,
-    )
-    fixation = run.stimulus_parameters(
-        "fixation",
-        background=background,
-        probe_present=False,
-        ring_present=False,
-        flanker_present=False,
-    )
-    first = run.stimulus_parameters(
-        "first", **common, probe_present=condition["target"] == 0
-    )
-    second = run.stimulus_parameters(
-        "second", **common, probe_present=condition["target"] == 1
-    )
-    return {"fixation": fixation, "first": first, "second": second}
+    """Resolve atomic ellipse/probe/fixation parameters from scientific choices.
+
+    The staircase's raw digital increments are converted to each reusable
+    stimulus's upper-headroom fraction, without altering recorded thresholds.
+    """
+    v = run.values
+    background = v["background_intensity"]
+    headroom = 1. - background
+    if condition["contrast"] > headroom or v["ring_increment"] > headroom:
+        raise ValueError("Ring or probe would exceed the available display headroom.")
+    probe_fraction = condition["contrast"] / headroom if headroom else 0.
+    ring_fraction = v["ring_increment"] / headroom if headroom else 0.
+    return {
+        "fixation": run.stimulus_parameters(
+            "fixation", background=background, size_deg=14.,
+            increment=.09, sigma_deg=.035,
+        ),
+        "ellipse": run.stimulus_parameters(
+            "ellipse", background=background, size_deg=14.,
+            outer_radius_deg=v["ring_radius_deg"],
+            aspect_ratio=condition["aspect_ratio"],
+            inner_inset_deg=.16, orientation_deg=0.,
+            display_contrast=ring_fraction,
+        ),
+        "probe": run.stimulus_parameters(
+            "probe", background=background, length_deg=1.,
+            width_deg=.013, display_contrast=probe_fraction,
+        ),
+    }
 
 # select condition -> render its current strength -> interpret answer -> update next strength.
 
@@ -636,14 +651,10 @@ def definition(identity="ellipse_major_axis"):
         # Review-only control links; acquisition bindings remain unchanged.
         stimulus_parameter_controls={
             "fixation": {"background": "background_intensity"},
-            "first": {"background": "background_intensity", "ring_increment": "ring_increment",
-                      "probe_x_deg": "positions_deg", "probe_y_deg": "major_axis_y_deg",
-                      "ring_y_deg": "major_axis_y_deg", "ring_radius_deg": "ring_radius_deg",
-                      "aspect_ratio": "aspect_ratios", "ring_present": "ring_conditions"},
-            "second": {"background": "background_intensity", "ring_increment": "ring_increment",
-                       "probe_x_deg": "positions_deg", "probe_y_deg": "major_axis_y_deg",
-                       "ring_y_deg": "major_axis_y_deg", "ring_radius_deg": "ring_radius_deg",
-                       "aspect_ratio": "aspect_ratios", "ring_present": "ring_conditions"},
+            "ellipse": {"background": "background_intensity",
+                        "outer_radius_deg": "ring_radius_deg",
+                        "aspect_ratio": "aspect_ratios"},
+            "probe": {"background": "background_intensity"},
         },
         # End Review-only control links.
         validator=validate_settings,
