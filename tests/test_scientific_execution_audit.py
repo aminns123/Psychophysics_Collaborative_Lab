@@ -132,12 +132,12 @@ def test_modern_first_reversal_matches_presented_visual_strength_and_primary_res
             probe=stimuli['probe']
             assert probe['display_contrast']*(1-probe['background'])==pytest.approx(strength)
             if identity.startswith('line_'):
-                phase=next(p for p in timeline if p.name=='probe')
+                phase=next(p for p in timeline.phases if p.name=='probe')
                 placement=next(p for p in phase.placements if p.slot=='probe')
                 assert math.copysign(1,placement.y_deg)==(1 if target==0 else -1)
             else:
-                one=next(p for p in timeline if p.name=='interval_one')
-                two=next(p for p in timeline if p.name=='interval_two')
+                one=next(p for p in timeline.phases if p.name=='interval_one')
+                two=next(p for p in timeline.phases if p.name=='interval_two')
                 assert any(p.slot=='probe' for p in one.placements)==(target==0)
                 assert any(p.slot=='probe' for p in two.placements)==(target==1)
     primary=json.loads((result.run_directory/'primary_thresholds.json').read_text(encoding='utf-8'))
