@@ -13,9 +13,9 @@ import pytest
 from psychophysics_lab.core.layer_composition import compose_ordered_layers
 from psychophysics_lab.core.timeline import Stimulus
 from psychophysics_lab.stimulus_library import (
-    DetectionScene, EllipseRing, ProbeLine, FlankerGrating,
-    GaussianSceneFixation,
+    EllipseRing, ProbeLine, FlankerGrating, GaussianSceneFixation,
 )
+from _archived_detection_scene import DetectionScene
 from psychophysics_lab.experiments._internal.registry import get_experiment
 
 
