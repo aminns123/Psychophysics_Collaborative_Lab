@@ -857,7 +857,10 @@ class ProbeLine(LibraryStimulus):
                          - np.maximum(x-dx/2, -p["width_deg"]/2)) / dx
         cy = np.maximum(0, np.minimum(y+dy/2, p["length_deg"]/2)
                          - np.maximum(y-dy/2, -p["length_deg"]/2)) / dy
-        return cx * cy
+        # Geometric area coverage is exactly within [0,1]; floating-point
+        # cancellation near fully covered pixel edges can exceed 1 by a few
+        # ULPs. Bound coverage itself, never the final digital image.
+        return np.minimum(1.0, np.maximum(0.0, cx * cy))
 
     @staticmethod
     def render(p, x, y, *, pixel_steps=None):
