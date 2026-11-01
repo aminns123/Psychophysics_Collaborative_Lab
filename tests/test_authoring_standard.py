@@ -42,7 +42,7 @@ def source_hash(path):
             before, after = source.split(marker, 1)
             existing = b"def library_stimulus_specs():"
             assert existing in after
-            source = before + b"\n" + after[after.index(existing):]
+            source = before + after[after.index(existing):]
     if path == ROOT / "src/psychophysics_lab/researcher.py":
         # The optional one-map authoring API is explicitly additive; undo
         # its exact declared signature/body before verifying frozen science.
