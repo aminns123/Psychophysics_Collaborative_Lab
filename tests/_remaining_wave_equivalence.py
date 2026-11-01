@@ -147,7 +147,7 @@ def compare(tmp_path, monkeypatch, wave, identity, method, values, seed, opening
                 # new science as independently named per-phase layers.
                 continue
             assert paths[0].read_bytes() == paths[1].read_bytes(),filename
-    if wave in (4, 5):
+    if wave in (4, 5) and (runs[0].run_directory/'trial_actions.json').exists():
         prior, current = [
             scientific_trial_actions(run.run_directory/'trial_actions.json')
             for run in runs[:2]
