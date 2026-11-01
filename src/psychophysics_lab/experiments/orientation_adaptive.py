@@ -120,15 +120,9 @@ FIELDS += teaching_method_fields(
 
 
 RESPONSES = ResponseParadigm("tilt", ("negative", "positive"), ("F", "J"))
-STIMULUS_SLOTS = {"target": "orientation_patch"}
-STIMULUS_DEFAULTS = {"target": "teaching_gabor"}
+STIMULI = {"target": "teaching_gabor", "ready_fixation": "fixation_cross"}
 
 PARADIGM = "two_alternative_forced_choice"
-
-# A pure, session-only fixation; trial slots and their defaults stay unchanged.
-STIMULUS_SLOTS["ready_fixation"] = "fixation"
-STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
-
 
 # Session opening — once, SPACE is not a scientific answer
 # Edit the Python list directly. SESSION_START = [] disables the opening.
@@ -377,7 +371,7 @@ make_trial = legacy_trial_factory(trial_events)
 
 def definition(
     identity="orientation_adaptive",
-    stimulus=STIMULUS_DEFAULTS["target"],
+    stimulus=STIMULI["target"],
     *,
     adaptive=True,
     source_path=__file__,
@@ -393,8 +387,7 @@ def definition(
         responses=RESPONSES,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
+        stimuli=STIMULI | {"target": stimulus},
         supports_simulation=True,
         adaptive=(
             ADAPTIVE_RULE

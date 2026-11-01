@@ -164,18 +164,16 @@ FIELDS += (
     ),
 )
 RESPONSES = ResponseParadigm("ellipse_centre", ("first", "second"), ("1", "2"))
-STIMULUS_SLOTS = {
+# Current scene slots preserve this historical protocol's additive pixels.
+# Their decomposition into independent objects must pass pixel-level equivalence.
+STIMULI = {
     "fixation": "detection_scene",
     "first": "detection_scene",
     "second": "detection_scene",
+    "ready_fixation": "gaussian_fixation",
 }
-STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
 PARADIGM = "two_interval_forced_choice"
 FIELDS += probe_contrast_fields()
-
-# A pure, session-only fixation; trial slots and their defaults stay unchanged.
-STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
-STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
 # Session opening — once; readiness is not an accepted scientific response
@@ -609,8 +607,7 @@ def definition(identity="ellipse_centre"):
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         acquisition_block_reason=ACQUISITION_BLOCK_REASON,

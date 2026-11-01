@@ -182,14 +182,13 @@ FIELDS += (
 )
 
 RESPONSES = ResponseParadigm("ellipse_major_axis", ("first", "second"), ("1", "2"))
-STIMULUS_SLOTS = {
+# Historical additive scene semantics remain unchanged pending visual parity.
+STIMULI = {
     "ready_fixation": "gaussian_fixation",
     "fixation": "detection_scene",
     "first": "detection_scene",
     "second": "detection_scene",
 }
-STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in ("fixation", "first", "second")}
-STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 PARADIGM = "two_interval_forced_choice"
 FIELDS += probe_contrast_fields()
 
@@ -650,8 +649,7 @@ def definition(identity="ellipse_major_axis"):
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         acquisition_block_reason=ACQUISITION_BLOCK_REASON,

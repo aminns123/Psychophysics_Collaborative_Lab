@@ -144,14 +144,14 @@ FIELDS += (
 RESPONSES = ResponseParadigm(
     "line_position_baseline", ("above", "below"), ("UP", "DOWN")
 )
-STIMULUS_SLOTS = {"fixation": "detection_scene", "first": "detection_scene"}
-STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
+# Historical compound scene retained until independent components match its pixels.
+STIMULI = {
+    "fixation": "detection_scene",
+    "first": "detection_scene",
+    "ready_fixation": "gaussian_fixation",
+}
 PARADIGM = "two_alternative_forced_choice"
 FIELDS += probe_contrast_fields()
-
-# A pure, session-only fixation; trial slots and their defaults stay unchanged.
-STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
-STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
 # Session opening — once; readiness is not an accepted scientific response
@@ -530,8 +530,7 @@ def definition(identity="line_position_baseline"):
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         acquisition_block_reason=ACQUISITION_BLOCK_REASON,

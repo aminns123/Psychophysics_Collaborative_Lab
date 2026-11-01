@@ -2,6 +2,24 @@
 import hashlib
 import json
 
+def historical_one_map_source(root, identity, raw):
+    """Undo only frozen registration-map edits before historical source SHA checks.
+
+    No methods, conditions, trial events or data functions are normalized here.
+    Any accidental science change still fails the exact frozen SHA.
+    """
+    fixture = root / "tests/fixtures/scientist_first_one_map_reversible.json"
+    if not fixture.exists():
+        return raw
+    changes = json.loads(fixture.read_text(encoding="utf-8")).get(identity, ())
+    for pair in changes:
+        updated = pair["replacement"].encode("utf-8")
+        original = pair["baseline"].encode("utf-8")
+        assert raw.count(updated) == 1, (identity, updated[:60])
+        raw = raw.replace(updated, original, 1)
+    return raw
+
+
 def migration_reference(root, identity):
     for wave in (3, 4, 5):
         folder = root / "tests/fixtures" / ("issue165_wave" + str(wave))
@@ -17,14 +35,21 @@ def migration_reference(root, identity):
         after = root / "src/psychophysics_lab/experiments" / before.name
         for path, key in ((before, "before_sha256_lf"), (after, "after_sha256_lf")):
             raw = path.read_bytes().replace(b"\r\n", b"\n")
-            if identity == "contrast_sensitivity_windowed" and key == "after_sha256_lf":
-                # Issue #196 is an explicitly reviewed *Review callback* fix,
-                # not permission to rewrite frozen scientific sources. Remove
-                # exactly this one approved addition before comparing against
-                # the immutable source hash. Any other change still fails.
-                approved = "        # Do not inherit Gaussian CSF's method_reviewer. Review must call the\n        # circular factory, which supplies aperture-specific resolution\n        # instead of requesting Gaussian sigma/cutoff fields removed above.\n        method_reviewer={\"constant_stimuli\": fixed_contrast_method},\n"
-                assert raw.count(approved.encode("utf-8")) == 1, identity
-                raw = raw.replace(approved.encode("utf-8"), b"", 1)
+            if key == "after_sha256_lf":
+                if identity == "contrast_sensitivity_windowed":
+                    # Issue #196: reverse only the approved CSF Review fix.
+                    # Keep the original scientific source checksum intact.
+                    approved = (
+                        "        # Do not inherit Gaussian CSF's method_reviewer. Review must call the\n"
+                        "        # circular factory, which supplies aperture-specific resolution\n"
+                        "        # instead of requesting Gaussian sigma/cutoff fields removed above.\n"
+                        '        method_reviewer={"constant_stimuli": fixed_contrast_method},\n'
+                    )
+                    assert raw.count(approved.encode("utf-8")) == 1, identity
+                    raw = raw.replace(approved.encode("utf-8"), b"", 1)
+
+                # Undo only the reviewed single-STIMULI declarations.
+                raw = historical_one_map_source(root, identity, raw)
             assert hashlib.sha256(raw).hexdigest() == contract[key], (identity, key)
         return before
     return None

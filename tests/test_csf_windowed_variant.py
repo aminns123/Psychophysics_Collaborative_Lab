@@ -193,7 +193,7 @@ def test_review_uses_selected_csf_envelope_for_both_methods(module, method):
     description = describe_settings(module.SPEC, values, snapshots)
     rows = review_rows(module.SPEC, values, snapshots, description)
     assert rows and description["phases"]
-    assert any(row[1] == "Stimulus" and row[2] == module.STIMULUS_DEFAULTS["grating"]
+    assert any(row[1] == "Stimulus" and row[2] == module.STIMULI["grating"]
                for row in rows)
     if method == "constant_stimuli":
         assert description["resolution"]["trial_selection_method"] == "constant_stimuli"

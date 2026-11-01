@@ -106,15 +106,13 @@ FIELDS += teaching_method_fields(
 
 RESPONSES = ResponseParadigm("probe_above_below", TARGET_ALTERNATIVES, RESPONSE_KEYS)
 
-STIMULUS_SLOTS = {"fixation": "fixation", "probe": "line"}
-
-STIMULUS_DEFAULTS = {"fixation": "fixation_cross", "probe": "vertical_line_probe"}
+STIMULI = {
+    "fixation": "fixation_cross",
+    "probe": "vertical_line_probe",
+    "ready_fixation": "fixation_cross",
+}
 
 PARADIGM = "two_alternative_forced_choice"
-
-STIMULUS_SLOTS["ready_fixation"] = "fixation"
-
-STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
 # Session opening runs once; SESSION_START = [] disables it. SPACE is not a trial answer.
 SESSION_START = [
@@ -339,8 +337,7 @@ def definition(identity="probe_above_below"):
         method_reviewer=lambda run: review_teaching_adaptive(run, make_conditions, choose_condition),
         adaptive=ADAPTIVE_RULE,
         responses=RESPONSES,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         supports_simulation=True,

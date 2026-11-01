@@ -225,14 +225,12 @@ FIELDS = (
 RESPONSES = ResponseParadigm(
     "csf_spatial_location", ("left", "right"), ("LEFT", "RIGHT")
 )
-STIMULUS_SLOTS = {"fixation": "gaussian_fixation", "grating": "contrast_sensitivity_grating",
-                  "ready_fixation": "gaussian_fixation"}
-STIMULUS_DEFAULTS = {
+# One explicit list of independent stimulus objects and their experiment-local roles.
+STIMULI = {
     "ready_fixation": "gaussian_fixation",
     "fixation": "gaussian_fixation",
     "grating": "contrast_sensitivity_grating",
 }
-
 PARADIGM = "two_alternative_forced_choice"
 
 
@@ -781,8 +779,7 @@ def definition(identity="contrast_sensitivity"):
         validator=validate_settings,
         monitor_validator=validate_monitor,
         supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         acquisition_block_reason=ACQUISITION_BLOCK_REASON,

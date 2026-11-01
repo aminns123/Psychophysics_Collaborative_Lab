@@ -66,6 +66,20 @@ def source_hash(path):
         ):
             assert source.count(updated) == 1
             source = source.replace(updated, historical, 1)
+    if path.parent == ROOT / "src/psychophysics_lab/experiments":
+        # Four reviewed source-only migrations replace two redundant maps
+        # with one STIMULI declaration, leaving all trial science unchanged.
+        # Restore ONLY these frozen edit hunks before checking the original
+        # exact source SHA. Any unexpected scientific change still fails.
+        reversible = json.loads(
+            (ROOT / "tests/fixtures/scientist_first_one_map_reversible.json")
+            .read_text(encoding="utf-8")
+        )
+        for pair in reversible.get(path.stem, ()):
+            updated, historical = (pair[key].encode("utf-8")
+                                   for key in ("replacement", "baseline"))
+            assert source.count(updated) == 1, (path.stem, updated[:80])
+            source = source.replace(updated, historical, 1)
     if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
         source = without_review_additions(source.decode("utf-8"), path.stem).encode("utf-8")
     if path in {ROOT / "src/psychophysics_lab/experiments" / (identity + ".py")
