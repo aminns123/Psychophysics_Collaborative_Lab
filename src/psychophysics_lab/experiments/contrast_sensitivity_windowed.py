@@ -56,8 +56,8 @@ FIELDS = tuple(
     field for field in csf.SPEC.fields if field.key not in _FIELDS_REMOVED
 ) + ENVELOPE_FIELDS
 
-STIMULUS_SLOTS = dict(csf.STIMULUS_SLOTS) | {"grating": "circular_windowed_sinusoidal_grating"}
-STIMULUS_DEFAULTS = dict(csf.STIMULUS_DEFAULTS) | {"grating": "circular_windowed_sinusoidal_grating"}
+# Circular windowed variant overrides one stimulus without copying every role.
+STIMULI = dict(csf.STIMULI) | {"grating": "circular_windowed_sinusoidal_grating"}
 RESPONSES = csf.RESPONSES
 PARADIGM = csf.PARADIGM
 
@@ -235,8 +235,12 @@ def definition(identity="contrast_sensitivity_windowed"):
                         "fade_width_deg": "fade_width_deg", "background": "background_intensity"},
             "fixation": {"background": "background_intensity"},
         },
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        # dataclasses.replace preserves Gaussian CSF's other validated
+        # metadata; the one STIMULI map determines all actual defaults.
+        stimulus_slots=dict(csf.SPEC.stimulus_slots) | {
+            "grating": "circular_windowed_sinusoidal_grating",
+        },
+        stimulus_defaults=STIMULI,
         procedure=procedure,
         validator=validate_settings,
         monitor_validator=validate_monitor,
