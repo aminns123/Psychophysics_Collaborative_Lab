@@ -141,7 +141,7 @@ def render_layered_phase(profile, resolution, phase, parameters_by_slot, backgro
             alpha = stimulus.layer_alpha(parameters, *coordinates, **kwargs)
             layer_background = parameters["background"]
         x, y = map(int, geometry["origin_px"])
-        layers.append((x, y, array, alpha, layer_background))
+        layers.append((x, y, array, alpha, layer_background, placement.blend))
         geometries.append(geometry)
     x, y, result = compose_ordered_layers(layers, background)
     return x, y, result, geometries
