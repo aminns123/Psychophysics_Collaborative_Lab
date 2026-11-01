@@ -26,18 +26,26 @@ def source_digest(repo_root, spec):
     """Source identity is deterministic and scoped to declared experiment files."""
     digest = hashlib.sha256()
     digest.update(spec.id.encode("utf-8"))
-    files = {(spec, path) for path in spec.source_paths}
+    # ExperimentSpec contains unhashable mappingproxy scientific metadata.
+    # Keep ordered (component, source) pairs, not a set of spec objects.
+    files = [(spec, path) for path in spec.source_paths]
     if spec.stimulus_defaults:
         from .stimuli.registry import get_stimulus
-        for stimulus_id in set(spec.stimulus_defaults.values()):
+        for stimulus_id in sorted(set(spec.stimulus_defaults.values())):
             stimulus = get_stimulus(stimulus_id)
-            files.add((stimulus, stimulus.source_path))
-            files.update((stimulus, path) for path in stimulus.source_dependencies)
-    for component, path in sorted(files, key=lambda pair: pair[1]):
-        file = extensions.source_path(repo_root, component, path)
+            files.append((stimulus, stimulus.source_path))
+            files.extend((stimulus, path) for path in stimulus.source_dependencies)
+    # Different lab/official components may use the same relative source path;
+    # the component's source resolver remains authoritative. Dedupe by
+    # resolved path, not by trying to hash the frozen spec dataclass.
+    paths = {}
+    for component, relative in files:
+        file = extensions.source_path(repo_root, component, relative)
         if not file.is_file():
-            raise ValueError(f"Declared experiment/stimulus source unavailable: {path}")
-        digest.update(path.encode("utf-8"))
+            raise ValueError(f"Declared experiment/stimulus source unavailable: {relative}")
+        paths[str(file.resolve())] = file
+    for absolute, file in sorted(paths.items()):
+        digest.update(str(file.name).encode("utf-8"))
         digest.update(file.read_bytes())
     return digest.hexdigest()
 
