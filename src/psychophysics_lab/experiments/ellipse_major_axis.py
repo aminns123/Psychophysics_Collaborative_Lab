@@ -352,7 +352,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Median final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Degrees; probe dimensions are selected stimulus parameters; ring uses nested ellipses with .16 degree axial inset, requiring visual qualification.",
+    "geometry": "Degrees; ProbeLine length and width are independent library parameters, and EllipseRing uses nested ellipses with .16 degree axial inset. The experiment owns placement and layer order; physical verification remains required.",
 }
 
 
