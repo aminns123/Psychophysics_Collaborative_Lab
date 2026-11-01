@@ -50,7 +50,7 @@ def test_complete_scientific_trace_is_identical_without_new_feature(tmp_path, mo
         # instead of pretending new atomic serialization is byte-identical.
         recorded = json.loads((a.run_directory / 'trial_actions.json').read_text())
         assert len(recorded['trials']) == a.accepted_trials
-        assert all(trial['status'] == 'accepted' for trial in recorded['trials'])
+        assert all(trial['status'] == 'completed' for trial in recorded['trials'])
     else:
         assert digest(json.loads((a.run_directory / 'trial_actions.json').read_text())) == case['trial_actions_sha256']
     if 'adaptive_history_sha256' in case:
