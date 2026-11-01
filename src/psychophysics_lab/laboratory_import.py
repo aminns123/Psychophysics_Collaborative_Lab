@@ -21,6 +21,133 @@ from .data.session import atomic_write_json
 
 MAX_IMPORT_BYTES = 2_000_000
 
+# This source is intentionally a DRAFT. Its science must be defined by its author.
+# The TUI can inspect and test the result but must not invent the protocol.
+SOURCE_TEMPLATE = '''"""New PsyCoLab study: define scientific choices before testing.
+
+A1 describes stimuli, positions, conditions, event order and responses.
+A2 describes scientific methods/measurements, stopping and interpretation.
+B only connects the scientist's functions to the existing PsyCoLab runner.
+This file is a DRAFT: replace the explicit TODOs before Test -> Ready.
+"""
+
+from psychophysics_lab.researcher import (
+    ConfigField, ResponseParadigm, Show, Stimulus, CollectResponse,
+    experiment,
+)
+
+
+# A1 -- WHAT, WHERE AND WHEN
+# Edit this map and the named LibraryStimulus classes in your lab stimulus_library.py.
+# Existing built-in stimulus IDs can be reused; custom ones require lab registration.
+STIMULI = {
+    "target": "oriented_line",
+    "fixation": "fixation_cross",
+}
+
+FIELDS = (
+    ConfigField("trial_count", "Number of trials", "int", 6,
+                minimum=1, maximum=200, section="Experiment"),
+    ConfigField("fixation_ms", "Fixation duration", "int", 500,
+                minimum=1, units="ms", section="Timing"),
+    ConfigField("stimulus_ms", "Target duration", "int", 200,
+                minimum=1, units="ms", section="Timing"),
+)
+RESPONSES = ResponseParadigm(
+    "__EXPERIMENT_ID__", ("option_a", "option_b"), ("F", "J")
+)
+SESSION_START = []  # Add WaitForKey + Show if your protocol requires readiness.
+
+
+def trial_events(settings, condition):
+    """Trial order. Replace the placeholder choice/target with your own science."""
+    # TODO SCIENCE: decide which stimulus is present, its angular X/Y
+    # location, target meaning, response event, and appropriate timing.
+    return [
+        Show("fixation", slot="fixation", duration="fixation_ms"),
+        Show("target", duration="stimulus_ms", stimuli=(Stimulus("target"),)),
+        CollectResponse(actions=("option_a", "option_b")),
+    ]
+
+
+# A2 -- CONDITIONS, RESPONSE RULES, MEASUREMENT AND STOPPING
+def scientific_conditions(settings):
+    """TODO SCIENCE: define actual conditions and their selection/order."""
+    raise NotImplementedError(
+        "A2: define scientific_conditions() and the meaning of each target."
+    )
+
+
+def interpret_response(condition, response):
+    """TODO SCIENCE: check the participant's chosen alternative."""
+    raise NotImplementedError(
+        "A2: define which alternative is correct for each condition."
+    )
+
+
+# B -- FRAMEWORK CONNECTION (normally leave framework internals alone)
+def procedure(run):
+    """TODO: connect your chosen conditions, trial_events and interpretation.
+
+    Inspect a working A1/A2/B example before implementing this section.
+    The unimplemented placeholder deliberately cannot become software Ready.
+    """
+    raise NotImplementedError(
+        "Complete A1/A2 and connect them to RunContext; do not run human trials."
+    )
+
+
+SPEC = experiment(
+    id="__EXPERIMENT_ID__",
+    name="New laboratory study -- draft",
+    description="Incomplete scientist-owned A1/A2/B experiment.",
+    fields=FIELDS,
+    stimuli=STIMULI,
+    responses=RESPONSES,
+    session_start=SESSION_START,
+    procedure=procedure,
+    supports_simulation=True,
+    calibration_requirements=("geometry", "timing"),
+    monitor_capabilities=("display_binding", "resolution"),
+    acquisition_block_reason="Template only: scientific procedure and apparatus qualification required.",
+    source_paths=("experiments/__EXPERIMENT_ID__.py",),
+)
+'''
+
+
+def create_experiment_starter(repo_root, short_name):
+    """Create an untested A1/A2/B Python draft without writing any science."""
+    current = extensions.configured(repo_root)
+    if current is None:
+        raise ValueError("Enable and explicitly trust a laboratory extensions folder first.")
+    root, namespace = current
+    short = str(short_name).strip()
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", short) or len(short) > 100:
+        raise ValueError("Use a short lowercase study ID with letters, numbers and underscores.")
+    if short.startswith(namespace + "__"):
+        raise ValueError("Enter only the short study ID: PsyCoLab supplies the namespace.")
+    identity = f"{namespace}__{short}"
+    parent = extensions._plain(root / "experiments")
+    if not parent.is_dir():
+        raise ValueError("Trusted laboratory experiments folder is missing.")
+    source = SOURCE_TEMPLATE.replace("__EXPERIMENT_ID__", identity)
+    path = parent / (identity + ".py")
+    try:
+        with path.open("x", encoding="utf-8") as handle:
+            handle.write(source)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise ValueError("This laboratory experiment already exists; it was not overwritten.") from exc
+    return {
+        "id": identity, "path": str(path), "status": "draft",
+        "note": ("New editable A1/A2/B Python file created. The TODOs intentionally "
+                 "prevent unqualified acquisition; the source will remain Draft "
+                 "until you write its scientific protocol and Test -> Ready."),
+    }
+
+
+
 
 def _candidate(repo_root, source):
     current = extensions.configured(repo_root)
