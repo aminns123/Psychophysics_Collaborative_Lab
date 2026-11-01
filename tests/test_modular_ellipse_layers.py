@@ -168,7 +168,7 @@ def test_constant_stimuli_plan_and_invalid_geometry():
 
 
 def test_old_scene_still_registered_under_legacy_id():
-    from psychophysics_lab.stimulus_library import DetectionScene
+    from _archived_detection_scene import DetectionScene
     assert DetectionScene.SPEC.id == "detection_scene"
     assert DetectionScene.SPEC.layer_alpha is None
 
@@ -228,7 +228,7 @@ def test_independent_flanker_pixels_reconstruct_legacy_scene_before_fixation():
     rectangle centred x=-3. Its Gaussian fixation is deliberately applied
     *after* the flanker. Use exactly the same angular grid for both.
     """
-    from psychophysics_lab.stimulus_library import DetectionScene
+    from _archived_detection_scene import DetectionScene
 
     legacy = {field.key: field.default for field in DetectionScene.PARAMETERS}
     legacy.update(
@@ -255,7 +255,7 @@ def test_independent_ring_and_probe_match_legacy_isolated_pixels():
     C = increment/(1-background) makes the underlying pixel commands equal.
     The old compound fixation is applied exactly after the isolated mark.
     """
-    from psychophysics_lab.stimulus_library import DetectionScene
+    from _archived_detection_scene import DetectionScene
 
     x, y = np.meshgrid(np.linspace(-1.5, 1.5, 121),
                        np.linspace(-1.5, 1.5, 121))
