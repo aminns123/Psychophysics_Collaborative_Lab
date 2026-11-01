@@ -111,7 +111,8 @@ def test_modern_first_reversal_matches_presented_visual_strength_and_primary_res
     captured=[]
     original=RunContext.trial
     def capture(run,timeline,**kwargs):
-        captured.append((kwargs['target'],kwargs['parameters_by_slot'],tuple(timeline)))
+        from psychophysics_lab.core.timeline import as_trial_timeline
+        captured.append((kwargs['target'],kwargs['parameters_by_slot'],as_trial_timeline(timeline)))
         return original(run,timeline,**kwargs)
     monkeypatch.setattr(RunContext,'trial',capture)
     result,_=simulate(repo_root=ROOT,data_root=tmp_path,experiment_id=identity,values=values,
