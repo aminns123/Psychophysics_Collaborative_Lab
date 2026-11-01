@@ -1,32 +1,13 @@
 """Digital probe headroom against the *presented* stimulus composition.
 
 Atomic experiments declare the source stimuli, positions, overlaps and targets.
-This module does not reconstruct an experiment-specific DetectionScene. For
+This module does not reconstruct an experiment-specific composite scene. For
 actual display profiles it renders exactly the same per-pixel layered phases
 as native presentation; only the safety calculation's full-strength endpoint
 may exceed gamut (no clipping). A synthetic run without a selected resolution
 uses an explicitly unqualified 256-pixel sampling grid instead.
 """
 import numpy as np
-
-
-def probe_limit(parameters, coordinates, pixel_steps=None):
-    """Historical DetectionScene comparison API; not used by atomic experiments."""
-    from psychophysics_lab.stimulus_library import DetectionScene
-    x, y = coordinates
-    base = DetectionScene.render(parameters | {"contrast": 0.0}, x, y, pixel_steps=pixel_steps)
-    unit = DetectionScene.render(parameters | {"contrast": 1.0}, x, y, pixel_steps=pixel_steps) - base
-    if not np.isfinite(base).all() or base.min() < 0 or base.max() > 1:
-        raise ValueError(f"Scene without probe exceeds digital gamut: min={base.min():g}, max={base.max():g}; allowed [0, 1].")
-    active = unit > 0
-    nominal = 1 - parameters["background"]
-    limits = np.full_like(base, np.inf)
-    limits[active] = (1-base[active])/unit[active]
-    index = np.unravel_index(np.argmin(limits), limits.shape)
-    maximum = min(nominal, float(limits[index]))
-    if maximum < nominal:
-        maximum = float(np.nextafter(maximum, 0.0))
-    return maximum, (float(x[index]), float(y[index]))
 
 
 def _synthetic_phase(phase, parameters_by_slot, background):
