@@ -48,7 +48,7 @@ def migration_reference(root, identity):
             preserved = (root / "outdated_code/pre_atomic_207/src/psychophysics_lab"
                          / "experiments" / (identity + ".py"))
             data = preserved.read_bytes().replace(b"\r\n", b"\n")
-            actual = hashlib.sha1(f"blob {len(data)}\\0".encode() + data).hexdigest()
+            actual = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
             assert actual == atomic[identity], identity
             new = after.read_text(encoding="utf-8")
             assert "STIMULI =" in new and "detection_scene" not in new
