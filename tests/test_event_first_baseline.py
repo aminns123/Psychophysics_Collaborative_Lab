@@ -19,8 +19,12 @@ def digest(value):
 
 
 def test_active_official_inventory_matches_frozen_intake():
-    assert {s.id for s in list_experiments() if not s.origin_namespace} == {
-        s['id'] for s in BASELINE['registry'] if not s['historical'] and not s['origin']}
+    # The original ten remain frozen exactly. The new modular ellipse is
+    # additive with its own protocol ID, not part of the 2026-10-27 intake.
+    frozen = {s['id'] for s in BASELINE['registry']
+              if not s['historical'] and not s['origin']}
+    active = {s.id for s in list_experiments() if not s.origin_namespace}
+    assert active == frozen | {"ellipse_modular_centre"}
 
 
 @pytest.mark.parametrize('case', BASELINE['cases'], ids=lambda c: f"{c['identity']}-{c['method']}-{c['seed']}")

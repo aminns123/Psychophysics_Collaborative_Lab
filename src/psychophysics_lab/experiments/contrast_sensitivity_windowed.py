@@ -245,6 +245,10 @@ def definition(identity="contrast_sensitivity_windowed"):
         validator=validate_settings,
         monitor_validator=validate_monitor,
         method_planner=make_fixed_schedule,
+        # Do not inherit Gaussian CSF's method_reviewer. Review must call the
+        # circular factory, which supplies aperture-specific resolution
+        # instead of requesting Gaussian sigma/cutoff fields removed above.
+        method_reviewer={"constant_stimuli": fixed_contrast_method},
         trial_column_overrides=TRIAL_COLUMN_OVERRIDES,
         scientific_spec=SCIENTIFIC_SPEC,
         source_paths=(
