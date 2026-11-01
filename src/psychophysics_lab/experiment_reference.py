@@ -26,10 +26,17 @@ def source_digest(repo_root, spec):
     """Source identity is deterministic and scoped to declared experiment files."""
     digest = hashlib.sha256()
     digest.update(spec.id.encode("utf-8"))
-    for path in sorted(spec.source_paths):
-        file = extensions.source_path(repo_root, spec, path)
+    files = {(spec, path) for path in spec.source_paths}
+    if spec.stimulus_defaults:
+        from .stimuli.registry import get_stimulus
+        for stimulus_id in set(spec.stimulus_defaults.values()):
+            stimulus = get_stimulus(stimulus_id)
+            files.add((stimulus, stimulus.source_path))
+            files.update((stimulus, path) for path in stimulus.source_dependencies)
+    for component, path in sorted(files, key=lambda pair: pair[1]):
+        file = extensions.source_path(repo_root, component, path)
         if not file.is_file():
-            raise ValueError(f"Declared experiment source unavailable: {path}")
+            raise ValueError(f"Declared experiment/stimulus source unavailable: {path}")
         digest.update(path.encode("utf-8"))
         digest.update(file.read_bytes())
     return digest.hexdigest()
@@ -120,6 +127,9 @@ def compare_latest_reference(repo_root, identity):
         "differences": differences,
         "reference_source_digest": reference["source_digest_when_recorded"],
         "tested_source_digest": report["source_digest"],
+        "source_changed_since_reference": (
+            reference["source_digest_when_recorded"] != report["source_digest"]
+        ),
         "note": (
             "A difference is not automatically a bug; decide whether to accept "
             "a new version of the scientific protocol. Equal synthetic hashes "
