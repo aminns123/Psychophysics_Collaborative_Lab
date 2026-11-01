@@ -271,7 +271,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting.",
+    "geometry": "Probe width/length are independent ProbeLine library parameters; x and above/below placement are experiment choices. The GaussianSceneFixation class preserves the old untruncated fixation blend.",
 }
 
 
