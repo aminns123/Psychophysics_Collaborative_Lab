@@ -54,9 +54,126 @@ def save_parameter_preset(root, name, stimulus, document):
     return path
 
 
+
+def migrate_legacy_detection_snapshots(spec, values, snapshots):
+    """Safely translate a saved pre-atomic *configuration* to independent slots.
+
+    This is an explicit, bounded migration of user-selected stimulus dimensions,
+    not a reinterpretation of historical trial data. The original snapshots
+    remain unmodified and their identities/hashes are preserved in migration
+    metadata. Do not infer a per-trial probe position, target or increment from
+    saved DetectionScene defaults: those belong to trial_events/prepare_stimuli.
+    """
+    old_slots = {"first", "second"}
+    if not old_slots.intersection(snapshots):
+        return snapshots
+    supported = {
+        "ellipse_centre", "ellipse_major_axis",
+        "line_position_baseline", "line_position_flanker",
+    }
+    if spec.id not in supported:
+        raise ValueError(
+            "Legacy DetectionScene snapshots cannot be migrated for this experiment."
+        )
+    expected = {"fixation", "first"}
+    if spec.id.startswith("ellipse_"):
+        expected.add("second")
+    if not expected <= snapshots.keys():
+        raise ValueError(
+            f"Legacy {spec.id} configuration is missing source snapshots: "
+            f"{sorted(expected - snapshots.keys())}. Keep the original files "
+            "and recreate the configuration; no parameters were inferred."
+        )
+    if set(snapshots) - (expected | {"ready_fixation"}):
+        raise ValueError(
+            "Mixed legacy/current stimulus slots cannot be migrated automatically. "
+            "Load one complete configuration version."
+        )
+    for slot in expected:
+        if snapshots[slot]["document"]["stimulus_id"] != "detection_scene":
+            raise ValueError(
+                "Mixed legacy/current stimulus identities cannot be migrated. "
+                "Keep the original snapshots unchanged."
+            )
+
+    source = snapshots["first"]["document"]["parameters"]
+    common = ("size_deg", "probe_length_deg", "probe_width_deg")
+    if spec.id.startswith("ellipse_"):
+        common += ("ring_radius_deg",)
+    for slot in expected - {"first"}:
+        other = snapshots[slot]["document"]["parameters"]
+        if any(other.get(key) != source.get(key) for key in common):
+            raise ValueError(
+                f"Legacy DetectionScene {slot}/first dimensions disagree. "
+                "The atomic experiment has one shared probe/ring definition; "
+                "edit these independently rather than silently picking a slot."
+            )
+
+    background = values["background_intensity"]
+    if any(
+        snapshots[slot]["document"]["parameters"].get("background") != background
+        for slot in expected
+    ):
+        raise ValueError(
+            "Legacy scene background differs from the experiment's background. "
+            "Choose the intended scientific intensity explicitly before migration."
+        )
+    from ..stimuli.registry import get_stimulus
+
+    def converted(slot, overrides):
+        stimulus = get_stimulus(spec.stimulus_defaults[slot])
+        params = {field.key: field.default for field in stimulus.parameters}
+        document = document_for(stimulus, params | overrides)
+        original = {
+            old: {
+                "file_identity": snapshots[old]["file_identity"],
+                "resolved_sha256": snapshots[old]["resolved_sha256"],
+                "file_sha256": snapshots[old].get("file_sha256"),
+            }
+            for old in sorted(expected)
+        }
+        return snapshot(
+            document, file_identity="migrated_legacy_detection_scene"
+        ) | {"migrated_from": original}
+
+    probe = {
+        "length_deg": source["probe_length_deg"],
+        "width_deg": source["probe_width_deg"],
+        "background": background,
+    }
+    migrated = dict(snapshots)
+    for old in expected:
+        del migrated[old]
+    migrated["probe"] = converted("probe", probe)
+    migrated["fixation"] = converted(
+        "fixation", {"background": background},
+    )
+    if "ellipse" in spec.stimulus_defaults:
+        migrated["ellipse"] = converted(
+            "ellipse", {
+                "background": background,
+                "size_deg": source["size_deg"],
+                "outer_radius_deg": values["ring_radius_deg"],
+                "aspect_ratio": 1.0,
+                "display_contrast": (
+                    values["ring_increment"] / (1 - background)
+                    if background < 1 and values["ring_increment"] is not None
+                    else 0.0
+                ),
+            },
+        )
+    if "flanker" in spec.stimulus_defaults:
+        migrated["flanker"] = converted(
+            "flanker", {
+                "background": background,
+                "spatial_frequency_cpd": values["flanker_cpd"],
+            },
+        )
+    return migrated
+
 def resolve_stimuli(spec, values, snapshots=None, *, repo_root=None):
     """Resolve each independent slot. Old CSF values remain authoritative on legacy calls."""
-    snapshots = snapshots or {}
+    snapshots = migrate_legacy_detection_snapshots(spec, values, snapshots or {})
     if set(snapshots) - set(spec.stimulus_slots):
         raise ValueError("Stimulus configuration contains an unknown experiment slot.")
     result = {}
