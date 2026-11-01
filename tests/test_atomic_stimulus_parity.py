@@ -233,3 +233,126 @@ def test_real_angular_viewport_layer_placement_matches_historical_pixels(
     assert (px, py) == tuple(old_view["origin_px"])
     assert image.shape == old_image.shape
     np.testing.assert_allclose(image, old_image, rtol=0, atol=4e-14)
+
+
+# Headroom regression gate: the old composite's probe_present key is absent
+# from all atomic preparations, so shared preflight must inspect real layers.
+
+
+def atomic_preflight_run(name, *, physical=True, ring_increment=.06):
+    """Minimal RunContext surface for deterministic, no-window pixel checks."""
+    from types import SimpleNamespace
+    from psychophysics_lab.stimuli.registry import get_stimulus
+
+    module = importlib.import_module("psychophysics_lab.experiments." + name)
+    values = module.SPEC.field_defaults()
+    values["background_intensity"] = .5
+    values["starting_probe_intensity"] = .52
+    values["staircases_per_condition"] = 1
+    values["max_trials"] = 200
+    values["fixed_repetitions"] = 1
+    values["fixed_contrasts"] = "0.01"
+    if "positions_deg" in values:
+        values["positions_deg"] = "0"
+    if "aspect_ratios" in values:
+        values["aspect_ratios"] = "0.75"
+    if "ring_increment" in values:
+        values["ring_increment"] = ring_increment
+    if "ring_conditions" in values:
+        values["ring_conditions"] = "ring_only"
+
+    profile = SimpleNamespace(
+        physical_width_m=.16, physical_height_m=.12,
+        viewing_distance_m=.5, geometry_status="unverified",
+        expected_resolution_px=(320, 240) if physical else None,
+    )
+
+    def stimulus_parameters(slot, **overrides):
+        spec = get_stimulus(module.STIMULI[slot])
+        defaults = {field.key: field.default for field in spec.parameters}
+        return defaults | overrides
+
+    run = SimpleNamespace(
+        values=values, display=profile, synthetic=not physical,
+        stimulus_parameters=stimulus_parameters, seed=19,
+        initialise=lambda **kwargs: None,
+    )
+    return module, run
+
+
+@pytest.mark.parametrize("name", OFFICIAL_WITH_OLD_SCENES)
+@pytest.mark.parametrize("physical", [False, True])
+def test_atomic_probe_limit_resolves_all_four_experiments_without_legacy_keys(
+    name, physical
+):
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+
+    module, run = atomic_preflight_run(name, physical=physical)
+    conditions = module.make_conditions(run.values)
+    resolve_probe_limits(
+        run, conditions, module.prepare_stimuli,
+        trial_events=module.trial_events, stimuli=module.STIMULI,
+    )
+    assert all(0 < c["maximum_probe_increment"] <= .5 for c in conditions)
+    assert all(c["maximum_probe_increment"] >= .02 for c in conditions)
+
+
+@pytest.mark.parametrize("name", ("ellipse_centre", "ellipse_major_axis"))
+def test_ellipse_atomic_headroom_matches_real_presented_gamut(name):
+    """The saved probe quantity remains a raw digital increment."""
+    from psychophysics_lab.core.presentation import render_layered_phase
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+
+    module, run = atomic_preflight_run(name, ring_increment=.4)
+    conditions = module.make_conditions(run.values)
+    resolve_probe_limits(
+        run, conditions, module.prepare_stimuli,
+        trial_events=module.trial_events, stimuli=module.STIMULI,
+    )
+    condition = conditions[0]
+    maximum = condition["maximum_probe_increment"]
+    assert 0 < maximum < .5
+
+    target = dict(condition, target=0, contrast=maximum * .95)
+    prepared = module.prepare_stimuli(run, target, {})
+    assert prepared["probe"]["display_contrast"] == pytest.approx(
+        target["contrast"] / .5
+    )
+    phase = next(
+        event for event in module.trial_events(run.values, target)
+        if event.kind == "show" and any(p.slot == "probe" for p in event.placements)
+    )
+    selected = {
+        slot: (module.STIMULI[slot], p) for slot, p in prepared.items()
+    }
+    _, _, pixels, _ = render_layered_phase(
+        run.display, run.display.expected_resolution_px, phase, selected, .5
+    )
+    assert np.isfinite(pixels).all()
+    assert pixels.min() >= -1e-12
+    assert pixels.max() <= 1 + 1e-12
+
+    # At the nominal maximum, positive ring/probe overlap must not be
+    # silently clipped or accepted as valid.
+    over = dict(condition, target=0, contrast=.5)
+    full = module.prepare_stimuli(run, over, {})
+    with pytest.raises(ValueError, match="digital gamut"):
+        render_layered_phase(
+            run.display, run.display.expected_resolution_px, phase,
+            {slot: (module.STIMULI[slot], p) for slot, p in full.items()}, .5,
+        )
+
+
+@pytest.mark.parametrize("name", ("ellipse_centre", "ellipse_major_axis"))
+def test_shared_constant_probe_method_obeys_atomic_overlap_limits(name):
+    module, run = atomic_preflight_run(name, ring_increment=.4)
+    run.values["contrast_method"] = "constant_stimuli"
+    run.values["fixed_contrasts"] = "0.49"
+    with pytest.raises(ValueError, match="exceeds digital gamut"):
+        module.constant_contrast_method(run)
+
+    run.values["fixed_contrasts"] = "0.01"
+    method = module.constant_contrast_method(run)
+    assert method.schedule
+    assert all(item["contrast"] == .01 for item in method.schedule)
+    assert method._resolution["scientific_quantity"] == "digital_probe_increment"
