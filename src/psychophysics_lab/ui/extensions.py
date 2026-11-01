@@ -18,6 +18,8 @@ class ExtensionsPanel(Vertical):
         yield Input(value=setting.get('root') or str(extensions.suggested_root(self.app.repo_root)),
                     placeholder='Absolute extensions folder', id='extensions-root')
         yield Checkbox('I trust the Python code in this folder', id='extensions-trust')
+        yield Input(placeholder='Short new study ID, e.g. ellipse_comparison',
+                    id='extensions-new-study')
         yield Input(placeholder='Full path to an existing namespace__experiment.py',
                     id='extensions-import-source')
         with Horizontal(classes='buttons'):
@@ -25,6 +27,7 @@ class ExtensionsPanel(Vertical):
             yield Button('Enable trusted folder', id='extensions-enable')
             yield Button('Disable extensions', id='extensions-disable')
         with Horizontal(classes='buttons'):
+            yield Button('Create A1/A2/B experiment .py (Draft)', id='extensions-new-experiment')
             yield Button('Import existing experiment .py (Draft)', id='extensions-import')
             yield Button('Open lab stimulus library', id='extensions-stimuli')
         yield Static(
@@ -54,17 +57,23 @@ class ExtensionsPanel(Vertical):
     def on_button_pressed(self, event):
         if event.button.id not in {
             'extensions-enable', 'extensions-disable', 'extensions-starter',
-            'extensions-import', 'extensions-stimuli',
+            'extensions-import', 'extensions-stimuli', 'extensions-new-experiment',
         }:
             return
         event.stop()
         try:
-            if event.button.id in {'extensions-import', 'extensions-stimuli'}:
+            if event.button.id in {'extensions-import', 'extensions-stimuli', 'extensions-new-experiment'}:
                 current = extensions.configured(self.app.repo_root, self.app.data_root)
                 if current is None:
                     raise ValueError('Enable and trust your laboratory extensions folder first.')
                 if event.button.id == 'extensions-stimuli':
                     self.app.inspect_source(current[0] / 'stimulus_library.py')
+                elif event.button.id == 'extensions-new-experiment':
+                    from ..laboratory_import import create_experiment_starter
+                    imported = create_experiment_starter(
+                        self.app.repo_root,
+                        self.query_one('#extensions-new-study', Input).value,
+                    )
                 else:
                     from ..laboratory_import import import_experiment
                     imported = import_experiment(
