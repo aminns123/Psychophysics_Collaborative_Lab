@@ -137,7 +137,7 @@ def test_new_ellipse_synthetic_recording_for_both_methods(tmp_path, method):
     assert not [check for check in validate_run(artifact.run_directory)
                 if not check.passed]
     with artifact.trial_log_file.open(encoding="utf-8") as stream:
-        rows = list(csv.DictReader(stream, delimiter="\\t"))
+        rows = list(csv.DictReader(stream, delimiter="\t"))
     assert rows and len(rows[0]) == 20
     if method == "constant_stimuli":
         assert {float(row["presented_display_contrast"]) for row in rows} == {.01, .02}
