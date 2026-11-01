@@ -267,17 +267,14 @@ def prepare_stimuli(run, condition, state):
     probe_fraction = digital_increment / headroom if headroom else 0.
     resolved = {
         "fixation": run.stimulus_parameters(
-            "fixation", background=background, size_deg=14.,
-            increment=.09, sigma_deg=.035,
+            "fixation", background=background,
         ),
         "probe": run.stimulus_parameters(
             "probe", background=background, display_contrast=probe_fraction,
-            length_deg=1., width_deg=.013,
         ),
     }
     resolved["flanker"] = run.stimulus_parameters(
         "flanker", background=background, spatial_frequency_cpd=settings["flanker_cpd"],
-        amplitude=.009, width_deg=5., height_deg=5.,
     )
     return resolved
 
