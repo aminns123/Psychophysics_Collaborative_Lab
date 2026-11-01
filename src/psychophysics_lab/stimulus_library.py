@@ -763,105 +763,10 @@ class GaussianFixation(LibraryStimulus):
 
 
 
-class DetectionScene(LibraryStimulus):
-    """Degree-based line/contour/flanker stimulus; digital increments, not optical contrast.
-
-    Ring = outer ellipse minus ellipse with both axes inset by ring_width_deg.
-    This defines axial thickness, not a claim of constant normal stroke width.
-    Fixation peak is limited to 1; other additive layers must fit in [0,1].
-    Probe length/width are editable angular dimensions, independent of raster size.
-    Old documents missing these two keys retain the former .133/.013-degree defaults.
-    Probe pixels use rectangular pixel-area coverage (subpixel lines do not
-    disappear). Layer order: background/flanker, ring, probe, Gaussian fixation.
-    """
-    PARAMETERS = (
-        ConfigField("size_deg","Scene extent","float",14.,minimum=.1,maximum=40, units='degrees'),
-        ConfigField("background","Digital background","float",.5,minimum=0,maximum=1, units='digital intensity, 0 to 1'),
-        ConfigField("contrast","Probe digital increment","float",.02,minimum=0,maximum=1, units='digital increment'),
-        ConfigField("probe_length_deg", "Probe length", "float", 1.0, minimum=0, units="degrees"),
-        ConfigField("probe_width_deg", "Probe width", "float", .013, minimum=0, units="degrees"),
-        ConfigField("probe_present","Show probe","choice",True,choices=(True,False)),
-        ConfigField("probe_x_deg","Probe x","float",0.,minimum=-6,maximum=6, units='degrees'),
-        ConfigField("probe_y_deg","Probe y","float",0.,minimum=-6,maximum=6, units='degrees'),
-        ConfigField("ring_present","Show ring","choice",False,choices=(True,False)),
-        ConfigField("ring_radius_deg","Outer horizontal radius","float",.6,minimum=.17,maximum=3, units='degrees'),
-        ConfigField("ring_y_deg","Ring centre y","float",0.,minimum=-5,maximum=5, units='degrees'),
-        ConfigField("aspect_ratio","b/a","float",1.,minimum=.5,maximum=1, units='b/a, unitless'),
-        ConfigField("ring_increment","Ring increment","float",.1,minimum=0,maximum=1, units='digital increment'),
-        ConfigField("flanker_present","Show flanker","choice",False,choices=(True,False)),
-        ConfigField("flanker_cpd","Flanker frequency","float",2.,minimum=.01,maximum=32, units='cycles/degree'),
-    )
-
-    def validate(p):
-        a, b = p["ring_radius_deg"], p["ring_radius_deg"] * p["aspect_ratio"]
-        if p["ring_present"] and min(a, b) <= .16:
-            raise ValueError(f"Ring inner axes must remain positive: a={a:g}, b={b:g} deg; both must exceed 0.16 deg.")
-        if p["ring_present"] and p["background"] + p["ring_increment"] > 1:
-            raise ValueError(f"Ring exceeds gamut: background {p['background']:g} + increment {p['ring_increment']:g} > 1; allowed increment <= {1-p['background']:g}.")
-        if p["flanker_present"] and not .009 <= p["background"] <= .991:
-            raise ValueError(f"Flanker exceeds gamut: background {p['background']:g} must be in [0.009, 0.991] for +/-0.009 modulation.")
-        # Additive probe overlap depends on pixel coverage. render_values and
-        # the experiment's resolved staircase limit check the actual grid.
-
-    def render(p,x,y, *, pixel_steps=None):
-        image = np.full_like(x,p["background"],dtype=float)
-        if p["flanker_present"]:
-            mask = (abs(x+3.)<=2.5)&(abs(y)<=2.5)  # inner edge -0.5 degrees
-            image += mask*.009*np.sin(2*np.pi*p["flanker_cpd"]*(x+3.))
-        if p["ring_present"]:
-            a,b=p["ring_radius_deg"],p["ring_radius_deg"]*p["aspect_ratio"]
-            outer=(x/a)**2+((y-p["ring_y_deg"])/b)**2<=1
-            inner=(x/(a-.16))**2+((y-p["ring_y_deg"])/(b-.16))**2<1
-            image=np.where(outer & ~inner,p["background"]+p["ring_increment"],image)
-        if p["probe_present"]:
-            cx, cy = DetectionScene.probe_coverage(p,x,y,pixel_steps)
-            image += p["contrast"]*cx*cy
-        envelope=np.exp(-(x*x+y*y)/(2*.035**2))
-        image = image*(1-envelope)+min(1.,p["background"]+.09)*envelope
-        return image
-
-    @staticmethod
-    def probe_coverage(p, x, y, pixel_steps=None):
-        dx=(np.abs(np.gradient(x, axis=1)) if x.shape[1]>1 else .0001) if pixel_steps is None else pixel_steps[0]
-        dy=(np.abs(np.gradient(y, axis=0)) if y.shape[0]>1 else .0001) if pixel_steps is None else pixel_steps[1]
-        cx=np.maximum(0,np.minimum(x+dx/2,p["probe_x_deg"]+p["probe_width_deg"]/2)-np.maximum(x-dx/2,p["probe_x_deg"]-p["probe_width_deg"]/2))/dx
-        cy=np.maximum(0,np.minimum(y+dy/2,p["probe_y_deg"]+p["probe_length_deg"]/2)-np.maximum(y-dy/2,p["probe_y_deg"]-p["probe_length_deg"]/2))/dy
-        return cx, cy
-
-    @staticmethod
-    def geometry(p):
-        half = p["size_deg"]/2
-        if p["probe_present"]:
-            half = max(half, abs(p["probe_x_deg"])+p["probe_width_deg"]/2,
-                       abs(p["probe_y_deg"])+p["probe_length_deg"]/2)
-        if p["ring_present"]:
-            half = max(half, p["ring_radius_deg"], abs(p["ring_y_deg"])+p["ring_radius_deg"]*p["aspect_ratio"])
-        if p["flanker_present"]:
-            half = max(half, 5.5)
-        return {"raster_extent_deg": 2*half}
-
-    @staticmethod
-    def visible(p, x, y, steps):
-        # An explicitly absent probe is a valid catch/alternative, including
-        # zero modulation. A present probe must retain geometrical coverage.
-        if not p["probe_present"]:
-            return True
-        cx, cy = DetectionScene.probe_coverage(p,x,y,steps)
-        return (cx > 0) & (cy > 0)
-
-    SPEC=StimulusSpec("detection_scene","Degree-based detection scene","Explicit line, ring, flanker and fixation in degrees.",
-        "src/psychophysics_lab/stimulus_library.py",parameters=PARAMETERS,family="detection_scene",render=render,
-        validator=validate, floating_raster=True, pixel_coverage=True,
-        legacy_parameter_defaults={"probe_length_deg": .133, "probe_width_deg": .013}, spatial_frequencies=lambda p:(p["flanker_cpd"],) if p["flanker_present"] else (),
-        geometry=geometry.__func__, required_support=visible.__func__,
-        calibration_requirements=("geometry","luminance"))
-
-
-
-# --- OPT-IN MODULAR STIMULI ---
-# These are *objects*, not experiment scenes. Their scientific opacity is
-# declared independently and their overlap order comes from Show(...stimuli=).
-# Older opaque stimuli and DetectionScene retain their established behaviour.
+# --- INDEPENDENT ATOMIC STIMULI ---
+# One scientific object per class. Experiment trial_events() declares
+# placement, overlap and presentation order. Historical composite source is
+# preserved outside the installable package in outdated_code/pre_atomic_207.
 
 class EllipseRing(LibraryStimulus):
     """An elliptical outline: both inner semi-axes have an axial inset in degrees."""
@@ -981,7 +886,7 @@ class ProbeLine(LibraryStimulus):
 class GaussianSceneFixation(LibraryStimulus):
     """Independent fixation preserving the historical untruncated Gaussian blend.
 
-    The old DetectionScene applied this at the end of the entire phase:
+    The archived pre-atomic experiment applied this at the end of the phase:
         image = (1-alpha)*image + alpha*min(1, background + 0.09)
     The amplitude is a *raw digital increment*, unlike newer headroom-normalised
     GaussianFixationSpot. Keep both scientifically named conventions explicit.
