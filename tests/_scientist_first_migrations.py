@@ -17,6 +17,14 @@ def migration_reference(root, identity):
         after = root / "src/psychophysics_lab/experiments" / before.name
         for path, key in ((before, "before_sha256_lf"), (after, "after_sha256_lf")):
             raw = path.read_bytes().replace(b"\r\n", b"\n")
+            if identity == "contrast_sensitivity_windowed" and key == "after_sha256_lf":
+                # Issue #196 is an explicitly reviewed *Review callback* fix,
+                # not permission to rewrite frozen scientific sources. Remove
+                # exactly this one approved addition before comparing against
+                # the immutable source hash. Any other change still fails.
+                approved = "        # Do not inherit Gaussian CSF's method_reviewer. Review must call the\n        # circular factory, which supplies aperture-specific resolution\n        # instead of requesting Gaussian sigma/cutoff fields removed above.\n        method_reviewer={\"constant_stimuli\": fixed_contrast_method},\n"
+                assert raw.count(approved.encode("utf-8")) == 1, identity
+                raw = raw.replace(approved.encode("utf-8"), b"", 1)
             assert hashlib.sha256(raw).hexdigest() == contract[key], (identity, key)
         return before
     return None
