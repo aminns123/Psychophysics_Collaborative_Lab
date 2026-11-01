@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from psychophysics_lab.core.layer_composition import compose_ordered_layers
-from psychophysics_lab.stimulus_library import EllipseRing, ProbeLine, GaussianFixationSpot
+from psychophysics_lab.stimulus_library import EllipseRing, ProbeLine, GaussianFixationSpot, FlankerGrating
 from psychophysics_lab.experiments import ellipse_modular_centre as study
 
 
@@ -202,3 +202,20 @@ def test_new_ellipse_synthetic_recording_for_both_methods(tmp_path, method):
     assert rows and len(rows[0]) == 20
     if method == "constant_stimuli":
         assert {float(row["presented_display_contrast"]) for row in rows} == {.01, .02}
+
+
+def test_flanker_is_an_independent_positionable_grating_with_signed_gamut():
+    p = {field.key: field.default for field in FlankerGrating.PARAMETERS}
+    x = np.array([[0., .125, 2.6]])
+    y = np.zeros_like(x)
+    np.testing.assert_allclose(
+        FlankerGrating.alpha(p, x, y), [[1, 1, 0]]
+    )
+    np.testing.assert_allclose(
+        FlankerGrating.render(p, x, y), [[.5, .509, .5]]
+    )
+    assert FlankerGrating.geometry(p)["raster_extent_deg"] == 5.
+    with pytest.raises(ValueError, match="gamut"):
+        FlankerGrating.SPEC.validate_parameters(
+            p | {"background": .005, "amplitude": .009}
+        )
