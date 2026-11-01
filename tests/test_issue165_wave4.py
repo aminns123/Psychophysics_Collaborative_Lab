@@ -56,11 +56,11 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
     # The new presentation preflight adds a per-condition *derived safety
     # ceiling*. It is not a change to the scientific factor levels or targets.
     # Preserve every historical condition field, and test the new ceiling.
-    assert results[0]['conditions'] == [
-        {key: value for key, value in condition.items()
-         if key != 'maximum_probe_increment'}
-        for condition in results[1]['conditions']
-    ]
+    def scientific_factors(conditions):
+        return [{key: value for key, value in condition.items()
+                 if key != 'maximum_probe_increment'}
+                for condition in conditions]
+    assert scientific_factors(results[0]['conditions']) == scientific_factors(results[1]['conditions'])
     background = case['values'].get('background_intensity', .5)
     # Adaptive initialisation annotates each condition with its ceiling;
     # fixed-stimuli preflight validates its schedule without mutating factors.
