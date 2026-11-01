@@ -877,6 +877,8 @@ class EllipseRing(LibraryStimulus):
                     units="degrees", minimum=.17, maximum=20),
         ConfigField("aspect_ratio", "Ellipse b/a", "float", 1.,
                     units="vertical/horizontal", minimum=.5, maximum=1),
+        ConfigField("orientation_deg", "Ellipse orientation", "float", 0.,
+                    units="degrees anticlockwise", minimum=-180, maximum=180),
         ConfigField("inner_inset_deg", "Inner axial inset", "float", .16,
                     units="degrees", minimum=.001, maximum=5),
     )
@@ -892,8 +894,11 @@ class EllipseRing(LibraryStimulus):
         a = p["outer_radius_deg"]
         b = a * p["aspect_ratio"]
         inset = p["inner_inset_deg"]
-        outer = (x/a)**2 + (y/b)**2 <= 1
-        inner = (x/(a-inset))**2 + (y/(b-inset))**2 < 1
+        theta = np.deg2rad(p["orientation_deg"])
+        u = x*np.cos(theta) + y*np.sin(theta)
+        v = -x*np.sin(theta) + y*np.cos(theta)
+        outer = (u/a)**2 + (v/b)**2 <= 1
+        inner = (u/(a-inset))**2 + (v/(b-inset))**2 < 1
         return (outer & ~inner).astype(float)
 
     @staticmethod
