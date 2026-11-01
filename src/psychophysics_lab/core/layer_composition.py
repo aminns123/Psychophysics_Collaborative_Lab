@@ -14,13 +14,17 @@ import math
 import numpy as np
 
 
-def compose_ordered_layers(layers, background):
+def compose_ordered_layers(layers, background, *, require_gamut=True):
     """Compose (x, y, grayscale, alpha_or_None, layer_background[, blend]) in list order.
 
     Each patch is indexed from its lower-left display pixel, and has shape
     (height, width). alpha=None means an explicitly opaque legacy patch.
     Otherwise: patch = layer_background*(1-alpha) + foreground*alpha.
     This includes partial pixel-area coverage of narrow probe lines.
+
+    Only safety preflight may set require_gamut=False to measure the *unclipped*
+    full-strength image and derive a safe maximum. Actual presentation always
+    uses the default True and still rejects out-of-range pixels.
     """
     if not math.isfinite(background) or not 0 <= background <= 1:
         raise ValueError("Composition background must be finite in [0,1].")
@@ -76,6 +80,8 @@ def compose_ordered_layers(layers, background):
             # its own background. Remove only that background, not the pixel
             # area coverage. The last declared object is visually on top.
             target[:] = (1-alpha)*target + image - (1-alpha)*layer_background
-    if not np.isfinite(canvas).all() or canvas.min() < -1e-12 or canvas.max() > 1+1e-12:
+    if not np.isfinite(canvas).all():
+        raise ValueError("Composed stimulus contains non-finite digital values.")
+    if require_gamut and (canvas.min() < -1e-12 or canvas.max() > 1+1e-12):
         raise ValueError("Composed stimulus exceeds digital gamut; no silent clipping.")
     return left, bottom, canvas
