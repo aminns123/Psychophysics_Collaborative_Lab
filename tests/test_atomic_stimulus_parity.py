@@ -250,6 +250,8 @@ def atomic_preflight_run(name, *, physical=True, ring_increment=.06):
     values["starting_probe_intensity"] = .52
     values["staircases_per_condition"] = 1
     values["max_trials"] = 200
+    if "probe_vertical_offset_deg" in values:
+        values["probe_vertical_offset_deg"] = .4
     values["fixed_repetitions"] = 1
     values["fixed_contrasts"] = "0.01"
     if "positions_deg" in values:
@@ -264,7 +266,9 @@ def atomic_preflight_run(name, *, physical=True, ring_increment=.06):
     profile = SimpleNamespace(
         physical_width_m=.16, physical_height_m=.12,
         viewing_distance_m=.5, geometry_status="unverified",
-        expected_resolution_px=(320, 240) if physical else None,
+        # Odd dimensions provide a centre pixel at x=0; even dimensions
+        # can hide a nominally narrow line between two pixel centres.
+        expected_resolution_px=(321, 241) if physical else None,
     )
 
     def stimulus_parameters(slot, **overrides):
