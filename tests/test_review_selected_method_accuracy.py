@@ -152,10 +152,11 @@ def test_fixed_review_never_progresses_or_executes_the_method(identity, monkeypa
 def test_ellipse_controls_route_to_actual_selected_study_inputs(identity):
     spec, values, snapshots = selected(identity, "adaptive")
     description, rows, targets = review(spec, values, snapshots)
-    stimulus = importlib.import_module("psychophysics_lab.stimuli.registry").get_stimulus("detection_scene")
-    labels = {field.key: field.display_label for field in stimulus.parameters}
-    for slot in ("first", "second"):
-        for parameter, control in spec.stimulus_parameter_controls[slot].items():
+    from psychophysics_lab.stimuli.registry import get_stimulus
+    for slot, controls in spec.stimulus_parameter_controls.items():
+        stimulus = get_stimulus(snapshots[slot]["document"]["stimulus_id"])
+        labels = {field.key: field.display_label for field in stimulus.parameters}
+        for parameter, control in controls.items():
             index = next(i for i, row in enumerate(rows) if row[:2] == (slot, labels[parameter]))
             assert targets[index]["kind"] == "experiment_json"
             assert targets[index]["key"] == control
