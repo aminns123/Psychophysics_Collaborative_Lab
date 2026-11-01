@@ -13,9 +13,54 @@ from simulations.registry import TeachingObserver
 from scripts.validate_run import validate_run
 ROOT=Path(__file__).resolve().parents[1]
 
+
+def install_archived_detection_reference(patch):
+    """Isolate the exact pre-207 runner dependencies within old-fixture tests.
+
+    Current PsyCoLab never registers the retired scene or method. A frozen old
+    study must be exercised with its *own* frozen method and headroom code,
+    rather than mistakenly calling current atomic method signatures.
+    """
+    from _archived_detection_scene import DetectionScene
+    from psychophysics_lab import stimulus_library
+    from psychophysics_lab.stimuli import registry as stimulus_registry
+    from psychophysics_lab.experiments._internal import detection_limits
+    from psychophysics_lab.methods import probe as probe_methods
+
+    patch.setattr(stimulus_library, "DetectionScene", DetectionScene, raising=False)
+    patch.setitem(stimulus_registry._REGISTRY, "detection_scene", DetectionScene.SPEC)
+    root = ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab"
+
+    old_limits = root / "experiments/_internal/detection_limits.py"
+    scope = {"__name__": "_historical_detection_limits",
+             "__file__": str(old_limits)}
+    exec(compile(old_limits.read_bytes(), str(old_limits), "exec"), scope)
+    patch.setattr(detection_limits, "resolve_probe_limits",
+                  scope["resolve_probe_limits"])
+    patch.setattr(detection_limits, "probe_limit", scope["probe_limit"],
+                  raising=False)
+
+    old_methods = root / "methods/probe.py"
+    methods_scope = {
+        "__name__": "psychophysics_lab.methods.probe",
+        "__package__": "psychophysics_lab.methods",
+        "__file__": str(old_methods),
+    }
+    exec(compile(old_methods.read_bytes(), str(old_methods), "exec"),
+         methods_scope)
+    for key in (
+        "probe_constant_method", "probe_contrast_fields",
+        "fixed_contrast_levels", "make_probe_fixed_schedule",
+        "validate_probe_fixed_settings",
+    ):
+        patch.setattr(probe_methods, key, methods_scope[key])
+
+
 @contextmanager
 def reference(patch, wave, identity, old, opening=True):
     registry.list_experiments()
+    if old and wave in (4, 5):
+        install_archived_detection_reference(patch)
     parent=importlib.import_module('psychophysics_lab.experiments')
     names = ('contrast_sensitivity','contrast_sensitivity_windowed') if wave==3 else (identity,)
     for name in names:
