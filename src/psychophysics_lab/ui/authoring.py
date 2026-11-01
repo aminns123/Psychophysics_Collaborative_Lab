@@ -66,6 +66,8 @@ class AuthoringPanel(Vertical):
             yield Button("Preview / validate" if self.kind == "stimulus" else "Simulate / validate", id="author-test")
             yield Button("Mark Ready", id="author-ready")
             if self.kind == "experiment":
+                yield Button("What does Test check?", id="author-test-info")
+            if self.kind == "experiment":
                 yield Button("Retire experiment", variant="warning", id="author-retire")
                 yield Button("Restore retired", id="author-restore")
             yield Button("Refresh list", id="author-refresh")
@@ -154,6 +156,20 @@ class AuthoringPanel(Vertical):
         if not identity.startswith("author-"):
             return
         event.stop()
+        if identity == "author-test-info" and self.kind == "experiment":
+            self.query_one("#author-result", Static).update(
+                "SOFTWARE TEST (automatic; no custom test Python needed):\\n"
+                "1. Parse effective experiment settings and check scientific parameter validators.\\n"
+                "2. Check every declared stimulus ID/family and session-start event.\\n"
+                "3. Check the selected method and simulate its actual trial events/responses.\\n"
+                "4. Validate saved data and report pass/fail in USER_env_data.\\n"
+                "5. Mark Ready only after this exact source revision passes.\\n\\n"
+                "RESEARCHER REVIEW (not automated): confirm intended stimulus geometry, "
+                "overlap order, conditions, response mapping, thresholds and contrast units; "
+                "then qualify the actual display, luminance, timing and input devices. "
+                "Ready is software readiness, NOT scientific approval."
+            )
+            return
         if identity == "author-refresh":
             self.refresh_inventory()
             return
