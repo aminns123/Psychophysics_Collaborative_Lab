@@ -100,9 +100,46 @@ def test_fixed_centre_headroom_matches_actual_method_on_selected_display():
                                        ring_increment=.49, aspect_ratios="1", fixed_contrasts="0,.01")
     description, rows, _ = review(spec, values, snapshots)
     maximum = next(row[2] for row in rows if row[:2] == ("Intensity", "Maximum nominal probe intensity"))
-    assert float(maximum) == pytest.approx(.5841346154, abs=1e-10)
-    assert all(c["maximum_probe_increment"] == pytest.approx(.0841346153846154)
+    # #207 renders the actual independently clipped ring/probe placements.
+    # Do not freeze the *old composite-scene* headroom scalar as though the
+    # raster geometry and alpha composition had not changed. Verify the
+    # derived bound against the exact native compositor at physical pixels.
+    from psychophysics_lab.core.presentation import render_layered_phase
+    from psychophysics_lab.experiments import ellipse_centre as study
+
+    class PreviewRun:
+        def __init__(self):
+            self.values = values
+        def stimulus_parameters(self, slot, **overrides):
+            return dict(snapshots[slot]["document"]["parameters"]) | overrides
+
+    profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
+    background = values["background_intensity"]
+    bound = float(maximum) - background
+    assert 0 < bound <= 1-background
+    assert all(c["maximum_probe_increment"] == pytest.approx(bound)
                for c in description["conditions"])
+    at_limit, beyond = [], []
+    for target in (0, 1):
+        condition = dict(description["conditions"][0], target=target, contrast=bound)
+        events = study.trial_events(values, condition)
+        phase = next(p for p in events if any(pl.slot == "probe" for pl in p.placements))
+        resolved = study.prepare_stimuli(PreviewRun(), condition, {})
+        mapping = {slot: (study.STIMULI[slot], params) for slot, params in resolved.items()}
+        _, _, pixels, _ = render_layered_phase(
+            profile, profile.expected_resolution_px, phase, mapping, background,
+        )
+        at_limit.append(float(pixels.max()))
+        condition["contrast"] = bound + .002
+        resolved = study.prepare_stimuli(PreviewRun(), condition, {})
+        mapping = {slot: (study.STIMULI[slot], params) for slot, params in resolved.items()}
+        _, _, pixels, _ = render_layered_phase(
+            profile, profile.expected_resolution_px, phase, mapping, background,
+            require_gamut=False,
+        )
+        beyond.append(float(pixels.max()))
+    assert max(at_limit) <= 1+1e-12
+    assert max(beyond) > 1
     assert description["resolution"]["condition_definitions"]
     assert "fixed_repeat" in description["measurements"]
     assert "staircase_repeat" not in description["measurements"]
