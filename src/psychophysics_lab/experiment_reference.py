@@ -35,17 +35,19 @@ def source_digest(repo_root, spec):
             stimulus = get_stimulus(stimulus_id)
             files.append((stimulus, stimulus.source_path))
             files.extend((stimulus, path) for path in stimulus.source_dependencies)
-    # Different lab/official components may use the same relative source path;
-    # the component's source resolver remains authoritative. Dedupe by
-    # resolved path, not by trying to hash the frozen spec dataclass.
+    # Source digests must be portable across Windows laboratory locations.
+    # Namespace + root-relative scientific path are stable; absolute private
+    # usernames, checkout positions and temp folders must NOT affect hashes.
     paths = {}
     for component, relative in files:
         file = extensions.source_path(repo_root, component, relative)
         if not file.is_file():
             raise ValueError(f"Declared experiment/stimulus source unavailable: {relative}")
-        paths[str(file.resolve())] = file
-    for absolute, file in sorted(paths.items()):
-        digest.update(str(file.name).encode("utf-8"))
+        namespace = getattr(component, "origin_namespace", None) or "official"
+        paths[(namespace, relative.replace("\\", "/"))] = file
+    for (namespace, relative), file in sorted(paths.items()):
+        digest.update(namespace.encode("utf-8"))
+        digest.update(relative.encode("utf-8"))
         digest.update(file.read_bytes())
     return digest.hexdigest()
 
