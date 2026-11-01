@@ -114,6 +114,39 @@ def display_degree_coordinates(profile, resolution, pixels, origin, placement):
     return np.meshgrid(x_deg, y_deg)
 
 
+def render_layered_phase(profile, resolution, phase, parameters_by_slot, background):
+    """Render opt-in layers onto one shared pixel board in listed order.
+
+    The existing opaque-only path remains untouched. This is the exact
+    compositor used for a new modular experiment in native presentation.
+    """
+    from .layer_composition import compose_ordered_layers
+    layers, geometries = [], []
+    for placement in phase.placements:
+        identity, parameters = parameters_by_slot[placement.slot]
+        stimulus = get_stimulus(identity)
+        if not stimulus.floating_raster:
+            raise ValueError("Mixed layered presentation requires floating-point stimuli.")
+        geometry, coordinates, steps = plan_visible_stimulus(
+            profile, resolution, stimulus, parameters, placement
+        )
+        parameters = stimulus.validate_parameters(parameters)
+        width, height = geometry["raster_px"]
+        array = render_values(stimulus, parameters, pixels=(width, height),
+                              coordinates=coordinates, pixel_steps=steps)
+        alpha = None
+        layer_background = None
+        if stimulus.layer_alpha is not None:
+            kwargs = ({"pixel_steps": steps} if stimulus.pixel_coverage else {})
+            alpha = stimulus.layer_alpha(parameters, *coordinates, **kwargs)
+            layer_background = parameters["background"]
+        x, y = map(int, geometry["origin_px"])
+        layers.append((x, y, array, alpha, layer_background))
+        geometries.append(geometry)
+    x, y, result = compose_ordered_layers(layers, background)
+    return x, y, result, geometries
+
+
 def presentation_frames(duration_ms, refresh_hz):
     """The same requested-ms to refresh-frame rule used by Review and display."""
     import math
@@ -177,6 +210,24 @@ class Presentation:
                     continue
                 pictures = []
                 geometries = []
+                # Explicit alpha layers opt in to a single pixel-accurate
+                # composition board, avoiding opaque background overwrites.
+                # All existing opaque-only experiments retain the old path.
+                if phase.placements and any(
+                    get_stimulus(parameters_by_slot[p.slot][0]).layer_alpha is not None
+                    for p in phase.placements
+                ):
+                    x, y, image, geometries = render_layered_phase(
+                        self.profile, self.resolution, phase,
+                        parameters_by_slot, self.background_intensity,
+                    )
+                    picture = FloatingTexture(
+                        np.ascontiguousarray(image, dtype=np.float32)
+                    )
+                    allocated.append(picture)
+                    rendered[phase.name] = [(x, y, picture)]
+                    phase_geometry[phase.name] = geometries
+                    continue
                 for placement in phase.placements:
                     stimulus_id, params = parameters_by_slot[placement.slot]
                     stimulus = get_stimulus(stimulus_id)
