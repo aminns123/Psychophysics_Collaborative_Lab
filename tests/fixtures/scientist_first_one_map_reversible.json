@@ -1,0 +1,54 @@
+{
+  "example_experiment": [
+    {
+      "replacement": "STIMULI = {\n    \"target\": \"example_stimulus\",\n    \"ready_fixation\": \"fixation_cross\",\n}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"simple_line\"}\n\nSTIMULUS_DEFAULTS = {\"target\": \"example_stimulus\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\n\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ],
+  "probe_above_below": [
+    {
+      "replacement": "STIMULI = {\n    \"fixation\": \"fixation_cross\",\n    \"probe\": \"vertical_line_probe\",\n    \"ready_fixation\": \"fixation_cross\",\n}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"fixation\": \"fixation\", \"probe\": \"line\"}\n\nSTIMULUS_DEFAULTS = {\"fixation\": \"fixation_cross\", \"probe\": \"vertical_line_probe\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\n\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "orientation_task": [
+    {
+      "replacement": "STIMULI = {\"target\": \"teaching_gabor\", \"ready_fixation\": \"fixation_cross\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"orientation_patch\"}\nSTIMULUS_DEFAULTS = {\"target\": \"teaching_gabor\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ],
+  "orientation_adaptive": [
+    {
+      "replacement": "STIMULI = {\"target\": \"teaching_gabor\", \"ready_fixation\": \"fixation_cross\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"orientation_patch\"}\nSTIMULUS_DEFAULTS = {\"target\": \"teaching_gabor\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ]
+}
