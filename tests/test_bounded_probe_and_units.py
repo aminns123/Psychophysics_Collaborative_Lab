@@ -97,7 +97,8 @@ def test_line_cues_are_optional_explicit_and_do_not_encode_answer(name):
     module = importlib.import_module('psychophysics_lab.experiments.' + name)
     values = module.SPEC.field_defaults()
     for enabled in (False, True):
-        settings = values | {'auditory_cues': enabled, 'cue_hz': 880, 'cue_ms': 70}
+        settings = values | {'auditory_cues': enabled, 'cue_hz': 880, 'cue_ms': 70,
+                                 'probe_vertical_offset_deg': .4}
         phases = module.trial_events(settings, {'x_deg': 0.0, 'target': 0})
         assert [phase.name for phase in phases] == ['fixation', 'probe', 'answer']
         assert phases[0].beep is None
