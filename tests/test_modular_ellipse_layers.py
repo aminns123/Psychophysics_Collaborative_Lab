@@ -219,3 +219,29 @@ def test_flanker_is_an_independent_positionable_grating_with_signed_gamut():
         FlankerGrating.SPEC.validate_parameters(
             p | {"background": .005, "amplitude": .009}
         )
+
+
+def test_independent_flanker_pixels_reconstruct_legacy_scene_before_fixation():
+    """Numerical old-scene parity, without modifying the historical protocol.
+
+    The old flanker used absolute carrier sin(2*pi*f*(x+3)) over a 5-degree
+    rectangle centred x=-3. Its Gaussian fixation is deliberately applied
+    *after* the flanker. Use exactly the same angular grid for both.
+    """
+    from psychophysics_lab.stimulus_library import DetectionScene
+
+    legacy = {field.key: field.default for field in DetectionScene.PARAMETERS}
+    legacy.update(
+        background=.5, flanker_present=True, flanker_cpd=2.,
+        ring_present=False, probe_present=False,
+    )
+    x, y = np.meshgrid(np.linspace(-6., 1., 141), np.linspace(-3., 3., 121))
+    original = DetectionScene.render(legacy, x, y)
+
+    flanker = {field.key: field.default for field in FlankerGrating.PARAMETERS}
+    flanker.update(background=.5, spatial_frequency_cpd=2., amplitude=.009)
+    independent = FlankerGrating.render(flanker, x+3., y)
+    envelope = np.exp(-(x*x+y*y)/(2*.035**2))
+    reconstructed = (independent * (1-envelope) +
+                     min(1., legacy["background"]+.09)*envelope)
+    np.testing.assert_allclose(original, reconstructed, atol=2e-15)
