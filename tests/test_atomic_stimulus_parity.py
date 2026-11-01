@@ -123,3 +123,41 @@ def test_default_blend_remains_unchanged_and_additive_mode_is_explicit():
         (0, 0, target, full, .5, "add"),
     ], .5)
     np.testing.assert_allclose(blend, .60)
+
+
+@pytest.mark.parametrize("name", OFFICIAL_WITH_OLD_SCENES)
+@pytest.mark.parametrize("target", [0, 1])
+@pytest.mark.parametrize("ring", [False, True])
+def test_trials_declare_exact_layers_and_target_alternative_in_python(
+    name, target, ring
+):
+    """A1 is the source of placements, not any TUI-coded experiment scene."""
+    m = importlib.import_module("psychophysics_lab.experiments." + name)
+    fields = m.SPEC.field_defaults()
+    fields.update(
+        auditory_cues=False, probe_vertical_offset_deg=.4,
+        ellipse_centre_y_deg=.5, major_axis_y_deg=.6,
+    )
+    condition = dict(
+        target=target, x_deg=.2, value="test", contrast=.02,
+        aspect_ratio=.75, ring=ring, repeat=1,
+    )
+    events = m.trial_events(fields, condition)
+    assert events[-1].kind == "response"
+    if name.startswith("line_"):
+        assert [v.slot for v in events[1].placements] == (
+            ["flanker", "probe", "fixation"]
+            if name == "line_position_flanker" else ["probe", "fixation"]
+        )
+        assert [v.blend for v in events[1].placements if v.slot == "probe"] == ["add"]
+    else:
+        for interval_index, target_slot in [(1, 0), (3, 1)]:
+            expected = (["ellipse"] if ring else []) + (
+                ["probe"] if target_slot == target else []
+            ) + ["fixation"]
+            assert [v.slot for v in events[interval_index].placements] == expected
+            assert [v.blend for v in events[interval_index].placements
+                    if v.slot == "probe"] == (["add"] if target_slot == target else [])
+    assert all(v.slot != "first" and v.slot != "second"
+               for event in events if hasattr(event, "placements")
+               for v in event.placements)
