@@ -256,6 +256,8 @@ def atomic_preflight_run(name, *, physical=True, ring_increment=.06):
     values["fixed_contrasts"] = "0.01"
     if "positions_deg" in values:
         values["positions_deg"] = "0"
+    if "flanker_cpd" in values:
+        values["flanker_cpd"] = 2.0
     if "aspect_ratios" in values:
         values["aspect_ratios"] = "0.75"
     if "ring_increment" in values:
