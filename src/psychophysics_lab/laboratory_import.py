@@ -57,6 +57,50 @@ def _candidate(repo_root, source):
     )
     if not has_spec:
         raise ValueError("Experiment must export a top-level SPEC from experiment(...).")
+    # Verify IDs for conventional A1/A2/B authoring patterns *without executing*
+    # the imported file. Arbitrary dynamic definitions remain checked by the
+    # existing trusted loader and normal Test -> Ready.
+    def constant(node):
+        return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+
+    declarations = [
+        node.value for node in tree.body if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "SPEC" for target in node.targets)
+    ]
+    for expression in declarations:
+        if not isinstance(expression, ast.Call):
+            continue
+        if isinstance(expression.func, ast.Name) and expression.func.id == "experiment":
+            for key in expression.keywords:
+                if key.arg == "id":
+                    identity = constant(key.value)
+                    if identity is not None and identity != file.stem:
+                        raise ValueError(
+                            f"Experiment SPEC.id is {identity!r}, but the file requires "
+                            f"{file.stem!r}. Change the declared ID or source filename."
+                        )
+        if isinstance(expression.func, ast.Name) and expression.func.id == "definition":
+            for key in expression.keywords:
+                if key.arg == "identity":
+                    identity = constant(key.value)
+                    if identity is not None and identity != file.stem:
+                        raise ValueError(
+                            f"Experiment definition identity is {identity!r}; "
+                            f"the file requires {file.stem!r}."
+                        )
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name != "definition":
+            continue
+        args = node.args.args
+        defaults = node.args.defaults
+        for parameter, value in zip(args[len(args)-len(defaults):], defaults):
+            if parameter.arg == "identity":
+                identity = constant(value)
+                if identity is not None and identity != file.stem:
+                    raise ValueError(
+                        f"Experiment definition default ID is {identity!r}; "
+                        f"the file requires {file.stem!r}. Edit that one declared identity."
+                    )
     return root, namespace, file, raw
 
 
