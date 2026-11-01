@@ -150,6 +150,15 @@ def resolve_probe_limits(run, conditions, prepare_stimuli, *, trial_events, stim
                 zero_params = prepare_stimuli(run, zero_condition, {})
                 full_params = prepare_stimuli(run, full_condition, {})
                 phases = trial_events(run.values, zero_condition)
+                full_phases = trial_events(run.values, full_condition)
+                if len(phases) != len(full_phases) or any(
+                    a.kind != b.kind or a.placements != b.placements
+                    for a, b in zip(phases, full_phases)
+                ):
+                    raise ValueError(
+                        "Probe-strength change altered scientific event placement; "
+                        "a single affine headroom limit is not valid."
+                    )
                 probe_phases = [
                     p for p in phases
                     if p.kind == "show" and any(s.slot == "probe" for s in p.placements)
