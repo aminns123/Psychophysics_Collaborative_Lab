@@ -46,12 +46,11 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
         with monkeypatch.context() as patch:
             with reference(patch,WAVE,case['identity'],old) as spec:
                 values=spec.normalise_values(case['values'])
-                if case['identity']=='contrast_sensitivity_windowed' and case['method']=='constant_stimuli':
-                    # Inherited Review hook calls the Gaussian factory without
-                    # circular resolution. Pin this pre-existing error explicitly;
-                    # acquisition equivalence above still exercises both modes.
-                    # A source-reorganisation PR must not silently repair science
-                    # or hide an already broken Review behind a fallback plan.
+                if case['identity']=='contrast_sensitivity_windowed' and case['method']=='constant_stimuli' and old:
+                    # Preserve the immutable reference behaviour: the accepted
+                    # pre-fix source failed in Review because it inherited the
+                    # Gaussian-only callback. The new source must fix this bug,
+                    # while all actual acquisition outputs remain unchanged.
                     with pytest.raises(KeyError,match='grating_sigma_deg'):
                         describe_settings(spec,values,resolve_stimuli(spec,values,repo_root=ROOT))
                     results.append({'existing_review_error':'grating_sigma_deg'})
@@ -60,7 +59,18 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
                 d=describe_settings(spec,values,resolve_stimuli(spec,values,repo_root=ROOT))
                 results.append({k:d[k] for k in ('stimuli','overrides','conditions','resolution','phases','session_phases','phase_inputs','inactive_fields')})
                 specs.append(spec)
-    assert results[0]==results[1]
+    if case['identity']=='contrast_sensitivity_windowed' and case['method']=='constant_stimuli':
+        # The one deliberate difference must be a working circular Review.
+        # Never rewrite the historical reference or accept a Gaussian fallback.
+        assert results[0] == {'existing_review_error':'grating_sigma_deg'}
+        assert results[1]['resolution']['aperture_shape'] == 'circle'
+        assert results[1]['resolution']['trial_selection_method'] == 'constant_stimuli'
+        assert results[1]['resolution']['planned_trials'] > 0
+        assert 'grating_sigma_deg' not in results[1]['resolution']
+        assert 'gaussian_sigma_deg' not in results[1]['resolution']
+        assert results[1]['phases'] and results[1]['stimuli']
+    else:
+        assert results[0]==results[1]
     for attr in ('fields','response_paradigm','calibration_requirements','monitor_capabilities',
                  'scientific_spec','stimulus_slots','stimulus_defaults','trial_column_overrides'):
         assert getattr(specs[0],attr)==getattr(specs[1],attr),attr
