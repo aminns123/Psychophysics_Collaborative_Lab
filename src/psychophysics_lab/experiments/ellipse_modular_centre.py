@@ -1,415 +1,381 @@
-"""Modular Ellipse Centre: independent ring, probe and fixation, ordered by trial.
+"""Modular Ellipse Centre — a readable two-interval psychophysics experiment.
 
-This is a NEW study ID, not historical Ellipse Centre replay. A1 defines
-scientific parameters and visible trial events; A2 defines the adaptive and
-constant methods; B is the small, existing framework connection.
+A1: Which stimuli, which conditions, where and when?
+A2: How is probe contrast selected, how do staircases stop and what is saved?
+B: The small reusable PsyCoLab execution and registration connection.
 
-Bright display contrast C=(I_mark-I_background)/(1-I_background).
-Order in Show(..., stimuli=...) defines transparent visual occlusion.
-Neither digital values nor software tests establish measured photometry.
+The rendered mark uses bright display contrast C=(I_mark-I_background)/(1-I_background).
+This is a digital command convention, not Weber luminance contrast.
+A new, opt-in protocol: do not compare its thresholds directly with historical
+ellipse_centre runs, which used raw digital probe increments and additive layers.
 """
-
-from psychophysics_lab.analysis.primary import expected_staircases
+import math
 import random
 import sys
+
 from psychophysics_lab.adaptive.steps import bounded_log_step
+from psychophysics_lab.analysis.primary import expected_staircases
 from psychophysics_lab.methods.contrast import (
     AdaptiveContrastMethod, ConstantContrastMethod, run_contrast_experiment,
-    parse_fixed_strengths, fixed_level_schedule,
+    fixed_level_schedule, parse_fixed_strengths,
 )
 from psychophysics_lab.methods.probe import unique_probe_conditions, fixed_probe_trial_record
 from psychophysics_lab.researcher import (
-    ConfigField,
-    experiment,
-    ResponseParadigm,
-    AdaptiveSelection,
-    StaircaseConfig,
-    Step,
-    TrialTimeline,
-    WaitForKey,
-    legacy_trial_factory,
-    Show,
-    Stimulus,
-    CollectResponse,
-    UpdateAdaptive,
-    Beep,
+    AdaptiveSelection, Beep, CollectResponse, ConfigField, ResponseParadigm,
+    Show, StaircaseConfig, Step, Stimulus, UpdateAdaptive, WaitForKey,
+    experiment, legacy_trial_factory,
 )
 
-# PART A1 — EXPERIMENTAL CHOICES
-# Question: which of the two ring intervals contains the bright probe line?
-# Geometry/ring settings define conditions; first/second are target alternatives.
-# Independent adaptive repeats are tracks; fixed repeats are cell presentations.
-# Probe strength is headroom-normalized DISPLAY contrast, NOT a digital increment.
-# Read fixation -> interval one -> ISI -> interval two -> response below.
-# Both requested onset cues remain in the event list; they do not identify target.
-# Study-specific values are editable; these defaults are illustrative only.
 
-FIELDS = (
-    ConfigField("fixation_ms", "Fixation duration", "int", 500, minimum=1, units="ms", help_text='Scheduled fixation phase duration before the stimulus, in milliseconds; this is not a measured photon-onset duration.'),
-    ConfigField(
-        "stimulus_ms", "Stimulus interval duration", "int", 250, minimum=1, units="ms",
-        help_text='Scheduled stimulus exposure duration in milliseconds; changing it changes the trial timeline, not measured display qualification.',
-    ),
-    ConfigField(
-        "staircases_per_condition",
-        "Independent staircases per condition",
-        "int",
-        4,
-        minimum=1,
-        units='staircases',
-        help_text='Number of independently updated adaptive staircases in each scientific condition. More staircases divide accepted responses across more adaptive tracks.',
-    ),
-    ConfigField(
-        "starting_probe_contrast", "Starting probe display contrast",
-        "float", .04, minimum=0, maximum=1,
-        units="fraction of upper digital headroom",
-        help_text="C=(I_probe-I_background)/(1-I_background). Adaptive steps apply to C, not absolute pixel intensity.",
-    ),
-    ConfigField(
-        "background_intensity",
-        "Background intensity",
-        "float",
-        0.5,
-        minimum=0,
-        maximum=1,
-        units='digital intensity, 0 to 1',
-        help_text='Digital background command on the normalized zero-to-one scale. It changes available stimulus headroom; photometric calibration is required to interpret emitted luminance.',
-    ),
-    ConfigField(
-        "n_down", "Consecutive correct answers before a decrease", "int", 4, minimum=1,
-        units='consecutive correct responses',
-        help_text='Consecutive correct responses required before a downward strength step. Increasing this count delays downward steps; it does not change the selected step magnitude.',
-    ),
-    ConfigField("n_up", "Consecutive errors before an increase", "int", 1, minimum=1, units='consecutive incorrect responses', help_text='Consecutive incorrect responses required before an upward strength step. Increasing this count delays upward steps; it does not change the selected step magnitude.'),
-    ConfigField("logUNIT_UP", "Increase in probe display contrast", "float", 0.36, minimum=0.000001, units='log10 units', help_text="Multiply normalized probe display contrast by 10**step; hold at one."),
-    ConfigField("logUNIT_DW", "Decrease in probe display contrast", "float", 0.30294, minimum=0.000001, units='log10 units', help_text="Multiply normalized display contrast by 10**(-step); a lower strength approaches background."),
-    ConfigField(
-        "initial_one_down_limit",
-        "Initial one-down responses (0 disables)",
-        "int",
-        0,
-        minimum=0,
-        maximum=1000,
-        units='responses',
-        help_text='Maximum initial accepted responses per staircase using a one-correct downward rule. The first incorrect response ends this phase early; subsequent responses use the selected consecutive-correct rule. Zero disables the initial phase.',
-    ),
-    ConfigField(
-        "reversal_termination", "Reversals per staircase", "int", 10, minimum=1,
-        units='reversals',
-        help_text='Reversal count required to complete each adaptive staircase. A reversal is a change of step direction; the safety ceiling can stop the run before this goal.',
-    ),
-    ConfigField(
-        "threshold_reversals",
-        "Final reversals retained for threshold",
-        "int",
-        8,
-        minimum=1,
-        units='reversals',
-        help_text='Number of final eligible reversal values included in the declared threshold summary. Too few eligible reversals makes that estimator unavailable.',
-    ),
-    ConfigField(
-        "max_trials",
-        "Global safety ceiling; reaching it is incomplete",
-        "int",
-        10000,
-        minimum=1,
-        units='responses',
-        help_text='Accepted-response safety ceiling used by the selected adaptive/fixed method. Fixed plans exceeding it are rejected; adaptive stopping at this ceiling does not establish threshold convergence.',
-    ),
-)
-FIELDS += (
-    ConfigField("isi_ms", "Gap between intervals", "int", 250, minimum=1, units="ms", help_text='Scheduled silent/blank gap between the two stimulus intervals, in milliseconds; it changes their temporal separation.'),
-    ConfigField(
-        "ring_display_contrast", "Ellipse ring display contrast",
-        "float", .2, minimum=0, maximum=1,
-        units="fraction of upper digital headroom",
-        help_text="C=(I_ring-I_background)/(1-I_background); not measured optical contrast.",
-    ),
-    ConfigField("aspect_ratios", "Ellipse b/a ratios", "text", "0.5,0.75,1",
-                units="minor/major axis ratio (unitless)",
-                help_text="Comma-separated ratios from 0.5 to 1; each ratio defines a condition."),
-    ConfigField(
-        "ellipse_centre_y_deg", "Ellipse and probe centre vertical position",
-        "float", 0.6, minimum=-5, maximum=5, units="degrees",
-        help_text="Common y coordinate of ellipse and probe, relative to fixation; 0 is fixation.",
-    ),
-    ConfigField(
-        "ring_radius_deg", "Ellipse outer horizontal radius",
-        "float", 6.0, minimum=0.17, maximum=20, units="degrees",
-        help_text="Outer semi-major axis of the ellipse; aspect ratio sets the vertical semi-axis.",
-    ),
-    ConfigField(
-        "ring_inset_deg", "Ring inner axial inset", "float", .16,
-        minimum=.001, maximum=5, units="degrees",
-        help_text="Subtract from BOTH ellipse semi-axes to form the inner boundary; not constant-width normal stroke.",
-    ),
-    ConfigField(
-        "probe_length_deg", "Probe length", "float", 1.0,
-        minimum=.001, maximum=20, units="degrees",
-    ),
-    ConfigField(
-        "probe_width_deg", "Probe width", "float", .013,
-        minimum=.0001, maximum=5, units="degrees",
-    ),
-    ConfigField(
-        "auditory_cues", "Interval onset cues", "choice", True, choices=(True, False),
-        help_text='Enable the experiment-declared auditory interval cues. This does not establish measured audio/display synchronization.',
-    ),
-    ConfigField(
-        "cue_hz", "Cue frequency (study choice)", "int", 550, minimum=37, maximum=32767,
-        units='Hz',
-        help_text='Requested tone frequency of the auditory cue, in hertz; it changes the cue pitch.',
-    ),
-    ConfigField(
-        "cue_ms",
-        "Cue duration (study choice)",
-        "int",
-        35,
-        minimum=1,
-        maximum=1000,
-        units="ms",
-        help_text='Requested auditory cue duration in milliseconds; physical audio onset and duration require independent qualification.',
-    ),
-)
-RESPONSES = ResponseParadigm("ellipse_modular_centre", ("first", "second"), ("1", "2"))
-# An experiment chooses which atomic stimuli appear together and when.
-STIMULUS_SLOTS = {
-    "ring": "ellipse_ring",
-    "probe": "probe_line",
-    "fixation": "fixation",
-    "ready_fixation": "fixation",
-}
-STIMULUS_DEFAULTS = {
-    "ring": "ellipse_ring",
+# ── A1 — SCIENTIFIC DESIGN ────────────────────────────────────────────────
+EXPERIMENT_ID = "ellipse_modular_centre"
+EXPERIMENT_NAME = "Modular Ellipse Centre (software validation)"
+
+# One map, one name per object. No separate slot and default declarations.
+# The order and positions in trial_events() decide how these are combined.
+STIMULI = {
+    "ellipse": "ellipse_ring",
     "probe": "probe_line",
     "fixation": "gaussian_fixation_spot",
-    "ready_fixation": "gaussian_fixation_spot",
 }
-PARADIGM = "two_interval_forced_choice"
-FIELDS += (
-    ConfigField(
-        "contrast_method", "Contrast selection method", "choice", "adaptive",
-        choices=("adaptive", "constant_stimuli"),
-        section="Experiment", allow_legacy_default=True,
-    ),
-    ConfigField(
-        "fixed_contrasts", "Fixed probe display contrasts", "text",
-        "0.01,0.02,0.04", section="Constant stimuli",
-        units="fraction of upper digital headroom", allow_legacy_default=True,
-    ),
-    ConfigField(
-        "fixed_repetitions", "Trials per level per condition", "int", 10,
-        minimum=1, section="Constant stimuli", allow_legacy_default=True,
-    ),
+
+RESPONSES = ResponseParadigm(EXPERIMENT_ID, ("first", "second"), ("1", "2"))
+
+# Scientific controls below are editable in Configure / Review. Sizes and
+# positions are visual DEGREES; the ring radius is a SEMI-AXIS, not diameter.
+# "Contrast" means fraction of remaining bright digital headroom above background.
+FIELDS = (
+    # Background and ellipse
+    ConfigField("background_intensity", "Background digital intensity", "float", .5,
+                minimum=0, maximum=.999999, units="digital command 0–1", section="Display",
+                help_text="Contrast uses (mark-background)/(1-background). Luminance calibration remains separate."),
+    ConfigField("ring_present", "Present ellipse ring", "choice", True,
+                choices=(True, False), section="Ellipse",
+                help_text="Show the ring in both intervals. False produces a no-ring comparison."),
+    ConfigField("ring_radius_deg", "Ellipse outer horizontal semi-axis", "float", 6.,
+                minimum=.17, maximum=20, units="degrees", section="Ellipse",
+                help_text="The full horizontal diameter is twice this radius before orientation."),
+    ConfigField("aspect_ratios", "Ellipse vertical/horizontal ratios", "text", ".5,.75,1",
+                units="b/a, unitless", section="Ellipse",
+                help_text="Comma-separated distinct ratios; each ratio is a separate scientific condition."),
+    ConfigField("ring_inset_deg", "Inner ring axial inset", "float", .16,
+                minimum=.001, maximum=5, units="degrees", section="Ellipse",
+                help_text="Both semi-axes are reduced by this amount; not uniform normal stroke thickness."),
+    ConfigField("ring_display_contrast", "Ellipse ring display contrast", "float", .2,
+                minimum=0, maximum=1, units="upper-headroom fraction", section="Ellipse"),
+    ConfigField("ring_orientation_deg", "Ellipse orientation", "float", 0.,
+                minimum=-180, maximum=180, units="degrees anticlockwise", section="Ellipse"),
+    ConfigField("ring_centre_x_deg", "Ellipse centre X", "float", 0.,
+                minimum=-20, maximum=20, units="degrees from fixation", section="Ellipse"),
+    ConfigField("ring_centre_y_deg", "Ellipse centre Y", "float", .6,
+                minimum=-20, maximum=20, units="degrees from fixation", section="Ellipse"),
+
+    # Probe: one interval only. These offsets are RELATIVE to the ring centre.
+    ConfigField("probe_offset_x_deg", "Probe X offset from ellipse centre", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Probe"),
+    ConfigField("probe_offset_y_deg", "Probe Y offset from ellipse centre", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Probe"),
+    ConfigField("probe_length_deg", "Vertical probe length", "float", 1.,
+                minimum=.001, maximum=20, units="degrees", section="Probe"),
+    ConfigField("probe_width_deg", "Vertical probe width", "float", .013,
+                minimum=.0001, maximum=5, units="degrees", section="Probe",
+                help_text="Subpixel line visibility is represented using pixel-area coverage."),
+    ConfigField("starting_probe_contrast", "Starting probe display contrast", "float", .04,
+                minimum=0, maximum=1, units="upper-headroom fraction", section="Probe",
+                help_text="Adaptive strength begins here; a log staircase needs a positive value."),
+
+    # Fixation (the same class for session start and each trial).
+    ConfigField("fixation_x_deg", "Fixation X", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Fixation"),
+    ConfigField("fixation_y_deg", "Fixation Y", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Fixation"),
+    ConfigField("fixation_sigma_deg", "Gaussian fixation sigma", "float", .035,
+                minimum=.005, maximum=.1, units="degrees", section="Fixation"),
+    ConfigField("fixation_display_contrast", "Fixation display contrast", "float", .18,
+                minimum=0, maximum=1, units="upper-headroom fraction", section="Fixation"),
+
+    # Event timeline, presentation and response options.
+    ConfigField("ready_key", "Session-start key", "text", "SPACE", section="Timing",
+                help_text="Once per session; set SESSION_START=[] in Python to disable."),
+    ConfigField("session_settle_ms", "Once-only post-key fixation", "int", 1000,
+                minimum=1, units="ms", section="Timing"),
+    ConfigField("fixation_ms", "Trial fixation", "int", 500,
+                minimum=1, units="ms", section="Timing"),
+    ConfigField("stimulus_ms", "Each stimulus interval", "int", 250,
+                minimum=1, units="ms", section="Timing"),
+    ConfigField("isi_ms", "Gap between intervals", "int", 250,
+                minimum=1, units="ms", section="Timing"),
+    ConfigField("auditory_cues", "Beep at stimulus onset", "choice", True,
+                choices=(True, False), section="Timing"),
+    ConfigField("cue_hz", "Beep frequency", "int", 550,
+                minimum=37, maximum=32767, units="Hz", section="Timing"),
+    ConfigField("cue_ms", "Beep duration", "int", 35,
+                minimum=1, maximum=1000, units="ms", section="Timing"),
+
+    # One shared selection interface; each method retains its own semantics.
+    ConfigField("contrast_method", "Contrast selection method", "choice", "adaptive",
+                choices=("adaptive", "constant_stimuli"), section="Contrast method",
+                allow_legacy_default=True),
+    ConfigField("fixed_contrasts", "Fixed probe display contrasts", "text", ".01,.02,.04",
+                section="Constant stimuli", units="upper-headroom fraction",
+                allow_legacy_default=True),
+    ConfigField("fixed_repetitions", "Trials per contrast per condition", "int", 10,
+                minimum=1, section="Constant stimuli", allow_legacy_default=True),
+
+    # Adaptive staircase parameters are scientific decisions, never hidden in B.
+    ConfigField("staircases_per_condition", "Independent staircases per condition", "int", 4,
+                minimum=1, section="Adaptive"),
+    ConfigField("n_down", "Consecutive correct to decrease", "int", 4,
+                minimum=1, section="Adaptive"),
+    ConfigField("n_up", "Consecutive incorrect to increase", "int", 1,
+                minimum=1, section="Adaptive"),
+    ConfigField("logUNIT_UP", "Log10 contrast increase", "float", .36,
+                minimum=.000001, units="log10", section="Adaptive"),
+    ConfigField("logUNIT_DW", "Log10 contrast decrease", "float", .30294,
+                minimum=.000001, units="log10", section="Adaptive"),
+    ConfigField("initial_one_down_limit", "Initial one-down responses (0 disables)", "int", 0,
+                minimum=0, maximum=1000, section="Adaptive"),
+    ConfigField("reversal_termination", "Reversals per staircase", "int", 10,
+                minimum=1, section="Adaptive"),
+    ConfigField("threshold_reversals", "Final reversals retained", "int", 8,
+                minimum=1, section="Adaptive"),
+    ConfigField("max_trials", "Global accepted-response safety ceiling", "int", 10000,
+                minimum=1, section="Safety",
+                help_text="Reaching this ceiling is incomplete, not threshold convergence."),
 )
 
-
-# Session opening — once; readiness is not an accepted scientific response
-# Edit the Python list directly. SESSION_START = [] disables the opening.
+# Only this one opening is executed per session.
 SESSION_START = [
-    WaitForKey("ready", key="SPACE", slot="ready_fixation",
-               instructions="Press SPACE when ready"),
-    Show("settle", slot="ready_fixation", duration=1000),
+    WaitForKey("ready", key="ready_key", slot="fixation", instructions="Press the start key when ready"),
+    Show("settle", slot="fixation", duration="session_settle_ms"),
 ]
 
 
-# Chronological events — repeated from the current condition and strength
-# One fresh flat event list per selected condition; effective strengths are prepared below.
-
-
 def interval_stimuli(settings, condition, interval):
-    """Source order = back to front; probe appears in only one interval."""
-    placements = [
-        Stimulus("ring", y_deg=settings["ellipse_centre_y_deg"]),
-    ]
-    if condition["target"] == interval:
-        placements.append(Stimulus(
-            "probe", x_deg=condition["x_deg"],
-            y_deg=settings["ellipse_centre_y_deg"],
+    """Declared order is back → front, not 'opaque rectangles'."""
+    result = []
+    if condition["ring"]:
+        result.append(Stimulus(
+            "ellipse", x_deg=settings["ring_centre_x_deg"],
+            y_deg=settings["ring_centre_y_deg"],
         ))
-    # Fixation is visually on top of ring/probe at the centre of the display.
-    placements.append(Stimulus("fixation"))
-    return tuple(placements)
+    if condition["target"] == interval:
+        result.append(Stimulus(
+            "probe", x_deg=condition["probe_x_deg"], y_deg=condition["probe_y_deg"],
+        ))
+    result.append(Stimulus(
+        "fixation", x_deg=settings["fixation_x_deg"], y_deg=settings["fixation_y_deg"],
+    ))
+    return tuple(result)
 
 
 def trial_events(settings, condition):
+    """Two ring intervals; ONLY the target interval contains the probe."""
     cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
     return [
-        Show("fixation", slot="fixation", duration="fixation_ms"),
+        Show("fixation", duration="fixation_ms",
+             stimuli=(Stimulus("fixation", settings["fixation_x_deg"], settings["fixation_y_deg"]),)),
         Show("interval_one", duration="stimulus_ms",
              stimuli=interval_stimuli(settings, condition, 0), beep=cue),
-        Show("inter_interval", slot="fixation", duration="isi_ms"),
+        Show("inter_interval", duration="isi_ms",
+             stimuli=(Stimulus("fixation", settings["fixation_x_deg"], settings["fixation_y_deg"]),)),
         Show("interval_two", duration="stimulus_ms",
              stimuli=interval_stimuli(settings, condition, 1), beep=cue),
         CollectResponse(actions=("first", "second"), slot="fixation"),
     ]
 
 
+# ── A2 — SCIENTIFIC METHODS AND RESULTS ───────────────────────────────────
+# Both methods use headroom-normalized bright display contrast, not optical
+# luminance contrast or the historical raw digital probe increment.
+SCIENTIFIC_SPEC = {
+    "version": "ellipse_modular_centre-2",
+    "quantity": "C_disp=(I_probe-I_background)/(1-I_background), same for ring/fixation.",
+    "conditions": "Selected ellipse b/a ratio and optional ring; relative probe position is held fixed.",
+    "response": "Two intervals: which contains the probe? Exactly one target interval.",
+    "layers": "Independent ordered floating-point pixels: ellipse, probe (if target), fixation.",
+    "boundary_policy": "Clamp staircase UPDATES at C=1; never clip displayed pixels; boundary holds are not reversals.",
+    "stopping": "Target reversal count per staircase; safety ceiling is incomplete.",
+    "estimator": "Median of last retained presented reversals, then mean across completed staircases.",
+    "physical_qualification": "Display precision, luminance, geometry, timing and input latency not established by simulation.",
+}
 ADAPTIVE_RULE = AdaptiveSelection(
     "consecutive_up_down",
-    controls=(
-        "n_down",
-        "n_up",
-        "logUNIT_UP",
-        "logUNIT_DW",
-        "initial_one_down_limit",
-        "staircases_per_condition",
-        "reversal_termination",
-        "max_trials",
-    ),
+    controls=("n_down", "n_up", "logUNIT_UP", "logUNIT_DW", "initial_one_down_limit",
+              "staircases_per_condition", "reversal_termination", "max_trials"),
     step_calculator="garcia_perez_1998",
     step_parameterization="log10_display_contrast",
 )
 
 
-TRIAL_COLUMN_MEANINGS = {
-    "presented_display_contrast": {
-        "units_or_encoding": "headroom_normalized_bright_display_contrast",
-        "meaning": "Presented headroom-normalized bright probe display contrast.",
-        "notes": "C=(I_probe-I_background)/(1-I_background); new protocol only, not historical increment units or measured luminance.",
-    },
-    "next_display_contrast": {
-        "units_or_encoding": "headroom_normalized_bright_display_contrast",
-        "meaning": "Post-response headroom-normalized bright probe display contrast.",
-        "notes": "C=(I_probe-I_background)/(1-I_background); new protocol only, not historical increment units or measured luminance.",
-    },
-    "stimulus_condition": {"units_or_encoding": "x=degrees;ratio=minor/major axis;ring=0 or 1"},
-}
-
-
-MEASUREMENT_UNITS = {
-    "probe_x_deg": "degrees from fixation",
-    "staircase_repeat": "1-based staircase repeat",
-    "fixed_repeat": "1-based fixed repetition",
-    "presented_display_contrast": "headroom-normalized bright display contrast",
-    "aspect_ratio": "minor/major semi-axis ratio (unitless)",
-    "ring": "boolean; False absent, True present",
-}
-
-
-REVIEW_INACTIVE_FIELDS = {
-    "adaptive": ("fixed_contrasts", "fixed_repetitions"),
-    "constant_stimuli": tuple(key for key in ADAPTIVE_RULE.controls if key != "max_trials")
-                        + ("starting_probe_contrast", "threshold_reversals"),
-}
-
-CALIBRATION_REQUIREMENTS = ("geometry", "luminance", "timing")
-
-MONITOR_CAPABILITIES = ("display_binding", "resolution")
-
-ACQUISITION_BLOCK_REASON = "Scientific design implemented in degrees; measured luminance, effective contrast precision, frame timing and study-specific geometry must be qualified before human acquisition."
-
-
-def trial_measurements(settings, condition):
-    """Existing requested journal values; no new canonical columns."""
-    return {
-        "probe_x_deg": condition["x_deg"],
-        "staircase_repeat": condition["repeat"],
-    }
-
-
-def response_instructions(responses):
-    return f"First interval: {responses.keys[0]}   Second interval: {responses.keys[1]}   Escape stops"
-
-
-# PART A2 — SCIENTIFIC METHODS
-
-def prepare_stimuli(run, condition, state):
-    """Atomic slot parameters; positions and occlusion belong to trial_events."""
-    settings = run.values
-    background = settings["background_intensity"]
-    fixation = run.stimulus_parameters("fixation", background=background)
-    return {
-        "fixation": fixation,
-        "ready_fixation": run.stimulus_parameters("ready_fixation", background=background),
-        "ring": run.stimulus_parameters(
-            "ring", background=background,
-            display_contrast=settings["ring_display_contrast"],
-            outer_radius_deg=settings["ring_radius_deg"],
-            aspect_ratio=condition["aspect_ratio"],
-            inner_inset_deg=settings["ring_inset_deg"],
-        ),
-        "probe": run.stimulus_parameters(
-            "probe", background=background,
-            display_contrast=condition["contrast"],
-            length_deg=settings["probe_length_deg"],
-            width_deg=settings["probe_width_deg"],
-        ),
-    }
-
-
-SCIENTIFIC_SPEC = {
-    "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
-    "version": "ellipse_modular_centre-1",
-    "response": "Which temporal interval contains the line; first/second.",
-    "quantity": "Headroom-normalized bright probe and ring display contrasts; optical luminance unqualified.",
-    "conditions": "TUI-selected aspect ratios and ellipse vertical centre; line is at ellipse centre x=0; independently interleaved repeat staircases and equiprobable first/second targets.",
-    "adaptive": "TUI n-down/n-up and log10 steps; reversal direction starts at the actual initial presentation, holds ignored.",
-    "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
-    "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
-    "estimator": "Median final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Independent ring/probe/fixation stimulus classes; ring inset is a researcher input in degrees; rendered in explicit back-to-front order.",
-}
-
-
 def make_conditions(settings):
-    # Every condition places the line at the centre of a visible ellipse.
-    ratios = [float(x) for x in settings["aspect_ratios"].split(",")]
+    """Each ratio is a condition; staircase repetitions remain independent."""
     rows = []
-    for ratio in ratios:
+    probe_x = settings["ring_centre_x_deg"] + settings["probe_offset_x_deg"]
+    probe_y = settings["ring_centre_y_deg"] + settings["probe_offset_y_deg"]
+    for ratio in (float(text) for text in settings["aspect_ratios"].split(",")):
         for repeat in range(settings["staircases_per_condition"]):
-            rows.append(
-                {
-                    "id": len(rows) + 1,
-                    "value": f"x=0.0;ratio={ratio};ring=1",
-                    "x_deg": 0.0,
-                    "aspect_ratio": ratio,
-                    "ring": True,
-                    "repeat": repeat + 1,
-                }
-            )
+            rows.append({
+                "id": len(rows)+1,
+                "value": f"ratio={ratio:g};ring={int(settings['ring_present'])};"
+                         f"probe_x={probe_x:g};probe_y={probe_y:g}",
+                "aspect_ratio": ratio, "ring": settings["ring_present"],
+                "x_deg": probe_x, "probe_x_deg": probe_x, "probe_y_deg": probe_y,
+                "repeat": repeat+1,
+            })
     return rows
 
 
-def choose_condition(run, conditions, state):
-    algorithm, rng = state["adaptive"], state["rng"]
-    identity = algorithm.select(rng.choice)
-    condition = dict(conditions[identity - 1])
-    condition.update(
-        target=rng.randrange(2),
-        contrast=state["contrasts"][identity],
-        previous_reversals=algorithm.states[identity].reversal_count,
-    )
-    return condition
+def prepare_stimuli(run, condition, state):
+    """One slot per atomic stimulus, with values explicitly from A1 settings."""
+    v = run.values
+    common = {"background": v["background_intensity"]}
+    return {
+        "ellipse": run.stimulus_parameters(
+            "ellipse", **common, outer_radius_deg=v["ring_radius_deg"],
+            aspect_ratio=condition["aspect_ratio"],
+            inner_inset_deg=v["ring_inset_deg"],
+            orientation_deg=v["ring_orientation_deg"],
+            display_contrast=v["ring_display_contrast"],
+        ),
+        "probe": run.stimulus_parameters(
+            "probe", **common, display_contrast=condition["contrast"],
+            width_deg=v["probe_width_deg"], length_deg=v["probe_length_deg"],
+        ),
+        "fixation": run.stimulus_parameters(
+            "fixation", **common, sigma_deg=v["fixation_sigma_deg"],
+            display_contrast=v["fixation_display_contrast"],
+        ),
+    }
+
+
+def validate_settings(values):
+    """Also keep invalid draft fields visible in Review; refuse invalid science."""
+    try:
+        ratios = [float(value) for value in values["aspect_ratios"].split(",")]
+        if not ratios or len(set(ratios)) != len(ratios) or any(
+            not math.isfinite(r) or not .5 <= r <= 1 for r in ratios
+        ):
+            yield "Choose distinct finite ellipse b/a ratios from 0.5 to 1."
+        elif values["ring_present"] and any(
+            values["ring_radius_deg"]*r <= values["ring_inset_deg"] for r in ratios
+        ):
+            yield "Each inner ellipse semi-axis must exceed the selected axial inset."
+    except (ValueError, TypeError, OverflowError):
+        yield "Ellipse ratios must be finite comma-separated numbers."
+    if values["starting_probe_contrast"] <= 0:
+        yield "Adaptive log staircases need starting probe contrast above zero."
+    if values["threshold_reversals"] > values["reversal_termination"]:
+        yield "Threshold reversals cannot exceed staircase reversal termination."
+    if values["contrast_method"] == "constant_stimuli":
+        try:
+            make_fixed_schedule(values, 0)
+        except (ValueError, TypeError, KeyError) as exc:
+            yield str(exc)
 
 
 def interpret_response(condition, response):
-    """Score the chosen alternative against this trial's assigned target."""
     correct = response["alternative"] == condition["target"]
     if correct != response["correct"]:
-        raise ValueError("Response interpretation disagrees with the recorded target.")
+        raise ValueError("Response interpretation disagrees with recorded target.")
     return dict(response) | {"correct": correct}
 
 
-def maximum_contrast(settings, condition):
-    """Probe increment bounded by resolved local pixel overlap, never remote layers."""
-    return 1.0  # New bright display-contrast convention; overwrite, not additive, ring.
+def fixed_levels(values):
+    return parse_fixed_strengths(values["fixed_contrasts"], minimum=0, maximum=1)
+
+
+def make_fixed_schedule(values, seed):
+    cells = unique_probe_conditions(make_conditions(values))
+    levels = fixed_levels(values)
+    if len(cells)*len(levels)*values["fixed_repetitions"] > values["max_trials"]:
+        raise ValueError("Fixed-stimuli plan exceeds the selected max_trials ceiling.")
+    return fixed_level_schedule(
+        cells, levels, values["fixed_repetitions"], seed=seed,
+        condition_field="value", strength_field="contrast",
+    )
+
+
+def select_adaptive(run, conditions, state):
+    identity = state["adaptive"].select(state["rng"].choice)
+    c = dict(conditions[identity-1])
+    c.update(target=state["rng"].randrange(2),
+             contrast=state["contrasts"][identity],
+             previous_reversals=state["adaptive"].states[identity].reversal_count)
+    return c
+
+
+def primary_rule(settings, conditions):
+    return {
+        "version": 1, "value_column": "presented_display_contrast",
+        "within_staircase": "median", "across_staircases": "arithmetic_mean",
+        "retained_reversals": settings["threshold_reversals"],
+        "completion": "all configured staircases complete",
+        "strength_bounds": {str(c["id"]): [sys.float_info.min, 1.] for c in conditions},
+        "units": "headroom_normalized_bright_display_contrast",
+    }
+
+
+def begin_adaptive(run, conditions):
+    s = run.values
+    tracks = run.adaptive(
+        {c["id"]: StaircaseConfig(
+            s["n_down"], s["n_up"], s["reversal_termination"], s["initial_one_down_limit"],
+        ) for c in conditions},
+        s["max_trials"],
+        starting_values={c["id"]: s["starting_probe_contrast"] for c in conditions},
+    )
+    step_scale = max(s["logUNIT_UP"], s["logUNIT_DW"])
+    up, down = s["logUNIT_UP"]/step_scale, s["logUNIT_DW"]/step_scale
+    target_accuracy = ((up/(up+down))**(1/s["n_down"])) if s["n_up"] == 1 else None
+    info = {
+        "protocol": dict(SCIENTIFIC_SPEC),
+        "asymptotic_accuracy_target": target_accuracy,
+        "condition_definitions": conditions,
+        "staircases_per_condition": s["staircases_per_condition"],
+        "hardware_equivalence": False,
+    }
+    run.initialise(
+        expected_trials=s["max_trials"],
+        resolution=info | {
+            "primary_estimator": primary_rule(s, conditions),
+            "expected_staircases": expected_staircases(conditions),
+        },
+        background_intensity=s["background_intensity"],
+    )
+    return {
+        "adaptive": tracks, "rng": random.Random(f"{run.seed}:conditions"),
+        "contrasts": {c["id"]: s["starting_probe_contrast"] for c in conditions},
+        "reversals": {c["id"]: [] for c in conditions}, "description": info,
+    }
+
+
+def trial_record(run, condition, state):
+    v = run.values
+    return run.adaptive_trial_record(
+        state["adaptive"], condition["id"], contrast=condition["contrast"],
+        maximum=1., log_up=v["logUNIT_UP"], log_down=v["logUNIT_DW"],
+        measurements={
+            "probe_x_deg": condition["probe_x_deg"],
+            "probe_y_deg": condition["probe_y_deg"],
+            "aspect_ratio": condition["aspect_ratio"],
+            "ring": condition["ring"],
+            "staircase_repeat": condition["repeat"],
+        },
+        instructions=f"First interval: {run.responses.keys[0]}   Second interval: {run.responses.keys[1]}",
+    )
 
 
 def change_contrast(state, response, step):
-    exponent = (
-        -state["log_down"]
-        if step == Step.DOWN
-        else state["log_up"] if step == Step.UP else 0
+    exponent = -state["log_down"] if step == Step.DOWN else (
+        state["log_up"] if step == Step.UP else 0
     )
-    # Saturate the adaptive value; an outward step at the bound is a flat hold.
-    # Flat holds do not count as reversals. The requested step remains in events.
+    # Saturate at C=1; flat holds do not count as reversals.
     return bounded_log_step(state["contrast"], exponent, maximum=state["maximum_contrast"])
 
 
-def update_experiment(run, condition, state, response, trial):
+def update_adaptive(run, condition, state, response, trial):
     staircase, identity = state["adaptive"], condition["id"]
-
     trial.apply(
         UpdateAdaptive(staircase, identity, change_contrast, state_key="next_contrast"),
         run.staircase_record_action(staircase, identity),
@@ -420,160 +386,28 @@ def update_experiment(run, condition, state, response, trial):
     return state
 
 
-def initialise_experiment(run, conditions):
-    settings = run.values
-    algorithm = run.adaptive(
-        {
-            c["id"]: StaircaseConfig(
-                settings["n_down"],
-                settings["n_up"],
-                settings["reversal_termination"],
-                settings["initial_one_down_limit"],
-            )
-            for c in conditions
-        },
-        settings["max_trials"],
-        starting_values={c["id"]: settings["starting_probe_contrast"] for c in conditions},
-    )
-    # Fixed n-down/one-up steps have this asymptotic accuracy target. Finite
-    # reversal estimates (especially with lapses) still require recovery checks.
-    # Normalise first: two individually finite large steps can overflow
-    # when added directly. This is algebraically the same step-size ratio.
-    step_scale = max(settings["logUNIT_UP"], settings["logUNIT_DW"])
-    relative_up = settings["logUNIT_UP"] / step_scale
-    relative_down = settings["logUNIT_DW"] / step_scale
-    accuracy_target = (
-        (relative_up / (relative_up + relative_down))
-        ** (1 / settings["n_down"])
-        if settings["n_up"] == 1
-        else None
-    )
-    description = {
-        "asymptotic_accuracy_target": accuracy_target,
-        "adaptive_interpretation": (
-            "fixed n-down/one-up stationary target; finite-run bias unqualified"
-            if accuracy_target is not None
-            else "n-up greater than one: threshold accuracy interpretation requires separate validation"
-        ),
-        "protocol": dict(SCIENTIFIC_SPEC),
-        "staircases_per_condition": settings["staircases_per_condition"],
-        "condition_definitions": conditions,
-        "ellipse_centre_y_deg": settings["ellipse_centre_y_deg"],
-        "ring_radius_deg": settings["ring_radius_deg"],
-        "hardware_equivalence": False,
-    }
-    run.initialise(
-        expected_trials=settings["max_trials"],
-        resolution=description | {"primary_estimator": primary_rule(settings, conditions),
-                                  "expected_staircases": expected_staircases(conditions)},
-        background_intensity=settings["background_intensity"],
-    )
-    return {
-        "adaptive": algorithm,
-        "rng": random.Random(f"{run.seed}:conditions"),
-        # Staircase state and thresholds are normalized display contrasts.
-        "contrasts": {c["id"]: settings["starting_probe_contrast"] for c in conditions},
-        "reversals": {c["id"]: [] for c in conditions},
-        "description": description,
-    }
-
-
-def fixed_levels(values):
-    return parse_fixed_strengths(values["fixed_contrasts"], minimum=0, maximum=1)
-
-
-def make_fixed_schedule(values, seed):
-    conditions = unique_probe_conditions(make_conditions(values))
-    levels = fixed_levels(values)
-    planned = len(conditions)*len(levels)*values["fixed_repetitions"]
-    if planned > values["max_trials"]:
-        raise ValueError("Fixed-level plan exceeds the selected max_trials ceiling.")
-    return fixed_level_schedule(
-        conditions, levels, values["fixed_repetitions"], seed=seed,
-        condition_field="value", strength_field="contrast",
-    )
-
-
-def validate_settings(values):
-    import math
-    try:
-        ratios = [float(x) for x in values["aspect_ratios"].split(",")]
-        if (not ratios or len(set(ratios)) != len(ratios)
-                or any(not math.isfinite(r) or not .5 <= r <= 1 for r in ratios)):
-            yield "Choose distinct finite ellipse ratios between 0.5 and 1."
-        elif any(values["ring_radius_deg"]*ratio <= values["ring_inset_deg"] for ratio in ratios):
-            yield "Both inner ellipse semi-axes must exceed the selected axial ring inset."
-    except (ValueError, TypeError, OverflowError):
-        yield "Enter finite comma-separated numeric ellipse ratios."
-    if values["background_intensity"] >= 1:
-        yield "Bright display contrast requires background below 1."
-    if values["starting_probe_contrast"] <= 0:
-        yield "Log staircases require strictly positive starting probe contrast."
-    if values["threshold_reversals"] > values["reversal_termination"]:
-        yield "Retained threshold reversal count exceeds the termination count."
-    if values["contrast_method"] == "constant_stimuli":
-        try:
-            make_fixed_schedule(values, 0)
-        except (ValueError, TypeError, KeyError) as exc:
-            yield str(exc)
-
-
-# Stopping, scientific estimators and results
-# Reversal completion is the adaptive goal; the global response ceiling is
-# incomplete termination. Fixed levels have no staircase threshold estimator.
-
-
-def is_finished(run, conditions, state):
-    return state["adaptive"].status != "running"
-
-
-def primary_rule(settings, conditions):
-    return {
-            "version": 1,
-            "value_column": "presented_display_contrast",
-            "within_staircase": "median",
-            "across_staircases": "arithmetic_mean",
-            "retained_reversals": settings["threshold_reversals"],
-            "completion": "all configured staircases complete",
-            "strength_bounds": {
-                str(c["id"]): [sys.float_info.min, maximum_contrast(settings, c)]
-                for c in conditions
-            },
-            "units": "headroom_normalized_bright_display_contrast",
-        }
-
-
-def finish_experiment(run, conditions, state):
-    run.save_resolution(
-        **(
-            state["description"]
-            | {"reversal_contrasts": {str(i): v for i, v in state["reversals"].items()}}
-        )
-    )
+def finish_adaptive(run, conditions, state):
+    run.save_resolution(**state["description"], reversal_contrasts={
+        str(identity): values for identity, values in state["reversals"].items()
+    })
     run.complete_adaptive(state["adaptive"])
-    # One declared estimator is used here and by post-hoc analysis.
     run.save_primary(primary_rule(run.values, conditions), conditions)
 
 
-def adaptive_contrast_method(run):
-    """Use this study's original staircase rules; no algorithm or RNG change."""
+def adaptive_method(run):
     return AdaptiveContrastMethod(
-        run,
-        make_conditions=make_conditions,
-        initialise=initialise_experiment,
-        select=choose_condition,
-        record=trial_record,
-        update=update_experiment,
-        finished=is_finished,
-        finish=finish_experiment,
+        run, make_conditions=make_conditions, initialise=begin_adaptive,
+        select=select_adaptive, record=trial_record, update=update_adaptive,
+        finished=lambda _run, _conditions, state: state["adaptive"].status != "running",
+        finish=finish_adaptive,
     )
 
 
-def constant_contrast_method(run):
+def constant_method(run):
     schedule = make_fixed_schedule(run.values, run.seed)
     return ConstantContrastMethod(
-        run, schedule=schedule, condition_field="value",
-        record=fixed_probe_trial_record,
+        run, schedule=schedule, record=fixed_probe_trial_record,
+        condition_field="value",
         resolution={
             "trial_selection_method": "constant_stimuli",
             "scientific_quantity": "headroom_normalized_bright_display_contrast",
@@ -583,94 +417,70 @@ def constant_contrast_method(run):
             "fixed_repetitions_per_level_per_condition": run.values["fixed_repetitions"],
             "planned_trials": len(schedule),
             "schedule": [
-                {"trial_index": i, "scientific_condition": trial["value"],
-                 "presented_display_contrast": trial["contrast"],
-                 "target_alternative": trial["target"], "repeat": trial["repeat"]}
-                for i, trial in enumerate(schedule, 1)
+                {"trial_index": i, "scientific_condition": item["value"],
+                 "presented_display_contrast": item["contrast"],
+                 "target_alternative": item["target"], "repeat": item["repeat"]}
+                for i, item in enumerate(schedule, 1)
             ],
-            "response_analysis": "Accuracy by display contrast; no staircase estimator.",
+            "response_analysis": "Counts and accuracy by contrast, no adaptive threshold.",
             "hardware_equivalence": False,
         },
     )
 
 
-# PART B — FRAMEWORK INTEGRATION
-# FRAMEWORK CONNECTION: same runner, recorder, Review hooks and public identity.
-# Scientific choices/measurements are above; normally leave these bindings alone.
-def trial_record(run, condition, state):
-    settings = run.values
-    return run.adaptive_trial_record(
-        state["adaptive"],
-        condition["id"],
-        contrast=condition["contrast"],
-        maximum=maximum_contrast(settings, condition),
-        log_up=settings["logUNIT_UP"],
-        log_down=settings["logUNIT_DW"],
-        measurements=trial_measurements(settings, condition),
-        instructions=response_instructions(run.responses),
-    )
-
+# ── B — SMALL FRAMEWORK CONNECTION (normally leave this alone) ──────────
 def procedure(run):
-    # Scientific timeline and stimulus conversion stay above. The method
-    # chooses the probe display contrast; RunContext still records the same TSV.
     return run_contrast_experiment(
-        run,
-        methods={
-            "adaptive": lambda: adaptive_contrast_method(run),
-            "constant_stimuli": lambda: constant_contrast_method(run),
-        },
-        prepare_stimuli=prepare_stimuli,
-        trial_events=trial_events,
+        run, methods={"adaptive": lambda: adaptive_method(run),
+                      "constant_stimuli": lambda: constant_method(run)},
+        prepare_stimuli=prepare_stimuli, trial_events=trial_events,
         interpret_response=interpret_response,
     )
 
-# Compatibility and registration
-# Central compatibility for callers expecting make_trial(...).resolve(...).
-make_trial = legacy_trial_factory(trial_events)
 
-
-def definition(identity="ellipse_modular_centre"):
-    return experiment(
-        id=identity,
-        name="Modular Ellipse Centre (software validation)",
-        procedure=procedure,
-        session_start=SESSION_START,
-        stimulus_field_bindings={"ready_fixation": {"background": "background_intensity"}},
-        description="Independent ellipse ring, probe and fixation; ordered transparent layers.",
-        fields=FIELDS,
-        scientific_spec=SCIENTIFIC_SPEC,
-        responses=RESPONSES,
-        adaptive=ADAPTIVE_RULE,
-        method_planner=make_fixed_schedule,
-        method_reviewer={"constant_stimuli": constant_contrast_method},
-        # Review-only control links; acquisition bindings remain unchanged.
-        stimulus_parameter_controls={
-            "ring": {
-                "background": "background_intensity",
-                "display_contrast": "ring_display_contrast",
-                "outer_radius_deg": "ring_radius_deg",
-                "inner_inset_deg": "ring_inset_deg",
-                "aspect_ratio": "aspect_ratios",
-            },
-            "probe": {
-                "background": "background_intensity",
-                "length_deg": "probe_length_deg",
-                "width_deg": "probe_width_deg",
-            },
-            "fixation": {"background": "background_intensity"},
-            "ready_fixation": {"background": "background_intensity"},
+make_trial = legacy_trial_factory(trial_events)  # for older test/preview callers
+SPEC = experiment(
+    id=EXPERIMENT_ID, name=EXPERIMENT_NAME,
+    description="Independent ring, probe and Gaussian fixation with ordered occlusion.",
+    procedure=procedure, fields=FIELDS, stimuli=STIMULI,
+    responses=RESPONSES, adaptive=ADAPTIVE_RULE,
+    session_start=SESSION_START,
+    validator=validate_settings,
+    method_planner=make_fixed_schedule,
+    method_reviewer={"constant_stimuli": constant_method},
+    stimulus_field_bindings={"fixation": {
+        "background": "background_intensity", "sigma_deg": "fixation_sigma_deg",
+        "display_contrast": "fixation_display_contrast",
+    }},
+    stimulus_parameter_controls={
+        "ellipse": {"background": "background_intensity",
+                    "display_contrast": "ring_display_contrast",
+                    "outer_radius_deg": "ring_radius_deg",
+                    "aspect_ratio": "aspect_ratios",
+                    "inner_inset_deg": "ring_inset_deg",
+                    "orientation_deg": "ring_orientation_deg"},
+        "probe": {"background": "background_intensity",
+                  "width_deg": "probe_width_deg", "length_deg": "probe_length_deg"},
+        "fixation": {"background": "background_intensity",
+                     "sigma_deg": "fixation_sigma_deg",
+                     "display_contrast": "fixation_display_contrast"},
+    },
+    scientific_spec=SCIENTIFIC_SPEC, supports_simulation=True,
+    calibration_requirements=("geometry", "luminance", "timing"),
+    monitor_capabilities=("display_binding", "resolution"),
+    acquisition_block_reason=(
+        "Software validation only: display geometry, luminance, precision, timing and "
+        "response latency require independent qualification before human acquisition."
+    ),
+    trial_column_overrides={
+        "presented_display_contrast": {
+            "units_or_encoding": "headroom_normalized_bright_display_contrast",
+            "meaning": "Presented digital bright-probe contrast fraction of upper headroom.",
         },
-        # End Review-only control links.
-        validator=validate_settings,
-        supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
-        calibration_requirements=CALIBRATION_REQUIREMENTS,
-        monitor_capabilities=MONITOR_CAPABILITIES,
-        acquisition_block_reason=ACQUISITION_BLOCK_REASON,
-        trial_column_overrides=TRIAL_COLUMN_MEANINGS,
-        source_paths=("src/psychophysics_lab/experiments/ellipse_modular_centre.py",),
-    )
-
-
-SPEC = definition()
+        "next_display_contrast": {
+            "units_or_encoding": "headroom_normalized_bright_display_contrast",
+            "meaning": "Post-response adaptive contrast, same normalized digital quantity.",
+        },
+    },
+    source_paths=("src/psychophysics_lab/experiments/ellipse_modular_centre.py",),
+)
