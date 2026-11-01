@@ -195,6 +195,8 @@ SCIENTIFIC_SPEC = {
     "quantity": "C_disp=(I_probe-I_background)/(1-I_background), same for ring/fixation.",
     "conditions": "Selected ellipse b/a ratio and optional ring; relative probe position is held fixed.",
     "response": "Two intervals: which contains the probe? Exactly one target interval.",
+    "adaptive": "User-configured n-up/n-down logarithmic staircase, or finite fixed contrast levels; same digital headroom-normalized strength.",
+    "exclusions": "Abort, timeout and incomplete/safety-ceiling runs retain status; never silently infer a threshold.",
     "layers": "Independent ordered floating-point pixels: ellipse, probe (if target), fixation.",
     "boundary_policy": "Clamp staircase UPDATES at C=1; never clip displayed pixels; boundary holds are not reversals.",
     "stopping": "Target reversal count per staircase; safety ceiling is incomplete.",
