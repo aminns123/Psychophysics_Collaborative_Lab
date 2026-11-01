@@ -97,12 +97,16 @@ def migrate_legacy_detection_snapshots(spec, values, snapshots):
             )
 
     source = snapshots["first"]["document"]["parameters"]
+    # Pre-2026 DetectionScene JSON omitted these two fields. Its documented
+    # historical raster dimensions were 0.133 and 0.013 degrees.
+    historical_defaults = {"probe_length_deg": 0.133, "probe_width_deg": 0.013}
     common = ("size_deg", "probe_length_deg", "probe_width_deg")
     if spec.id.startswith("ellipse_"):
         common += ("ring_radius_deg",)
     for slot in expected - {"first"}:
         other = snapshots[slot]["document"]["parameters"]
-        if any(other.get(key) != source.get(key) for key in common):
+        if any(other.get(key, historical_defaults.get(key)) !=
+               source.get(key, historical_defaults.get(key)) for key in common):
             raise ValueError(
                 f"Legacy DetectionScene {slot}/first dimensions disagree. "
                 "The atomic experiment has one shared probe/ring definition; "
@@ -137,8 +141,8 @@ def migrate_legacy_detection_snapshots(spec, values, snapshots):
         ) | {"migrated_from": original}
 
     probe = {
-        "length_deg": source["probe_length_deg"],
-        "width_deg": source["probe_width_deg"],
+        "length_deg": source.get("probe_length_deg", 0.133),
+        "width_deg": source.get("probe_width_deg", 0.013),
         "background": background,
     }
     migrated = dict(snapshots)
