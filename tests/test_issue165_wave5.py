@@ -62,8 +62,14 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
         for condition in results[1]['conditions']
     ]
     background = case['values'].get('background_intensity', .5)
+    # Adaptive initialisation annotates each condition with its ceiling;
+    # fixed-stimuli preflight validates its schedule without mutating factors.
+    annotated = [c for c in results[1]['conditions']
+                 if 'maximum_probe_increment' in c]
+    if case['method'] == 'adaptive':
+        assert len(annotated) == len(results[1]['conditions'])
     assert all(0 < c['maximum_probe_increment'] <= 1-background
-               for c in results[1]['conditions'])
+               for c in annotated)
     assert results[0]['session_phases']==results[1]['session_phases']
     assert [
         {key: p[key] for key in ('name','kind','duration_ms') if key in p}
