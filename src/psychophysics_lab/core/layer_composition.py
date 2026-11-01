@@ -15,7 +15,7 @@ import numpy as np
 
 
 def compose_ordered_layers(layers, background):
-    """Compose (x, y, grayscale, alpha_or_None, layer_background) in list order.
+    """Compose (x, y, grayscale, alpha_or_None, layer_background[, blend]) in list order.
 
     Each patch is indexed from its lower-left display pixel, and has shape
     (height, width). alpha=None means an explicitly opaque legacy patch.
@@ -27,7 +27,18 @@ def compose_ordered_layers(layers, background):
     if not layers:
         raise ValueError("Composition requires at least one stimulus placement.")
     checked = []
-    for x, y, image, alpha, layer_background in layers:
+    for layer in layers:
+        if len(layer) == 5:
+            x, y, image, alpha, layer_background = layer
+            blend = "over"
+        elif len(layer) == 6:
+            x, y, image, alpha, layer_background, blend = layer
+        else:
+            raise ValueError("Layer must declare origin, image, alpha, background and optional blend.")
+        if blend not in {"over", "add"}:
+            raise ValueError("Layer overlap must be 'over' or 'add'.")
+        if blend == "add" and alpha is None:
+            raise ValueError("Additive layers must declare their foreground coverage.")
         if type(x) is not int or type(y) is not int:
             raise ValueError("Layer origin must be in integer display pixels.")
         image = np.asarray(image, dtype=np.float64)
@@ -44,16 +55,21 @@ def compose_ordered_layers(layers, background):
             if (not math.isfinite(layer_background)
                     or not math.isclose(layer_background, background, rel_tol=0, abs_tol=1e-12)):
                 raise ValueError("Transparent layer background must match the scene background.")
-        checked.append((x, y, image, alpha, layer_background))
+        checked.append((x, y, image, alpha, layer_background, blend))
     left = min(item[0] for item in checked)
     bottom = min(item[1] for item in checked)
     right = max(item[0] + item[2].shape[1] for item in checked)
     top = max(item[1] + item[2].shape[0] for item in checked)
     canvas = np.full((top-bottom, right-left), background, dtype=np.float64)
-    for x, y, image, alpha, layer_background in checked:
+    for x, y, image, alpha, layer_background, blend in checked:
         row, col = y-bottom, x-left
         target = canvas[row:row+image.shape[0], col:col+image.shape[1]]
-        if alpha is None:
+        if blend == "add":
+            # image is background plus already pixel-coverage-weighted
+            # foreground deviation. Apply that increment once, without
+            # changing the earlier ring/flanker values underneath.
+            target[:] += image - layer_background
+        elif alpha is None:
             target[:] = image
         else:
             # A transparent renderer's output is its foreground precomposed on
