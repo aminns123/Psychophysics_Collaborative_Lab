@@ -26,6 +26,8 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+      - name: Compile Python source and test modules
+        run: python -m compileall -q src tests simulations scripts
       - name: Install development dependencies
         # Headless source regression may use the hosted Python distribution;
         # exact conda-forge installer qualification runs separately on Windows 11.
@@ -33,6 +35,8 @@ jobs:
           python -m pip install --require-hashes --only-binary=:all: -r requirements/windows-cp311/build.lock
           python -m pip install --require-hashes --only-binary=:all: -r requirements/windows-cp311/development.lock
           python -m pip install --no-deps --no-build-isolation -e .
+      - name: Collect all tests before lengthy scientific regression
+        run: python -m pytest --collect-only -q
       - name: Run headless tests
         run: python -X faulthandler -u -m pytest -vv -o faulthandler_timeout=30 -o log_cli=true -o log_cli_level=WARNING
       - name: Launcher diagnostics on failure
