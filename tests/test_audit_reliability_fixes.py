@@ -166,7 +166,19 @@ def test_saved_dictionary_agrees_with_actual_scientific_strength(tmp_path, ident
     assert "0 =" in definitions["target_alternative"]["units_or_encoding"]
     records = list(read_json_records(artifacts.run_directory / "trial_events.jsonl"))
     data = records[0]["trial"]
-    assert data["initial_state"]["contrast"] in [s["parameters"]["contrast"] for s in data["resolved_stimuli"].values() if "contrast" in s["parameters"]]
+    if units == "digital_probe_increment":
+        # ProbeLine consumes a fraction of the remaining headroom; the
+        # staircase and canonical trial column store the original raw command
+        # increment. Never compare the two unconverted or relabel the data.
+        probe = data["resolved_stimuli"]["probe"]["parameters"]
+        nominal = probe["display_contrast"] * (1 - probe["background"])
+        assert nominal == pytest.approx(data["initial_state"]["contrast"], abs=1e-15)
+    else:
+        assert data["initial_state"]["contrast"] in [
+            item["parameters"]["contrast"]
+            for item in data["resolved_stimuli"].values()
+            if "contrast" in item["parameters"]
+        ]
     assert all(c.passed for c in validate_run(artifacts.run_directory))
 
 
