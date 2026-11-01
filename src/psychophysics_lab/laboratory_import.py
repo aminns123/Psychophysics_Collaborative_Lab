@@ -127,12 +127,24 @@ def prepare_official_contribution(repo_root, identity):
         raise ValueError("Selected experiment is not the active Ready laboratory definition.")
     candidate = extensions.source_at(root, f"experiments/{identity}.py")
     local_stimuli = []
+    sources = {f"experiments/{identity}.py", *spec.source_paths}
+    if spec.default_config:
+        sources.add(spec.default_config)
     for stimulus_id in dict.fromkeys(spec.stimulus_defaults.values()):
         stimulus = get_stimulus(stimulus_id)
         if stimulus.origin_namespace == namespace:
             if extensions.status(repo_root, "stimulus", stimulus_id) != "ready":
                 raise ValueError(f"Local stimulus {stimulus_id} must be Ready first.")
             local_stimuli.append(stimulus_id)
+            sources.update((stimulus.source_path, *stimulus.source_dependencies))
+            if stimulus.default_config:
+                sources.add(stimulus.default_config)
+    # Inspect every actual declared scientific dependency, not just the
+    # principal experiment. Copy only the selected study's referenced sources.
+    selected_sources = {
+        relative: extensions.source_at(root, relative)
+        for relative in sources
+    }
 
     # Preserve a concrete exact-source export including all lab dependencies
     # (the source root is separately required for historical reproducibility).
@@ -144,13 +156,10 @@ def prepare_official_contribution(repo_root, identity):
         raise ValueError(f"Review package already exists; no files overwritten: {directory}")
     directory.mkdir(parents=True, exist_ok=False)
     try:
-        (directory / "experiments").mkdir()
-        shutil.copyfile(candidate, directory / "experiments" / candidate.name)
-        if local_stimuli:
-            shutil.copyfile(
-                extensions.source_at(root, "stimulus_library.py"),
-                directory / "stimulus_library.py",
-            )
+        for relative, source in sorted(selected_sources.items()):
+            destination = directory / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
         official_id = identity[len(namespace) + 2:]
         payload = {
             "schema_version": 1,
@@ -166,10 +175,11 @@ def prepare_official_contribution(repo_root, identity):
                     value: value[len(namespace)+2:] for value in local_stimuli
                 },
             },
-            "included_files": [
-                f"experiments/{identity}.py",
-                *((["stimulus_library.py"]) if local_stimuli else []),
-            ],
+            "included_files": sorted(selected_sources),
+            "included_file_sha256": {
+                relative: hashlib.sha256(file.read_bytes()).hexdigest()
+                for relative, file in sorted(selected_sources.items())
+            },
             "review_required": [
                 "Review and explicitly accept any ID/source-path changes in a GitHub PR.",
                 "Inspect imports, dependencies and any already-existing official IDs.",
