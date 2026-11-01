@@ -171,7 +171,7 @@ def test_edit_controlling_input_from_resolved_row_and_reload_saved_json(tmp_path
 
 
 @pytest.mark.parametrize("identity,changes,slot,key", [
-    ("line_position_baseline", {"probe_vertical_offset_deg": .4}, "first", "probe_length_deg"),
+    ("line_position_baseline", {"probe_vertical_offset_deg": .4}, "probe", "length_deg"),
     ("orientation_task", {}, "target", "size_deg"),
     ("example_experiment", {}, "target", "line_length_deg"),
 ])
