@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from psychophysics_lab.core.layer_composition import compose_ordered_layers
-from psychophysics_lab.stimulus_library import EllipseRing, ProbeLine, LayerGaussianFixation
+from psychophysics_lab.stimulus_library import EllipseRing, ProbeLine, GaussianFixationSpot
 from psychophysics_lab.experiments import ellipse_modular_centre as study
 
 
