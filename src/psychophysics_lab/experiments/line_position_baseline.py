@@ -313,7 +313,7 @@ def interpret_response(condition, response):
 
 def maximum_contrast(settings, condition):
     """Digital headroom for the additive scene (or symmetric grating)."""
-    return (1 - settings["background_intensity"])
+    return condition.get("maximum_probe_increment", 1 - settings["background_intensity"])
 
 
 def change_contrast(state, response, step):
@@ -342,6 +342,10 @@ def update_experiment(run, condition, state, response, trial):
 
 def initialise_experiment(run, conditions):
     settings = run.values
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+    resolve_probe_limits(
+        run, conditions, prepare_stimuli, trial_events=trial_events, stimuli=STIMULI,
+    )
     algorithm = run.adaptive(
         {
             c["id"]: StaircaseConfig(
@@ -481,7 +485,8 @@ def adaptive_contrast_method(run):
 def constant_contrast_method(run):
     """Use shared level scheduling; retain our scientific conditions and trials."""
     return probe_constant_method(
-        run, make_conditions, prepare_stimuli, scientific_spec=SCIENTIFIC_SPEC,
+        run, make_conditions, prepare_stimuli,
+        trial_events=trial_events, stimuli=STIMULI, scientific_spec=SCIENTIFIC_SPEC,
     )
 
 
