@@ -239,7 +239,7 @@ def test_atomic_probe_clipping_is_safe_and_blank_interval_remains_available(tmp_
     first = next(event for event in phases if event.name == "interval_one")
     second = next(event for event in phases if event.name == "interval_two")
     assert all(p.slot != "probe" for p in first.placements)
-    assert any(p.slot == "probe" for p in second.placements
+    assert any(p.slot == "probe" for p in second.placements)
 
 
 def test_png_preview_preserves_positive_y_up_for_array_equations(tmp_path, monkeypatch):
