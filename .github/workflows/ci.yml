@@ -40,6 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
+        shard: [0, 1, 2, 3]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -58,8 +59,8 @@ jobs:
           python -m pip install --no-deps --no-build-isolation -e .
       - name: Collect all tests before lengthy scientific regression
         run: python -m pytest --collect-only -q
-      - name: Run headless tests
-        run: python -X faulthandler -u -m pytest -vv -o faulthandler_timeout=30 -o log_cli=true -o log_cli_level=WARNING
+      - name: Run headless tests (full-suite shard ${{ matrix.shard }})
+        run: python -u scripts/ci_test_shard.py ${{ matrix.shard }}
       - name: Launcher diagnostics on failure
         if: failure()
         shell: pwsh
