@@ -174,7 +174,7 @@ def test_shared_scientific_execution_and_frozen_evidence_are_unchanged():
             # Frozen original is preserved outside the active package.
             from _archived_detection_scene import EXPECTED_BLOBS
             archive = ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab/methods/probe.py"
-            data = archive.read_bytes()
+            data = archive.read_bytes().replace(b"\r\n", b"\n")
             git_blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
             assert git_blob == "5d41a5ccd76593618709f8511d7814974abccbed"
             from psychophysics_lab.methods import probe
