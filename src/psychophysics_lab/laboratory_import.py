@@ -11,6 +11,7 @@ import ast
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 
@@ -37,8 +38,10 @@ def _candidate(repo_root, source):
             f"File must be named {namespace}__study_name.py; rename the file "
             "and declare the same SPEC.id inside its Python source."
         )
-    if len(file.stem) > 128:
-        raise ValueError("Experiment filename is too long.")
+    if len(file.stem) > 128 or not re.fullmatch(r"[a-z][a-z0-9_]*", file.stem):
+        raise ValueError(
+            "Experiment ID/filename must use lowercase letters, numbers and underscores only."
+        )
     if file.stat().st_size > MAX_IMPORT_BYTES:
         raise ValueError("Experiment source exceeds the 2 MB import limit.")
     raw = file.read_bytes()
@@ -204,6 +207,10 @@ def prepare_official_contribution(repo_root, identity):
             destination = directory / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, destination)
+            if hashlib.sha256(destination.read_bytes()).digest() != hashlib.sha256(source.read_bytes()).digest():
+                raise ValueError("Source changed during contribution export; package removed.")
+        if extensions.fingerprint(repo_root) != fingerprint:
+            raise ValueError("Laboratory scientific source changed during export; package removed.")
         official_id = identity[len(namespace) + 2:]
         payload = {
             "schema_version": 1,
