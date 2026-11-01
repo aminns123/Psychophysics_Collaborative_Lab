@@ -98,7 +98,14 @@ def test_all_selected_inputs_measurements_units_and_source_routes_are_truthful(i
 def test_fixed_centre_headroom_matches_actual_method_on_selected_display():
     spec, values, snapshots = selected("ellipse_centre", "constant_stimuli",
                                        ring_increment=.49, aspect_ratios="1", fixed_contrasts="0,.01")
-    description, rows, _ = review(spec, values, snapshots)
+    # An unspecified resolution invokes only the unqualified synthetic
+    # fallback. Use an explicit pixel grid so Review, headroom calculation and
+    # actual presentation all sample the same measured display geometry.
+    profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"],
+                      expected_resolution_px=(1920, 1080))
+    description = describe_settings(spec, values, snapshots, profile=profile)
+    rows = review_rows(spec, values, snapshots, description,
+                       refresh_hz=profile.refresh_rate_hz)
     maximum = next(row[2] for row in rows if row[:2] == ("Intensity", "Maximum nominal probe intensity"))
     # #207 renders the actual independently clipped ring/probe placements.
     # Do not freeze the *old composite-scene* headroom scalar as though the
@@ -113,7 +120,6 @@ def test_fixed_centre_headroom_matches_actual_method_on_selected_display():
         def stimulus_parameters(self, slot, **overrides):
             return dict(snapshots[slot]["document"]["parameters"]) | overrides
 
-    profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
     background = values["background_intensity"]
     bound = float(maximum) - background
     assert 0 < bound <= 1-background
