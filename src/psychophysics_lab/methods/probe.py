@@ -1,12 +1,12 @@
-"""Reusable contrast-method declarations for the DetectionScene probe family.
+"""Reusable contrast-method declarations for atomic digital-probe experiments.
 
 Scientific conditions, geometry, stimulus composition and response timing remain
 in each experiment file. This module handles only fixed-strength scheduling,
 metadata and canonical recording for a digital *probe increment*.
 
 Never equate this increment to optical contrast or a grating's peak-to-peak
-modulation. The actual DetectionScene composition must still be validated for
-every relevant target/condition, including ring or flanker overlap.
+modulation. The actual ordered phase composition must be validated for every relevant
+target/condition, including ring or flanker overlap.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from .contrast import (
 
 
 def probe_contrast_fields():
-    """Declare a method selector for any existing DetectionScene experiment."""
+    """Declare method selection for a scientist-owned atomic probe experiment."""
     return (
         ConfigField(
             "contrast_method", "Contrast selection method", "choice", "adaptive",
@@ -130,7 +130,7 @@ def fixed_probe_trial_record(run, selection):
     }
 
 
-def probe_constant_method(run, make_conditions, prepare_stimuli, *, scientific_spec=None):
+def probe_constant_method(run, make_conditions, prepare_stimuli, *, trial_events, stimuli, scientific_spec=None):
     """Construct a nonadaptive method for a specific scene-based experiment."""
     conditions = unique_probe_conditions(make_conditions(run.values))
     schedule = make_probe_fixed_schedule(run.values, run.seed, make_conditions)
@@ -147,11 +147,14 @@ def probe_constant_method(run, make_conditions, prepare_stimuli, *, scientific_s
         values=check_values, display=run.display,
         synthetic=run.synthetic, stimulus_parameters=run.stimulus_parameters,
     )
-    resolve_probe_limits(preflight, schedule, prepare_stimuli)
+    resolve_probe_limits(
+        preflight, schedule, prepare_stimuli,
+        trial_events=trial_events, stimuli=stimuli,
+    )
     resolution = {
         "trial_selection_method": "constant_stimuli",
         "scientific_quantity": "digital_probe_increment",
-        "intensity_mapping": "DetectionScene adds probe increment above digital background with local ring/flanker/gamut validation.",
+        "intensity_mapping": "Atomic ProbeLine adds nominal digital increment above background; actual ordered ring/flanker/fixation composition constrains local headroom.",
         "protocol": dict(scientific_spec or {}),
         "condition_definitions": conditions,
         "fixed_contrast_levels": list(fixed_contrast_levels(settings)),
