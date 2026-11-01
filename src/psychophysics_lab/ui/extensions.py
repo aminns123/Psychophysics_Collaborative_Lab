@@ -1,4 +1,5 @@
-"""Minimal trusted-root controls inside the existing experiment catalogue."""
+"""Trusted laboratory experiments can be imported and prepared for review."""
+from pathlib import Path
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Input, Button, Checkbox, Static
 from .checkbox import ExplicitCheckbox as Checkbox
@@ -77,7 +78,7 @@ class ExtensionsPanel(Vertical):
                         'Custom stimulus classes must be declared in the existing '
                         'laboratory stimulus_library.py; they are never silently copied.'
                     )
-                    self.app.inspect_source(__import__('pathlib').Path(imported['path']))
+                    self.app.inspect_source(Path(imported['path']))
                 return
             location = self.query_one('#extensions-root', Input).value
             if event.button.id == 'extensions-starter':
