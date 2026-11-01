@@ -128,7 +128,10 @@ def test_session_only_fixation_has_no_probe_and_tracks_selected_background(ident
     assert document['parameters']['background'] == background
     assert 'probe_present' not in document['parameters']
     if identity=='ellipse_major_axis':
-        assert {s:spec.stimulus_slots[s] for s in ('fixation','first','second')} == dict.fromkeys(('fixation','first','second'),'detection_scene')
+        assert spec.stimulus_defaults['probe'] == 'probe_line'
+        assert spec.stimulus_defaults['ellipse'] == 'ellipse_ring'
+        assert spec.stimulus_defaults['fixation'] == 'gaussian_scene_fixation'
+        assert 'first' not in spec.stimulus_slots and 'second' not in spec.stimulus_slots
 
 
 def test_all_official_openings_use_the_approved_stage_c_start():
