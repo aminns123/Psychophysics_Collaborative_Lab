@@ -82,10 +82,71 @@ def test_new_study_is_independent_and_uses_contrast_not_raw_increment():
     events = study.trial_events(values, cond)
     assert [a.name for a in events] == ["fixation", "interval_one", "inter_interval", "interval_two", "answer"]
     one, two = events[1].placements, events[3].placements
-    assert [p.slot for p in one] == ["ring", "probe", "fixation"]
-    assert [p.slot for p in two] == ["ring", "fixation"]
-    assert one[0].y_deg == values["ellipse_centre_y_deg"]
-    assert one[1].y_deg == values["ellipse_centre_y_deg"]
+    assert [p.slot for p in one] == ["ellipse", "probe", "fixation"]
+    assert [p.slot for p in two] == ["ellipse", "fixation"]
+    assert one[0].y_deg == values["ring_centre_y_deg"]
+    assert one[1].y_deg == values["ring_centre_y_deg"]
+
+    # A single scientist-authored mapping defines names *and* compatible
+    # stimulus families, rather than duplicate STIMULUS_SLOTS/DEFAULTS.
+    assert set(study.STIMULI) == {"ellipse", "probe", "fixation"}
+    assert study.SPEC.stimulus_defaults == study.STIMULI
+    assert study.SPEC.stimulus_slots["fixation"] == "fixation"
+
+
+def test_scientist_controls_reach_stimulus_parameters_and_placements():
+    from types import SimpleNamespace
+
+    changed = study.SPEC.normalise_values(study.SPEC.field_defaults() | {
+        "ring_radius_deg": 6, "ring_orientation_deg": 45,
+        "ring_inset_deg": .3, "aspect_ratios": "0.5",
+        "ring_centre_x_deg": 1.25, "ring_centre_y_deg": -.7,
+        "probe_offset_x_deg": -.3, "probe_offset_y_deg": .4,
+        "probe_length_deg": .6, "probe_width_deg": .07,
+        "fixation_sigma_deg": .06, "fixation_display_contrast": .45,
+        "background_intensity": .25, "ring_display_contrast": .5,
+    }, use_config=False)
+    condition = study.make_conditions(changed)[0] | {"target": 0, "contrast": .2}
+
+    class StubRun:
+        values = changed
+        def stimulus_parameters(self, _slot, **overrides):
+            return overrides
+
+    parameters = study.prepare_stimuli(StubRun(), condition, {})
+    assert parameters["ellipse"]["outer_radius_deg"] == 6
+    assert parameters["ellipse"]["orientation_deg"] == 45
+    assert parameters["ellipse"]["inner_inset_deg"] == .3
+    assert parameters["ellipse"]["display_contrast"] == .5
+    assert parameters["probe"]["display_contrast"] == .2
+    assert parameters["probe"]["width_deg"] == .07
+    assert parameters["fixation"]["sigma_deg"] == .06
+    assert parameters["fixation"]["display_contrast"] == .45
+
+    first, second = study.trial_events(changed, condition)[1::2]
+    assert first.placements[0].x_deg == pytest.approx(1.25)
+    assert first.placements[0].y_deg == pytest.approx(-.7)
+    assert first.placements[1].x_deg == pytest.approx(.95)
+    assert first.placements[1].y_deg == pytest.approx(-.3)
+    assert [item.slot for item in second.placements] == ["ellipse", "fixation"]
+
+
+def test_single_stimuli_mapping_rejects_unknowns_and_conflicts():
+    from psychophysics_lab.researcher import experiment
+    with pytest.raises(ValueError, match="both"):
+        experiment(id="temp_ellipse", name="Bad", description="", procedure=None,
+                   stimuli=study.STIMULI, stimulus_defaults=study.STIMULI)
+    with pytest.raises(ValueError, match="slot name"):
+        experiment(id="temp_ellipse", name="Bad", description="", procedure=None,
+                   stimuli={"not-a-slot": "ellipse_ring"})
+
+
+def test_rotating_ellipse_changes_mask_without_changing_sagittal_gamut():
+    p = {field.key: field.default for field in EllipseRing.PARAMETERS}
+    p.update(outer_radius_deg=6, aspect_ratio=.5, orientation_deg=90)
+    x = np.array([[0., 0.]])
+    y = np.array([[5.95, 6.2]])
+    np.testing.assert_array_equal(EllipseRing.alpha(p, x, y), [[1., 0.]])
 
 
 def test_constant_stimuli_plan_and_invalid_geometry():
