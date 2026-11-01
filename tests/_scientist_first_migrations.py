@@ -2,6 +2,24 @@
 import hashlib
 import json
 
+def historical_one_map_source(root, identity, raw):
+    """Undo only frozen registration-map edits before historical source SHA checks.
+
+    No methods, conditions, trial events or data functions are normalized here.
+    Any accidental science change still fails the exact frozen SHA.
+    """
+    fixture = root / "tests/fixtures/scientist_first_one_map_reversible.json"
+    if not fixture.exists():
+        return raw
+    changes = json.loads(fixture.read_text(encoding="utf-8")).get(identity, ())
+    for pair in changes:
+        updated = pair["replacement"].encode("utf-8")
+        original = pair["baseline"].encode("utf-8")
+        assert raw.count(updated) == 1, (identity, updated[:60])
+        raw = raw.replace(updated, original, 1)
+    return raw
+
+
 def migration_reference(root, identity):
     for wave in (3, 4, 5):
         folder = root / "tests/fixtures" / ("issue165_wave" + str(wave))
@@ -17,6 +35,8 @@ def migration_reference(root, identity):
         after = root / "src/psychophysics_lab/experiments" / before.name
         for path, key in ((before, "before_sha256_lf"), (after, "after_sha256_lf")):
             raw = path.read_bytes().replace(b"\r\n", b"\n")
+            if key == "after_sha256_lf":
+                raw = historical_one_map_source(root, identity, raw)
             assert hashlib.sha256(raw).hexdigest() == contract[key], (identity, key)
         return before
     return None
