@@ -905,12 +905,17 @@ class EllipseRing(LibraryStimulus):
     def geometry(p):
         return {"raster_extent_deg": max(p["size_deg"], 2*p["outer_radius_deg"])}
 
+    @staticmethod
+    def visible(p, x, y, steps):
+        return EllipseRing.alpha(p, x, y) > 0
+
     SPEC = StimulusSpec(
         id="ellipse_ring", display_name="Ellipse ring",
         description="One elliptic outline, outer semi-axis and inner axial inset in degrees.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="ellipse_ring", render=render,
         validator=validate, geometry=geometry.__func__, layer_alpha=alpha.__func__,
+        required_support=visible.__func__,
         calibration_requirements=("geometry", "luminance"),
     )
 
