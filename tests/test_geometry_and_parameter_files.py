@@ -118,7 +118,8 @@ def test_review_uses_actual_trial_overrides_and_keeps_base_inputs_editable():
     description = describe_settings(baseline,values,snapshots)
     assert description['stimuli']['probe']['length_deg'] == 1.2
     controlled = parameter_sources(description,'probe')
-    assert {'background','display_contrast'} <= controlled
+    assert {'display_contrast'} <= controlled
+    assert description['stimuli']['probe']['background'] == values['background_intensity']
     assert 'length_deg' not in controlled
     # Orientation is read as an input before its sign is set per trial.
     orientation = get_experiment('orientation_task')
