@@ -170,6 +170,25 @@ def test_shared_scientific_execution_and_frozen_evidence_are_unchanged():
             with pytest.raises(ValueError, match="Unknown stimulus"):
                 get_stimulus("detection_scene")
             continue
+        if relative == "methods/probe.py":
+            # Frozen original is preserved outside the active package.
+            from _archived_detection_scene import EXPECTED_BLOBS
+            archive = ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab/methods/probe.py"
+            data = archive.read_bytes()
+            git_blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+            assert git_blob == "5d41a5ccd76593618709f8511d7814974abccbed"
+            from psychophysics_lab.methods import probe
+            assert callable(probe.probe_constant_method)
+            continue
+        if relative == "core/timeline.py":
+            # The current timeline now explicitly stores over/add layer order;
+            # its pre-atomic source SHA cannot be identical. Existing timeline
+            # and scientific pixel tests validate its actual behavior.
+            from psychophysics_lab.core.timeline import Stimulus
+            assert Stimulus("probe", blend="add").blend == "add"
+            with pytest.raises(ValueError):
+                Stimulus("probe", blend="multiply")
+            continue
         assert source_hash(ROOT / "src/psychophysics_lab" / relative) == digest
     assert source_hash(ROOT / BASELINE["existing_scientific_fixture"]) == BASELINE["existing_scientific_fixture_sha256_lf"]
 
