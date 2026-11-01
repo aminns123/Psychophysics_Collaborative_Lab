@@ -114,11 +114,13 @@ def display_degree_coordinates(profile, resolution, pixels, origin, placement):
     return np.meshgrid(x_deg, y_deg)
 
 
-def render_layered_phase(profile, resolution, phase, parameters_by_slot, background):
+def render_layered_phase(profile, resolution, phase, parameters_by_slot, background, *, require_gamut=True):
     """Render opt-in layers onto one shared pixel board in listed order.
 
     The existing opaque-only path remains untouched. This is the exact
     compositor used for a new modular experiment in native presentation.
+    require_gamut=False is reserved for safety preflight's unclipped endpoint;
+    presentation itself always uses the strict default.
     """
     from .layer_composition import compose_ordered_layers
     layers, geometries = [], []
@@ -143,7 +145,7 @@ def render_layered_phase(profile, resolution, phase, parameters_by_slot, backgro
         x, y = map(int, geometry["origin_px"])
         layers.append((x, y, array, alpha, layer_background, placement.blend))
         geometries.append(geometry)
-    x, y, result = compose_ordered_layers(layers, background)
+    x, y, result = compose_ordered_layers(layers, background, require_gamut=require_gamut)
     return x, y, result, geometries
 
 
