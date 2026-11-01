@@ -47,7 +47,7 @@ def test_refresh_button_returns_handoff_preserving_review_without_running(tmp_pa
         assert checked[0][0]['page'] == 'review'
         assert checked[0][0]['request']['participant_id'] == 'REFRESH'
         assert checked[0][0]['overrides']['max_trials'] == 3
-        assert 'first' in checked[0][0]['follow_defaults']
+        assert 'probe' in checked[0][0]['follow_defaults']
         assert not (tmp_path/'data'/'participants').exists()
     asyncio.run(scenario())
 
@@ -77,8 +77,8 @@ def test_restores_review_with_updated_class_defaults_and_back_configuration(tmp_
         async with app.run_test(size=(220,65)) as pilot:
             await configure(app, pilot)
             state = refresh.capture_state(app)
-        old = get_stimulus('detection_scene')
-        new = replace(old, parameters=tuple(replace(field, default=1.73) if field.key == 'probe_length_deg' else field
+        old = get_stimulus('probe_line')
+        new = replace(old, parameters=tuple(replace(field, default=1.73) if field.key == 'length_deg' else field
                                              for field in old.parameters))
         monkeypatch.setitem(sys.modules['psychophysics_lab.stimuli.registry']._REGISTRY, old.id, new)
         resumed = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/'data', refresh_state=state)
@@ -86,7 +86,7 @@ def test_restores_review_with_updated_class_defaults_and_back_configuration(tmp_
             await pilot.pause()
             assert isinstance(resumed.screen, ReviewScreen)
             request = resumed.screen.request
-            assert request.stimulus_snapshots['first']['document']['parameters']['probe_length_deg'] == 1.73
+            assert request.stimulus_snapshots['probe']['document']['parameters']['length_deg'] == 1.73
             assert request.experiment_values['probe_vertical_offset_deg'] == .2
             assert request.experiment_values['max_trials'] == 3
             resumed.verify_settings_current(request)
@@ -97,8 +97,8 @@ def test_restores_review_with_updated_class_defaults_and_back_configuration(tmp_
             await pilot.pause()
             resumed.screen.query_one('#review-edit-inputs', Button).press()
             await pilot.pause()
-            panel = next(p for p in resumed.screen.query(StimulusParametersPanel) if p.slot == 'first')
-            assert panel.current()['document']['parameters']['probe_length_deg'] == 1.73
+            panel = next(p for p in resumed.screen.query(StimulusParametersPanel) if p.slot == 'probe')
+            assert panel.current()['document']['parameters']['length_deg'] == 1.73
     asyncio.run(scenario())
 
 
@@ -108,17 +108,17 @@ def test_saved_json_wins_over_class_defaults_and_is_reloaded(tmp_path):
         async with app.run_test(size=(220,65)) as pilot:
             config = await configure(app, pilot, False)
             path = tmp_path/'chosen dimensions.json'
-            stimulus = get_stimulus('detection_scene')
+            stimulus = get_stimulus('probe_line')
             path.write_text(json.dumps(document_for(stimulus)), encoding='utf-8')
-            next(p for p in config.query(StimulusParametersPanel) if p.slot=='first').load(path)
+            next(p for p in config.query(StimulusParametersPanel) if p.slot=='probe').load(path)
             config.query_one('#review', Button).press()
             await pilot.pause()
             state = refresh.capture_state(app)
         document = document_for(stimulus)
-        document['parameters']['probe_length_deg'] = 2.1
+        document['parameters']['length_deg'] = 2.1
         path.write_text(json.dumps(document), encoding='utf-8')
         prepared = refresh.prepare_state(state, ROOT)
-        assert prepared['prepared_request']['stimulus_snapshots']['first']['document']['parameters']['probe_length_deg'] == 2.1
+        assert prepared['prepared_request']['stimulus_snapshots']['probe']['document']['parameters']['length_deg'] == 2.1
         assert str(path) in prepared['files']
         path.write_text('{broken', encoding='utf-8')
         import pytest
@@ -187,7 +187,7 @@ def test_real_fresh_interpreter_reads_changed_python_and_reports_syntax_error(tm
     call=next(node for node in ast.walk(ast.parse(text)) if isinstance(node,ast.Call)
               and isinstance(node.func,ast.Name) and node.func.id=='ConfigField'
               and node.args and isinstance(node.args[0],ast.Constant)
-              and node.args[0].value=='probe_length_deg')
+              and node.args[0].value=='length_deg')
     default=call.args[3]
     assert default.lineno==default.end_lineno
     lines=text.splitlines(keepends=True)
@@ -202,7 +202,7 @@ def test_real_fresh_interpreter_reads_changed_python_and_reports_syntax_error(tm
     path.write_text(json.dumps(state),encoding='utf-8')
     script=('import json,sys; from pathlib import Path; from psychophysics_lab.ui.refresh import prepare_state; '
             's=json.loads(Path(sys.argv[1]).read_text()); r=prepare_state(s,Path(s["repo_root"])); '
-            'print(r["prepared_request"]["stimulus_snapshots"]["first"]["document"]["parameters"]["probe_length_deg"])')
+            'print(r["prepared_request"]["stimulus_snapshots"]["probe"]["document"]["parameters"]["length_deg"])')
     result=subprocess.run([sys.executable,'-c',script,str(path)],cwd=copied,
                           env=refresh._environment(copied,tmp_path/'changed-default-bytecode'),capture_output=True,text=True,timeout=45)
     assert result.returncode==0, result.stderr
