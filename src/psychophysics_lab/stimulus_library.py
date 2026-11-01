@@ -978,6 +978,50 @@ class ProbeLine(LibraryStimulus):
     )
 
 
+class GaussianSceneFixation(LibraryStimulus):
+    """Independent fixation preserving the historical untruncated Gaussian blend.
+
+    The old DetectionScene applied this at the end of the entire phase:
+        image = (1-alpha)*image + alpha*min(1, background + 0.09)
+    The amplitude is a *raw digital increment*, unlike newer headroom-normalised
+    GaussianFixationSpot. Keep both scientifically named conventions explicit.
+    """
+
+    PARAMETERS = (
+        ConfigField("size_deg", "Raster diameter", "float", 14.,
+                    minimum=.1, maximum=40, units="degrees"),
+        ConfigField("background", "Digital background", "float", .5,
+                    minimum=0, maximum=1, units="digital intensity"),
+        ConfigField("increment", "Fixation digital increment", "float", .09,
+                    minimum=0, maximum=1, units="digital increment"),
+        ConfigField("sigma_deg", "Gaussian fixation sigma", "float", .035,
+                    minimum=.001, maximum=1, units="degrees"),
+    )
+
+    @staticmethod
+    def alpha(p, x, y):
+        return np.exp(-(x*x + y*y)/(2*p["sigma_deg"]**2))
+
+    @staticmethod
+    def render(p, x, y):
+        mark = min(1., p["background"] + p["increment"])
+        return p["background"] + (mark-p["background"]) * GaussianSceneFixation.alpha(p, x, y)
+
+    @staticmethod
+    def geometry(p):
+        return {"raster_extent_deg": p["size_deg"]}
+
+    SPEC = StimulusSpec(
+        id="gaussian_scene_fixation",
+        display_name="Gaussian fixation (raw digital increment)",
+        description="Independent untruncated Gaussian mark; historical last-layer blend.",
+        source_path="src/psychophysics_lab/stimulus_library.py",
+        parameters=PARAMETERS, family="fixation", render=render,
+        geometry=geometry.__func__, layer_alpha=alpha.__func__,
+        calibration_requirements=("geometry", "luminance"),
+    )
+
+
 class GaussianFixationSpot(LibraryStimulus):
     """One Gaussian fixation mark; spatially localized alpha, not an opaque patch."""
 
