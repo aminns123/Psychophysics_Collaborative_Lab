@@ -32,16 +32,17 @@ def profile(**updates):
 @pytest.mark.parametrize('length', [.133, 1.2])
 def test_probe_length_matches_physical_monitor_geometry_at_centre_and_eccentricity(centre, length):
     p = profile()
-    stimulus = get_stimulus('detection_scene')
-    values = document_for(stimulus)['parameters'] | {'size_deg':4.,'probe_length_deg':length,
-        'probe_width_deg':1., 'probe_x_deg':0., 'probe_y_deg':0., 'contrast':.1}
+    stimulus = get_stimulus('probe_line')
+    values = document_for(stimulus)['parameters'] | {
+        'size_deg': 4., 'length_deg': length, 'width_deg': 1.,
+        'display_contrast': .2,
+    }
     size = validate_geometry(p,(2560,1440),stimulus,values)
-    placement = Stimulus('first',0.,centre)
+    placement = Stimulus('probe',0.,centre)
     origin = placement_pixels(p,(2560,1440),size,placement)
     coordinates = display_degree_coordinates(p,(2560,1440),size,origin,placement)
     present = render_values(stimulus,values,pixels=size,coordinates=coordinates)
-    absent = render_values(stimulus,values | {'probe_present':False},pixels=size,coordinates=coordinates)
-    rows = np.flatnonzero(np.max(present-absent,axis=1)>1e-10)
+    rows = np.flatnonzero(np.max(present-values['background'],axis=1)>1e-10)
     # An area-covered boundary can include one partially filled pixel per edge.
     pitch = p.physical_height_m/1440
     lower = math.degrees(math.atan((origin[1]+rows[0]-720)*pitch/.5))
@@ -85,36 +86,40 @@ def test_each_axis_and_frequency_use_real_pixel_pitch_and_distance():
 
 
 def test_old_detection_snapshots_fill_only_the_previously_hardcoded_dimensions():
+    from _archived_detection_scene import DetectionScene
+
     spec = get_experiment('line_position_baseline')
-    stimulus = get_stimulus('detection_scene')
-    document = document_for(stimulus)
+    old_stimulus = DetectionScene.SPEC
+    document = document_for(old_stimulus)
     document['parameters'].pop('probe_length_deg')
     document['parameters'].pop('probe_width_deg')
-    old = snapshot(document,file_identity='old.json')
-    result = resolve_stimuli(spec,spec.field_defaults() | {'probe_vertical_offset_deg':.2},
-                            {'first':old},repo_root=ROOT)['first']
-    assert result['document']['parameters']['probe_length_deg'] == .133
-    assert result['document']['parameters']['probe_width_deg'] == .013
-    assert result['source_resolved_sha256'] == old['resolved_sha256']
+    old = snapshot(document, file_identity='old.json')
+    values = spec.field_defaults() | {'probe_vertical_offset_deg': .2}
+    result = resolve_stimuli(
+        spec, values, {'fixation': old, 'first': old}, repo_root=ROOT
+    )['probe']
+    assert result['document']['parameters']['length_deg'] == .133
+    assert result['document']['parameters']['width_deg'] == .013
+    assert result['migrated_from']['first']['resolved_sha256'] == old['resolved_sha256']
     assert result['resolved_sha256'] == digest(result['document'])
     assert 'probe_length_deg' not in old['document']['parameters']
     missing_original = dict(result['document']['parameters'])
     missing_original.pop('background')
-    with pytest.raises(ValueError,match='missing parameters'):
-        stimulus.validate_parameters(missing_original)
+    with pytest.raises(ValueError, match='missing parameters'):
+        get_stimulus('probe_line').validate_parameters(missing_original)
 
 
 def test_review_uses_actual_trial_overrides_and_keeps_base_inputs_editable():
     baseline = get_experiment('line_position_baseline')
     values = baseline.normalise_values(baseline.field_defaults() | {'probe_vertical_offset_deg':.2})
     snapshots = resolve_stimuli(baseline,values,repo_root=ROOT)
-    snapshots['first'] = snapshot(document_for(get_stimulus('detection_scene'),
-        snapshots['first']['document']['parameters'] | {'probe_length_deg':1.2}),file_identity='long.json')
+    snapshots['probe'] = snapshot(document_for(get_stimulus('probe_line'),
+        snapshots['probe']['document']['parameters'] | {'length_deg':1.2}),file_identity='long.json')
     description = describe_settings(baseline,values,snapshots)
-    assert description['stimuli']['first']['probe_length_deg'] == 1.2
-    controlled = parameter_sources(description,'first')
-    assert {'background','contrast','probe_x_deg','probe_y_deg','ring_present','flanker_present'} <= controlled
-    assert 'probe_length_deg' not in controlled
+    assert description['stimuli']['probe']['length_deg'] == 1.2
+    controlled = parameter_sources(description,'probe')
+    assert {'background','display_contrast'} <= controlled
+    assert 'length_deg' not in controlled
     # Orientation is read as an input before its sign is set per trial.
     orientation = get_experiment('orientation_task')
     values = orientation.field_defaults()
@@ -165,22 +170,22 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
             assert screen.query_one('#field-fixation-ms',Input).value == '750'
             # Also edit through the TUI: the same reviewed file must be updated.
             screen.query_one('#field-stimulus-ms',Input).value = '450'
-            panel = next(p for p in screen.query(StimulusParametersPanel) if p.slot=='first')
-            panel.query_one('#stimulus-file-first',Button).press()
+            panel = next(p for p in screen.query(StimulusParametersPanel) if p.slot=='probe')
+            panel.query_one('#stimulus-file-probe',Button).press()
             await pilot.pause()
             target_path = opened[-1]
             target = json.loads(target_path.read_text())
-            target['parameters']['probe_length_deg'] = 1.2
+            target['parameters']['length_deg'] = 1.2
             target_path.write_text(json.dumps(target),encoding='utf-8')
-            panel.query_one('#stimulus-file-reload-first',Button).press()
+            panel.query_one('#stimulus-file-reload-probe',Button).press()
             await pilot.pause()
-            assert panel.current()['document']['parameters']['probe_length_deg'] == 1.2
+            assert panel.current()['document']['parameters']['length_deg'] == 1.2
             screen.query_one('#review',Button).press()
             await pilot.pause()
             assert isinstance(app.screen,ReviewScreen)
             table = app.screen.query_one('#resolved-settings-table',DataTable)
             displayed = str([table.get_row_at(i) for i in range(table.row_count)])
-            assert 'Probe length' in displayed and '1.2' in displayed and 'detection_scene' in displayed
+            assert 'Probe length' in displayed and '1.2' in displayed and 'probe_line' in displayed
             assert '450' in displayed and '750' in displayed and 'consecutive_up_down' in displayed
             assert json.loads(path.read_text())['values']['stimulus_ms'] == 450
             launch['request'] = app.screen.request
@@ -193,12 +198,12 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
     seen = []
     original = RunContext.trial
     def capture(run,*args,**kwargs):
-        seen.append(kwargs['parameters_by_slot']['first'])
+        seen.append(kwargs['parameters_by_slot']['probe'])
         return original(run,*args,**kwargs)
     monkeypatch.setattr(RunContext,'trial',capture)
     artifacts,_ = simulate(repo_root=ROOT,data_root=tmp_path/'simulation',experiment_id=request.experiment_id,
         values=request.experiment_values,stimulus_snapshots=request.stimulus_snapshots,analyse=False)
-    assert len(seen)==3 and all(p['probe_length_deg']==1.2 for p in seen)
+    assert len(seen)==3 and all(p['length_deg']==1.2 for p in seen)
     # JSON sets the first strength; subsequent trials follow accepted adaptive
     # updates. Verify every rendered value and every transition, not a constant.
     import csv
@@ -209,7 +214,7 @@ def test_literal_json_and_tui_routes_feed_same_review_and_actual_run(tmp_path,mo
     for parameters, row in zip(seen, rows):
         identity = row['staircase_id']
         expected = expected_by_staircase.get(identity, .04)
-        assert parameters['contrast'] == pytest.approx(expected)
+        assert parameters['display_contrast']*(1-parameters['background']) == pytest.approx(expected)
         assert float(row['presented_display_contrast']) == pytest.approx(expected)
         expected_by_staircase[identity] = float(row['next_display_contrast'])
     traces=json.loads((artifacts.run_directory/'trial_actions.json').read_text())['trials']
