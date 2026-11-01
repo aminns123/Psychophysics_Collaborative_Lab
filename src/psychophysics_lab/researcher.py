@@ -25,8 +25,34 @@ def experiment(*, id, name, description, procedure, fields=(), adaptive=None,
                acquisition_block_reason="", historical=False, scientific_spec=None,
                trial_column_overrides=None, migrate_values=None, data_directory_name="",
                method_planner=None, method_reviewer=None, stimulus_parameter_controls=None,
-               session_start=(), stimulus_field_bindings=None):
-    """Build a registered experiment without the historical four-file adapter."""
+               session_start=(), stimulus_field_bindings=None, stimuli=None):
+    """Build a registered experiment without the historical four-file adapter.
+
+    New science-first experiments may pass one STIMULI mapping from slot name
+    to stimulus ID. The framework derives compatible slot families from the
+    actual class specifications; old explicit slots/defaults remain supported.
+    """
+    if stimuli is not None:
+        if stimulus_slots is not None or stimulus_defaults is not None:
+            raise ValueError("Use stimuli=STIMULI or explicit slots/defaults, never both.")
+        if not isinstance(stimuli, Mapping) or not stimuli:
+            raise ValueError("STIMULI must be a nonempty mapping of slot names to IDs.")
+        from .stimulus_library import library_stimulus_specs
+        from .stimuli.registry import get_stimulus
+        # Official classes may not yet be registry-loaded while the experiment
+        # module is imported. Their class specs are already safely inspectable.
+        builtin = {spec.id: spec for spec in library_stimulus_specs()}
+        stimulus_defaults = dict(stimuli)
+        stimulus_slots = {}
+        for slot, identity in stimuli.items():
+            if not isinstance(slot, str) or not slot.isidentifier():
+                raise ValueError(f"Invalid stimulus slot name: {slot!r}.")
+            if not isinstance(identity, str) or not identity:
+                raise ValueError(f"Invalid stimulus ID for slot {slot!r}.")
+            spec = builtin.get(identity) or get_stimulus(identity)
+            if not spec.family:
+                raise ValueError(f"{identity}: declared stimulus has no selection family.")
+            stimulus_slots[slot] = spec.family
     if responses is not None and "response_keys" not in {item.key for item in fields}:
         fields = tuple(fields) + (ConfigField("response_keys", "Response keys (in alternative order: " + ", ".join(responses.alternatives) + ")", "text", default=",".join(responses.keys), section="Response mapping", help_text='Keys assigned in the displayed response-alternative order. Changing a key changes input mapping, not which alternative is scientifically correct.'),)
     dictionary = {}

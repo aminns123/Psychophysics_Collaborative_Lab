@@ -28,7 +28,11 @@ CASES = [(name, method, seed) for name in OFFICIAL
 
 
 def test_matrix_covers_the_complete_official_registry():
-    assert {s.id for s in list_experiments() if not s.origin_namespace} == set(OFFICIAL)
+    # Ten established studies are covered by the frozen scientific matrix;
+    # the new modular ellipse has separate focused visual/method tests.
+    assert {s.id for s in list_experiments() if not s.origin_namespace} == (
+        set(OFFICIAL) | {"ellipse_modular_centre"}
+    )
 
 
 def settings(identity, method, seed=19):

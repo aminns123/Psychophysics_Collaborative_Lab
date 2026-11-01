@@ -125,11 +125,48 @@ def _execute_user_action(repo_root: Path, operation: str, identity: str, values:
         if not spec.supports_simulation:
             raise ValueError("This experiment does not declare virtual observer support.")
         selected = spec.normalise_values(values)
+        from .experiment_checks import (
+            check_experiment, format_checks, software_check_payload,
+        )
+        checks = check_experiment(spec, selected)
+        print("Reusable software-contract checks (no researcher-written pytest required):")
+        print(format_checks(checks))
+        if not all(item.passed for item in checks):
+            raise ValueError("Generic experiment contract failed; edit the listed scientific source/settings and rerun Test.")
         artifacts, _ = simulate(repo_root=repo_root, data_root=root, experiment_id=identity,
                                 values=selected, analyse=False)
-        failures = [check for check in validate_run(artifacts.run_directory) if not check.passed]
-        if artifacts.status != "completed" or failures:
-            raise ValueError(f"Simulation status: {artifacts.status}; validation failures: {failures}")
+        run_checks = validate_run(artifacts.run_directory)
+        failures = [check for check in run_checks if not check.passed]
+        complete = artifacts.status == "completed"
+        from .data.session import atomic_write_json
+        report = root / "software_test_reports" / (spec.id + ".json")
+        report.parent.mkdir(parents=True, exist_ok=True)
+        evidence = software_check_payload(
+            spec, checks,
+            synthetic_run={
+                "passed": complete and not failures,
+                "status": artifacts.status,
+                "accepted_trials": artifacts.accepted_trials,
+                "run_directory": str(artifacts.run_directory),
+            },
+            data_checks=run_checks,
+        )
+        # The human's reference snapshots retain the exact selected science,
+        # synthetic seed and active scientific source dependencies. Never store
+        # any participant data or silently mark a reference as approved.
+        from .experiment_reference import source_digest
+        evidence.update(
+            selected_values=dict(selected), synthetic_seed=123,
+            source_digest=source_digest(repo_root, spec),
+        )
+        atomic_write_json(report, evidence)
+        print(f"Saved software-only report: {report}")
+        print(f"Saved-run integrity checks: {len(run_checks)-len(failures)}/{len(run_checks)} passed")
+        if not complete or failures:
+            raise ValueError(
+                f"Synthetic experiment was not complete: {artifacts.status}; "
+                f"saved-run validation failures: {failures}. This source is NOT Ready."
+            )
         try:
             storyboard = preview_trial_storyboard(repo_root, spec, selected,
                 root / "previews" / (identity + "_timeline.png"))
@@ -143,5 +180,8 @@ def _execute_user_action(repo_root: Path, operation: str, identity: str, values:
             extensions.record_test(repo_root, "experiment", identity, before_extension)
         print("VALID virtual run:", artifacts.run_directory)
         print("NO human participant / physical display / verified calibration was used.")
+        print("Scientific acceptance remains the researcher's responsibility: verify")
+        print("stimulus appearance/overlap, conditions, contrast units, apparatus and timing.")
+        print("Passing software checks and Mark Ready do NOT qualify a human acquisition.")
         return 0
     raise ValueError("Unknown developer action; use 'preview' or 'test'.")
