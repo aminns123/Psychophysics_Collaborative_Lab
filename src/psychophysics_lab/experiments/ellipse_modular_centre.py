@@ -182,8 +182,8 @@ STIMULUS_SLOTS = {
 STIMULUS_DEFAULTS = {
     "ring": "ellipse_ring",
     "probe": "probe_line",
-    "fixation": "layer_gaussian_fixation",
-    "ready_fixation": "layer_gaussian_fixation",
+    "fixation": "gaussian_fixation_spot",
+    "ready_fixation": "gaussian_fixation_spot",
 }
 PARADIGM = "two_interval_forced_choice"
 FIELDS += (
