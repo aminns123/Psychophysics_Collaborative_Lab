@@ -32,6 +32,7 @@ jobs:
       - name: Check live experiment/stimulus contracts and historical pixel oracle
         run: |
           python -m pytest -q -x tests/test_atomic_configuration_migration.py tests/test_atomic_stimulus_parity.py tests/test_scientist_first_stimulus_mapping.py tests/test_modular_ellipse_layers.py tests/test_viewport_clipping.py tests/test_shared_contrast_methods.py tests/test_universal_probe_contrast.py tests/test_stage_b_event_first.py::test_scientific_function_bodies_are_unchanged_and_trial_definition_is_unique tests/test_stage_c_event_first.py::test_scientific_function_bodies_and_approved_authoring_contract tests/test_issue165_wave4.py::test_effective_review_plans_and_all_declared_contracts tests/test_issue165_wave5.py::test_effective_review_plans_and_all_declared_contracts
+          python -m pytest -q -x 'tests/test_issue165_wave4.py::test_frozen_complete_trials_and_every_scientific_observation[False-line_position_baseline-adaptive-0]' 'tests/test_issue165_wave4.py::test_frozen_complete_trials_and_every_scientific_observation[False-line_position_flanker-constant_stimuli-0]' 'tests/test_issue165_wave5.py::test_frozen_complete_trials_and_every_scientific_observation[False-ellipse_centre-adaptive-0]' 'tests/test_issue165_wave5.py::test_frozen_complete_trials_and_every_scientific_observation[False-ellipse_major_axis-constant_stimuli-0]'
 
   test:
     strategy:
