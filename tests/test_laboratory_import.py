@@ -6,6 +6,7 @@ generic mechanism which the TUI invokes for every laboratory experiment.
 from __future__ import annotations
 
 import json
+import ast
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,7 +14,7 @@ import pytest
 
 from psychophysics_lab import extensions
 from psychophysics_lab.laboratory_import import (
-    import_experiment, prepare_official_contribution,
+    import_experiment, prepare_official_contribution, create_experiment_starter,
 )
 
 
@@ -159,3 +160,35 @@ def test_contribution_preserves_local_id_and_includes_relevant_stimulus(tmp_path
     assert (lab / "stimulus_library.py").read_text() == stimulus_code
     with pytest.raises(ValueError, match="already exists"):
         prepare_official_contribution(tmp_path, identity)
+
+
+def test_new_scientist_starter_is_one_editable_a1_a2_b_file(tmp_path, lab):
+    result = create_experiment_starter(tmp_path, "ellipse_comparison")
+    assert result["id"] == "demolab__ellipse_comparison"
+    assert result["status"] == "draft"
+    path = lab / "experiments" / "demolab__ellipse_comparison.py"
+    assert Path(result["path"]) == path
+    source = path.read_text(encoding="utf-8")
+    ast.parse(source)
+    assert 'id="demolab__ellipse_comparison"' in source
+    assert 'source_paths=("experiments/demolab__ellipse_comparison.py",)' in source
+    assert "STIMULI =" in source
+    assert source.index("# A1") < source.index("# A2") < source.index("# B")
+    assert "raise NotImplementedError" in source  # no accidental Ready!
+    with pytest.raises(ValueError, match="already exists"):
+        create_experiment_starter(tmp_path, "ellipse_comparison")
+    assert path.read_text(encoding="utf-8") == source
+
+
+@pytest.mark.parametrize("bad", ["", "UpperCase", "../traversal", "a/b", "demolab__prefix", "a"*120])
+def test_new_scientist_starter_rejects_bad_identity_without_writing(tmp_path, lab, bad):
+    with pytest.raises(ValueError):
+        create_experiment_starter(tmp_path, bad)
+    assert not list((lab / "experiments").glob("*.py"))
+
+
+def test_new_scientist_starter_requires_explicitly_enabled_trusted_root(tmp_path, lab, monkeypatch):
+    monkeypatch.setattr(extensions, "configured", lambda repo, data_root=None: None)
+    with pytest.raises(ValueError, match="trust"):
+        create_experiment_starter(tmp_path, "new_study")
+    assert not list((lab / "experiments").glob("*.py"))
