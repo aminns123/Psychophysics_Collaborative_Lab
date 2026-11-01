@@ -59,12 +59,19 @@ def install_archived_detection_reference(patch):
 @contextmanager
 def reference(patch, wave, identity, old, opening=True):
     registry.list_experiments()
-    if old and wave in (4, 5):
-        install_archived_detection_reference(patch)
     parent=importlib.import_module('psychophysics_lab.experiments')
     names = ('contrast_sensitivity','contrast_sensitivity_windowed') if wave==3 else (identity,)
+    # Import current authored modules *before* temporarily overriding
+    # historical shared methods. Otherwise a cold test registry can bind the
+    # archived method functions permanently into a live module on import.
+    live_modules = {
+        name: importlib.import_module('psychophysics_lab.experiments.'+name)
+        for name in names
+    }
+    if old and wave in (4, 5):
+        install_archived_detection_reference(patch)
     for name in names:
-        live=importlib.import_module('psychophysics_lab.experiments.'+name)
+        live=live_modules[name]
         module=live
         if old:
             path=ROOT/'tests/fixtures'/('issue165_wave'+str(wave))/(name+'.py')
