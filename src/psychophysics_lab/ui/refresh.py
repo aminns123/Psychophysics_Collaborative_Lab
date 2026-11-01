@@ -139,7 +139,8 @@ def prepare_state(state, root):
               else spec.field_defaults() | state["overrides"])
     stimuli = dict(state["stimuli"])
     for slot in state["follow_defaults"]:
-        if slot not in spec.stimulus_slots:
+        if (slot not in spec.stimulus_slots or
+                stimuli[slot]["document"]["stimulus_id"] == "detection_scene"):
             # Historical snapshots are translated below, never rebound to a
             # new module's defaults just because an old handoff said "follow".
             continue
@@ -149,7 +150,8 @@ def prepare_state(state, root):
         path = Path(name)
         raw = path.read_bytes()
         document = json.loads(raw.decode("utf-8-sig"))
-        if slot in spec.stimulus_slots:
+        if (slot in spec.stimulus_slots and
+                document["stimulus_id"] != "detection_scene"):
             stimuli[slot] = load_parameters(path, get_stimulus(document["stimulus_id"]))
         elif (slot in {"first", "second", "fixation"}
               and spec.id in {"line_position_baseline", "line_position_flanker",
