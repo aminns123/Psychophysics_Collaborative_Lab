@@ -31,9 +31,33 @@ The generic Test now has these automated stages:
    promoted to software Ready. Source/configuration changes require retesting.
 
 **No custom Python test file is necessary for a new researcher experiment.**
-Maintainers *should* still write focused automated tests for shared core
-algorithms and official scientifically frozen protocols, where regressions
-cannot be detected from one synthetic run alone.
+Maintainers retain generic automated checks for shared algorithms, while
+researchers can now create their own **one-click behavioural regression
+reference** without ever writing test code.
+
+### Save and compare a reference — entirely from the TUI
+
+After a successful **Simulate / validate**, select **Save Test as reference**.
+PsyCoLab stores the selected scientific settings, synthetic observer seed,
+source dependencies and SHA-256 digests of canonical trials and trial-event
+journals in `PsyCoLab_USER_env_data/scientific_references/<experiment-id>/`.
+This does **not** copy participant data or write generated tests into the
+Git repository. Earlier references are never overwritten.
+
+After modifying a stimulus or experiment source, choose
+**Compare with reference**. PsyCoLab reruns the current experiment using the
+existing synthetic test procedure and compares the newest successful run
+with the last saved reference. It shows which settings, trial events, data
+files, responses or source dependencies changed. The scientist decides
+whether a difference was intentional; a changed scientific protocol may
+need a new experiment identity and new reference. The same-seed reference
+does **not** prove geometry, optical luminance, display timing or actual
+human stimulus suitability.
+
+This is a first no-code regression facility, **not a replacement for the
+maintainer's tests of shared low-level algorithms, historical source
+compatibility and safety properties**. It can later be extended to compare
+user-selected multiple test profiles and actual rendered image samples.
 
 A passed Test / Ready result is not an ethical clearance, monitor qualification,
 hardware timing measurement, scientific hypothesis test or certification that
