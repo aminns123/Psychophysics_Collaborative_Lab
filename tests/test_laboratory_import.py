@@ -64,14 +64,14 @@ def test_bad_namespace_and_missing_spec_rejected_without_writes(tmp_path, lab):
 def test_conventional_spec_id_mismatch_is_explained_before_copy(tmp_path, lab):
     file = tmp_path / "demolab__ellipse.py"
     file.write_text(
-        'SPEC = experiment(id="ellipse", name="An ellipse")\\n', encoding="utf-8"
+        'SPEC = experiment(id="ellipse", name="An ellipse")\n', encoding="utf-8"
     )
     with pytest.raises(ValueError, match="SPEC.id"):
         import_experiment(tmp_path, file)
     file.write_text(
-        'def definition(identity="ellipse"):\\n'
-        '    return experiment(id=identity)\\n'
-        'SPEC = definition()\\n', encoding="utf-8"
+        'def definition(identity="ellipse"):\n'
+        '    return experiment(id=identity)\n'
+        'SPEC = definition()\n', encoding="utf-8"
     )
     with pytest.raises(ValueError, match="default ID"):
         import_experiment(tmp_path, file)
@@ -135,13 +135,16 @@ def test_contribution_preserves_local_id_and_includes_relevant_stimulus(tmp_path
         lambda name: SimpleNamespace(
             origin_namespace="demolab", historical=False,
             stimulus_defaults={"ellipse": "demolab__ellipse_ring", "fixation": "fixation_cross"},
+            source_paths=("experiments/demolab__ellipse.py",),
+            default_config=None,
         ),
     )
     monkeypatch.setattr(
         stimuli, "get_stimulus",
         lambda name: SimpleNamespace(
             origin_namespace="demolab" if name.startswith("demolab__") else "",
-            id=name,
+            id=name, source_path="stimulus_library.py",
+            source_dependencies=(), default_config=None,
         ),
     )
     folder = prepare_official_contribution(tmp_path, identity)
