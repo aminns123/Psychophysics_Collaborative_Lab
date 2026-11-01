@@ -85,10 +85,12 @@ FIELDS = (
                 help_text="Adaptive strength begins here; a log staircase needs a positive value."),
 
     # Fixation (the same class for session start and each trial).
-    ConfigField("fixation_x_deg", "Fixation X", "float", 0.,
-                minimum=-20, maximum=20, units="degrees", section="Fixation"),
-    ConfigField("fixation_y_deg", "Fixation Y", "float", 0.,
-                minimum=-20, maximum=20, units="degrees", section="Fixation"),
+    ConfigField("fixation_x_deg", "Trial fixation X", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Fixation",
+                help_text="Trial fixation moves here; once-only session readiness is centred on the screen."),
+    ConfigField("fixation_y_deg", "Trial fixation Y", "float", 0.,
+                minimum=-20, maximum=20, units="degrees", section="Fixation",
+                help_text="Trial fixation moves here; once-only session readiness is centred on the screen."),
     ConfigField("fixation_sigma_deg", "Gaussian fixation sigma", "float", .035,
                 minimum=.005, maximum=.1, units="degrees", section="Fixation"),
     ConfigField("fixation_display_contrast", "Fixation display contrast", "float", .18,
@@ -263,7 +265,7 @@ def validate_settings(values):
             yield "Each inner ellipse semi-axis must exceed the selected axial inset."
     except (ValueError, TypeError, OverflowError):
         yield "Ellipse ratios must be finite comma-separated numbers."
-    if values["starting_probe_contrast"] <= 0:
+    if values["contrast_method"] == "adaptive" and values["starting_probe_contrast"] <= 0:
         yield "Adaptive log staircases need starting probe contrast above zero."
     if values["threshold_reversals"] > values["reversal_termination"]:
         yield "Threshold reversals cannot exceed staircase reversal termination."
