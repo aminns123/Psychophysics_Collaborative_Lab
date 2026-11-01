@@ -172,6 +172,18 @@ def test_scientific_interfaces_are_readable_without_identical_main_loops():
     procedures = []
     for identity in EXPERIMENTS:
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
+        if identity == "ellipse_modular_centre":
+            # New A1/A2/B study uses a generic contrast-method strategy. Do
+            # not demand deprecated make_trial/initialise_experiment aliases.
+            for public in ("trial_events", "interval_stimuli", "prepare_stimuli",
+                           "make_conditions", "interpret_response",
+                           "adaptive_method", "constant_method", "procedure"):
+                assert callable(getattr(module, public))
+            procedures.append(ast.dump(
+                ast.parse(inspect.getsource(module.procedure)).body[0],
+                include_attributes=False,
+            ))
+            continue
         for name, arguments in contracts.items():
             if name in {"update_experiment", "is_finished"} and not hasattr(module, name):
                 # A study using the public contrast-method strategy may own
