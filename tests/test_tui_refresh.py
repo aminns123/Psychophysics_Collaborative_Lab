@@ -184,7 +184,11 @@ def test_real_fresh_interpreter_reads_changed_python_and_reports_syntax_error(tm
     # Locate the actual default expression, independent of its value or
     # spelling (.133 and 0.133 are equally valid researcher edits).
     import ast
-    call=next(node for node in ast.walk(ast.parse(text)) if isinstance(node,ast.Call)
+    # Select the independent ProbeLine's field specifically: other library
+    # classes also declare length_deg and do not control this experiment.
+    probe_class = next(node for node in ast.parse(text).body
+                       if isinstance(node, ast.ClassDef) and node.name == 'ProbeLine')
+    call=next(node for node in ast.walk(probe_class) if isinstance(node,ast.Call)
               and isinstance(node.func,ast.Name) and node.func.id=='ConfigField'
               and node.args and isinstance(node.args[0],ast.Constant)
               and node.args[0].value=='length_deg')
