@@ -133,7 +133,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             field=next((field for field in stimulus.parameters if field.display_label==label),None)
             binding=parameter_controller(spec,slot,field.key) if field else None
             if field is None and label=="Stimulus" and slot not in sources["stimuli"] and snapshots[slot]["file_identity"]=="library_defaults":
-                targets.append(python(key="STIMULUS_DEFAULTS",note="Default stimulus selection is declared by the experiment Python"))
+                targets.append(python(key="STIMULI",note="Scientist-owned stimulus selection is declared by the experiment Python"))
             elif binding:
                 targets.append(experiment(binding))
             elif field and field.key in parameter_sources(description,slot):
