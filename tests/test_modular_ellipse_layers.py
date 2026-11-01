@@ -110,3 +110,34 @@ def test_old_scene_still_registered_under_legacy_id():
     from psychophysics_lab.stimulus_library import DetectionScene
     assert DetectionScene.SPEC.id == "detection_scene"
     assert DetectionScene.SPEC.layer_alpha is None
+
+
+@pytest.mark.parametrize("method", ["adaptive", "constant_stimuli"])
+def test_new_ellipse_synthetic_recording_for_both_methods(tmp_path, method):
+    import csv
+    from pathlib import Path
+    from simulations.run import simulate
+    from scripts.validate_run import validate_run
+
+    repo_root = Path(__file__).resolve().parents[1]
+    chosen = study.SPEC.field_defaults() | {
+        "contrast_method": method,
+        "aspect_ratios": "1",
+        "staircases_per_condition": 1,
+        "max_trials": 4,
+        "fixed_contrasts": "0.01,0.02",
+        "fixed_repetitions": 2,
+    }
+    artifact, _ = simulate(
+        repo_root=repo_root, data_root=tmp_path / "recorded",
+        experiment_id="ellipse_modular_centre", values=chosen,
+        seed=131, analyse=False,
+    )
+    assert artifact.accepted_trials == 4
+    assert not [check for check in validate_run(artifact.run_directory)
+                if not check.passed]
+    with artifact.trial_log_file.open(encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream, delimiter="\\t"))
+    assert rows and len(rows[0]) == 20
+    if method == "constant_stimuli":
+        assert {float(row["presented_display_contrast"]) for row in rows} == {.01, .02}
