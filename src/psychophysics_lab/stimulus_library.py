@@ -968,7 +968,7 @@ class ProbeLine(LibraryStimulus):
     )
 
 
-class LayerGaussianFixation(LibraryStimulus):
+class GaussianFixationSpot(LibraryStimulus):
     """One Gaussian fixation mark; spatially localized alpha, not an opaque patch."""
 
     PARAMETERS = (
@@ -990,7 +990,7 @@ class LayerGaussianFixation(LibraryStimulus):
 
     @staticmethod
     def render(p, x, y):
-        return p["background"] + LayerGaussianFixation.alpha(p, x, y) * (
+        return p["background"] + GaussianFixationSpot.alpha(p, x, y) * (
             p["display_contrast"] * (1-p["background"])
         )
 
@@ -999,7 +999,7 @@ class LayerGaussianFixation(LibraryStimulus):
         return {"raster_extent_deg": max(p["size_deg"], 8*p["sigma_deg"])}
 
     SPEC = StimulusSpec(
-        id="layer_gaussian_fixation", display_name="Gaussian fixation",
+        id="gaussian_fixation_spot", display_name="Gaussian fixation",
         description="Independent Gaussian fixation spot for ordered stimulus composition.",
         source_path="src/psychophysics_lab/stimulus_library.py",
         parameters=PARAMETERS, family="fixation", render=render,
