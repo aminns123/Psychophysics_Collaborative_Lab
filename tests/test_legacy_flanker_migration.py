@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.experiments import line_position_flanker as flanker
-from psychophysics_lab.stimulus_library import DetectionScene
+from _archived_detection_scene import DetectionScene, probe_limit
 
 
 @pytest.mark.parametrize("retired", [
@@ -25,7 +25,7 @@ def test_supported_flanker_trial_phase_order_and_response_mapping():
         "fixation_ms": 340, "stimulus_ms": 180,
         "flanker_cpd": 3.4, "probe_vertical_offset_deg":.5, "auditory_cues": False,
     })
-    phases = flanker.make_trial(values, {}).resolve(values).phases
+    phases = flanker.make_trial(values, {'x_deg': 0., 'target': 0, 'contrast': .01}).resolve(values).phases
     assert [(p.name, p.duration_ms) for p in phases] == [
         ("fixation", 340), ("probe", 180), ("answer", 0)
     ]
@@ -48,13 +48,15 @@ def test_flanker_frequency_is_an_independent_researcher_setting(cpd):
         def stimulus_parameters(self, slot, **kwargs):
             return kwargs
     stimuli = flanker.prepare_stimuli(Run(),condition,{})
-    assert stimuli["first"]["flanker_present"] is True
-    assert stimuli["first"]["flanker_cpd"] == cpd
-    assert stimuli["fixation"]["flanker_present"] is False
+    assert stimuli["flanker"]["spatial_frequency_cpd"] == cpd
+    assert stimuli["probe"]["display_contrast"] == pytest.approx(.02)
+    phase = next(p for p in flanker.trial_events(values, condition) if p.name == "probe")
+    assert phase.placements[0].slot == "flanker"
+    assert phase.placements[0].x_deg == -3.0
+    assert phase.placements[-1].slot == "fixation"
 
 
 def test_flanker_nominal_full_white_probe_allowed_when_spatially_separate():
-    from psychophysics_lab.experiments._internal.detection_limits import probe_limit
     import numpy as np
     p = {f.key:f.default for f in DetectionScene.PARAMETERS}
     p |= dict(background=.5, contrast=0., flanker_present=True,

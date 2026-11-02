@@ -111,7 +111,8 @@ def test_modern_first_reversal_matches_presented_visual_strength_and_primary_res
     captured=[]
     original=RunContext.trial
     def capture(run,timeline,**kwargs):
-        captured.append((kwargs['target'],kwargs['parameters_by_slot']))
+        from psychophysics_lab.core.timeline import as_trial_timeline
+        captured.append((kwargs['target'],kwargs['parameters_by_slot'],as_trial_timeline(timeline)))
         return original(run,timeline,**kwargs)
     monkeypatch.setattr(RunContext,'trial',capture)
     result,_=simulate(repo_root=ROOT,data_root=tmp_path,experiment_id=identity,values=values,
@@ -122,18 +123,23 @@ def test_modern_first_reversal_matches_presented_visual_strength_and_primary_res
     assert [row['reversal'] for row in rows]==['0','1']
     expected=.2*10**(-.1)
     assert float(rows[1]['presented_display_contrast'])==pytest.approx(expected)
-    for row,(target,stimuli) in zip(rows,captured):
+    for row,(target,stimuli,timeline) in zip(rows,captured):
         strength=float(row['presented_display_contrast'])
         assert float(row['next_display_contrast'])==pytest.approx(strength*10**(-.1 if row['correct']=='1' else .1))
         if identity=='contrast_sensitivity':
             assert stimuli['grating']['contrast']==pytest.approx(strength)
         else:
-            assert stimuli['first']['contrast']==pytest.approx(strength)
+            probe=stimuli['probe']
+            assert probe['display_contrast']*(1-probe['background'])==pytest.approx(strength)
             if identity.startswith('line_'):
-                assert math.copysign(1,stimuli['first']['probe_y_deg'])==(1 if target==0 else -1)
+                phase=next(p for p in timeline.phases if p.name=='probe')
+                placement=next(p for p in phase.placements if p.slot=='probe')
+                assert math.copysign(1,placement.y_deg)==(1 if target==0 else -1)
             else:
-                assert stimuli['first']['probe_present']==(target==0)
-                assert stimuli['second']['probe_present']==(target==1)
+                one=next(p for p in timeline.phases if p.name=='interval_one')
+                two=next(p for p in timeline.phases if p.name=='interval_two')
+                assert any(p.slot=='probe' for p in one.placements)==(target==0)
+                assert any(p.slot=='probe' for p in two.placements)==(target==1)
     primary=json.loads((result.run_directory/'primary_thresholds.json').read_text(encoding='utf-8'))
     assert next(iter(primary['staircase_thresholds'].values()))==pytest.approx(expected)
     adaptive=json.loads((result.run_directory/'adaptive_session.json').read_text(encoding='utf-8'))
@@ -176,7 +182,7 @@ def test_actual_prepare_preserves_low_contrast_levels_in_float_upload(monkeypatc
 def test_off_axis_aperture_edges_match_independent_flat_screen_equations(width,height,distance,resolution,centre):
     profile=SimpleNamespace(physical_width_m=width,physical_height_m=height,viewing_distance_m=distance,
                             geometry_status='unverified')
-    stimulus=get_stimulus('detection_scene')
+    stimulus=get_stimulus('probe_line')
     params=document_for(stimulus)['parameters']|{'size_deg':8.}
     placement=Stimulus('target',*centre)
     pixels=display.validate_geometry(profile,resolution,stimulus,params,placement=placement)
@@ -190,13 +196,14 @@ def test_off_axis_aperture_edges_match_independent_flat_screen_equations(width,h
 
 def test_actual_prepare_keeps_requested_target_near_off_axis_aperture_edge(monkeypatch):
     presentation,arrays=fake_display(monkeypatch)
-    stimulus=get_stimulus('detection_scene')
-    params=document_for(stimulus)['parameters']|{'size_deg':8.,'probe_x_deg':3.9,
-        'probe_y_deg':1.,'probe_width_deg':.05,'probe_length_deg':.5,'contrast':.1}
+    stimulus=get_stimulus('probe_line')
+    params=document_for(stimulus)['parameters']|{
+        'size_deg':8.,'width_deg':.05,'length_deg':.5,'display_contrast':.2,
+    }
     timeline=TrialTimeline((Show('probe',stimuli=(Stimulus('target',15,0),),duration=100),
                             CollectResponse(actions=('left','right'))))
-    for present in (False,True):
-        presentation.prepare(timeline,{'target':(stimulus.id,params|{'probe_present':present})})
+    for strength in (0.,.2):
+        presentation.prepare(timeline,{'target':(stimulus.id,params|{'display_contrast':strength})})
     assert np.any(arrays[1]>arrays[0])  # Old aperture ended at local +3.67°.
     geometry=presentation._phase_geometry['probe'][0]
     assert geometry['requested_centre_deg']==[15,0]
@@ -207,17 +214,23 @@ def test_actual_prepare_keeps_requested_target_near_off_axis_aperture_edge(monke
 @pytest.mark.parametrize('background',[0.,.5,.9])
 @pytest.mark.parametrize('length,width',[(.133,.013),(1.2,.1)])
 def test_requested_probe_intensity_size_and_position_match_independent_area(background,length,width):
-    stimulus=get_stimulus('detection_scene')
-    params=document_for(stimulus)['parameters']|{'size_deg':4.,'probe_x_deg':1.,'probe_y_deg':.5,
-        'probe_length_deg':length,'probe_width_deg':width,'background':background,'contrast':.05}
-    first=display.render_values(stimulus,params,pixels=(512,512))
-    absent=display.render_values(stimulus,params|{'probe_present':False},pixels=(512,512))
-    delta=first-absent
+    # The probe class owns geometry; the experiment owns spatial position.
+    stimulus=get_stimulus('probe_line')
+    params=document_for(stimulus)['parameters']|{
+        'size_deg':4.,'length_deg':length,'width_deg':width,
+        'background':background,'display_contrast':.05/(1-background),
+    }
     axis=(np.arange(512)+.5-256)*4/512
     x,y=np.meshgrid(axis,axis)
+    centre=(1.,.5)
+    local=(x-centre[0],y-centre[1])
+    first=display.render_values(stimulus,params,pixels=(512,512),coordinates=local)
+    absent=display.render_values(stimulus,params|{'display_contrast':0.},
+                                pixels=(512,512),coordinates=local)
+    delta=first-absent
     assert delta.sum()*(4/512)**2==pytest.approx(length*width*.05,rel=1e-10)
-    assert float((delta*x).sum()/delta.sum())==pytest.approx(1.,abs=4/512)
-    assert float((delta*y).sum()/delta.sum())==pytest.approx(.5,abs=4/512)
+    assert float((delta*x).sum()/delta.sum())==pytest.approx(centre[0],abs=4/512)
+    assert float((delta*y).sum()/delta.sum())==pytest.approx(centre[1],abs=4/512)
     assert first.min()>=0 and first.max()<=1
 
 

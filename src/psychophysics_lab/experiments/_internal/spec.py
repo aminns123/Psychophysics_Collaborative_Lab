@@ -201,7 +201,6 @@ class ExperimentSpec:
 
     def normalise_values(self, values: Mapping[str, Any], *, use_config=True) -> dict[str, Any]:
         values = self.normalise_input_keys(values)
-        pass  # Retired protocol branch removed.
         unknown = set(values) - {item.key for item in self.fields}
         if unknown:
             raise ValueError(f"Unknown experiment values: {sorted(unknown)}")

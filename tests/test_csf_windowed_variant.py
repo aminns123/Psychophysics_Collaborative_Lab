@@ -170,3 +170,38 @@ def test_real_windowed_fixed_run_preserves_canonical_saved_data(tmp_path):
     problems = [item for item in validate_run(result.run_directory)
                 if not item.passed]
     assert not problems, [(item.name, item.detail) for item in problems]
+
+
+@pytest.mark.parametrize("module", [gaussian_csf, windowed_csf])
+@pytest.mark.parametrize("method", ["adaptive", "constant_stimuli"])
+def test_review_uses_selected_csf_envelope_for_both_methods(module, method):
+    """#196: Review must not invoke Gaussian metadata for the circular grating."""
+    from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
+    from psychophysics_lab.ui.settings_review import describe_settings, review_rows
+
+    root = Path(__file__).resolve().parents[1]
+    values = module.SPEC.normalise_values({
+        "contrast_method": method,
+        "frequencies_cpd": "2,4",
+        "fixed_contrasts": "0.05,0.10",
+        "fixed_repetitions": 2,
+        "max_trials": 16,
+        **({"aperture_diameter_deg": 1.2, "fade_width_deg": 0.1}
+           if module is windowed_csf else {"grating_sigma_deg": .4}),
+    })
+    snapshots = resolve_stimuli(module.SPEC, values, repo_root=root)
+    description = describe_settings(module.SPEC, values, snapshots)
+    rows = review_rows(module.SPEC, values, snapshots, description)
+    assert rows and description["phases"]
+    assert any(row[1] == "Stimulus" and row[2] == module.STIMULI["grating"]
+               for row in rows)
+    if method == "constant_stimuli":
+        assert description["resolution"]["trial_selection_method"] == "constant_stimuli"
+        assert description["resolution"]["planned_trials"] == 8
+    if module is windowed_csf and method == "constant_stimuli":
+        assert description["resolution"]["aperture_shape"] == "circle"
+        assert description["resolution"]["grating_support_diameter_deg"] == 1.2
+        assert "grating_sigma_deg" not in description["resolution"]
+        assert "gaussian_sigma_deg" not in description["resolution"]
+    if module is gaussian_csf and method == "constant_stimuli":
+        assert description["resolution"]["grating_sigma_deg"] == .4

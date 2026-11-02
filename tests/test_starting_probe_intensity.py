@@ -41,7 +41,8 @@ def test_absolute_input_reaches_actual_trials_updates_and_saved_strength(tmp_pat
     seen = []
     original = RunContext.trial
     def capture(run, *args, **kwargs):
-        seen.append(kwargs['parameters_by_slot']['first']['contrast'])
+        probe = kwargs['parameters_by_slot']['probe']
+        seen.append(probe['display_contrast'] * (1 - probe['background']))
         return original(run, *args, **kwargs)
     monkeypatch.setattr(RunContext, 'trial', capture)
     values = values_for(identity)
@@ -63,10 +64,13 @@ def test_absolute_input_reaches_actual_trials_updates_and_saved_strength(tmp_pat
 
 def test_white_start_is_accepted_drawn_white_and_holds_on_outward_steps(tmp_path):
     values = values_for('line_position_baseline', starting_probe_intensity=1.)
-    spec = get_stimulus('detection_scene')
+    spec = get_stimulus('probe_line')
     parameters = {f.key:f.default for f in spec.parameters}
-    parameters.update(background=.5, contrast=values['starting_probe_intensity']-.5,
-                      probe_x_deg=2., probe_y_deg=1., probe_width_deg=1., probe_length_deg=1.)
+    parameters.update(
+        background=.5,
+        display_contrast=(values['starting_probe_intensity']-.5)/(.5),
+        width_deg=1., length_deg=1.,
+    )
     image = render_values(spec, parameters, pixels=(512,512))
     assert np.max(image) == pytest.approx(1.)
     artifacts, _ = simulate(repo_root=ROOT, data_root=tmp_path, experiment_id='line_position_baseline',

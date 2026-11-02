@@ -49,7 +49,44 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
                 d=describe_settings(spec,values,resolve_stimuli(spec,values,repo_root=ROOT))
                 results.append({k:d[k] for k in ('stimuli','overrides','conditions','resolution','phases','session_phases','phase_inputs','inactive_fields')})
                 specs.append(spec)
-    assert results[0]==results[1]
-    for attr in ('fields','response_paradigm','calibration_requirements','monitor_capabilities',
-                 'scientific_spec','stimulus_slots','stimulus_defaults','trial_column_overrides'):
+    # Frozen and atomic Review must agree on scientific conditions, timing,
+    # response semantics, analysis units and acquisition requirements. Their
+    # per-stimulus parameter slots and source-navigation rows intentionally
+    # differ because one old scene became several independent objects.
+    # The new presentation preflight adds a per-condition *derived safety
+    # ceiling*. It is not a change to the scientific factor levels or targets.
+    # Preserve every historical condition field, and test the new ceiling.
+    def scientific_factors(conditions):
+        return [{key: value for key, value in condition.items()
+                 if key != 'maximum_probe_increment'}
+                for condition in conditions]
+    assert scientific_factors(results[0]['conditions']) == scientific_factors(results[1]['conditions'])
+    background = case['values'].get('background_intensity', .5)
+    # Adaptive initialisation annotates each condition with its ceiling;
+    # fixed-stimuli preflight validates its schedule without mutating factors.
+    annotated = [c for c in results[1]['conditions']
+                 if 'maximum_probe_increment' in c]
+    if case['method'] == 'adaptive':
+        assert len(annotated) == len(results[1]['conditions'])
+    assert all(0 < c['maximum_probe_increment'] <= 1-background
+               for c in annotated)
+    assert results[0]['session_phases']==results[1]['session_phases']
+    assert [
+        {key: p[key] for key in ('name','kind','duration_ms') if key in p}
+        for p in results[0]['phases']
+    ] == [
+        {key: p[key] for key in ('name','kind','duration_ms') if key in p}
+        for p in results[1]['phases']
+    ]
+    for key in ('trial_selection_method','planned_trials'):
+        assert results[0]['resolution'].get(key)==results[1]['resolution'].get(key),key
+    for attr in ('fields','response_paradigm','calibration_requirements',
+                 'monitor_capabilities','trial_column_overrides'):
         assert getattr(specs[0],attr)==getattr(specs[1],attr),attr
+    assert {k:v for k,v in specs[0].scientific_spec.items() if k!='geometry'} == {
+        k:v for k,v in specs[1].scientific_spec.items() if k!='geometry'
+    }
+    assert 'first' in specs[0].stimulus_slots
+    assert 'first' not in specs[1].stimulus_slots
+    assert specs[1].stimulus_defaults['probe']=='probe_line'
+    assert specs[1].stimulus_defaults['fixation']=='gaussian_scene_fixation'

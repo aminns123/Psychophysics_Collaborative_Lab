@@ -1,0 +1,114 @@
+{
+  "example_experiment": [
+    {
+      "replacement": "STIMULI = {\n    \"target\": \"example_stimulus\",\n    \"ready_fixation\": \"fixation_cross\",\n}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"simple_line\"}\n\nSTIMULUS_DEFAULTS = {\"target\": \"example_stimulus\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\n\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ],
+  "probe_above_below": [
+    {
+      "replacement": "STIMULI = {\n    \"fixation\": \"fixation_cross\",\n    \"probe\": \"vertical_line_probe\",\n    \"ready_fixation\": \"fixation_cross\",\n}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"fixation\": \"fixation\", \"probe\": \"line\"}\n\nSTIMULUS_DEFAULTS = {\"fixation\": \"fixation_cross\", \"probe\": \"vertical_line_probe\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\n\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "orientation_task": [
+    {
+      "replacement": "STIMULI = {\"target\": \"teaching_gabor\", \"ready_fixation\": \"fixation_cross\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"orientation_patch\"}\nSTIMULUS_DEFAULTS = {\"target\": \"teaching_gabor\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ],
+  "orientation_adaptive": [
+    {
+      "replacement": "STIMULI = {\"target\": \"teaching_gabor\", \"ready_fixation\": \"fixation_cross\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"target\": \"orientation_patch\"}\nSTIMULUS_DEFAULTS = {\"target\": \"teaching_gabor\"}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"fixation_cross\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI | {\"target\": stimulus},",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS | {\"target\": stimulus},"
+    },
+    {
+      "replacement": "stimulus=STIMULI[\"target\"]",
+      "baseline": "stimulus=STIMULUS_DEFAULTS[\"target\"]"
+    }
+  ],
+  "contrast_sensitivity": [
+    {
+      "replacement": "# One explicit list of independent stimulus objects and their experiment-local roles.\nSTIMULI = {\n    \"ready_fixation\": \"gaussian_fixation\",\n    \"fixation\": \"gaussian_fixation\",\n    \"grating\": \"contrast_sensitivity_grating\",\n}\nPARADIGM = \"two_alternative_forced_choice\"\n\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"fixation\": \"gaussian_fixation\", \"grating\": \"contrast_sensitivity_grating\",\n                  \"ready_fixation\": \"gaussian_fixation\"}\nSTIMULUS_DEFAULTS = {\n    \"ready_fixation\": \"gaussian_fixation\",\n    \"fixation\": \"gaussian_fixation\",\n    \"grating\": \"contrast_sensitivity_grating\",\n}\n\nPARADIGM = \"two_alternative_forced_choice\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "ellipse_centre": [
+    {
+      "replacement": "# Current scene slots preserve this historical protocol's additive pixels.\n# Their decomposition into independent objects must pass pixel-level equivalence.\nSTIMULI = {\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"second\": \"detection_scene\",\n    \"ready_fixation\": \"gaussian_fixation\",\n}\nPARADIGM = \"two_interval_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n\n",
+      "baseline": "STIMULUS_SLOTS = {\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"second\": \"detection_scene\",\n}\nSTIMULUS_DEFAULTS = {slot: \"detection_scene\" for slot in STIMULUS_SLOTS}\nPARADIGM = \"two_interval_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"gaussian_fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"gaussian_fixation\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "ellipse_major_axis": [
+    {
+      "replacement": "# Historical additive scene semantics remain unchanged pending visual parity.\nSTIMULI = {\n    \"ready_fixation\": \"gaussian_fixation\",\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"second\": \"detection_scene\",\n}\nPARADIGM = \"two_interval_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n\n",
+      "baseline": "STIMULUS_SLOTS = {\n    \"ready_fixation\": \"gaussian_fixation\",\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"second\": \"detection_scene\",\n}\nSTIMULUS_DEFAULTS = {slot: \"detection_scene\" for slot in (\"fixation\", \"first\", \"second\")}\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"gaussian_fixation\"\nPARADIGM = \"two_interval_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "line_position_baseline": [
+    {
+      "replacement": "# Historical compound scene retained until independent components match its pixels.\nSTIMULI = {\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"ready_fixation\": \"gaussian_fixation\",\n}\nPARADIGM = \"two_alternative_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"fixation\": \"detection_scene\", \"first\": \"detection_scene\"}\nSTIMULUS_DEFAULTS = {slot: \"detection_scene\" for slot in STIMULUS_SLOTS}\nPARADIGM = \"two_alternative_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"gaussian_fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"gaussian_fixation\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "line_position_flanker": [
+    {
+      "replacement": "# Historical scene kept intact while decomposing ring/probe/flanker objects.\nSTIMULI = {\n    \"fixation\": \"detection_scene\",\n    \"first\": \"detection_scene\",\n    \"ready_fixation\": \"gaussian_fixation\",\n}\nPARADIGM = \"two_alternative_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n\n",
+      "baseline": "STIMULUS_SLOTS = {\"fixation\": \"detection_scene\", \"first\": \"detection_scene\"}\nSTIMULUS_DEFAULTS = {slot: \"detection_scene\" for slot in STIMULUS_SLOTS}\nPARADIGM = \"two_alternative_forced_choice\"\nFIELDS += probe_contrast_fields()\n\n# A pure, session-only fixation; trial slots and their defaults stay unchanged.\nSTIMULUS_SLOTS[\"ready_fixation\"] = \"gaussian_fixation\"\nSTIMULUS_DEFAULTS[\"ready_fixation\"] = \"gaussian_fixation\"\n\n\n"
+    },
+    {
+      "replacement": "        stimuli=STIMULI,",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,"
+    }
+  ],
+  "contrast_sensitivity_windowed": [
+    {
+      "replacement": "# Circular windowed variant overrides one stimulus without copying every role.\nSTIMULI = dict(csf.STIMULI) | {\"grating\": \"circular_windowed_sinusoidal_grating\"}",
+      "baseline": "STIMULUS_SLOTS = dict(csf.STIMULUS_SLOTS) | {\"grating\": \"circular_windowed_sinusoidal_grating\"}\nSTIMULUS_DEFAULTS = dict(csf.STIMULUS_DEFAULTS) | {\"grating\": \"circular_windowed_sinusoidal_grating\"}"
+    },
+    {
+      "replacement": "        # dataclasses.replace preserves Gaussian CSF's other validated\n        # metadata; the one STIMULI map determines all actual defaults.\n        stimulus_slots=dict(csf.SPEC.stimulus_slots) | {\n            \"grating\": \"circular_windowed_sinusoidal_grating\",\n        },\n        stimulus_defaults=STIMULI,\n",
+      "baseline": "        stimulus_slots=STIMULUS_SLOTS,\n        stimulus_defaults=STIMULUS_DEFAULTS,\n"
+    }
+  ]
+}

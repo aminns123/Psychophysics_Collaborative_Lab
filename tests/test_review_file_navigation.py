@@ -31,7 +31,7 @@ async def review(app,pilot,preset=None):
     app.push_screen(screen)
     await pilot.pause()
     if preset:
-        next(panel for panel in screen.query(StimulusParametersPanel) if panel.slot=='first').load(preset)
+        next(panel for panel in screen.query(StimulusParametersPanel) if panel.slot=='probe').load(preset)
     screen.query_one('#review',Button).press()
     await pilot.pause()
     assert isinstance(app.screen,ReviewScreen)
@@ -68,7 +68,7 @@ def test_default_probe_cell_opens_its_actual_class_definition_without_creating_j
         async with app.run_test(size=(240,65)) as pilot:
             _,screen,table=await review(app,pilot)
             assert len(table.columns)==5 and table.show_cursor and table.cursor_type=='cell'
-            row=find_row(table,'Probe length','first')
+            row=find_row(table,'Probe length','probe')
             assert str(table.get_row_at(row)[4]).endswith('stimulus_library.py')
             assert not (app.local_config_root/'parameter_files').exists()
             await click_cell(pilot,table,row,2)
@@ -76,7 +76,7 @@ def test_default_probe_cell_opens_its_actual_class_definition_without_creating_j
             await pilot.press('enter')
             await pilot.pause()
             assert opened[-1][0]==ROOT/'src/psychophysics_lab/stimulus_library.py'
-            assert 'probe_length_deg' in opened[-1][0].read_text(encoding='utf-8').splitlines()[opened[-1][1]-1]
+            assert 'length_deg' in opened[-1][0].read_text(encoding='utf-8').splitlines()[opened[-1][1]-1]
             before=len(opened)
             await click_cell(pilot,table,row,2,times=2)
             assert len(opened)==before+1
@@ -90,7 +90,7 @@ def test_default_probe_cell_opens_its_actual_class_definition_without_creating_j
 def test_preset_link_edits_dimensions_and_reloads_values_used_by_actual_run(tmp_path,monkeypatch):
     from simulations.run import simulate
     from psychophysics_lab.researcher import RunContext
-    stimulus=get_stimulus('detection_scene')
+    stimulus=get_stimulus('probe_line')
     path=tmp_path/'chosen probe.json'
     document=document_for(stimulus)
     path.write_text(json.dumps(document),encoding='utf-8')
@@ -101,40 +101,40 @@ def test_preset_link_edits_dimensions_and_reloads_values_used_by_actual_run(tmp_
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(240,65)) as pilot:
             parent,screen,table=await review(app,pilot,path)
-            row=find_row(table,'Probe length','first')
+            row=find_row(table,'Probe length','probe')
             assert str(table.get_row_at(row)[4])==str(path)
             table.move_cursor(row=row,column=2)
             table.focus()
             await pilot.press('enter')
             await pilot.pause()
             assert opened[-1][0]==path and opened[-1][1]['allow_external_existing']
-            changed=document_for(stimulus,document['parameters']|{'probe_length_deg':1.2,'probe_width_deg':.04})
+            changed=document_for(stimulus,document['parameters']|{'length_deg':1.2,'width_deg':.04})
             path.write_text(json.dumps(changed),encoding='utf-8')
             with pytest.raises(ValueError,match='Review again'):
                 app.verify_settings_current(screen.request)
             screen.query_one('#review-reload-files',Button).press()
             await pilot.pause()
             app.verify_settings_current(screen.request)
-            assert str(table.get_row_at(find_row(table,'Probe length','first'))[2])=='1.2'
-            assert screen.request.stimulus_snapshots['first']['document']['parameters']['probe_width_deg']==.04
+            assert str(table.get_row_at(find_row(table,'Probe length','probe'))[2])=='1.2'
+            assert screen.request.stimulus_snapshots['probe']['document']['parameters']['width_deg']==.04
             launch['request']=screen.request
             screen.query_one('#back',Button).press()
             await pilot.pause()
             assert app.screen is parent
-            panel=next(p for p in parent.query(StimulusParametersPanel) if p.slot=='first')
-            assert panel.current()['document']['parameters']['probe_length_deg']==1.2
+            panel=next(p for p in parent.query(StimulusParametersPanel) if p.slot=='probe')
+            assert panel.current()['document']['parameters']['length_deg']==1.2
     asyncio.run(scenario())
     seen=[]
     original=RunContext.trial
     def capture(run,*args,**kwargs):
-        seen.append(kwargs['parameters_by_slot']['first'])
+        seen.append(kwargs['parameters_by_slot']['probe'])
         return original(run,*args,**kwargs)
     monkeypatch.setattr(RunContext,'trial',capture)
     request=launch['request']
     result,_=simulate(repo_root=ROOT,data_root=tmp_path/'runs',experiment_id=request.experiment_id,
         values=request.experiment_values,stimulus_snapshots=request.stimulus_snapshots,analyse=False)
     assert result.accepted_trials==3
-    assert len(seen)==3 and all(p['probe_length_deg']==1.2 and p['probe_width_deg']==.04 for p in seen)
+    assert len(seen)==3 and all(p['length_deg']==1.2 and p['width_deg']==.04 for p in seen)
 
 
 def test_unsaved_values_export_only_on_explicit_open_and_invalid_reload_is_atomic(tmp_path,monkeypatch):
@@ -188,27 +188,31 @@ def test_trial_controlled_and_derived_cells_point_to_code_not_an_ineffective_pre
     description=describe_settings(spec,values(),selected)
     rows=review_rows(spec,values(),selected,description,refresh_hz=60)
     targets=targets_for_rows(spec,selected,description,rows,{'experiment':None,'stimuli':{}},ROOT)
+    located = False
     for index,row in enumerate(rows):
-        if row[0]=='first' and row[1].startswith('Probe x'):
+        if row[0]=='probe' and row[1]=='Stimulus':
             assert targets[index]['path']==ROOT/'src/psychophysics_lab/experiments/line_position_baseline.py'
-            assert 'Trial-controlled' in targets[index]['note']
+            assert targets[index]['kind']=='python'
+            assert 'STIMULI' in (ROOT/'src/psychophysics_lab/experiments/line_position_baseline.py').read_text()
+            located = True
         if row[0]=='Contrast' and row[1]=='Relative digital contrast':
             assert targets[index]['path'].name=='settings_review.py'
             assert 'Derived' in targets[index]['note']
         if row[0]=='Trial' and row[1]=='probe duration':
             assert targets[index]['kind']=='experiment_json' and targets[index]['key']=='stimulus_ms'
+    assert located
 
 
 def test_old_frozen_snapshot_is_not_mislabelled_as_current_class_defaults():
     spec=get_experiment('line_position_baseline')
     selected=resolve_stimuli(spec,values(),repo_root=ROOT)
-    stimulus=get_stimulus('detection_scene')
-    selected['first']=snapshot(document_for(stimulus,selected['first']['document']['parameters']|{'probe_length_deg':.8}),
+    stimulus=get_stimulus('probe_line')
+    selected['probe']=snapshot(document_for(stimulus,selected['probe']['document']['parameters']|{'length_deg':.8}),
         file_identity='library_defaults')
     description=describe_settings(spec,values(),selected)
     rows=review_rows(spec,values(),selected,description)
     targets=targets_for_rows(spec,selected,description,rows,{'experiment':None,'stimuli':{}},ROOT)
-    index=next(index for index,row in enumerate(rows) if row[0]=='first' and row[1].startswith('Probe length'))
+    index=next(index for index,row in enumerate(rows) if row[0]=='probe' and row[1].startswith('Probe length'))
     assert targets[index]['path'] is None and targets[index]['kind']=='stimulus_json'
 
 

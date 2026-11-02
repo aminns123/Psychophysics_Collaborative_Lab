@@ -98,11 +98,54 @@ def test_all_selected_inputs_measurements_units_and_source_routes_are_truthful(i
 def test_fixed_centre_headroom_matches_actual_method_on_selected_display():
     spec, values, snapshots = selected("ellipse_centre", "constant_stimuli",
                                        ring_increment=.49, aspect_ratios="1", fixed_contrasts="0,.01")
-    description, rows, _ = review(spec, values, snapshots)
+    # An unspecified resolution invokes only the unqualified synthetic
+    # fallback. Use an explicit pixel grid so Review, headroom calculation and
+    # actual presentation all sample the same measured display geometry.
+    profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"],
+                      expected_resolution_px=(1920, 1080))
+    description = describe_settings(spec, values, snapshots, profile=profile)
+    rows = review_rows(spec, values, snapshots, description,
+                       refresh_hz=profile.refresh_rate_hz)
     maximum = next(row[2] for row in rows if row[:2] == ("Intensity", "Maximum nominal probe intensity"))
-    assert float(maximum) == pytest.approx(.5841346154, abs=1e-10)
-    assert all(c["maximum_probe_increment"] == pytest.approx(.0841346153846154)
+    # #207 renders the actual independently clipped ring/probe placements.
+    # Do not freeze the *old composite-scene* headroom scalar as though the
+    # raster geometry and alpha composition had not changed. Verify the
+    # derived bound against the exact native compositor at physical pixels.
+    from psychophysics_lab.core.presentation import render_layered_phase
+    from psychophysics_lab.experiments import ellipse_centre as study
+
+    class PreviewRun:
+        def __init__(self):
+            self.values = values
+        def stimulus_parameters(self, slot, **overrides):
+            return dict(snapshots[slot]["document"]["parameters"]) | overrides
+
+    background = values["background_intensity"]
+    bound = float(maximum) - background
+    assert 0 < bound <= 1-background
+    assert all(c["maximum_probe_increment"] == pytest.approx(bound)
                for c in description["conditions"])
+    at_limit, beyond = [], []
+    for target in (0, 1):
+        condition = dict(description["conditions"][0], target=target, contrast=bound)
+        events = study.trial_events(values, condition)
+        phase = next(p for p in events if any(pl.slot == "probe" for pl in p.placements))
+        resolved = study.prepare_stimuli(PreviewRun(), condition, {})
+        mapping = {slot: (study.STIMULI[slot], params) for slot, params in resolved.items()}
+        _, _, pixels, _ = render_layered_phase(
+            profile, profile.expected_resolution_px, phase, mapping, background,
+        )
+        at_limit.append(float(pixels.max()))
+        condition["contrast"] = bound + .002
+        resolved = study.prepare_stimuli(PreviewRun(), condition, {})
+        mapping = {slot: (study.STIMULI[slot], params) for slot, params in resolved.items()}
+        _, _, pixels, _ = render_layered_phase(
+            profile, profile.expected_resolution_px, phase, mapping, background,
+            require_gamut=False,
+        )
+        beyond.append(float(pixels.max()))
+    assert max(at_limit) <= 1+1e-12
+    assert max(beyond) > 1
     assert description["resolution"]["condition_definitions"]
     assert "fixed_repeat" in description["measurements"]
     assert "staircase_repeat" not in description["measurements"]
@@ -152,10 +195,11 @@ def test_fixed_review_never_progresses_or_executes_the_method(identity, monkeypa
 def test_ellipse_controls_route_to_actual_selected_study_inputs(identity):
     spec, values, snapshots = selected(identity, "adaptive")
     description, rows, targets = review(spec, values, snapshots)
-    stimulus = importlib.import_module("psychophysics_lab.stimuli.registry").get_stimulus("detection_scene")
-    labels = {field.key: field.display_label for field in stimulus.parameters}
-    for slot in ("first", "second"):
-        for parameter, control in spec.stimulus_parameter_controls[slot].items():
+    from psychophysics_lab.stimuli.registry import get_stimulus
+    for slot, controls in spec.stimulus_parameter_controls.items():
+        stimulus = get_stimulus(snapshots[slot]["document"]["stimulus_id"])
+        labels = {field.key: field.display_label for field in stimulus.parameters}
+        for parameter, control in controls.items():
             index = next(i for i, row in enumerate(rows) if row[:2] == (slot, labels[parameter]))
             assert targets[index]["kind"] == "experiment_json"
             assert targets[index]["key"] == control

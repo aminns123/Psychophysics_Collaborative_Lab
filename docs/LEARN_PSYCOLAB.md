@@ -14,6 +14,41 @@ Unsaved drafts are not a successful validation. Correct errors and apply to
 Review before running. Saved presets never overwrite Python defaults.
 
 
+## The basic model: independent objects plus one scientific experiment
+
+This is the authoring contract for **new** scientist-first files. Names should
+describe what appears on the screen, not which experiment happens to use it.
+Each stimulus is an ordinary `LibraryStimulus` class. The experiment chooses
+its roles **once**, avoiding duplicate slot-family/default maps:
+
+```python
+STIMULI = {
+    "ellipse": "ellipse_ring",
+    "probe": "probe_line",
+    "fixation": "gaussian_fixation_spot",
+}
+```
+
+The experiment's `trial_events(settings, condition)` places these independent
+objects and controls their presentation order, visual front-to-back order,
+timings and response alternatives. The renderer handles pixels and their
+declared coverage; the framework executes and records the experiment.
+**A1** contains the scientist's choices/events, **A2** the conditions, methods
+and measurements, and a small **B** connects them to the shared runner.
+
+The next official source migration uses `STIMULI` for all ten built-in studies.
+The old line/ellipse studies still contain the historical `DetectionScene`
+renderer until its additive/overlapping pixels are proven equivalent to new
+independent classes. Do not interpret a single map as automatic pixel parity.
+A new `ellipse_modular_centre.py` protocol illustrates the independent objects
+and ordered transparency, but is **scientifically distinct** from the old
+ellipse centre's raw digital increment. No existing participant values are
+reinterpreted.
+
+Keep the TUI for setup, calibration, source-file creation/opening,
+parameter editing in Review, Test/Ready and data review. Write the protocol in
+Python; do not try to reproduce its science as controls on a new TUI page.
+
 ## 1. Draw the stimulus
 
 Open `src/psychophysics_lab/stimulus_library.py`. Each `LibraryStimulus` class has

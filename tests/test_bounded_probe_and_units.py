@@ -97,7 +97,10 @@ def test_line_cues_are_optional_explicit_and_do_not_encode_answer(name):
     module = importlib.import_module('psychophysics_lab.experiments.' + name)
     values = module.SPEC.field_defaults()
     for enabled in (False, True):
-        phases = module.make_trial(values | {'auditory_cues': enabled, 'cue_hz': 880, 'cue_ms': 70}, {}).phases
+        settings = values | {'auditory_cues': enabled, 'cue_hz': 880, 'cue_ms': 70,
+                                 'probe_vertical_offset_deg': .4}
+        phases = module.trial_events(settings, {'x_deg': 0.0, 'target': 0})
+        assert [phase.name for phase in phases] == ['fixation', 'probe', 'answer']
         assert phases[0].beep is None
         for phase in phases[1:]:
             assert bool(phase.beep) == enabled
@@ -106,25 +109,54 @@ def test_line_cues_are_optional_explicit_and_do_not_encode_answer(name):
 
 
 def test_baseline_uses_full_physical_intensity_headroom_and_does_not_restrict_overlap():
-    from psychophysics_lab.experiments.line_position_baseline import SPEC, prepare_stimuli
-    values = SPEC.field_defaults() | {'starting_probe_intensity': 1., 'background_intensity': .25,
-                                    'positions_deg': '0.0', 'probe_vertical_offset_deg': .01}
-    assert SPEC.normalise_values(values)['starting_probe_intensity'] == 1.
-    stimulus = get_stimulus('detection_scene')
-    defaults = {f.key: f.default for f in stimulus.parameters}
+    from psychophysics_lab.experiments import line_position_baseline as baseline
+
+    values = baseline.SPEC.field_defaults() | {
+        'starting_probe_intensity': 1., 'background_intensity': .25,
+        'positions_deg': '0.0', 'probe_vertical_offset_deg': .01,
+    }
+    assert baseline.SPEC.normalise_values(values)['starting_probe_intensity'] == 1.
+
     class Run:
-        def __init__(self): self.values = values
-        def stimulus_parameters(self, slot, **overrides): return defaults | overrides
-    above = prepare_stimuli(Run(), {'x_deg': 0, 'contrast': .75, 'target': 0}, {})
-    below = prepare_stimuli(Run(), {'x_deg': 0, 'contrast': .75, 'target': 1}, {})
-    assert above['first']['probe_y_deg'] == .01 and below['first']['probe_y_deg'] == -.01
-    a = render_values(stimulus, above['first'], pixels=(524, 520))
-    b = render_values(stimulus, below['first'], pixels=(524, 520))
+        def __init__(self):
+            self.values = values
+
+        def stimulus_parameters(self, slot, **overrides):
+            spec = get_stimulus(baseline.STIMULI[slot])
+            return {f.key: f.default for f in spec.parameters} | overrides
+
+    above_condition = {'x_deg': 0., 'contrast': .75, 'target': 0}
+    below_condition = {'x_deg': 0., 'contrast': .75, 'target': 1}
+    above = baseline.prepare_stimuli(Run(), above_condition, {})
+    below = baseline.prepare_stimuli(Run(), below_condition, {})
+    assert above['probe']['display_contrast'] == pytest.approx(1.)
+    assert below['probe']['display_contrast'] == pytest.approx(1.)
+    get_probe = lambda condition: next(
+        p for event in baseline.trial_events(values, condition)
+        if event.name == 'probe'
+        for p in event.placements if p.slot == 'probe'
+    )
+    assert get_probe(above_condition).y_deg == .01
+    assert get_probe(below_condition).y_deg == -.01
+
+    stimulus = get_stimulus('probe_line')
+    x = (np.arange(524) + .5 - 262) * 2 / 524
+    y = (np.arange(520) + .5 - 260) * 2 / 520
+    xx, yy = np.meshgrid(x, y)
+    a = stimulus.render(above['probe'], xx, yy-.01)
+    b = stimulus.render(below['probe'], xx, yy+.01)
     assert np.max(abs(a-b)) > 0
     assert np.allclose(a, b[::-1])
-    # No absent flanker forces a >0 background; fixation itself is capped at white.
+
+    # The independent probe is valid even at background zero or near white,
+    # and 0.02 is a raw increment, never the class's headroom fraction.
+    defaults = {f.key: f.default for f in stimulus.parameters}
     for background in (0., .95):
-        pixels = render_values(stimulus, defaults | {'background': background, 'contrast': min(.02,1-background)})
+        increment = min(.02, 1-background)
+        pixels = render_values(stimulus, defaults | {
+            'background': background,
+            'display_contrast': increment / (1-background),
+        })
         assert pixels.min() >= 0 and pixels.max() <= 1
 
 

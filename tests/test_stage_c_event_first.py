@@ -22,6 +22,8 @@ BASELINE=json.loads((ROOT/'tests/fixtures/stage_c_baseline_20261027.json').read_
 OFFICIAL=tuple(item['id'] for item in BASELINE['inventory'])
 MIGRATED=tuple(i for i in OFFICIAL if i not in {'contrast_sensitivity','ellipse_major_axis'})
 SOFTWARE_CASES=[(i,m) for i in OFFICIAL for m in ('adaptive','constant_stimuli')]
+ATOMIC_REPRESENTATIONS = {'line_position_baseline', 'line_position_flanker',
+                          'ellipse_centre', 'ellipse_major_axis'}
 
 
 def digest(value):
@@ -108,6 +110,14 @@ def test_every_complete_scientific_trace_matches_before_migration(tmp_path,monke
     assert (a.status,a.accepted_trials)==(case['status'],case['accepted'])
     assert digest(rows(a.run_directory))==case['rows_sha256']
     for name,expected in case['files_sha256'].items():
+        if (case['identity'] in ATOMIC_REPRESENTATIONS
+                and name in {'trial_actions.json', 'trial_events.jsonl',
+                             'trial_presentations.json', 'resolved_experiment.json'}):
+            # #207 deliberately splits one composite scene into several
+            # independently logged stimuli. A historical JSON hash can no
+            # longer be an equality claim. Wave4/5 old/new executions and
+            # pixel parity separately compare their scientific content.
+            continue
         assert digest(frozen_comparison_value(a.run_directory,name))==expected,name
     if enabled:
         opening=read(a.run_directory,'session_events.json')
@@ -156,7 +166,17 @@ def test_defaults_response_meanings_and_safeguards_do_not_drift(saved):
     assert list(spec.monitor_capabilities)==saved['capabilities']
     assert list(spec.response_paradigm.alternatives)==saved['responses']['alternatives']
     assert list(spec.response_paradigm.keys)==saved['responses']['keys']
-    assert dict(spec.scientific_spec)==saved['scientific_spec']
+    if saved['id'] in ATOMIC_REPRESENTATIONS:
+        # This migration updates the geometry description, not the target,
+        # units, staircase, estimator, or scientific stopping policy.
+        assert {k: v for k, v in spec.scientific_spec.items()
+                if k != 'geometry'} == {
+                    k: v for k, v in saved['scientific_spec'].items()
+                    if k != 'geometry'
+                }
+        assert 'ProbeLine' in spec.scientific_spec['geometry']
+    else:
+        assert dict(spec.scientific_spec)==saved['scientific_spec']
 
 
 class LegacyPlanSpelling(ast.NodeTransformer):

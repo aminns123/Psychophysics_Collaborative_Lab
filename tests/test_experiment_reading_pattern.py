@@ -17,6 +17,9 @@ from scripts.validate_run import validate_run
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / "src/psychophysics_lab/experiments"
 EXPERIMENTS = tuple(p.stem for p in sorted(FOLDER.glob("*.py")) if p.stem != "__init__")
+ATOMIC = {"line_position_baseline", "line_position_flanker",
+          "ellipse_centre", "ellipse_major_axis"}
+
 SECTIONS = (
     "SETTINGS AND STIMULI",
     "CONDITIONS AND TRIAL ORDER",
@@ -31,6 +34,25 @@ SECTIONS = (
 @pytest.mark.parametrize("identity", EXPERIMENTS)
 def test_every_researcher_file_has_the_same_actual_reading_order(identity):
     module = importlib.import_module("psychophysics_lab.experiments." + identity)
+    if identity == "ellipse_modular_centre":
+        # The new, expressly reviewed contract has ONE STIMULI mapping and
+        # no redundant definition() or 6-section historical adapter.
+        # Preserve all pre-existing migration/source assertions below.
+        source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
+        a1, a2, b = (source.index(header) for header in
+                     ("# ── A1", "# ── A2", "# ── B"))
+        assert a1 < source.index("STIMULI =") < source.index("def trial_events") < a2
+        assert a2 < source.index("def make_conditions") < source.index("def prepare_stimuli") < b
+        assert b < source.index("def procedure") < source.index("SPEC = experiment")
+        assert module.SPEC.id == identity
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULI
+        from psychophysics_lab.stimuli.registry import get_stimulus
+        assert dict(module.SPEC.stimulus_slots) == {
+            name: get_stimulus(stimulus_id).family
+            for name, stimulus_id in module.STIMULI.items()
+        }
+        assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == module.FIELDS
+        return
     if identity == "contrast_sensitivity_windowed":
         # This variant deliberately imports the common trial engine rather
         # than duplicating it just to satisfy a source-layout convention.
@@ -44,8 +66,8 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     migrated = hasattr(module, "trial_events")
     from _scientist_first_migrations import migration_reference
-    reference = migration_reference(ROOT, identity)
-    scientist_first = reference is not None or identity in {
+    reference = None if identity in ATOMIC else migration_reference(ROOT, identity)
+    scientist_first = reference is not None or identity in ATOMIC or identity in {
         "example_experiment", "probe_above_below", "orientation_task", "orientation_adaptive"}
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
@@ -58,7 +80,7 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     if identity == "contrast_sensitivity_windowed":
         names = ("trial_events", "prepare_stimuli", "procedure", "definition")
-    if reference is not None:
+    if reference is not None or identity in ATOMIC:
         names = tuple(n for n in ("trial_events", "prepare_stimuli", "make_conditions", "procedure", "definition") if n in positions)
         assert headings[0] < source.index('def trial_events') < headings[1]
         assert headings[1] < source.index('def prepare_stimuli') < headings[2]
@@ -87,8 +109,20 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
 
     assert module.SPEC.id == SOURCE_IDS.get(identity, identity)
     assert tuple(f for f in module.SPEC.fields if f.key != "response_keys") == tuple(f for f in module.FIELDS if f.key != "response_keys")
-    assert dict(module.SPEC.stimulus_slots) == module.STIMULUS_SLOTS
-    assert dict(module.SPEC.stimulus_defaults) == module.STIMULUS_DEFAULTS
+    if hasattr(module, "STIMULI"):
+        # The one-map contract derives families from actual stimulus specs;
+        # there is no second researcher-maintained registry dictionary.
+        from psychophysics_lab.stimuli.registry import get_stimulus
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULI
+        assert dict(module.SPEC.stimulus_slots) == {
+            slot: get_stimulus(stimulus_id).family
+            for slot, stimulus_id in module.STIMULI.items()
+        }
+        assert "STIMULUS_SLOTS" not in source
+        assert "STIMULUS_DEFAULTS" not in source
+    else:
+        assert dict(module.SPEC.stimulus_slots) == module.STIMULUS_SLOTS
+        assert dict(module.SPEC.stimulus_defaults) == module.STIMULUS_DEFAULTS
     assert module.SPEC.response_paradigm == module.RESPONSES
 
 
@@ -153,6 +187,18 @@ def test_scientific_interfaces_are_readable_without_identical_main_loops():
     procedures = []
     for identity in EXPERIMENTS:
         module = importlib.import_module("psychophysics_lab.experiments." + identity)
+        if identity == "ellipse_modular_centre":
+            # New A1/A2/B study uses a generic contrast-method strategy. Do
+            # not demand deprecated make_trial/initialise_experiment aliases.
+            for public in ("trial_events", "interval_stimuli", "prepare_stimuli",
+                           "make_conditions", "interpret_response",
+                           "adaptive_method", "constant_method", "procedure"):
+                assert callable(getattr(module, public))
+            procedures.append(ast.dump(
+                ast.parse(inspect.getsource(module.procedure)).body[0],
+                include_attributes=False,
+            ))
+            continue
         for name, arguments in contracts.items():
             if name in {"update_experiment", "is_finished"} and not hasattr(module, name):
                 # A study using the public contrast-method strategy may own
@@ -213,6 +259,20 @@ def test_actual_condition_stimulus_response_contract_for_every_experiment(
     if identity in {"line_position_baseline","line_position_flanker","ellipse_major_axis","ellipse_centre"}:
         values = {"max_trials":4,"probe_vertical_offset_deg":.5} if identity.startswith("line_") else {"max_trials":4,"ring_increment":.1}
         if identity == "line_position_flanker": values["flanker_cpd"] = 2.
+    if identity == "ellipse_modular_centre":
+        # The generic interface smoke test must not run the full default
+        # 3-ratio x 4-staircase adaptive protocol (up to 10,000 trials).
+        # A bounded fixed-level run still exercises independent stimuli,
+        # both target intervals, interpretation, recording and validation.
+        # The full adaptive algorithm has its own dedicated method tests.
+        values = {
+            "contrast_method": "constant_stimuli",
+            "aspect_ratios": "1",
+            "staircases_per_condition": 1,
+            "fixed_contrasts": "0.04",
+            "fixed_repetitions": 2,
+            "max_trials": 4,
+        }
     calls = []
     event_name = "trial_events" if hasattr(module, "trial_events") else "make_trial"
     prepare, make_trial = module.prepare_stimuli, getattr(module, event_name)

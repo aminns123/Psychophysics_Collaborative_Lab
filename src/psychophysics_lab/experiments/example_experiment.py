@@ -71,15 +71,12 @@ FIELDS += teaching_method_fields(
 
 RESPONSES = ResponseParadigm("line_position", TARGET_ALTERNATIVES, RESPONSE_KEYS)
 
-STIMULUS_SLOTS = {"target": "simple_line"}
-
-STIMULUS_DEFAULTS = {"target": "example_stimulus"}
+STIMULI = {
+    "target": "example_stimulus",
+    "ready_fixation": "fixation_cross",
+}
 
 PARADIGM = "two_alternative_forced_choice"
-
-STIMULUS_SLOTS["ready_fixation"] = "fixation"
-
-STIMULUS_DEFAULTS["ready_fixation"] = "fixation_cross"
 
 # Session opening runs once; SESSION_START = [] disables it. SPACE is not a trial answer.
 SESSION_START = [
@@ -278,7 +275,7 @@ def procedure(run):
 make_trial = legacy_trial_factory(trial_events)
 
 
-def definition(identity="example_experiment", stimulus=STIMULUS_DEFAULTS["target"]):
+def definition(identity="example_experiment", stimulus=STIMULI["target"]):
     return experiment(
         id=identity,
         name=identity.replace("_", " ").title(),
@@ -293,8 +290,7 @@ def definition(identity="example_experiment", stimulus=STIMULUS_DEFAULTS["target
         responses=RESPONSES,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS | {"target": stimulus},
+        stimuli=STIMULI | {"target": stimulus},
         supports_simulation=True,
         source_paths=(f"src/psychophysics_lab/experiments/{identity}.py",),
     )

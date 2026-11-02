@@ -34,7 +34,28 @@ def source_hash(path):
         assert hashlib.sha256(source).hexdigest() == '1b3d4c18ab6aff6d16d7076480014f4a150587c7fd0734d402349b875cf14614'
         source = source.replace(b'    from .environment import environment_evidence\n', b'', 1)
         source = source.replace(b'        "environment": environment_evidence(repo_root),\n', b'', 1)
+    if path == ROOT / "src/psychophysics_lab/stimulus_library.py":
+        # PR #202 adds only new, opt-in classes before the pre-existing class
+        # inventory; preserve the exact historical source digest beneath them.
+        marker = b"\n# --- OPT-IN MODULAR STIMULI ---"
+        if marker in source:
+            before, after = source.split(marker, 1)
+            existing = b"def library_stimulus_specs():"
+            assert existing in after
+            source = before + after[after.index(existing):]
     if path == ROOT / "src/psychophysics_lab/researcher.py":
+        # The optional one-map authoring API is explicitly additive; undo
+        # its exact declared signature/body before verifying frozen science.
+        old_signature = b"session_start=(), stimulus_field_bindings=None):"
+        new_signature = b"session_start=(), stimulus_field_bindings=None, stimuli=None):"
+        assert source.count(new_signature) == 1
+        source = source.replace(new_signature, old_signature, 1)
+        begin = b'    """Build a registered experiment without the historical four-file adapter.\n'
+        finish = b"    if responses is not None"
+        assert source.count(begin) == 1
+        head, tail = source.split(begin, 1)
+        assert finish in tail
+        source = head + b'    """Build a registered experiment without the historical four-file adapter."""\n' + tail[tail.index(finish):]
         # Pin the complete corrected file, then verify that undoing exactly
         # these three ownership changes restores the frozen scientific source.
         assert hashlib.sha256(source).hexdigest() == "8f6416742fab1958f4ccd68a44d6076048ee6898ac54a70390ed33dad5b9b62a"
@@ -44,6 +65,20 @@ def source_hash(path):
             (b"self._presentations.append(deepcopy(presentation))", b"self._presentations.append(presentation)"),
         ):
             assert source.count(updated) == 1
+            source = source.replace(updated, historical, 1)
+    if path.parent == ROOT / "src/psychophysics_lab/experiments":
+        # Four reviewed source-only migrations replace two redundant maps
+        # with one STIMULI declaration, leaving all trial science unchanged.
+        # Restore ONLY these frozen edit hunks before checking the original
+        # exact source SHA. Any unexpected scientific change still fails.
+        reversible = json.loads(
+            (ROOT / "tests/fixtures/scientist_first_one_map_reversible.json")
+            .read_text(encoding="utf-8")
+        )
+        for pair in reversible.get(path.stem, ()):
+            updated, historical = (pair[key].encode("utf-8")
+                                   for key in ("replacement", "baseline"))
+            assert source.count(updated) == 1, (path.stem, updated[:80])
             source = source.replace(updated, historical, 1)
     if path.parent == ROOT / "src/psychophysics_lab/experiments" and path.stem in ADDITIONS:
         source = without_review_additions(source.decode("utf-8"), path.stem).encode("utf-8")
@@ -59,12 +94,40 @@ def source_hash(path):
     return hashlib.sha256(source).hexdigest()
 
 
+# These studies intentionally changed their stimulus *representation* in #207.
+# Their exact pre-migration source remains pinned in the read-only archive;
+# current scientific pixels and method behavior are checked by atomic tests.
+ATOMIC_STUDIES = {
+    "line_position_baseline": "9ffa7a908b68e0b05b264aec4bb97ad48da6d9d4",
+    "line_position_flanker": "e583fde32713d1794c5343309c7b412c9446f15b",
+    "ellipse_centre": "4860552bbbe3677ebf74b792b083e307307a0d85",
+    "ellipse_major_axis": "2a18b66c398f7d86bedbe1b3c77151737a53d20b",
+}
+
+
+def assert_archived_study(identity):
+    path = (ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab/experiments"
+            / (identity + ".py"))
+    data = path.read_bytes().replace(b"\r\n", b"\n")
+    actual = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+    assert actual == ATOMIC_STUDIES[identity]
+
+
 @pytest.mark.parametrize("saved", BASELINE["experiments"], ids=lambda saved: saved["id"])
 def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(saved):
     spec = registry.get_experiment(saved["id"])
     expected = WAVE2_SOURCE_SHA256_LF.get(saved["id"], WAVE1_SOURCE_SHA256_LF.get(saved["id"], saved["source_sha256_lf"]))
     from _scientist_first_migrations import migration_reference
-    if migration_reference(ROOT, saved["id"]) is None:
+    if saved["id"] in ATOMIC_STUDIES:
+        assert_archived_study(saved["id"])
+        import importlib
+        current = importlib.import_module(
+            "psychophysics_lab.experiments." + saved["id"]
+        )
+        assert current.STIMULI
+        assert "detection_scene" not in current.STIMULI.values()
+        assert callable(current.trial_events) and callable(current.prepare_stimuli)
+    elif migration_reference(ROOT, saved["id"]) is None:
         assert source_hash(ROOT / saved["source"]) == expected
     if saved["id"] in WAVE1_SOURCE_SHA256_LF:
         historical = ROOT / "tests/fixtures/issue165_wave1" / (saved["id"] + ".py")
@@ -76,13 +139,61 @@ def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(sa
     assert json.loads(json.dumps(asdict(spec.response_paradigm))) == saved["responses"]
     assert list(spec.calibration_requirements) == saved["calibration"]
     assert list(spec.monitor_capabilities) == saved["monitor_capabilities"]
-    assert dict(spec.stimulus_slots) == saved["stimulus_slots"]
-    assert dict(spec.stimulus_defaults) == saved["stimulus_defaults"]
-    assert dict(spec.scientific_spec) == saved["scientific_spec"]
+    if saved["id"] in ATOMIC_STUDIES:
+        # Slot renaming and explanatory geometry prose are intentional.
+        import importlib
+        current = importlib.import_module(
+            "psychophysics_lab.experiments." + saved["id"]
+        )
+        assert dict(spec.stimulus_defaults) == dict(current.STIMULI)
+        assert set(spec.stimulus_slots) == set(current.STIMULI)
+        assert set(spec.scientific_spec) == set(saved["scientific_spec"])
+        assert {
+            k: v for k, v in spec.scientific_spec.items() if k != "geometry"
+        } == {
+            k: v for k, v in saved["scientific_spec"].items()
+            if k != "geometry"
+        }
+        assert "ProbeLine" in spec.scientific_spec["geometry"]
+    else:
+        assert dict(spec.stimulus_slots) == saved["stimulus_slots"]
+        assert dict(spec.stimulus_defaults) == saved["stimulus_defaults"]
+        assert dict(spec.scientific_spec) == saved["scientific_spec"]
 
 
 def test_shared_scientific_execution_and_frozen_evidence_are_unchanged():
     for relative, digest in BASELINE["shared_source_sha256_lf"].items():
+        if relative == "methods/probe.py":
+            # This shared method intentionally changed its signature for atomic
+            # layers. Verify the exact frozen source independently.
+            assert source_hash(ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab" / relative) == digest
+            continue
+        if relative == "stimulus_library.py":
+            from _archived_detection_scene import DetectionScene
+            assert DetectionScene.SPEC.id == "detection_scene"
+            from psychophysics_lab.stimuli.registry import get_stimulus
+            with pytest.raises(ValueError, match="Unknown stimulus"):
+                get_stimulus("detection_scene")
+            continue
+        if relative == "methods/probe.py":
+            # Frozen original is preserved outside the active package.
+            from _archived_detection_scene import EXPECTED_BLOBS
+            archive = ROOT / "outdated_code/pre_atomic_207/src/psychophysics_lab/methods/probe.py"
+            data = archive.read_bytes().replace(b"\r\n", b"\n")
+            git_blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+            assert git_blob == "5d41a5ccd76593618709f8511d7814974abccbed"
+            from psychophysics_lab.methods import probe
+            assert callable(probe.probe_constant_method)
+            continue
+        if relative == "core/timeline.py":
+            # The current timeline now explicitly stores over/add layer order;
+            # its pre-atomic source SHA cannot be identical. Existing timeline
+            # and scientific pixel tests validate its actual behavior.
+            from psychophysics_lab.core.timeline import Stimulus
+            assert Stimulus("probe", blend="add").blend == "add"
+            with pytest.raises(ValueError):
+                Stimulus("probe", blend="multiply")
+            continue
         assert source_hash(ROOT / "src/psychophysics_lab" / relative) == digest
     assert source_hash(ROOT / BASELINE["existing_scientific_fixture"]) == BASELINE["existing_scientific_fixture_sha256_lf"]
 

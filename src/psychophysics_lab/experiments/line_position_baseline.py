@@ -27,6 +27,7 @@ from psychophysics_lab.researcher import (
     WaitForKey,
     legacy_trial_factory,
     Show,
+    Stimulus,
     CollectResponse,
     Beep,
     UpdateAdaptive,
@@ -144,14 +145,16 @@ FIELDS += (
 RESPONSES = ResponseParadigm(
     "line_position_baseline", ("above", "below"), ("UP", "DOWN")
 )
-STIMULUS_SLOTS = {"fixation": "detection_scene", "first": "detection_scene"}
-STIMULUS_DEFAULTS = {slot: "detection_scene" for slot in STIMULUS_SLOTS}
+# Historical compound scene retained until independent components match its pixels.
+# Each named object is independently drawn. Their order and positions
+# are scientist-owned events below, not one monolithic scene renderer.
+STIMULI = {
+    "fixation": "gaussian_scene_fixation",
+    "probe": "probe_line",
+    "ready_fixation": "gaussian_fixation",
+}
 PARADIGM = "two_alternative_forced_choice"
 FIELDS += probe_contrast_fields()
-
-# A pure, session-only fixation; trial slots and their defaults stay unchanged.
-STIMULUS_SLOTS["ready_fixation"] = "gaussian_fixation"
-STIMULUS_DEFAULTS["ready_fixation"] = "gaussian_fixation"
 
 
 # Session opening — once; readiness is not an accepted scientific response
@@ -172,7 +175,12 @@ def trial_events(settings, condition):
     cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
     return [
         Show('fixation', slot='fixation', duration='fixation_ms'),
-        Show('probe', slot='first', duration='stimulus_ms', beep=cue),
+        Show('probe', duration='stimulus_ms', beep=cue, stimuli=(
+            Stimulus("probe", x_deg=condition["x_deg"],
+                     y_deg=(settings["probe_vertical_offset_deg"] if condition["target"] == 0
+                            else -settings["probe_vertical_offset_deg"]), blend="add"),
+            Stimulus("fixation"),
+        )),
         CollectResponse(actions=('above', 'below'), slot='fixation', beep=cue),
     ]
 
@@ -230,30 +238,28 @@ def response_instructions(responses):
 # PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
+    """Actual separate image objects, in raw-increment-equivalent units.
+
+    The historical staircase outputs a digital increment, not headroom fraction.
+    ProbeLine displays headroom fraction, so transform only at its input.
+    The experiment, trials, response meanings and threshold units stay raw.
+    """
     settings = run.values
     background = settings["background_intensity"]
-    common = dict(
-        background=background,
-        contrast=condition["contrast"],
-        probe_x_deg=condition["x_deg"],
-        probe_y_deg=(
-            settings["probe_vertical_offset_deg"]
-            if condition["target"] == 0
-            else -settings["probe_vertical_offset_deg"]
+    headroom = 1. - background
+    digital_increment = condition["contrast"]
+    if digital_increment > headroom:
+        raise ValueError("Probe increment exceeds remaining digital headroom.")
+    probe_fraction = digital_increment / headroom if headroom else 0.
+    resolved = {
+        "fixation": run.stimulus_parameters(
+            "fixation", background=background,
         ),
-        ring_present=False,
-        flanker_present=False,
-    )
-    fixation = run.stimulus_parameters(
-        "fixation",
-        background=background,
-        probe_present=False,
-        ring_present=False,
-        flanker_present=False,
-    )
-    first = run.stimulus_parameters("first", **common, probe_present=True)
-    return {"fixation": fixation, "first": first}
-
+        "probe": run.stimulus_parameters(
+            "probe", background=background, display_contrast=probe_fraction,
+        ),
+    }
+    return resolved
 
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
@@ -265,7 +271,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting.",
+    "geometry": "Probe width/length are independent ProbeLine library parameters; x and above/below placement are experiment choices. The GaussianSceneFixation class preserves the old untruncated fixation blend.",
 }
 
 
@@ -307,7 +313,7 @@ def interpret_response(condition, response):
 
 def maximum_contrast(settings, condition):
     """Digital headroom for the additive scene (or symmetric grating)."""
-    return (1 - settings["background_intensity"])
+    return condition.get("maximum_probe_increment", 1 - settings["background_intensity"])
 
 
 def change_contrast(state, response, step):
@@ -336,6 +342,10 @@ def update_experiment(run, condition, state, response, trial):
 
 def initialise_experiment(run, conditions):
     settings = run.values
+    from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
+    resolve_probe_limits(
+        run, conditions, prepare_stimuli, trial_events=trial_events, stimuli=STIMULI,
+    )
     algorithm = run.adaptive(
         {
             c["id"]: StaircaseConfig(
@@ -475,7 +485,8 @@ def adaptive_contrast_method(run):
 def constant_contrast_method(run):
     """Use shared level scheduling; retain our scientific conditions and trials."""
     return probe_constant_method(
-        run, make_conditions, prepare_stimuli, scientific_spec=SCIENTIFIC_SPEC,
+        run, make_conditions, prepare_stimuli,
+        trial_events=trial_events, stimuli=STIMULI, scientific_spec=SCIENTIFIC_SPEC,
     )
 
 
@@ -530,8 +541,7 @@ def definition(identity="line_position_baseline"):
         validator=validate_settings,
         migrate_values=migrate_probe_intensity,
         supports_simulation=True,
-        stimulus_slots=STIMULUS_SLOTS,
-        stimulus_defaults=STIMULUS_DEFAULTS,
+        stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,
         monitor_capabilities=MONITOR_CAPABILITIES,
         acquisition_block_reason=ACQUISITION_BLOCK_REASON,
