@@ -23,7 +23,12 @@ RESOLUTION = (320, 240)
 
 
 def parameters(identity, **changes):
-    stimulus = get_stimulus(identity)
+    if identity == "detection_scene":
+        # Frozen historical viewport oracle, never a registered runtime class.
+        from _archived_detection_scene import DetectionScene
+        stimulus = DetectionScene.SPEC
+    else:
+        stimulus = get_stimulus(identity)
     return stimulus, document_for(stimulus)['parameters'] | changes
 
 

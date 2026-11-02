@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 
 from psychophysics_lab.analysis.previews import create_run_figures
-from psychophysics_lab.experiments._internal.detection_limits import probe_limit
-from psychophysics_lab.stimulus_library import DetectionScene
+from _archived_detection_scene import DetectionScene, probe_limit
 
 
 def saved_run(tmp_path, *, status='completed', kind='human', identity='custom_adaptive', complete=True, reversals=True, repeats=2):

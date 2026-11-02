@@ -60,6 +60,12 @@ not produce a successful threshold estimate or qualify a display.
 
 ## Edit the science
 
+The [single scientist-first authoring contract](docs/SCIENTIST_FIRST_AUTHORING.md)
+explains the current A1/A2/B experiment structure, independent stimulus
+classes, scientific units, and the safe handling of historical code.
+Obsolete pre-atomic sources are preserved outside the active Python package
+in [outdated_code](outdated_code/pre_atomic_207/README.md).
+
 - **Stimulus:** a class in [stimulus_library.py](src/psychophysics_lab/stimulus_library.py)
   contains its parameters, drawing rule and declaration.
 - **Experiment:** one Python file in [experiments/](src/psychophysics_lab/experiments/)
@@ -129,6 +135,7 @@ altering previously acquired records. Learn / Help also opens the code example.
 - [Installation and moving computers](docs/INSTALLATION.md)
 - [Display setup and calibration](docs/TUI_AND_LOCAL_DISPLAYS.md)
 - [Experiment file guide](src/psychophysics_lab/experiments/README.md)
+- [One scientist-first authoring model](docs/SCIENTIST_FIRST_AUTHORING.md)
 - [Scientific specifications and validation limits](docs/SCIENTIFIC_REDESIGN.md)
 - [Researcher workflow implementation](docs/RESEARCHER_TEST_WORKFLOW.md)
 - [Installing and updating PsyCoLab with Git — beginner's Windows guide](docs/GIT_INSTALL_AND_UPDATE_FOR_BEGINNERS.md)

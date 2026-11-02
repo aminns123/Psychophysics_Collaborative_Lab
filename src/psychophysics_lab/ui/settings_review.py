@@ -450,7 +450,7 @@ def probe_intensity_rows(spec, values, *, conditions=None):
     if not adaptive:
         rows = [("Intensity", "Background intensity", f"{background:.10g}", digital_note)]
     if bounds:
-        rows.append(("Intensity", "Maximum nominal probe intensity", ", ".join(f"{background+b:.10g}" for b in sorted(set(bounds))), "Experiment's resolved local additive headroom; digital command, not measured luminance"))
+        rows.append(("Intensity", "Maximum nominal probe intensity", ", ".join(f"{background+b:.15g}" for b in sorted(set(bounds))), "Experiment's resolved local additive headroom; digital command, not measured luminance"))
         if adaptive and any(b <= 0 or difference > b for b in bounds):
             rows.append(("Intensity", "Starting intensity check", "Outside at least one condition's headroom", "Review settings; no value was clipped"))
             return rows

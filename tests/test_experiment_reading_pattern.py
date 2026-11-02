@@ -17,6 +17,9 @@ from scripts.validate_run import validate_run
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / "src/psychophysics_lab/experiments"
 EXPERIMENTS = tuple(p.stem for p in sorted(FOLDER.glob("*.py")) if p.stem != "__init__")
+ATOMIC = {"line_position_baseline", "line_position_flanker",
+          "ellipse_centre", "ellipse_major_axis"}
+
 SECTIONS = (
     "SETTINGS AND STIMULI",
     "CONDITIONS AND TRIAL ORDER",
@@ -63,8 +66,8 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
     source = (FOLDER / (identity + ".py")).read_text(encoding="utf-8")
     migrated = hasattr(module, "trial_events")
     from _scientist_first_migrations import migration_reference
-    reference = migration_reference(ROOT, identity)
-    scientist_first = reference is not None or identity in {
+    reference = None if identity in ATOMIC else migration_reference(ROOT, identity)
+    scientist_first = reference is not None or identity in ATOMIC or identity in {
         "example_experiment", "probe_above_below", "orientation_task", "orientation_adaptive"}
     sections = ("PARAMETERS", "SESSION START", "TRIAL EVENTS", "SCIENTIFIC RULES",
                 "STOPPING AND RESULTS", "FRAMEWORK REGISTRATION") if migrated else SECTIONS
@@ -77,7 +80,7 @@ def test_every_researcher_file_has_the_same_actual_reading_order(identity):
              if migrated else ("make_conditions", "prepare_stimuli", "make_trial", "procedure", "definition"))
     if identity == "contrast_sensitivity_windowed":
         names = ("trial_events", "prepare_stimuli", "procedure", "definition")
-    if reference is not None:
+    if reference is not None or identity in ATOMIC:
         names = tuple(n for n in ("trial_events", "prepare_stimuli", "make_conditions", "procedure", "definition") if n in positions)
         assert headings[0] < source.index('def trial_events') < headings[1]
         assert headings[1] < source.index('def prepare_stimuli') < headings[2]

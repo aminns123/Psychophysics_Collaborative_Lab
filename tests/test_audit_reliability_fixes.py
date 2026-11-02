@@ -166,7 +166,19 @@ def test_saved_dictionary_agrees_with_actual_scientific_strength(tmp_path, ident
     assert "0 =" in definitions["target_alternative"]["units_or_encoding"]
     records = list(read_json_records(artifacts.run_directory / "trial_events.jsonl"))
     data = records[0]["trial"]
-    assert data["initial_state"]["contrast"] in [s["parameters"]["contrast"] for s in data["resolved_stimuli"].values() if "contrast" in s["parameters"]]
+    if units == "digital_probe_increment":
+        # ProbeLine consumes a fraction of the remaining headroom; the
+        # staircase and canonical trial column store the original raw command
+        # increment. Never compare the two unconverted or relabel the data.
+        probe = data["resolved_stimuli"]["probe"]["parameters"]
+        nominal = probe["display_contrast"] * (1 - probe["background"])
+        assert nominal == pytest.approx(data["initial_state"]["contrast"], abs=1e-15)
+    else:
+        assert data["initial_state"]["contrast"] in [
+            item["parameters"]["contrast"]
+            for item in data["resolved_stimuli"].values()
+            if "contrast" in item["parameters"]
+        ]
     assert all(c.passed for c in validate_run(artifacts.run_directory))
 
 
@@ -193,26 +205,41 @@ def test_older_dictionary_is_preserved_and_validation_limits_are_explicit(tmp_pa
     assert (artifacts.run_directory / "trial_data_dictionary.tsv").read_bytes() == before
 
 
-def test_crop_and_blank_target_choices_remain_available(tmp_path):
+def test_atomic_probe_clipping_is_safe_and_blank_interval_remains_available(tmp_path):
+    """An invisible target is rejected; a genuinely blank 2IFC interval is valid."""
+    from psychophysics_lab.core.presentation import plan_visible_stimulus
+    from psychophysics_lab.core.timeline import Stimulus
+    from psychophysics_lab.config.stimulus_parameters import document_for, resolve_stimuli
     from psychophysics_lab.stimuli.registry import get_stimulus
-    from psychophysics_lab.config.stimulus_parameters import document_for, snapshot, resolve_stimuli
-    stimulus = get_stimulus("detection_scene")
-    # This fixture intentionally puts the complete reference probe outside
-    # the aperture; researcher-edited class defaults must not change the case.
+    from psychophysics_lab.experiments import ellipse_centre
+
+    profile = replace(
+        load_monitor_profiles(ROOT)["legacy_reference_display"],
+        expected_resolution_px=(1920, 1080),
+    )
+    stimulus = get_stimulus("probe_line")
     parameters = document_for(stimulus)["parameters"] | {
-        "size_deg": .1, "probe_y_deg": .5, "probe_length_deg": .133}
-    np.testing.assert_array_equal(render_values(stimulus, parameters), render_values(stimulus, parameters | {"probe_present": False}))
-    spec = get_experiment("line_position_baseline")
-    profile = replace(load_monitor_profiles(ROOT)["legacy_reference_display"], expected_resolution_px=(1920, 1080))
-    selected = snapshot(document_for(stimulus, parameters), file_identity="intentional_crop")
-    values = spec.field_defaults() | {"probe_vertical_offset_deg": .5}
-    snapshots = resolve_stimuli(spec, values, repo_root=ROOT)
-    # Crop every task scene, while keeping the session-only fixation's own family.
-    snapshots.update({slot: selected for slot, family in spec.stimulus_slots.items()
-                      if family == stimulus.family})
-    request = SetupRequest("crop_test", "new", spec.id, profile.id, values,
-                           stimulus_snapshots=snapshots)
-    assert validate_setup(request, spec, profile, mode="configuration")
+        "size_deg": .1, "length_deg": .133, "width_deg": .013,
+    }
+    with pytest.raises(ValueError):
+        plan_visible_stimulus(
+            profile, (1920, 1080), stimulus, parameters,
+            Stimulus("probe", x_deg=89.0),
+        )
+
+    values = ellipse_centre.SPEC.normalise_values({
+        "ring_increment": .05, "aspect_ratios": "1",
+    })
+    snapshots = resolve_stimuli(ellipse_centre.SPEC, values, repo_root=ROOT)
+    assert snapshots["probe"]["document"]["stimulus_id"] == "probe_line"
+    condition = ellipse_centre.make_conditions(values)[0] | {
+        "target": 1, "contrast": .01,
+    }
+    phases = ellipse_centre.trial_events(values, condition)
+    first = next(event for event in phases if event.name == "interval_one")
+    second = next(event for event in phases if event.name == "interval_two")
+    assert all(p.slot != "probe" for p in first.placements)
+    assert any(p.slot == "probe" for p in second.placements)
 
 
 def test_png_preview_preserves_positive_y_up_for_array_equations(tmp_path, monkeypatch):

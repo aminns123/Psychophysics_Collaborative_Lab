@@ -9,6 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from _archived_detection_scene import DetectionScene
+
 from psychophysics_lab.analysis.primary import estimate
 from psychophysics_lab.core.presentation import (
     render_values,
@@ -92,6 +94,7 @@ def test_unspecified_study_choices_are_required(identity, required):
 
 
 def test_ellipse_intervals_preserve_the_actual_discrimination():
+    """The authored 2IFC event list, not a first/second composite slot."""
     from psychophysics_lab.experiments import ellipse_centre as e
 
     settings = e.SPEC.field_defaults() | {"ring_increment": 0.1}
@@ -101,18 +104,20 @@ def test_ellipse_intervals_preserve_the_actual_discrimination():
         values = settings
 
         def stimulus_parameters(self, slot, **parameters):
-            defaults = {
-                f.key: f.default for f in get_stimulus("detection_scene").parameters
-            }
-            return defaults | parameters
+            stimulus = get_stimulus(e.STIMULI[slot])
+            return {f.key: f.default for f in stimulus.parameters} | parameters
 
     images = e.prepare_stimuli(Run(), condition, {})
-    assert images["first"]["ring_present"] and images["second"]["ring_present"]
-    assert not images["first"]["probe_present"] and images["second"]["probe_present"]
-    assert images["second"]["probe_y_deg"] == images["second"]["ring_y_deg"] == 0.6
+    assert images["ellipse"]["display_contrast"] == pytest.approx(.1 / .5)
+    assert images["probe"]["display_contrast"] == pytest.approx(.02 / .5)
+    events = e.trial_events(settings, condition)
+    one = next(p for p in events if p.name == "interval_one")
+    two = next(p for p in events if p.name == "interval_two")
+    assert [p.slot for p in one.placements] == ["ellipse", "fixation"]
+    assert [p.slot for p in two.placements] == ["ellipse", "probe", "fixation"]
+    assert next(p for p in two.placements if p.slot == "probe").y_deg == settings["ellipse_centre_y_deg"]
     assert [
-        p.duration_ms
-        for p in e.make_trial(settings, condition).resolve(settings).phases
+        p.duration_ms for p in e.make_trial(settings, condition).resolve(settings).phases
     ] == [500, 250, 250, 250, 0]
 
 
@@ -126,7 +131,7 @@ def test_small_contrasts_survive_scientific_raster_but_preview_is_explicitly_eig
 
 
 def test_thin_probe_preserves_integrated_area_and_ring_never_silently_clips():
-    stimulus = get_stimulus("detection_scene")
+    stimulus = DetectionScene.SPEC
     defaults = {f.key: f.default for f in stimulus.parameters} | {
         "probe_x_deg": 1.0,
         "probe_y_deg": 1.0,

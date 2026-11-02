@@ -39,8 +39,8 @@ def test_flanker_reports_its_dark_band_limit_before_preparing_stimuli():
     values=spec.normalise_values(base|{'background_intensity':.009})
     snapshots=resolve_stimuli(spec,values,repo_root=ROOT)
     description=describe_settings(spec,values,snapshots)
-    stimulus=get_stimulus(snapshots['first']['document']['stimulus_id'])
-    array=presentation.render_values(stimulus,description['stimuli']['first'],pixels=(128,96))
+    stimulus=get_stimulus(snapshots['flanker']['document']['stimulus_id'])
+    array=presentation.render_values(stimulus,description['stimuli']['flanker'],pixels=(128,96))
     assert array.min()>=0 and array.max()<=1
 
 
@@ -62,7 +62,7 @@ def test_failed_second_patch_releases_partial_allocations_and_allows_retry(monke
     display.profile=SimpleNamespace(viewing_distance_m=.5,physical_width_m=.6,
         physical_height_m=.34,geometry_status='unverified')
     display.resolution=(400,300)
-    stimulus=get_stimulus('detection_scene')
+    stimulus=get_stimulus('probe_line')
     params={field.key:field.default for field in stimulus.parameters}
     plan=TrialTimeline((Show('one',slot='one',duration=10),Show('two',slot='two',duration=10),
         CollectResponse(actions=('left','right'))))

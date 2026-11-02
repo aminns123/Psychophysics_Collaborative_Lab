@@ -27,6 +27,7 @@ from psychophysics_lab.researcher import (
     WaitForKey,
     legacy_trial_factory,
     Show,
+    Stimulus,
     CollectResponse,
     Beep,
     UpdateAdaptive,
@@ -157,9 +158,12 @@ RESPONSES = ResponseParadigm(
     "line_position_flanker", ("above", "below"), ("UP", "DOWN")
 )
 # Historical scene kept intact while decomposing ring/probe/flanker objects.
+# Each named object is independently drawn. Their order and positions
+# are scientist-owned events below, not one monolithic scene renderer.
 STIMULI = {
-    "fixation": "detection_scene",
-    "first": "detection_scene",
+    "fixation": "gaussian_scene_fixation",
+    "probe": "probe_line",
+    "flanker": "flanker_grating",
     "ready_fixation": "gaussian_fixation",
 }
 PARADIGM = "two_alternative_forced_choice"
@@ -184,7 +188,13 @@ def trial_events(settings, condition):
     cue = Beep(settings["cue_hz"], settings["cue_ms"]) if settings["auditory_cues"] else None
     return [
         Show('fixation', slot='fixation', duration='fixation_ms'),
-        Show('probe', slot='first', duration='stimulus_ms', beep=cue),
+        Show('probe', duration='stimulus_ms', beep=cue, stimuli=(
+            Stimulus("flanker", x_deg=-3.0, y_deg=0.0),
+            Stimulus("probe", x_deg=condition["x_deg"],
+                     y_deg=(settings["probe_vertical_offset_deg"] if condition["target"] == 0
+                            else -settings["probe_vertical_offset_deg"]), blend="add"),
+            Stimulus("fixation"),
+        )),
         CollectResponse(actions=('above', 'below'), slot='fixation', beep=cue),
     ]
 
@@ -242,31 +252,31 @@ def response_instructions(responses):
 # PART A2 — SCIENTIFIC METHODS
 
 def prepare_stimuli(run, condition, state):
+    """Actual separate image objects, in raw-increment-equivalent units.
+
+    The historical staircase outputs a digital increment, not headroom fraction.
+    ProbeLine displays headroom fraction, so transform only at its input.
+    The experiment, trials, response meanings and threshold units stay raw.
+    """
     settings = run.values
     background = settings["background_intensity"]
-    common = dict(
-        background=background,
-        contrast=condition["contrast"],
-        probe_x_deg=condition["x_deg"],
-        probe_y_deg=(
-            settings["probe_vertical_offset_deg"]
-            if condition["target"] == 0
-            else -settings["probe_vertical_offset_deg"]
+    headroom = 1. - background
+    digital_increment = condition["contrast"]
+    if digital_increment > headroom:
+        raise ValueError("Probe increment exceeds remaining digital headroom.")
+    probe_fraction = digital_increment / headroom if headroom else 0.
+    resolved = {
+        "fixation": run.stimulus_parameters(
+            "fixation", background=background,
         ),
-        ring_present=False,
-        flanker_present=True,
-        flanker_cpd=settings["flanker_cpd"],
+        "probe": run.stimulus_parameters(
+            "probe", background=background, display_contrast=probe_fraction,
+        ),
+    }
+    resolved["flanker"] = run.stimulus_parameters(
+        "flanker", background=background, spatial_frequency_cpd=settings["flanker_cpd"],
     )
-    fixation = run.stimulus_parameters(
-        "fixation",
-        background=background,
-        probe_present=False,
-        ring_present=False,
-        flanker_present=False,
-    )
-    first = run.stimulus_parameters("first", **common, probe_present=True)
-    return {"fixation": fixation, "first": first}
-
+    return resolved
 
 SCIENTIFIC_SPEC = {
     "boundary_policy": "Saturate adaptive strength at the digital gamut bound; flat holds are not reversals. Positive float floor prevents log underflow. Boundary-affected estimates are flagged, not qualified thresholds.",
@@ -278,7 +288,7 @@ SCIENTIFIC_SPEC = {
     "stopping": "Reversal completion; global ceiling is incomplete, not a successful threshold.",
     "exclusions": "No post-hoc deletion; abort/timeout/errors preserved.",
     "estimator": "Geometric mean final retained presented reversals; mean across all complete repeats.",
-    "geometry": "Probe width/length come from the selected DetectionScene parameters; displacement is an experiment setting. Flanker 5 degree square at x=-3 degrees; digital peak-to-peak modulation .018; frequency selected independently by the researcher.",
+    "geometry": "ProbeLine width/length and FlankerGrating dimensions/amplitude belong to independent library classes. The experiment places the flanker at x=-3 degrees, chooses its frequency, positions the probe above/below, and draws the Gaussian fixation last. Default flanker peak-to-peak digital modulation is .018.",
 }
 
 
@@ -350,7 +360,9 @@ def update_experiment(run, condition, state, response, trial):
 def initialise_experiment(run, conditions):
     settings = run.values
     from psychophysics_lab.experiments._internal.detection_limits import resolve_probe_limits
-    resolve_probe_limits(run, conditions, prepare_stimuli)
+    resolve_probe_limits(
+        run, conditions, prepare_stimuli, trial_events=trial_events, stimuli=STIMULI,
+    )
     algorithm = run.adaptive(
         {
             c["id"]: StaircaseConfig(
@@ -502,7 +514,8 @@ def adaptive_contrast_method(run):
 def constant_contrast_method(run):
     """Use shared level scheduling; retain our scientific conditions and trials."""
     return probe_constant_method(
-        run, make_conditions, prepare_stimuli, scientific_spec=SCIENTIFIC_SPEC,
+        run, make_conditions, prepare_stimuli,
+        trial_events=trial_events, stimuli=STIMULI, scientific_spec=SCIENTIFIC_SPEC,
     )
 
 

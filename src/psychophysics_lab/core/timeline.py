@@ -303,6 +303,10 @@ class Stimulus:
     slot: str
     x_deg: float = 0.
     y_deg: float = 0.
+    # Explicit scientific overlap intent. "add" adds an independent digital
+    # increment to preceding layers; the default preserves front-to-back
+    # occlusion. Needed for historical probe/ring overlap, never implicit.
+    blend: str = "over"
 
     def __post_init__(self):
         if not isinstance(self.slot, str) or not self.slot.isidentifier():
@@ -310,9 +314,14 @@ class Stimulus:
         if any(type(v) not in (int, float) or not math.isfinite(v)
                for v in (self.x_deg, self.y_deg)):
             raise ValueError("Stimulus positions must be finite degrees.")
+        if self.blend not in {"over", "add"}:
+            raise ValueError("Stimulus blend must be 'over' or 'add'.")
 
     def to_dict(self):
-        return {"slot": self.slot, "x_deg": self.x_deg, "y_deg": self.y_deg}
+        result = {"slot": self.slot, "x_deg": self.x_deg, "y_deg": self.y_deg}
+        if self.blend != "over":
+            result["blend"] = self.blend
+        return result
 
 
 def Show(name, *, slot=None, duration, instructions="", stimuli=(), beep=None):
