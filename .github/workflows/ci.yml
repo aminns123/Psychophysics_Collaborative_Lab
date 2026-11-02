@@ -69,3 +69,24 @@ jobs:
           Get-ChildItem -LiteralPath $env:TEMP -Filter 'PsyCoLab-launch-*.exe.log' | ForEach-Object { Write-Output $_.FullName; Get-Content -LiteralPath $_.FullName -Tail 15 }
       - name: Check portability
         run: python scripts/portability_check.py
+
+  # Keep the original required status context after splitting the full Windows
+  # job into four parallel shards. Branch protection still expects exactly
+  # "test (windows-latest)"; this gate must fail if *any* dependency fails,
+  # is cancelled or skipped. Do not silently waive a scientific test.
+  required-windows-check:
+    name: test (windows-latest)
+    runs-on: windows-latest
+    needs: [scientist-first-smoke, test]
+    if: ${{ always() }}
+    steps:
+      - name: Verify scientific smoke and all Windows test shards passed
+        shell: pwsh
+        env:
+          SMOKE_RESULT: ${{ needs.scientist-first-smoke.result }}
+          SHARDS_RESULT: ${{ needs.test.result }}
+        run: |
+          if ($env:SMOKE_RESULT -ne 'success' -or $env:SHARDS_RESULT -ne 'success') {
+            throw "Required validation did not pass. Scientific smoke: $env:SMOKE_RESULT; Windows shards: $env:SHARDS_RESULT"
+          }
+          Write-Host "All scientific smoke and four Windows test shards passed."
