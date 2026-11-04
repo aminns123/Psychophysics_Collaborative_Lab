@@ -191,7 +191,7 @@ def trial_events(settings, condition):
 # Both methods use headroom-normalized bright display contrast, not optical
 # luminance contrast or the historical raw digital probe increment.
 SCIENTIFIC_SPEC = {
-    "version": "ellipse_modular_centre-2",
+    "version": "ellipse_modular_centre-3",
     "quantity": "C_disp=(I_probe-I_background)/(1-I_background), same for ring/fixation.",
     "conditions": "Selected ellipse b/a ratio and optional ring; relative probe position is held fixed.",
     "response": "Two intervals: which contains the probe? Exactly one target interval.",
@@ -218,10 +218,14 @@ def make_conditions(settings):
     probe_x = settings["ring_centre_x_deg"] + settings["probe_offset_x_deg"]
     probe_y = settings["ring_centre_y_deg"] + settings["probe_offset_y_deg"]
     for ratio in (float(text) for text in settings["aspect_ratios"].split(",")):
+        # Scientific identity must distinguish every accepted float. Default
+        # ':g' rounds to six significant digits and silently merges close ratios
+        # in fixed scheduling and threshold grouping. Preserve old integer labels.
+        ratio_identity = str(int(ratio)) if ratio.is_integer() else repr(ratio)
         for repeat in range(settings["staircases_per_condition"]):
             rows.append({
                 "id": len(rows)+1,
-                "value": f"ratio={ratio:g};ring={int(settings['ring_present'])};"
+                "value": f"ratio={ratio_identity};ring={int(settings['ring_present'])};"
                          f"probe_x={probe_x:g};probe_y={probe_y:g}",
                 "aspect_ratio": ratio, "ring": settings["ring_present"],
                 "x_deg": probe_x, "probe_x_deg": probe_x, "probe_y_deg": probe_y,
