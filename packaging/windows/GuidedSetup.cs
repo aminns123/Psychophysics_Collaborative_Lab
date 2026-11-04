@@ -641,10 +641,15 @@ public static class SourceRecovery
         start.RedirectStandardOutput=true;start.RedirectStandardError=true;
         using(var writer=new StreamWriter(log,true,Encoding.UTF8))using(var p=new Process{StartInfo=start}) {
             object gate=new object();
+            writer.WriteLine("Starting process: "+python+" "+String.Join(" ",args.Select(SetupEngine.Quote)));writer.Flush();
             DataReceivedEventHandler output=(s,e)=>{if(e.Data!=null)lock(gate){writer.WriteLine(e.Data);writer.Flush();Console.WriteLine(e.Data);}};
             p.OutputDataReceived+=output;p.ErrorDataReceived+=output;
             p.Start();p.BeginOutputReadLine();p.BeginErrorReadLine();p.WaitForExit();
-            if(p.ExitCode!=0)throw new IOException("Setup or verification failed. The old environment is preserved. Run recovery again to retry. Report: "+log);
+            if(p.ExitCode!=0) {
+                string failure="Setup or verification failed (exit code "+p.ExitCode+", 0x"+p.ExitCode.ToString("X8")+").";
+                writer.WriteLine(failure);writer.Flush();
+                throw new IOException(failure+" The old environment is preserved. Run recovery again to retry. Report: "+log);
+            }
         }
     }
     static void VerifyBackup(string root,Journal j) {
@@ -689,11 +694,11 @@ public static class SourceRecovery
                 j.phase="setup";Save(root,j);
                 string log=Path.Combine(folder,"repair.log");
                 Console.WriteLine("Preparing source environment. Progress and report: "+log);
-                Run(root,python,new[]{"-I","-B",Path.Combine(root,"scripts","developer_setup.py"),"--repair"},log);
+                Run(root,python,new[]{"-I","-B","-X","faulthandler",Path.Combine(root,"scripts","developer_setup.py"),"--repair"},log);
                 diagnosis=StartupRecovery.Diagnose(root);
                 if(!diagnosis.healthy||!diagnosis.development)throw new IOException("The replacement source environment did not pass startup checks. Preserve repair.log and retry recovery.");
-                Run(root,Path.Combine(root,".venv-dev","Scripts","python.exe"),new[]{"-I","-B","-m","psychophysics_lab","--help"},log);
             }
+            if(j.phase!="verified")Run(root,Path.Combine(root,".venv-dev","Scripts","python.exe"),new[]{"-I","-B","-X","faulthandler","-m","psychophysics_lab","--help"},Path.Combine(folder,"repair.log"));
             j.phase="verified";Save(root,j);
             Console.WriteLine("Source installation verified. Existing backups remain available.");
             if(!launch)return 0;

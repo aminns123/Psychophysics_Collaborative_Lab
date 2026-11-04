@@ -130,11 +130,11 @@ runpy.run_module('pip', run_name='__main__', alter_sys=True)
 """
                 installer = [str(python), "-I", "-B", "-X", "faulthandler", "-c", bootstrap]
             launcher._run([*installer, "--isolated", "install",
-                           "--disable-pip-version-check", "--require-hashes", "--only-binary=:all:",
+                           "--disable-pip-version-check", "--no-compile", "--require-hashes", "--only-binary=:all:",
                            *(["--force-reinstall"] if repair else []), "--requirement",
                            str(ROOT / "requirements/windows-cp311" / (section + ".lock")), *options])
         launcher._run([str(python), "-I", "-m", "pip", "--isolated", "install",
-                       "--disable-pip-version-check", "--no-deps", "--no-build-isolation",
+                       "--disable-pip-version-check", "--no-compile", "--no-deps", "--no-build-isolation",
                        "--editable", str(ROOT) + "[dev]"])
         launcher._validate_environment(python)
         _verify_pinned_environment(python)

@@ -185,6 +185,29 @@ def test_real_batch_offline_failure_retries_same_backup(source, wheels, tmp_path
     assert snapshot(backup) == old and runs.read_text() == "mounted\n"
 
 
+def test_failed_startup_check_is_rechecked_before_recovery_completes(source, wheels):
+    root, _, runs, env = source
+    env["PSYCOLAB_WHEELHOUSE"] = str(wheels)
+    attempts = root.parent / "startup check attempts.txt"
+    entry = root / "src/psychophysics_lab/__main__.py"
+    original = entry.read_text(encoding="utf-8")
+    entry.write_text("import sys\nfrom pathlib import Path\n"
+                     "if '--help' in sys.argv:\n"
+                     f" p=Path({str(attempts)!r})\n"
+                     " count=int(p.read_text())+1 if p.exists() else 1\n"
+                     " p.write_text(str(count))\n"
+                     " if count==1: raise SystemExit(9)\n" + original, encoding="utf-8")
+    result = batch(source, "--repair")
+    assert result.returncode != 0 and "exit code 9" in result.stdout
+    assert not runs.exists() and attempts.read_text() == "1"
+    assert json.loads((root / ".psycolab-recovery/state.json").read_text())["phase"] == "setup"
+    result = batch(source, "--repair")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert attempts.read_text() == "2" and runs.read_text() == "mounted\n"
+    assert json.loads((root / ".psycolab-recovery/state.json").read_text())["phase"] == "verified"
+    assert len(list(root.glob(".venv-recovery-backup-*"))) == 1
+
+
 @pytest.mark.parametrize("refusal", ["missing_python", "qualified", "incomplete_qualified", "managed", "unowned_development"])
 def test_real_batch_refuses_before_moving_original(source, refusal):
     root, _, _, env = source

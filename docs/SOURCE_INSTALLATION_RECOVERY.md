@@ -35,6 +35,8 @@ Close any remaining setup process, then double-click recovery again and select
 repair. It reuses its recorded attempt and the same original backup. It can
 reinstall missing or damaged pinned dependencies, including a broken target pip.
 It will not adopt an unrelated environment or change a laboratory setup record.
+If the application startup check failed, recovery repeats that check before
+marking the attempt complete, even when the dependency checks already pass.
 
 The report is **.psycolab-recovery/repair.log** inside the checkout. Share it with
 your maintainer if retry still fails; it can contain local paths. Nothing is
