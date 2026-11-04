@@ -1,11 +1,11 @@
 # Windows launch and guided startup recovery
 
-`run_psycolab.bat` is the normal batch entry point for a source installation.
-It checks that checkout's own qualified `.venv` and opens PsyCoLab without a
-choice dialog when the checks pass. Installation and updates remain deliberate
-actions in the [existing guided Windows setup](WINDOWS_GUIDED_INSTALLATION.md).
-An ordinary launch never invokes setup, pip, Conda, a branch switch or editable
-metadata repair. `run_user_env.bat` remains a separate development terminal tool.
+**Run_PsyCoLab.bat** is the normal source entry point. It verifies an existing
+`.venv` or `.venv-dev` without changing it. Only a Git checkout with neither
+environment present invokes the existing first-time source development setup.
+Existing, damaged, unqualified and interrupted environments retain the recovery
+rules below; startup does not repair them. **PsyCoLab_Python.bat** uses the same
+verified environment. See [launcher inventory](WINDOWS_LAUNCHERS.md).
 
 ## Maintainer Git checkout on a new PC
 
@@ -15,10 +15,11 @@ recovery host has no installation package, so it cannot create a qualified
 environment on a fresh computer; diagnostics and Cancel alone cannot complete
 first setup.
 
-For source maintenance, use the explicit development setup:
+For first-time source use (or explicit development setup):
 
 1. Install 64-bit CPython 3.11. A python.org installation is supported here.
-2. Double-click `setup_psycolab_dev.bat` in a Git checkout without a `.venv`.
+2. Double-click `Run_PsyCoLab.bat` in a Git checkout without an environment;
+   `setup_psycolab_dev.bat` remains the explicit setup/retry entry.
    It downloads the project's declared development dependencies into `.venv-dev`
    and validates imports, dependency compatibility and editable source identity.
 3. Double-click `run_psycolab.bat` to open the normal TUI. Repeat launches only
@@ -45,7 +46,7 @@ data safeguards still apply.
 | --- | --- | --- |
 | Healthy repeat launch | Called provisioning/setup before opening the app | Calls the existing read-only `launcher_setup.py --check`, then opens once |
 | Older `.venv` record | Setup refusal and terminal instructions/pause | Native explanation, available verified choices, diagnostics and Cancel |
-| Missing own environment | Searched registered/global interpreters to bootstrap | Preserves the checkout and explains approved separate-install options |
+| Missing own environment | Searched registered/global interpreters to bootstrap | Git checkout only: existing source development setup runs once when both environments are absent; qualified deployment stays explicit |
 | Source revision changes | Setup could refresh editable metadata | Environment-compatible changes pass existing checks; a mismatched identity is refused without repair |
 | Nonzero application exit | Terminal pause for every error | Startup phase or conservative incident explanation; no automatic retry |
 

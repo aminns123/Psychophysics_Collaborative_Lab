@@ -14,23 +14,23 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 
 ## Start
 
-For a **maintainer Git checkout on a new PC**, install 64-bit CPython 3.11,
-double-click **setup_psycolab_dev.bat** once, then double-click
-**run_psycolab.bat**. Setup downloads the declared development dependencies
-into a separate `.venv-dev`. This development environment has no locked
-laboratory qualification. A checkout with an existing laboratory `.venv`
-keeps that environment's qualification gate; use a separate checkout for
-development. See [startup recovery](docs/STARTUP_RECOVERY.md).
+For a **Git checkout on a new Windows PC**, double-click **Run_PsyCoLab.bat**.
+If Python is missing, follow its Python 3.11 instructions and reopen it. The first
+launch prepares the existing `.venv-dev` setup when neither environment exists;
+later launches verify and reuse it without reinstalling packages. This source
+environment does not grant locked laboratory software qualification.
 
-For a source installation, follow the [approved Windows environment guide](docs/WINDOWS_ENVIRONMENT.md),
-then double-click **run_psycolab.bat**. An arbitrary Python 3.11 installation is
-not a qualified interpreter. A [guided installation candidate](docs/WINDOWS_GUIDED_INSTALLATION.md)
-is being qualified for students and managed teaching computers; it is not yet a
-released installer.
+Use **PsyCoLab_Python.bat** for an interactive Python prompt in the same verified
+environment, or run an independent script:
 
-Ordinary batch launch never installs or repairs an environment. If it cannot
-start safely, [native startup recovery](docs/STARTUP_RECOVERY.md) explains the
-verified choices and preserves the existing installation.
+```bat
+PsyCoLab_Python.bat "C:\My Research\my_experiment.py" argument
+```
+
+Existing laboratory `.venv` installations retain their qualification checks;
+a damaged environment is preserved for diagnosis. The explicit setup and recovery
+files remain compatibility paths. See [Windows startup and launchers](docs/WINDOWS_LAUNCHERS.md)
+and the [qualified Windows environment guide](docs/WINDOWS_ENVIRONMENT.md).
 
 1. Choose **Experiment**, an experiment, and a display profile.
 2. Configure its conditions, timings, response keys and adaptive settings.
@@ -92,7 +92,10 @@ Participant data live outside this repository. Each run preserves its selected
 settings, accepted responses and scientific provenance. Test records live in the
 separate `psycolab_presentation_tests` folder beside local configuration;
 simulations use reserved `synthetic_` identities in the chosen external data folder.
-The end-of-run message gives the exact location.
+After acquisition, PsyCoLab returns to a result page with the exact location,
+an action to inspect saved results, repeat configuration, and experiment selection.
+Aborted, incomplete and failed runs retain their separate statuses. Each repeat
+allocates a new run folder and goes through Review again.
 
 **Calibrate** manages monitor binding, geometry, spatial consistency,
 luminance, output precision and timing evidence. Output precision records
