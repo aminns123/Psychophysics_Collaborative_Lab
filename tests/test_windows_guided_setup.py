@@ -22,6 +22,7 @@ class Checks {
   if(a[0]=="inspect")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Inspect(a[1])));
   if(a[0]=="diagnose")Console.WriteLine(SetupEngine.Json.Serialize(StartupRecovery.Diagnose(a[1])));
   if(a[0]=="source-launch")return StartupRecovery.LaunchSource(a[1],new[]{"--probe-token",a[2]});
+  if(a[0]=="source-hold")using(SourceRecovery.Acquire(a[1])) {Console.WriteLine("held");Console.Out.Flush();System.Threading.Thread.Sleep(Int32.Parse(a[2]));}
   if(a[0]=="observed-exit") {
    using(var timer=new System.Windows.Forms.Timer{Interval=50}) {
     timer.Tick+=(s,e)=>{foreach(System.Windows.Forms.Form f in System.Windows.Forms.Application.OpenForms)if(f is RecoveryWindow){foreach(System.Windows.Forms.Control panel in f.Controls)foreach(System.Windows.Forms.Control c in panel.Controls)Console.WriteLine(c.Text);f.Close();break;}};
@@ -62,6 +63,7 @@ def native(tmp_path_factory):
     subprocess.run([str(CSC), '/nologo', '/r:' + str(exe), '/out:' + str(harness), str(source)], check=True)
     def run(*args, **kwargs):
         return subprocess.run([str(harness), *map(str, args)], capture_output=True, text=True, encoding='utf-8', errors='replace', **kwargs)
+    run.executable = harness
     return run
 
 

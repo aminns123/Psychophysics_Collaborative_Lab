@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 WEIGHTS_SECONDS = {
+    "test_source_recovery.py": 280,
     "test_independent_scientific_stress.py": 140,
     "test_stage_c_event_first.py": 105,
     "test_progressive_lessons.py": 98,

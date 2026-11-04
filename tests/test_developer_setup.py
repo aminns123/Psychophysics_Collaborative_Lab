@@ -22,6 +22,7 @@ def checkout(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(setup.launcher, "_run", lambda args: calls.append(args))
     monkeypatch.setattr(setup.launcher, "_validate_environment", lambda python: calls.append([str(python), "validate"]))
+    monkeypatch.setattr(setup, "_verify_pinned_environment", lambda python: calls.append([str(python), "verify-pinned"]))
 
     def create(folder):
         python = setup.launcher._venv_python(folder)

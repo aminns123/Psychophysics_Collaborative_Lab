@@ -25,20 +25,21 @@ for a different display.
 ## First installation from Git (ordinary Python 3.11)
 
 1. Clone the complete repository into a writable folder under your ordinary Windows account.
-2. Double-click **Run_PsyCoLab.bat**. If it reports missing Python, install **64-bit
+2. Double-click **PsyCoLab.bat** and choose **2 — Check / Repair**. If it reports missing Python, install **64-bit
    Python 3.11**; with the Python install manager the command is `py install 3.11`.
    Reopen the launcher afterwards. An explicit interpreter path can be selected
    with `PSYCOLAB_BOOTSTRAP_PYTHON`. PsyCoLab does not edit global PATH.
-3. With no existing `.venv` or `.venv-dev`, the launcher invokes the existing
-   development setup once, in the same terminal. Initial package installation
+3. With no existing `.venv` or `.venv-dev`, choose **I — Install source environment**
+   and type **YES**. Setup runs in the same terminal and returns to the menu.
+   Choose **1 — Launch PsyCoLab**. Initial package installation
    requires internet/package-index access; subsequent matching launches do not.
 4. Choose the external data folder, configure the experiment and display, and Review.
    Software installation does not calibrate apparatus or qualify a study.
 5. After a run, inspect the results, configure a repeat, or select another experiment.
    Exit the TUI explicitly when the laboratory session is finished.
 
-The same Python environment is available through **PsyCoLab_Python.bat**, either
-as an interactive prompt or with a quoted script path and arguments, including
+The same Python environment is available through **3 — Python Workspace** in
+`PsyCoLab.bat`. This opens a normal command prompt for commands and scripts, including
 scripts outside the checkout. The launch working directory is the checkout;
 independent scripts should use explicit data paths or paths relative to `__file__`.
 Do not add packages to a qualified environment in place. Existing separate
@@ -47,8 +48,8 @@ selected by the compatibility `run_user_env.bat` name.
 
 An existing environment is checked without installation. A failed check does not
 replace it, silently fall back to a different Python, or resume an interrupted
-setup. The retained **setup_psycolab_dev.bat** remains the explicit setup/retry
-path for an owned `.venv-dev`; **psycolab_recovery.bat** opens diagnostics.
+setup. Choose **2 — Check / Repair** for supported initial setup, repair or
+restoration. See [repair and restore](SOURCE_INSTALLATION_RECOVERY.md).
 First-time failure messages remain visible in the launch terminal.
 
 ## Qualified laboratory software installation

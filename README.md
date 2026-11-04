@@ -14,23 +14,29 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 
 ## Start
 
-For a **Git checkout on a new Windows PC**, double-click **Run_PsyCoLab.bat**.
-If Python is missing, follow its Python 3.11 instructions and reopen it. The first
-launch prepares the existing `.venv-dev` setup when neither environment exists;
-later launches verify and reuse it without reinstalling packages. This source
-environment does not grant locked laboratory software qualification.
+Double-click **PsyCoLab.bat**, the single Windows starting point. Its native menu
+works even when Python is missing:
 
-Use **PsyCoLab_Python.bat** for an interactive Python prompt in the same verified
-environment, or run an independent script:
+1. **Launch PsyCoLab** checks and opens the laboratory TUI. Closing the TUI returns
+   here; finishing an experiment stays inside the TUI.
+2. **Check / Repair PsyCoLab** explains initial setup or a supported repair and asks
+   before changing anything. For an older setup-record error, it preserves the
+   old environment and prepares a verified replacement. Install 64-bit Python 3.11
+   if requested, then choose this option again. No Git update happens automatically.
+3. **Python Workspace** opens a command prompt in the same terminal using the
+   verified environment. Run your own scripts, including files outside the checkout:
 
 ```bat
-PsyCoLab_Python.bat "C:\My Research\my_experiment.py" argument
+python "C:\My Research\my_experiment.py" "argument with spaces"
 ```
 
-Existing laboratory `.venv` installations retain their qualification checks;
-a damaged environment is preserved for diagnosis. The explicit setup and recovery
-files remain compatibility paths. See [Windows startup and launchers](docs/WINDOWS_LAUNCHERS.md)
-and the [qualified Windows environment guide](docs/WINDOWS_ENVIRONMENT.md).
+   Type `exit` to return to the menu. **4 — Exit** closes the launcher.
+
+Healthy repeat launches do not reinstall packages. Source setup does not grant
+laboratory qualification; managed and qualified environments retain their checks.
+See [repair, retry and restore](docs/SOURCE_INSTALLATION_RECOVERY.md), the
+[launcher inventory and compatibility retirement](docs/WINDOWS_LAUNCHERS.md), and
+the [qualified Windows environment guide](docs/WINDOWS_ENVIRONMENT.md).
 
 1. Choose **Experiment**, an experiment, and a display profile.
 2. Configure its conditions, timings, response keys and adaptive settings.

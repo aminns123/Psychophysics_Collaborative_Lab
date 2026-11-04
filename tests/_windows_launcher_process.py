@@ -73,7 +73,7 @@ def _kernel():
     return api
 
 
-def run_launcher(command, *, cwd, timeout, bootstrap_root=None):
+def run_launcher(command, *, cwd, timeout, bootstrap_root=None, input_text=None):
     """Return CompletedProcess or raise TimeoutExpired; never approve a failure.
 
     Used only for isolated launcher fixtures, never real experiment acquisition.
@@ -96,7 +96,7 @@ def run_launcher(command, *, cwd, timeout, bootstrap_root=None):
             if not api.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
                 raise ctypes.WinError(ctypes.get_last_error())
             process = subprocess.Popen([sys.executable, '-I', '-u', str(Path(__file__).resolve()),
-                '--worker', json.dumps(command), str(cwd)], stdin=subprocess.PIPE,
+                '--worker', json.dumps(dict(command=command, input_text=input_text)), str(cwd)], stdin=subprocess.PIPE,
                 stdout=output, stderr=error, creationflags=subprocess.CREATE_NO_WINDOW,
                 env=os.environ | {'TEMP': native_temp, 'TMP': native_temp})
             if not api.AssignProcessToJobObject(job, int(process._handle)):
@@ -178,5 +178,9 @@ def run_launcher(command, *, cwd, timeout, bootstrap_root=None):
 if __name__ == '__main__':
     if len(sys.argv) != 4 or sys.argv[1] != '--worker' or sys.stdin.buffer.readline() != b'START\n':
         raise SystemExit('A parent-owned test job must authorise the worker.')
-    raise SystemExit(subprocess.call(json.loads(sys.argv[2]), cwd=sys.argv[3],
-        stdin=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW))
+    request=json.loads(sys.argv[2])
+    if request['input_text'] is None:
+        raise SystemExit(subprocess.call(request['command'], cwd=sys.argv[3],
+            stdin=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW))
+    raise SystemExit(subprocess.run(request['command'], cwd=sys.argv[3],
+        input=request['input_text'], text=True, creationflags=subprocess.CREATE_NO_WINDOW).returncode)

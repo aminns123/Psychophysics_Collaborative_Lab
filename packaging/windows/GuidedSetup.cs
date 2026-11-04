@@ -233,10 +233,12 @@ public class SetupWindow : Form
     [STAThread] public static int Main(string[] args) {
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
         try {
+            if(args.Length>=2&&args[0]=="--entry")return SourceMenu.Entry(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
             if(args.Length==2&&args[0]=="--launch")return StartupRecovery.LaunchFixed(SetupEngine.Full(args[1]));
             if(args.Length>=2&&args[0]=="--source")return StartupRecovery.LaunchSource(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
             if(args.Length>=2&&args[0]=="--python")return StartupRecovery.LaunchPython(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
             if(args.Length==2&&args[0]=="--recover")return StartupRecovery.Recover(SetupEngine.Full(args[1]));
+            if(args.Length==3&&args[0]=="--recover"&&(args[2]=="--repair"||args[2]=="--restore"))return SourceRecovery.Command(SetupEngine.Full(args[1]),args[2]=="--restore");
             string bundle=AppDomain.CurrentDomain.BaseDirectory,store=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","Installations");
             if(args.Length==4&&args[0]=="--bundle"&&args[2]=="--store"){bundle=SetupEngine.Full(args[1]);store=SetupEngine.Full(args[3]);}
             else if(args.Length!=0)throw new ArgumentException("Open PsyCoLab Setup or use a version-specific shortcut.");
@@ -253,15 +255,28 @@ public static class StartupRecovery
     delegate bool ConsoleControl(uint control);
     [DllImport("kernel32.dll")]
     static extern bool SetConsoleCtrlHandler(ConsoleControl handler, bool add);
+    [DllImport("kernel32.dll")]
+    static extern IntPtr GetStdHandle(int kind);
+    [DllImport("kernel32.dll")]
+    static extern bool SetStdHandle(int kind,IntPtr handle);
+    [DllImport("kernel32.dll")]
+    static extern uint GetFileType(IntPtr handle);
     static readonly ConsoleControl KeepObserver = control => control == 0 || control == 1;
 
-    static void UseParentConsole() {
+    public static void UseParentConsole() {
         // This host is a winexe. Without attachment its console Python child
         // allocates another window while the double-clicked batch waits empty.
         // ERROR_ACCESS_DENIED simply means an existing console is already owned.
         // Direct GUI/shortcut launches have no parent console; Python then
         // allocates the one console it needs, as before.
-        if(AttachConsole(unchecked((uint)-1)))SetConsoleCtrlHandler(KeepObserver,true);
+        // Attachment can replace inherited redirected handles with console
+        // handles. Preserve valid files/pipes so scripted input/output still work.
+        var kinds=new[]{-10,-11,-12};var handles=kinds.Select(GetStdHandle).ToArray();
+        var redirected=handles.Select(h=>GetFileType(h)==1||GetFileType(h)==3).ToArray();
+        if(AttachConsole(unchecked((uint)-1))) {
+            for(int i=0;i<kinds.Length;i++)if(redirected[i])SetStdHandle(kinds[i],handles[i]);
+            SetConsoleCtrlHandler(KeepObserver,true);
+        }
     }
     public class Diagnosis {
         public string category,message,details,root,original_root;
@@ -382,12 +397,14 @@ public static class StartupRecovery
     }
     public static string Recommendation(Diagnosis d,int retained,bool package) {
         if(d.healthy)return "cancel";
+        if(!d.after_application&&SourceRecovery.CanRepair(d.root))return "repair";
         if(!d.after_application&&retained>0)return "retained";
         if(!d.after_application&&package)return "separate";
         return "diagnostics";
     }
     public static string Reason(string option) {
-        if(option=="cancel")return "The installation already passes its checks. Close recovery and use run_psycolab.bat for ordinary launch.";
+        if(option=="repair")return "This source installation has a supported repair. Recovery preserves the older environment, prepares pinned source dependencies and verifies startup before opening PsyCoLab.";
+        if(option=="cancel")return "The installation already passes its checks. Close recovery and use PsyCoLab.bat, option 1, for ordinary launch.";
         if(option=="retained")return "A retained installation has already passed its existing read-only checks. Using it preserves the failing checkout and all its evidence.";
         if(option=="separate")return "This host's sealed package and every required artifact verified. The existing guided setup can create a separate installation without replacing this one.";
         return "No automatic correction has been established for this failure. Diagnostics give the administrator the verified evidence without changing this installation.";
@@ -395,6 +412,7 @@ public static class StartupRecovery
     public static string Instructions(Diagnosis d) {
         string common="Preserve the source, environment, qualification records, calibration and data. Never edit a qualification record, install dependencies in place or repeat acquisition automatically. ";
         if(d.after_application)return common+"Inspect the application's existing crash/fatal and incomplete-run records. The exit phase is diagnostic evidence, not authority to resume or repeat an experiment.";
+        if(SourceRecovery.CanRepair(d.root))return common+SourceRecovery.Explanation;
         if(DeveloperCheckout(d.root)&&!Directory.Exists(Path.Combine(d.root,".venv")))return common+"For this maintainer checkout, explicitly run setup_psycolab_dev.bat once with installed 64-bit CPython 3.11, then open run_psycolab.bat. This creates a separate .venv-dev and does not grant laboratory qualification. For laboratory deployment use the approved environment guide in docs/WINDOWS_ENVIRONMENT.md.";
         if(d.category.StartsWith("qualification_"))return common+"Have the administrator review .venv/.psycolab-setup.json and the captured read-only check output. Missing or older records are not proof that installed packages are qualified. Obtain a separate approved installation if qualification cannot be established.";
         if(d.category=="installation_path_changed")return common+"Use the original checkout only if it still passes the existing checks. Do not copy an environment or its qualification evidence into another source path.";
@@ -427,13 +445,25 @@ public static class StartupRecovery
     }
     public class ExitNotice { public string phase,report; }
     public static int LaunchSource(string root,string[] args) {
-        var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
+        Diagnosis d;
+        using(var lease=SourceRecovery.Acquire(root)) {
+            d=Diagnose(root);if(d.healthy)return LaunchChecked(root,args,d);
+        }
+        return Show(d);
+    }
+    public static int LaunchChecked(string root,string[] args,Diagnosis d) {
         var start=SourceProcess(root,SetupEngine.ApplicationArguments(args),d.development);
         start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
         return Observe(start,root);
     }
     public static int LaunchPython(string root,string[] args) {
-        var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
+        Diagnosis d;
+        using(var lease=SourceRecovery.Acquire(root)) {
+            d=Diagnose(root);if(d.healthy)return LaunchPythonChecked(root,args,d);
+        }
+        return Show(d);
+    }
+    static int LaunchPythonChecked(string root,string[] args,Diagnosis d) {
         var start=SourceProcess(root,args.Length==0?new[]{"-E","-s","-B","-i"}:
             new[]{"-E","-s","-B"}.Concat(args),d.development);
         start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
@@ -454,21 +484,354 @@ public static class StartupRecovery
             return Observe(start,root);
         }catch(Exception error){Show(Problem(instance,"fixed_installation_failed","This fixed-version installation failed validation. Its identity and files were preserved.",error.Message));return 1;}
     }
-    public static int Recover(string root) {var d=Diagnose(root);Show(d);return d.healthy?0:1;}
-    public static void Show(Diagnosis d) {
-        using(var window=new RecoveryWindow(d,Retained(d,Store),AppDomain.CurrentDomain.BaseDirectory))window.ShowDialog();
+    public static int Recover(string root) {Diagnosis d;using(var lease=SourceRecovery.Acquire(root))d=Diagnose(root);return Show(d);}
+    public static int Show(Diagnosis d) {
+        using(var window=new RecoveryWindow(d,Retained(d,Store),AppDomain.CurrentDomain.BaseDirectory)){window.ShowDialog();return window.Result;}
+    }
+}
+
+// Explicit source recovery only. Qualification and the managed installer are never edited.
+public static class SourceRecovery
+{
+    public const string Explanation="Source setup preserves an older .venv in a uniquely named backup when present and prepares .venv-dev using this checkout's pinned dependencies. Source files, calibration, results and qualification records are not rewritten. Internet access or a complete reviewed wheel folder is needed. This is a source installation, not laboratory qualification. You can retry from PsyCoLab.bat, option 2, or restore a recorded backup with PsyCoLab.bat --restore. No experiment is started by setup.";
+    public class Journal {
+        public int schema_version=1;
+        public string root,backup,record_sha256,phase,development_backup;
+    }
+    sealed class Lease : IDisposable {
+        readonly System.Threading.Mutex mutex;
+        public Lease(System.Threading.Mutex value){mutex=value;}
+        public void Dispose(){mutex.ReleaseMutex();mutex.Dispose();}
+    }
+    public static IDisposable Acquire(string root) {
+        root=SetupEngine.Full(root);SetupEngine.Plain(root);
+        string key;
+        using(var hash=SHA256.Create())key=BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(root.ToUpperInvariant()))).Replace("-","");
+        // An OS mutex spans sessions, leaves no source files and is released by
+        // Windows after a crash. All callers retain ownership on the same thread.
+        var mutex=new System.Threading.Mutex(false,"Global\\PsyCoLabSource-"+key);
+        bool owned=false;
+        try{try{owned=mutex.WaitOne(0);}catch(System.Threading.AbandonedMutexException){owned=true;}
+            if(!owned)throw new IOException("PsyCoLab or recovery is already running for this source folder. Close it before retrying; no process will be stopped automatically.");
+            return new Lease(mutex);
+        }catch{mutex.Dispose();throw;}
+    }
+    static string StatePath(string root) {return Path.Combine(root,".psycolab-recovery","state.json");}
+    static Journal ReadJournal(string root) {
+        string path=StatePath(root);SetupEngine.Plain(path);
+        if(!File.Exists(path))return null;
+        var j=SetupEngine.Read<Journal>(path);
+        if(j.schema_version!=1||!String.Equals(j.root,root,StringComparison.OrdinalIgnoreCase)||!new[]{"prepared","setup","verified","restoring","restored"}.Contains(j.phase))throw new IOException("Recovery record does not belong to this folder. Preserve it for review.");
+        if(j.backup!=null)Backup(root,j.backup,".venv-recovery-backup-");
+        if(j.development_backup!=null)Backup(root,j.development_backup,".venv-dev-recovery-backup-");
+        return j;
+    }
+    static string Backup(string root,string name,string prefix) {
+        Guid identity;
+        if(!name.StartsWith(prefix)||!Guid.TryParseExact(name.Substring(prefix.Length),"N",out identity))throw new IOException("Invalid recovery backup location.");
+        return SetupEngine.At(root,name);
+    }
+    static void Save(string root,Journal j) {SetupEngine.Save(StatePath(root),j);}
+    static void SourceOnly(string root) {
+        SetupEngine.Plain(root);
+        if(!StartupRecovery.DeveloperCheckout(root)||File.Exists(Path.Combine(root,"installation.json")))throw new IOException("Repair is available only for an ordinary Git source checkout. Managed laboratory installations cannot be converted.");
+        foreach(string part in new[]{".git",".venv",".venv-dev","scripts/developer_setup.py",".psycolab-recovery"})SetupEngine.Plain(Path.Combine(root,part));
+        foreach(string part in new[]{"pyproject.toml","scripts/developer_setup.py","scripts/launcher_setup.py","requirements/windows-cp311/build.lock","requirements/windows-cp311/runtime.lock","requirements/windows-cp311/development.lock"})
+            if(!File.Exists(Path.Combine(root,part)))throw new IOException("Required source setup files are missing. Obtain the reviewed source update before recovery; no Git update is performed automatically.");
+    }
+    static bool OwnedDevelopment(string root) {
+        string env=Path.Combine(root,".venv-dev");
+        if(File.Exists(Path.Combine(env,".psycolab-setup.json"))||File.Exists(Path.Combine(env,".psycolab-setup.pending.json")))return false;
+        foreach(string name in new[]{".psycolab-development.json",".psycolab-development.pending.json"}) {
+            string path=Path.Combine(env,name);SetupEngine.Plain(path);
+            if(!File.Exists(path))continue;
+            var s=SetupEngine.Read<Dictionary<string,object>>(path);
+            if(s.ContainsKey("qualification"))return false;
+            return s.ContainsKey("schema_version")&&Convert.ToString(s["schema_version"])=="1"&&s.ContainsKey("mode")&&Convert.ToString(s["mode"])=="development"&&s.ContainsKey("source_root")&&String.Equals(Convert.ToString(s["source_root"]),root,StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
+    }
+    static string LegacyRecord(string root) {
+        return LegacyRecordAt(Path.Combine(root,".venv"));
+    }
+    static string LegacyRecordAt(string env) {
+        string path=Path.Combine(env,".psycolab-setup.json");
+        SetupEngine.Plain(path);
+        if(File.Exists(Path.Combine(env,".psycolab-setup.pending.json")))throw new IOException("An interrupted qualification attempt needs separate review; it is not a legacy source repair.");
+        var s=SetupEngine.Read<Dictionary<string,object>>(path);
+        // Only the historical source-setup shape is recognised. Incomplete modern
+        // qualification, unknown fields and evidence from another path are refused.
+        var keys=new[]{"pyproject_sha256","python","updated_utc","schema_version"};
+        if(s.Keys.Any(k=>!keys.Contains(k))||!s.ContainsKey("pyproject_sha256")||!s.ContainsKey("python")||Convert.ToString(s["python"])!="3.11"||
+           (s.ContainsKey("schema_version")&&Convert.ToString(s["schema_version"])!="1"))throw new IOException("This is not a recognised older source setup record. No qualification evidence will be converted or rewritten.");
+        string digest=Convert.ToString(s["pyproject_sha256"]);
+        if(digest.Length!=64||digest.Any(c=>!Uri.IsHexDigit(c)))throw new IOException("The older source record is incomplete; preserve it for review.");
+        return SetupEngine.Hash(path);
+    }
+    public static bool CanRepair(string root) {
+        try {
+            SourceOnly(root);var j=ReadJournal(root);
+            if(j!=null&&new[]{"prepared","setup"}.Contains(j.phase))return true;
+            if(Directory.Exists(Path.Combine(root,".venv"))) {LegacyRecord(root);return !Directory.Exists(Path.Combine(root,".venv-dev"))||OwnedDevelopment(root);}
+            return OwnedDevelopment(root);
+        }catch{return false;}
+    }
+    public static bool CanInstall(string root) {
+        try{SourceOnly(root);return ReadJournal(root)==null&&!Directory.Exists(Path.Combine(root,".venv"))&&!File.Exists(Path.Combine(root,".venv"))&&!Directory.Exists(Path.Combine(root,".venv-dev"))&&!File.Exists(Path.Combine(root,".venv-dev"));}
+        catch{return false;}
+    }
+    public static string AvailablePython(string root) {return Python(root);}
+    public static bool CanRestore(string root) {
+        try{SourceOnly(root);var j=ReadJournal(root);return j!=null&&j.backup!=null&&j.phase!="restored";}
+        catch{return false;}
+    }
+    static string Probe(string root,string exe,IEnumerable<string> prefix) {
+        try {
+            string code="import json,struct,sys;assert sys.implementation.name=='cpython' and sys.version_info[:2]==(3,11) and struct.calcsize('P')==8;print(json.dumps(sys._base_executable))";
+            var start=SetupEngine.Start(exe,prefix.Concat(new[]{"-I","-B","-c",code}),root);
+            start.EnvironmentVariables["PYMANAGER_AUTOMATIC_INSTALL"]="false";
+            start.RedirectStandardOutput=true;start.RedirectStandardError=true;
+            using(var p=Process.Start(start)) {
+                var output=p.StandardOutput.ReadToEndAsync();var error=p.StandardError.ReadToEndAsync();
+                if(!p.WaitForExit(15000)){p.Kill();return null;}
+                if(p.ExitCode!=0)return null;
+                string path=SetupEngine.Json.Deserialize<string>(output.Result.Trim());SetupEngine.Plain(path);
+                return File.Exists(path)&&!SetupEngine.Inside(path,root)?path:null;
+            }
+        }catch{return null;}
+    }
+    static string Python(string root) {
+        string configured=Environment.GetEnvironmentVariable("PSYCOLAB_BOOTSTRAP_PYTHON");
+        string found=!String.IsNullOrWhiteSpace(configured)?Probe(root,configured,new string[0]):
+            (Probe(root,"py.exe",new[]{"-3.11"})??Probe(root,"python.exe",new string[0]));
+        if(found==null)throw new IOException("Install 64-bit Python 3.11 (for example: py install 3.11), then run recovery again. No environment has been moved.");
+        return found;
+    }
+    static void Idle(string root) {
+        // Also detect researchers who started Python directly, outside our lease.
+        // WMI is part of Windows and needs no administrator installation.
+        try {
+            dynamic locator=Activator.CreateInstance(Type.GetTypeFromProgID("WbemScripting.SWbemLocator"));
+            dynamic service=locator.ConnectServer(".","root\\cimv2");
+            foreach(dynamic p in service.ExecQuery("SELECT ProcessId,Name,ExecutablePath,CommandLine FROM Win32_Process WHERE Name LIKE 'python%'") ) {
+                string exe=(string)p.ExecutablePath,cmd=(string)p.CommandLine;
+                bool sourceScript=!String.IsNullOrEmpty(cmd)&&(cmd.IndexOf(Path.Combine(root,"scripts","developer_setup.py"),StringComparison.OrdinalIgnoreCase)>=0||cmd.IndexOf(Path.Combine(root,"src","psychophysics_lab"),StringComparison.OrdinalIgnoreCase)>=0);
+                if((!String.IsNullOrEmpty(exe)&&SetupEngine.Inside(exe,root))||sourceScript)
+                    throw new IOException("Python is running from this source folder. Close PsyCoLab and any researcher scripts before recovery. Nothing was stopped.");
+            }
+        }catch(IOException){throw;}
+        catch(Exception error){throw new IOException("Windows could not verify that this installation is idle. No repair was started.",error);}
+    }
+    static void Run(string root,string python,IEnumerable<string> args,string log) {
+        var start=SetupEngine.Start(python,args,root);
+        string wheels=Environment.GetEnvironmentVariable("PSYCOLAB_WHEELHOUSE");
+        if(!String.IsNullOrWhiteSpace(wheels))start.EnvironmentVariables["PSYCOLAB_WHEELHOUSE"]=wheels;
+        start.RedirectStandardOutput=true;start.RedirectStandardError=true;
+        using(var writer=new StreamWriter(log,true,Encoding.UTF8))using(var p=new Process{StartInfo=start}) {
+            object gate=new object();
+            DataReceivedEventHandler output=(s,e)=>{if(e.Data!=null)lock(gate){writer.WriteLine(e.Data);writer.Flush();Console.WriteLine(e.Data);}};
+            p.OutputDataReceived+=output;p.ErrorDataReceived+=output;
+            p.Start();p.BeginOutputReadLine();p.BeginErrorReadLine();p.WaitForExit();
+            if(p.ExitCode!=0)throw new IOException("Setup or verification failed. The old environment is preserved. Run recovery again to retry. Report: "+log);
+        }
+    }
+    static void VerifyBackup(string root,Journal j) {
+        string path=Path.Combine(Backup(root,j.backup,".venv-recovery-backup-"),".psycolab-setup.json");SetupEngine.Plain(path);
+        if(!File.Exists(path)||LegacyRecordAt(Path.GetDirectoryName(path))!=j.record_sha256)throw new IOException("The preserved environment record changed or is missing. Recovery stopped without replacing it.");
+    }
+    public static int Execute(string root,bool restore,bool launch=true) {
+        root=SetupEngine.Full(root);StartupRecovery.UseParentConsole();
+        using(var lease=Acquire(root)) {
+            SourceOnly(root);Idle(root);var j=ReadJournal(root);
+            string dev=Path.Combine(root,".venv-dev");
+            // Handle termination between mkdir and the setup ownership marker.
+            // Only an empty directory belonging to this recorded attempt qualifies.
+            if(j!=null&&j.phase=="setup"&&Directory.Exists(dev)&&Directory.GetFileSystemEntries(dev).Length==0)
+                SetupEngine.Save(Path.Combine(dev,".psycolab-development.pending.json"),new{schema_version=1,mode="development",source_root=root});
+            if(restore)return Restore(root,j);
+            if(j!=null&&j.phase=="restoring")throw new IOException("Restoration was interrupted. Run psycolab_recovery.bat --restore again.");
+            if(Directory.Exists(Path.Combine(root,".venv")))LegacyRecord(root);
+            if(Directory.Exists(Path.Combine(root,".venv-dev"))&&!OwnedDevelopment(root))throw new IOException("An unrelated .venv-dev already exists. It will not be adopted or overwritten.");
+            if(!CanRepair(root)&&!CanInstall(root))throw new IOException("No supported source repair is available for this installation. Its files were preserved.");
+            // Resolve a real base interpreter before moving the old environment.
+            string python=Python(root);
+            string folder=Path.GetDirectoryName(StatePath(root));Directory.CreateDirectory(folder);
+            string probe=Path.Combine(root,".psycolab-recovery-write-"+Guid.NewGuid().ToString("N")+".tmp");
+            using(new FileStream(probe,FileMode.CreateNew,FileAccess.Write,FileShare.None)){}File.Delete(probe);
+            if(j==null||j.phase=="restored") {
+                j=new Journal{root=root,phase="prepared"};
+                if(Directory.Exists(Path.Combine(root,".venv"))) {j.backup=".venv-recovery-backup-"+Guid.NewGuid().ToString("N");j.record_sha256=LegacyRecord(root);}
+                Save(root,j);
+            }
+            if(j.backup!=null) {
+                string old=Path.Combine(root,".venv"),backup=Backup(root,j.backup,".venv-recovery-backup-");
+                if(Directory.Exists(old)) {
+                    if(j.phase!="prepared"||Directory.Exists(backup)||LegacyRecord(root)!=j.record_sha256)throw new IOException("The source environment changed since recovery began. No environment was overwritten.");
+                    Directory.Move(old,backup);
+                }
+                VerifyBackup(root,j);
+            }
+            // A successful repeated invocation does not reinstall dependencies.
+            var diagnosis=StartupRecovery.Diagnose(root);
+            if(!diagnosis.healthy) {
+                j.phase="setup";Save(root,j);
+                string log=Path.Combine(folder,"repair.log");
+                Console.WriteLine("Preparing source environment. Progress and report: "+log);
+                Run(root,python,new[]{"-I","-B",Path.Combine(root,"scripts","developer_setup.py"),"--repair"},log);
+                diagnosis=StartupRecovery.Diagnose(root);
+                if(!diagnosis.healthy||!diagnosis.development)throw new IOException("The replacement source environment did not pass startup checks. Preserve repair.log and retry recovery.");
+                Run(root,Path.Combine(root,".venv-dev","Scripts","python.exe"),new[]{"-I","-B","-m","psychophysics_lab","--help"},log);
+            }
+            j.phase="verified";Save(root,j);
+            Console.WriteLine("Source installation verified. Existing backups remain available.");
+            if(!launch)return 0;
+            return StartupRecovery.LaunchChecked(root,new string[0],diagnosis);
+        }
+    }
+    static int Restore(string root,Journal j) {
+        if(j==null||j.backup==null)throw new IOException("No legacy environment backup is recorded for this folder.");
+        if(j.phase=="restored") {Console.WriteLine("The preserved environment has already been restored. No files were changed.");return 0;}
+        string old=Path.Combine(root,".venv"),backup=Backup(root,j.backup,".venv-recovery-backup-");
+        if(Directory.Exists(old)) {
+            if(j.phase!="prepared"&&j.phase!="restoring")throw new IOException("A .venv already exists. Restore will not overwrite it.");
+            if(Directory.Exists(backup)||LegacyRecord(root)!=j.record_sha256)throw new IOException("The original environment cannot be identified safely.");
+            j.phase="restored";Save(root,j);return 0;
+        }
+        VerifyBackup(root,j);
+        j.phase="restoring";
+        if(j.development_backup==null)j.development_backup=".venv-dev-recovery-backup-"+Guid.NewGuid().ToString("N");
+        Save(root,j);
+        string development=Path.Combine(root,".venv-dev"),retained=Backup(root,j.development_backup,".venv-dev-recovery-backup-");
+        if(Directory.Exists(development)) {
+            if(!OwnedDevelopment(root)||Directory.Exists(retained))throw new IOException("The development environment cannot be preserved safely. Restore stopped without overwriting it.");
+            Directory.Move(development,retained);
+        }
+        Directory.Move(backup,old);j.phase="restored";Save(root,j);
+        Console.WriteLine("Original .venv restored to its original location. The replacement is preserved separately. Legacy qualification was not repaired or approved; the old startup restriction still applies.");return 0;
+    }
+    public static int Command(string root,bool restore,bool launch=true) {
+        try{Console.WriteLine(Explanation);return Execute(root,restore,launch);}
+        catch(Exception error){StartupRecovery.UseParentConsole();Console.WriteLine(error.Message);return 1;}
+    }
+}
+
+// Python-independent text entry point. Reuses the same checks, repair and observer.
+public static class SourceMenu
+{
+    static Stream input;
+    static string Answer() {
+        // Read one line without prefetching commands intended for the workspace.
+        if(input==null)input=Console.OpenStandardInput();
+        var bytes=new List<byte>();int b;
+        while((b=input.ReadByte())!=-1){if(b==10)break;if(b!=13)bytes.Add((byte)b);}
+        return b==-1&&bytes.Count==0?null:Console.InputEncoding.GetString(bytes.ToArray());
+    }
+    public static int Entry(string root,string[] args) {
+        StartupRecovery.UseParentConsole();
+        try {
+            if(args.Length==0)return Menu(root);
+            if(args[0]=="--launch")return Launch(root,args.Skip(1).ToArray());
+            if(args[0]=="--check"&&args.Length==1)return Check(root);
+            if(args[0]=="--repair"&&args.Length==1)return SourceRecovery.Command(root,false,false);
+            if(args[0]=="--restore"&&args.Length==1)return SourceRecovery.Command(root,true,false);
+            if(args[0]=="--workspace"&&args.Length==1)return Workspace(root);
+            if(args[0]=="--python")return StartupRecovery.LaunchPython(root,args.Skip(1).ToArray());
+            Console.WriteLine("Usage: PsyCoLab.bat [--launch [application arguments] | --check | --repair | --restore | --workspace | --python [script and arguments]]");return 2;
+        }catch(Exception error){Console.WriteLine("PsyCoLab: "+error.Message);return 1;}
+    }
+    static int Menu(string root) {
+        for(;;) {
+            Console.WriteLine("\nPsyCoLab\n1 - Launch PsyCoLab\n2 - Check / Repair PsyCoLab\n3 - Python Workspace\n4 - Exit");
+            Console.Write("Choose 1-4: ");Console.Out.Flush();
+            string choice=Answer();if(choice==null||choice.Trim()=="4")return 0;
+            int result;
+            try {
+                if(choice.Trim()=="1")result=Launch(root,new string[0]);
+                else if(choice.Trim()=="2")result=Check(root);
+                else if(choice.Trim()=="3")result=Workspace(root);
+                else {Console.WriteLine("Please choose 1, 2, 3 or 4.");continue;}
+            }catch(Exception error){Console.WriteLine(error.Message);result=1;}
+            if(result!=0)Console.WriteLine("The operation returned exit code "+result+". Choose 2 to check this installation. No experiment will be retried automatically.");
+        }
+    }
+    public static int Launch(string root,string[] args) {
+        using(var lease=SourceRecovery.Acquire(root)) {
+            var d=StartupRecovery.Diagnose(root);
+            if(!d.healthy){Console.WriteLine(d.message+"\nChoose 2 - Check / Repair PsyCoLab. No installation was changed.");return 1;}
+            return StartupRecovery.LaunchChecked(root,args,d);
+        }
+    }
+    public static int Check(string root) {
+        StartupRecovery.Diagnosis d;
+        using(var lease=SourceRecovery.Acquire(root))d=StartupRecovery.Diagnose(root);
+        Console.WriteLine("\nInstallation check: "+d.category+"\n"+d.message);
+        try{Console.WriteLine("Source setup Python: "+SourceRecovery.AvailablePython(root));}
+        catch(Exception error){Console.WriteLine(error.Message);}
+        bool repair=!d.healthy&&SourceRecovery.CanRepair(root),initial=SourceRecovery.CanInstall(root),restore=SourceRecovery.CanRestore(root);
+        if(!repair&&!initial&&!restore) {
+            if(!d.healthy)Console.WriteLine(StartupRecovery.Instructions(d)+"\n"+d.details);
+            return d.healthy?0:1;
+        }
+        if(repair||initial)Console.WriteLine(SourceRecovery.Explanation+"\n"+(initial?"I - Install source environment":"R - Repair source installation"));
+        if(restore)Console.WriteLine("S - Restore preserved environment (the old startup restriction may return; the replacement is retained separately)");
+        Console.Write("B - Back without changes\nChoose an action: ");Console.Out.Flush();
+        string action=(Answer()??"").Trim().ToUpperInvariant();
+        if((repair&&action=="R")||(initial&&action=="I")||(restore&&action=="S")) {
+            Console.Write("Proceed with this action? Type YES: ");Console.Out.Flush();
+            if(!String.Equals(Answer(),"YES",StringComparison.OrdinalIgnoreCase)){Console.WriteLine("Cancelled. No repair action was performed.");return 0;}
+            return SourceRecovery.Command(root,action=="S",false);
+        }
+        Console.WriteLine("No changes made.");return 0;
+    }
+    public static int Workspace(string root) {
+        using(var lease=SourceRecovery.Acquire(root)) {
+            var d=StartupRecovery.Diagnose(root);
+            if(!d.healthy){Console.WriteLine(d.message+"\nChoose 2 - Check / Repair PsyCoLab first.");return 1;}
+            string environment=Path.Combine(root,d.development?".venv-dev":".venv"),python=Path.Combine(environment,"Scripts","python.exe");
+            Console.WriteLine("\nPython Workspace\nActive Python: "+python+"\n"+(d.development?"Source development environment; laboratory qualification is not granted.":"Existing qualified environment; changing packages may invalidate its checks.")+"\nRun python your_script.py, python -m pip list, or other commands. Type exit to return to the launcher.");
+            var start=StartupRecovery.SourceProcess(root,new string[0],d.development);
+            start.FileName=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"cmd.exe");start.Arguments="/d";start.CreateNoWindow=false;
+            start.EnvironmentVariables["VIRTUAL_ENV"]=environment;
+            start.EnvironmentVariables["PATH"]=Path.Combine(environment,"Scripts")+Path.PathSeparator+start.EnvironmentVariables["PATH"];
+            start.EnvironmentVariables["PROMPT"]="(PsyCoLab) $P$G";
+            start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
+            using(var child=Process.Start(start)){child.WaitForExit();return child.ExitCode;}
+        }
     }
 }
 
 public class RecoveryWindow : Form
 {
+    public int Result=1;
     public RecoveryWindow(StartupRecovery.Diagnosis d,List<StartupRecovery.Candidate> retained,string package) {
+        Result=d.healthy?0:1;
         Text="PsyCoLab startup recovery";Width=800;Height=480;StartPosition=FormStartPosition.CenterScreen;
         bool available=!d.healthy&&!d.after_application&&StartupRecovery.PackageAvailable(package);
         string recommended=StartupRecovery.Recommendation(d,retained.Count,available);
         var layout=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(16),AutoScroll=true};Controls.Add(layout);
         layout.Controls.Add(new Label{Text=d.message,AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
         layout.Controls.Add(new Label{Text="Recommended because: "+StartupRecovery.Reason(recommended),AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+        if(!d.healthy&&!d.after_application&&SourceRecovery.CanRepair(d.root)) {
+            layout.Controls.Add(new Label{Text=SourceRecovery.Explanation,AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
+            var repair=new Button{AutoSize=true,Text="Repair older source installation"+(recommended=="repair"?" [Recommended]":"")};layout.Controls.Add(repair);
+            repair.Click+=async(s,e)=>{
+                if(MessageBox.Show(this,SourceRecovery.Explanation+"\n\nContinue?",Text,MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+                Enabled=false;Hide();try{Result=await Task.Run(()=>SourceRecovery.Execute(d.root,false));Close();}
+                catch(Exception error){Show();Enabled=true;MessageBox.Show(this,error.Message+"\nRun recovery again to retry. The preserved environment is retained.",Text);}
+            };
+        }
+        if(d.healthy) {
+            var open=new Button{AutoSize=true,Text="Open PsyCoLab"};layout.Controls.Add(open);
+            open.Click+=(s,e)=>{Hide();try{Result=StartupRecovery.LaunchSource(d.root,new string[0]);}finally{Close();}};
+        }
+        if(!d.after_application&&SourceRecovery.CanRestore(d.root)) {
+            var restore=new Button{AutoSize=true,Text="Restore preserved environment"};layout.Controls.Add(restore);
+            restore.Click+=async(s,e)=>{
+                if(MessageBox.Show(this,"Restore the original environment to its original location? The replacement will be preserved separately. The old startup error may return; restoration does not approve qualification.",Text,MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+                Enabled=false;try{Result=await Task.Run(()=>SourceRecovery.Execute(d.root,true));MessageBox.Show(this,"Original environment restored. No application was launched.",Text);Close();}
+                catch(Exception error){Enabled=true;MessageBox.Show(this,error.Message,Text);}
+            };
+        }
         if(!d.healthy&&!d.after_application&&StartupRecovery.DeveloperCheckout(d.root)&&!Directory.Exists(Path.Combine(d.root,".venv"))) {
             layout.Controls.Add(new Label{Text="Maintaining this Git checkout? Run setup_psycolab_dev.bat once, then open run_psycolab.bat. It uses installed 64-bit Python 3.11 in a separate development environment; laboratory qualification is not granted.",AutoSize=true,MaximumSize=new System.Drawing.Size(730,0)});
         }

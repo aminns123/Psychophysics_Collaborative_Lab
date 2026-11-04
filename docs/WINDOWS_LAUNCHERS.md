@@ -2,19 +2,30 @@
 
 ## Supported daily workflow
 
-Double-click **Run_PsyCoLab.bat**. In a fresh Git checkout with neither `.venv`
-nor `.venv-dev`, it calls the existing source development setup. Install 64-bit
-Python 3.11 if requested (`py install 3.11` with the Python install manager), then
-reopen it. Downloads happen at first setup, not on matching repeated launches.
-No administrator privileges or global PATH edits are introduced.
+Double-click **PsyCoLab.bat**. It opens a native text menu without requiring Python
+or Textual. Choose **1 — Launch PsyCoLab**, **2 — Check / Repair PsyCoLab**,
+**3 — Python Workspace**, or **4 — Exit**. The native host is compiled once per
+launcher session using the existing Windows .NET bootstrap. Operations use the
+same console; no detached application shell is created.
 
-**PsyCoLab_Python.bat** opens an interactive Python prompt in the same verified
-environment. From a terminal, pass a quoted script path and arguments:
+For first setup or an older source-record error, choose **2**. Read the proposed
+action and type **YES** to proceed. Install 64-bit Python 3.11 if requested
+(`py install 3.11` with the Python install manager), then choose **2** again.
+Setup uses existing pinned requirements and does not grant laboratory
+qualification. A supported legacy repair preserves the old environment, verifies
+its replacement and returns to the menu. Choose **1** to open the TUI. Closing
+the TUI returns to this menu; finishing an experiment remains inside the TUI.
+
+Choose **3** for a normal command prompt with the verified environment's Python
+first on its local PATH. Its banner identifies the interpreter and qualification
+status. For example:
 
 ```bat
-PsyCoLab_Python.bat "C:\Research folder\my experiment.py" "argument with spaces"
+python "C:\Research folder\my experiment.py" "argument with spaces"
 ```
 
+Type `exit` to return to the menu. Reopening the workspace reuses the same
+environment. Healthy launches and workspace entry do not reinstall packages.
 Script exit codes are preserved and scripts run once. The working directory is
 the checkout; use explicit output locations or script-relative paths in your
 code. Scripts execute with your ordinary account permissions. The launcher does
@@ -73,15 +84,31 @@ arbitrary researcher scripts retain their own exit semantics.
 
 ## Entry-point inventory
 
-| Entry | Responsibility / disposition |
+| Entry | Before | After |
+| --- | --- | --- |
+| `PsyCoLab.bat` | Absent | **Only recommended user entry**; menu, launch, check/repair and Python Workspace. |
+| `Run_PsyCoLab.bat` (formerly lowercase name) | Application entry | Temporary compatibility wrapper for existing shortcuts and scripts. |
+| `PsyCoLab_Python.bat` | Python prompt / external script entry | Temporary compatibility wrapper; new users select menu option 3. |
+| `setup_psycolab_dev.bat` | Explicit source setup | Temporary compatibility wrapper retaining the previously successful setup path. |
+| `run_user_env.bat` | Older Python wrapper | Temporary compatibility alias; existing USER_env files remain preserved. |
+| `psycolab_recovery.bat` | Recovery/diagnostics | Temporary compatibility wrapper into the same recovery implementation. |
+| `scripts/windows_startup.cmd` | Internal bootstrap | Internal shared native-host compilation, temporary ownership and exit propagation. |
+| `scripts/windows_development.cmd` | Internal setup | Internal previously tested interpreter discovery/setup, retained for legacy calls. |
+| Python/native helpers | Existing setup and scientific launch | Same helpers reused; no new package manager or scientific framework. |
+
+This inventories every tracked `.bat` and `.cmd`: five legacy root wrappers,
+one new authoritative root batch and two internal `.cmd` helpers. Compatibility
+names are not competing recommended entry points. They remain because published
+shortcuts, external scripts and existing clean-machine setup references use them.
+Keep them in the first tagged release containing `PsyCoLab.bat`; remove the five
+root compatibility wrappers in the following tagged release after reference
+migration and independent clean-Windows acceptance. If those checks fail, document
+the retirement delay in release notes rather than silently breaking shortcuts.
+
+### Internal helpers
+
+| Helper | Responsibility |
 | --- | --- |
-| `Run_PsyCoLab.bat` (formerly lowercase name) | Supported application entry; delegates to shared native startup. |
-| `PsyCoLab_Python.bat` | Supported Python prompt / external script entry; same verified environment. |
-| `setup_psycolab_dev.bat` | Retained explicit source setup/retry compatibility wrapper. Do not remove before independent clean-Windows acceptance. |
-| `run_user_env.bat` | Retained compatibility name; delegates to `PsyCoLab_Python.bat`. Existing USER_env files are preserved. |
-| `psycolab_recovery.bat` | Retained explicit recovery/diagnostics entry; no acquisition retry. |
-| `scripts/windows_startup.cmd` | Internal shared native-host compilation, first-source-setup gate, temporary ownership and exit propagation. |
-| `scripts/windows_development.cmd` | Internal shared interpreter discovery and invocation of existing source setup. Explicit interpreter, own development Python, registered 3.11, then compatible PATH Python. |
 | `scripts/developer_setup.py` | Existing owned `.venv-dev` setup and separate read-only `--check`; development evidence only. |
 | `scripts/launcher_setup.py` | Existing exact-profile laboratory setup and read-only `--check`; retained explicit `--user-env` compatibility facility. |
 | `packaging/windows/GuidedSetup.cs` | Existing guided setup, source/managed launch, qualification/recovery and native process observer; added same-environment Python mode. |
@@ -91,8 +118,8 @@ arbitrary researcher scripts retain their own exit semantics.
 | `python -m psychophysics_lab.ui.refresh` | Internal fresh-source checker; refresh handoff restarts interpreter deliberately. |
 | `python -m simulations` | Existing explicit synthetic pipeline CLI; labelled virtual data. |
 
-There are two recommended daily batch files. Compatibility files are retained
-rather than claiming their removal has passed a fresh operating-system test.
+There is one recommended daily batch file, `PsyCoLab.bat`. Compatibility files
+are retained under the retirement policy above while downstream references migrate.
 The duplicated USER_env bootstrap discovery was removed from the batch layer.
 The locked installer and source development setup remain distinct because their
 scientific qualification contracts are different.
