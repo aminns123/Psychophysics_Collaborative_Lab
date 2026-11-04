@@ -493,6 +493,18 @@ public static class StartupRecovery
 // Explicit source recovery only. Qualification and the managed installer are never edited.
 public static class SourceRecovery
 {
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
+    static extern uint GetLongPathName(string shortPath,StringBuilder longPath,uint length);
+    static string CanonicalSource(string path) {
+        path=SetupEngine.Full(path);SetupEngine.Plain(path);
+        var expanded=new StringBuilder(32768);
+        uint length=GetLongPathName(path,expanded,(uint)expanded.Capacity);
+        if(length==0||length>=expanded.Capacity)throw new IOException("The source folder could not be identified safely. Check its location and access.");
+        return SetupEngine.Full(expanded.ToString());
+    }
+    static bool SameSource(string first,string second) {
+        return String.Equals(CanonicalSource(first),CanonicalSource(second),StringComparison.OrdinalIgnoreCase);
+    }
     public const string Explanation="Source setup preserves an older .venv in a uniquely named backup when present and prepares .venv-dev using this checkout's pinned dependencies. Source files, calibration, results and qualification records are not rewritten. Internet access or a complete reviewed wheel folder is needed. This is a source installation, not laboratory qualification. You can retry from PsyCoLab.bat, option 2, or restore a recorded backup with PsyCoLab.bat --restore. No experiment is started by setup.";
     public class Journal {
         public int schema_version=1;
@@ -504,7 +516,7 @@ public static class SourceRecovery
         public void Dispose(){mutex.ReleaseMutex();mutex.Dispose();}
     }
     public static IDisposable Acquire(string root) {
-        root=SetupEngine.Full(root);SetupEngine.Plain(root);
+        root=CanonicalSource(root);
         string key;
         using(var hash=SHA256.Create())key=BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(root.ToUpperInvariant()))).Replace("-","");
         // An OS mutex spans sessions, leaves no source files and is released by
@@ -521,7 +533,7 @@ public static class SourceRecovery
         string path=StatePath(root);SetupEngine.Plain(path);
         if(!File.Exists(path))return null;
         var j=SetupEngine.Read<Journal>(path);
-        if(j.schema_version!=1||!String.Equals(j.root,root,StringComparison.OrdinalIgnoreCase)||!new[]{"prepared","setup","verified","restoring","restored"}.Contains(j.phase))throw new IOException("Recovery record does not belong to this folder. Preserve it for review.");
+        if(j.schema_version!=1||!SameSource(j.root,root)||!new[]{"prepared","setup","verified","restoring","restored"}.Contains(j.phase))throw new IOException("Recovery record does not belong to this folder. Preserve it for review.");
         if(j.backup!=null)Backup(root,j.backup,".venv-recovery-backup-");
         if(j.development_backup!=null)Backup(root,j.development_backup,".venv-dev-recovery-backup-");
         return j;
@@ -547,7 +559,7 @@ public static class SourceRecovery
             if(!File.Exists(path))continue;
             var s=SetupEngine.Read<Dictionary<string,object>>(path);
             if(s.ContainsKey("qualification"))return false;
-            return s.ContainsKey("schema_version")&&Convert.ToString(s["schema_version"])=="1"&&s.ContainsKey("mode")&&Convert.ToString(s["mode"])=="development"&&s.ContainsKey("source_root")&&String.Equals(Convert.ToString(s["source_root"]),root,StringComparison.OrdinalIgnoreCase);
+            return s.ContainsKey("schema_version")&&Convert.ToString(s["schema_version"])=="1"&&s.ContainsKey("mode")&&Convert.ToString(s["mode"])=="development"&&s.ContainsKey("source_root")&&SameSource(Convert.ToString(s["source_root"]),root);
         }
         return false;
     }
@@ -640,7 +652,7 @@ public static class SourceRecovery
         if(!File.Exists(path)||LegacyRecordAt(Path.GetDirectoryName(path))!=j.record_sha256)throw new IOException("The preserved environment record changed or is missing. Recovery stopped without replacing it.");
     }
     public static int Execute(string root,bool restore,bool launch=true) {
-        root=SetupEngine.Full(root);StartupRecovery.UseParentConsole();
+        root=CanonicalSource(root);StartupRecovery.UseParentConsole();
         using(var lease=Acquire(root)) {
             SourceOnly(root);Idle(root);var j=ReadJournal(root);
             string dev=Path.Combine(root,".venv-dev");

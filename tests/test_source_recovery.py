@@ -4,6 +4,7 @@ No physical experiment is run. The disposable application's entry point drives
 the real TUI headlessly and exits, so CI never needs to type into a terminal.
 """
 import hashlib
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -103,6 +104,18 @@ def batch(source, *args, launcher="psycolab_recovery.bat", input_text=None, time
 def snapshot(folder):
     return {p.relative_to(folder).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in folder.rglob("*") if p.is_file()}
+
+
+def short_path(path):
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    api.GetShortPathNameW.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32]
+    api.GetShortPathNameW.restype = ctypes.c_uint32
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = api.GetShortPathNameW(str(path), buffer, len(buffer))
+    assert 0 < length < len(buffer)
+    if os.path.normcase(buffer.value) == os.path.normcase(str(path)):
+        pytest.skip("This volume does not provide a distinct short-name alias")
+    return buffer.value
 
 
 def test_real_batch_legacy_repair_repeat_corruption_and_restore(source, wheels):
@@ -244,6 +257,21 @@ def test_restore_handles_interruption_checkpoints(source, checkpoint):
     assert snapshot(root / ".venv") == old
 
 
+def test_real_batch_restore_accepts_same_folder_short_name(source):
+    root, _, _, _ = source
+    before = snapshot(root / ".venv")
+    alias = short_path(root)
+    folder = root / ".psycolab-recovery"
+    folder.mkdir()
+    state = {"schema_version": 1, "root": alias, "phase": "prepared",
+             "backup": ".venv-recovery-backup-" + uuid.uuid4().hex,
+             "record_sha256": hashlib.sha256((root / ".venv/.psycolab-setup.json").read_bytes()).hexdigest()}
+    (folder / "state.json").write_text(json.dumps(state))
+    result = batch(source, "--restore")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert snapshot(root / ".venv") == before
+
+
 def test_real_batch_write_permission_refusal_preserves_original(source):
     root, _, _, _ = source
     original = snapshot(root / ".venv")
@@ -266,10 +294,12 @@ def test_native_window_offers_same_repair_and_suppresses_after_acquisition(nativ
     assert "Repair older source installation" not in form
 
 
-def test_real_batch_and_native_launch_refuse_concurrent_owner(native, source):
+@pytest.mark.parametrize("alias", [False, True])
+def test_real_batch_and_native_launch_refuse_concurrent_owner(native, source, alias):
     root, _, _, _ = source
     before = snapshot(root / ".venv")
-    held = subprocess.Popen([str(native.executable), "source-hold", str(root), "30000"],
+    lock_root = short_path(root) if alias else str(root)
+    held = subprocess.Popen([str(native.executable), "source-hold", lock_root, "30000"],
                             stdout=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
     try:
         assert held.stdout.readline().strip() == "held"
