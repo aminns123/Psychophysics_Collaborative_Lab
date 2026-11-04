@@ -8,6 +8,18 @@ import sys
 import threading
 import time
 
+_threads = []
+_lock = threading.Lock()
+
+
+def finish_pending_beeps():
+    """Wait outside timed presentation so tones cannot overlap the next run."""
+    with _lock:
+        pending = list(_threads)
+        _threads.clear()
+    for thread in pending:
+        thread.join()
+
 
 def request_beep(beep, *, trigger):
     """Start the simple tone after software flip or accepted keypress.
@@ -31,6 +43,10 @@ def request_beep(beep, *, trigger):
             pass
 
     request_s = time.perf_counter()
-    threading.Thread(target=play, name="PsyCoLabBeep", daemon=True).start()
+    thread = threading.Thread(target=play, name="PsyCoLabBeep", daemon=True)
+    with _lock:
+        _threads[:] = [item for item in _threads if item.is_alive()]
+        _threads.append(thread)
+        thread.start()
     return {"trigger": trigger, **beep.to_dict(), "software_request_s": request_s,
             "output": "Windows winsound.Beep requested asynchronously; acoustic onset not verified"}
