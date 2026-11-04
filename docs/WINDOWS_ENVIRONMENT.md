@@ -1,8 +1,7 @@
 # Reproducible Windows software environment
 
 Maintaining a Git checkout with an installed python.org CPython 3.11? Use
-`Run_PsyCoLab.bat` (first-time setup is integrated); `setup_psycolab_dev.bat`
-remains an explicit setup/retry entry. See the
+`PsyCoLab.bat` and choose **2 — Check / Repair** for explained setup/retry. See the
 [maintainer setup route](STARTUP_RECOVERY.md#maintainer-git-checkout-on-a-new-pc).
 Its separate `.venv-dev` is a development environment without laboratory
 qualification. The exact qualified laboratory installation follows below.
@@ -55,7 +54,7 @@ $explicitFile = Join-Path $artifactCache 'interpreter-explicit.txt'
 conda create --offline --copy --no-default-packages --yes --prefix $interpreterPrefix --file $explicitFile
 $env:PSYCOLAB_BOOTSTRAP_PYTHON = Join-Path $interpreterPrefix 'python.exe'
 & $env:PSYCOLAB_BOOTSTRAP_PYTHON scripts/launcher_setup.py
-.\run_psycolab.bat
+.\PsyCoLab.bat --launch
 ```
 
 Do not overlay an existing interpreter prefix. Downloaded bytes must match SHA-256
@@ -65,8 +64,9 @@ rehearsal remains Stage 4, not an implication of these commands.
 
 ## First and repeat setup
 
-`run_psycolab.bat` is exclusively ordinary launch: it checks the checkout's own
-qualified .venv, never provisions or repairs it. See [startup recovery](STARTUP_RECOVERY.md).
+`PsyCoLab.bat --launch` checks the checkout's own qualified `.venv` without
+provisioning or repairing it. The menu's source repair never converts a qualified
+installation. See [startup recovery](STARTUP_RECOVERY.md).
 For the administrator/source provisioning route above, explicitly run
 `scripts/launcher_setup.py` using the separately approved interpreter before the
 first launch. `PSYCOLAB_BOOTSTRAP_PYTHON` in that example is a shell variable used
@@ -108,9 +108,9 @@ facility, not a new downloader, service or #124 diagnostics system.
 
 ## USER_env and development
 
-`PsyCoLab_Python.bat` uses the application's already verified environment for an
-interactive Python prompt or an external script. The compatibility name
-`run_user_env.bat` delegates to it. It does not create a second environment or
+`PsyCoLab.bat`, option **3 — Python Workspace**, uses the application's already
+verified environment for a normal command prompt and external scripts. The old
+Python batch names remain temporary compatibility wrappers. This does not create a second environment or
 install `user_requirements.txt`. Existing USER_env directories and custom files
 are preserved. The explicit historical `launcher_setup.py --user-env` facility
 remains available for existing workflows, with its original constraints and

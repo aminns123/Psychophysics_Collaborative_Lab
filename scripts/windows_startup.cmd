@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 rem Internal bootstrap shared by normal launch and explicit recovery. No Python.
-if not "%~1"=="--source" if not "%~1"=="--recover" if not "%~1"=="--python" exit /b 2
+if not "%~1"=="--source" if not "%~1"=="--recover" if not "%~1"=="--python" if not "%~1"=="--entry" exit /b 2
 rem Incorporate the working source setup only for a genuinely absent environment.
 rem Existing, damaged or qualified environments always go to read-only diagnosis.
-if not "%~1"=="--recover" if exist "%~2\.git" if not exist "%~2\.venv" if not exist "%~2\.venv-dev" (
+if not "%~1"=="--recover" if not "%~1"=="--entry" if exist "%~2\.git" if not exist "%~2\.venv" if not exist "%~2\.venv-dev" (
     call "%~dp0windows_development.cmd"
     if errorlevel 1 goto source_setup_failed
 )

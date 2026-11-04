@@ -25,7 +25,7 @@ git switch main
 git pull --ff-only origin main
 ```
 
-Inspect the changed files before opening PsyCoLab, then rerun `run_psycolab.bat` and verify that the selected monitor, presets and intended experiment remain present. A `git pull --ff-only` refuses to create an unexpected merge commit; it is not a method for discarding changes.
+Inspect the changed files before opening PsyCoLab, then rerun `PsyCoLab.bat` and verify that the selected monitor, presets and intended experiment remain present. A `git pull --ff-only` refuses to create an unexpected merge commit; it is not a method for discarding changes.
 
 ## Case B — you edited tracked official Python files
 

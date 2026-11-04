@@ -45,7 +45,7 @@ cd .\Psychophysics_Collaborative_Lab
 
 You now have a Git checkout connected to the official repository. This command is only needed **once per fresh installation**. Do not use it every time you want an update.
 
-To launch PsyCoLab, double-click **run_psycolab.bat** in File Explorer (or run the launcher from this project folder). The launcher prepares the machine-local virtual environment; internet/package-index access is needed during initial setup. Follow the on-screen setup instructions for the external data location and your own display.
+To launch PsyCoLab, double-click **PsyCoLab.bat** in File Explorer (or run the launcher from this project folder). Choose 2 - Check / Repair for initial setup, then 1 - Launch PsyCoLab. Internet/package-index access is needed during initial setup. Follow the on-screen setup instructions for the external data location and your own display.
 
 **Important:** downloading code does not calibrate a laboratory monitor or qualify the computer for human measurements. The actual hardware and experiment must still be checked.
 
@@ -75,7 +75,7 @@ git pull --ff-only origin main
 
 The **--ff-only** option makes Git refuse an unexpected merge instead of silently creating one. If an error occurs, **stop and inspect it** rather than forcing the update.
 
-Then launch **run_psycolab.bat** again so PsyCoLab can check its local Python environment. Inspect your selected experiment, saved values, display profile and any laboratory extensions before collecting data.
+Then launch **PsyCoLab.bat** again so PsyCoLab can check its local Python environment. Inspect your selected experiment, saved values, display profile and any laboratory extensions before collecting data.
 
 **Remember:** cloning is the first-time step; pulling is the repeat-update step.
 
@@ -167,7 +167,7 @@ git clone https://github.com/aminns123/Psychophysics_Collaborative_Lab.git
 cd .\Psychophysics_Collaborative_Lab
 ~~~
 
-Then double-click **run_psycolab.bat**.
+Then double-click **PsyCoLab.bat**.
 
 **Routine update (later, from an unchanged direct clone):**
 
@@ -179,6 +179,6 @@ git switch main
 git pull --ff-only origin main
 ~~~
 
-Then launch **run_psycolab.bat**, review your scientific settings, and recheck readiness/calibration as appropriate.
+Then launch **PsyCoLab.bat**, review your scientific settings, and recheck readiness/calibration as appropriate.
 
 For contributions to the shared project, use a separate branch or fork and a reviewed pull request. Read the [contributor guide](CONTRIBUTING_EXPERIMENTS.md). For safer, more detailed recovery procedures, read the [safe-update guide](SAFE_UPDATES_AND_LOCAL_WORK.md).
