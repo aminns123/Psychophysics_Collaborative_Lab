@@ -390,6 +390,9 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                 }.get(key, key.replace("_", " "))
                 yield ("Threshold estimation", readable, rendered,
                        "Resolved by the experiment's primary_rule; analysis after acquisition")
+            elif label in {"asymptotic_accuracy_target", "adaptive_interpretation"}:
+                yield ("Run plan", label, rendered,
+                       "Nominal local step-balance approximation. Finite fixed-step convergence depends on the psychometric function and step sizes; accuracy is not guaranteed.")
             elif selected_key in field_keys:
                 yield ("Run plan", "Effective " + label, rendered,
                        "Resolved by experiment; differs from selected " + selected_key)

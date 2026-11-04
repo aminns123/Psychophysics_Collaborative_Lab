@@ -138,6 +138,11 @@ def test_edit_controlling_input_from_resolved_row_and_reload_saved_json(tmp_path
             assert key in detail and "WHERE TO CHANGE: Review" in detail
             button=review.query_one("#review-edit-value", Button)
             button.focus()
+            # Focus schedules its own animated scroll. Settle that before
+            # explicit positioning, otherwise it can move the button offscreen
+            # after scroll_visible() when several Windows shards are busy.
+            await pilot.pause()
+            await pilot.wait_for_scheduled_animations()
             button.scroll_visible(immediate=True,top=True,force=True)
             await pilot.pause()
             await pilot.wait_for_scheduled_animations()

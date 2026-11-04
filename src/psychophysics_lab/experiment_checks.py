@@ -123,10 +123,12 @@ def check_experiment(spec, selected_values: Mapping[str, Any]) -> tuple[Software
 
 def software_check_payload(spec, checks, *, synthetic_run=None, data_checks=()):
     """Human-readable evidence, explicitly NOT scientific certification."""
+    checks, data_checks = tuple(checks), tuple(data_checks)
     return {
         "schema_version": 1,
         "experiment_id": spec.id,
         "result": "pass" if all(item.passed for item in checks)
+                  and all(item.passed for item in data_checks)
                   and (synthetic_run is None or synthetic_run.get("passed") is True)
                   else "fail",
         "evidence_scope": "software_only",

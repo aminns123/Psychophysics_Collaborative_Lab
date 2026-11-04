@@ -97,11 +97,9 @@ def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path, *,
     values = [item.threshold for item in condition_thresholds]
     try:
         x = [float(item) for item in labels]
-        xlabel = "Condition"
         tick_labels = None
     except ValueError:
         x = list(range(len(labels)))
-        xlabel = "Condition"
         tick_labels = labels
 
     fig, ax = plt.subplots()
@@ -110,7 +108,7 @@ def _plot(condition_thresholds: tuple[ConditionThreshold, ...], output: Path, *,
         if tick_labels is not None:
             ax.set_xticks(x, tick_labels)
         ax.set_xlabel(x_label)
-        ax.set_ylabel("Threshold C_disp (digital; not measured physical contrast)")
+        ax.set_ylabel("Threshold (recorded digital units; not optical contrast)")
         ax.set_title("Derived threshold contrast vs condition" + ("\n" + warning if warning else ""))
         ax.grid(True, alpha=0.25)
         fig.tight_layout()
@@ -217,9 +215,6 @@ def analyse_thresholds(
         for condition, values in sorted(by_condition.items(), key=condition_sort_key)
     )
 
-    run_uuid = _safe_component(manifest.get("run_uuid", run_directory.name))
-    participant = _safe_component(manifest.get("participant_id", "unknown_participant"))
-    experiment = _safe_component(manifest.get("experiment_id", "unknown_experiment"))
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H%M%S_%f")
     # Keep all analyses WITH the acquisition they describe. Each change of
     # reversal convention creates a version, never overwriting canonical trials.
@@ -242,7 +237,6 @@ def analyse_thresholds(
         ("condition", "staircase_count", "threshold"),
     )
 
-    entered_unit = manifest.get("experiment_values", {}).get("condition_unit")
     x_label = "Condition"
     incomplete = manifest.get("status") != "completed"
     missing_ids = []
