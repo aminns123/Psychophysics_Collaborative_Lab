@@ -173,7 +173,7 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
     calls = []
     results = [request, None]
 
-    def fake_tui(*, repo_root, data_root, simulation_summary=None):
+    def fake_tui(*, repo_root, data_root, simulation_summary=None, session_state=None):
         calls.append(("tui", simulation_summary))
         return results.pop(0)
 
