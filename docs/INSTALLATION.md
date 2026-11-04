@@ -22,31 +22,49 @@ and physical-display configuration. Scientific records live in an external data
 workspace. Never copy another computer's `.venv` or treat its calibration as valid
 for a different display.
 
-## First installation
+## First installation from Git (ordinary Python 3.11)
 
-1. Clone the repository into a writable folder, keeping the complete source tree.
-2. Obtain and verify **conda-forge CPython 3.11.15 h0159041_1_cpython x64** using
-   the [interpreter acquisition instructions](WINDOWS_ENVIRONMENT.md). Select it
-   with `PSYCOLAB_BOOTSTRAP_PYTHON`; do not replace global Python installations.
-3. Run `run_psycolab.bat` from that configured environment. First installation
-   needs the exact reviewed wheels from the package index or the documented
-   offline wheel directory; no manual scientific-package installation is required.
-4. Choose an external data folder in the TUI and explicitly configure/calibrate
-   the physical display before human acquisition.
+1. Clone the complete repository into a writable folder under your ordinary Windows account.
+2. Double-click **Run_PsyCoLab.bat**. If it reports missing Python, install **64-bit
+   Python 3.11**; with the Python install manager the command is `py install 3.11`.
+   Reopen the launcher afterwards. An explicit interpreter path can be selected
+   with `PSYCOLAB_BOOTSTRAP_PYTHON`. PsyCoLab does not edit global PATH.
+3. With no existing `.venv` or `.venv-dev`, the launcher invokes the existing
+   development setup once, in the same terminal. Initial package installation
+   requires internet/package-index access; subsequent matching launches do not.
+4. Choose the external data folder, configure the experiment and display, and Review.
+   Software installation does not calibrate apparatus or qualify a study.
+5. After a run, inspect the results, configure a repeat, or select another experiment.
+   Exit the TUI explicitly when the laboratory session is finished.
 
-The launcher first reuses this checkout's `.venv`, then an explicitly selected
-bootstrap interpreter, then the existing Python discovery routes. Discovery of
-Python 3.11 alone is insufficient: setup checks the exact qualified interpreter
-distribution, patch, architecture and artifact identities before installation.
+The same Python environment is available through **PsyCoLab_Python.bat**, either
+as an interactive prompt or with a quoted script path and arguments, including
+scripts outside the checkout. The launch working directory is the checkout;
+independent scripts should use explicit data paths or paths relative to `__file__`.
+Do not add packages to a qualified environment in place. Existing separate
+`USER_env` folders and their requirements files are preserved but no longer
+selected by the compatibility `run_user_env.bat` name.
 
-`scripts/launcher_setup.py` creates `.venv` with the selected interpreter. It
-preserves and refuses an incompatible or unqualified existing `.venv` in place.
-It installs verified binary dependencies and the project editably, then validates
-package requirements, file integrity, imports and editable installation identity.
-A matching approved environment is reused. Changed dependency specifications or
-locks require a separate reviewed checkout rather than an automatic upgrade.
-Errors leave the launcher terminal open for inspection. No global package
-environment is modified.
+An existing environment is checked without installation. A failed check does not
+replace it, silently fall back to a different Python, or resume an interrupted
+setup. The retained **setup_psycolab_dev.bat** remains the explicit setup/retry
+path for an owned `.venv-dev`; **psycolab_recovery.bat** opens diagnostics.
+First-time failure messages remain visible in the launch terminal.
+
+## Qualified laboratory software installation
+
+The ordinary source route above uses the existing development setup and does
+not claim the exact locked interpreter profile. For a qualified deployment,
+follow [WINDOWS_ENVIRONMENT.md](WINDOWS_ENVIRONMENT.md) and its explicit approved
+bootstrap/setup commands, or the separately qualified guided installation.
+`scripts/launcher_setup.py` retains the exact interpreter, binary-wheel,
+installation identity and qualification checks. An existing laboratory `.venv`
+is always preserved and checked as such. No administrator rights are added by
+the source launcher. Physical calibration and experimental qualification remain
+separate requirements on either route.
+
+See [launcher inventory and evidence](WINDOWS_LAUNCHERS.md) for the process chain,
+compatibility entry points, offline diagnosis, and current acceptance limits.
 
 Keep the complete checkout: runtime resources include root `configs/`,
 `simulations/`, `scripts/` and current `src/psychophysics_lab/` modules.

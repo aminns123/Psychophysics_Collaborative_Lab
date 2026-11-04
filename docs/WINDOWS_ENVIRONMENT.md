@@ -1,7 +1,8 @@
 # Reproducible Windows software environment
 
 Maintaining a Git checkout with an installed python.org CPython 3.11? Use
-`setup_psycolab_dev.bat` once, then `run_psycolab.bat`; see the
+`Run_PsyCoLab.bat` (first-time setup is integrated); `setup_psycolab_dev.bat`
+remains an explicit setup/retry entry. See the
 [maintainer setup route](STARTUP_RECOVERY.md#maintainer-git-checkout-on-a-new-pc).
 Its separate `.venv-dev` is a development environment without laboratory
 qualification. The exact qualified laboratory installation follows below.
@@ -107,13 +108,13 @@ facility, not a new downloader, service or #124 diagnostics system.
 
 ## USER_env and development
 
-`run_user_env.bat` and `launcher_setup.py --user-env` retain the separate USER_env
-workflow. Existing `user_requirements.txt` is never rewritten. Extras resolve
-against `core.constraints`, with a dry run before installation; an incompatible
-core/tool requirement is rejected. The observed augmented inventory is recorded,
-but arbitrary lab extras are not represented as a fully hash-locked release.
-Their owners must qualify them and retest affected studies. No Ready promotion
-occurs, and missing unrelated optional libraries do not become global dependencies.
+`PsyCoLab_Python.bat` uses the application's already verified environment for an
+interactive Python prompt or an external script. The compatibility name
+`run_user_env.bat` delegates to it. It does not create a second environment or
+install `user_requirements.txt`. Existing USER_env directories and custom files
+are preserved. The explicit historical `launcher_setup.py --user-env` facility
+remains available for existing workflows, with its original constraints and
+qualification limits; it is not part of normal startup.
 
 Keep pytest and its dependencies separate from ordinary installations.
 `development.lock` is for a separate developer/test environment and CI; adding
