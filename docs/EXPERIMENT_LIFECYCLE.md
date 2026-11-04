@@ -74,9 +74,10 @@ The terminal summary reports completed and unfinished staircase identities.
 
 ## Terminal behaviour
 
-When launched with `run_psycolab.bat`, the command window deliberately pauses
-after a normal return as well as after errors. This allows a researcher to verify
-the final status and saved-data location before closing the terminal.
+When launched with `PsyCoLab.bat`, finishing an experiment returns to the main
+TUI with its result and saved-data location. Deliberately closing the TUI returns
+to the native launcher menu. The launcher reports nonzero exit codes and offers
+Check / Repair; it never repeats an experimental operation automatically.
 
 When PsyCoLab is launched directly from an existing PowerShell/Command Prompt,
 the program simply returns to that shell normally.

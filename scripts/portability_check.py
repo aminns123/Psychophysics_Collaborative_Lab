@@ -30,6 +30,7 @@ FORBIDDEN_TRACKED_PREFIXES = (
 LOCAL_DIRECTORY_NAMES = {
     ".venv", ".venv-dev", ".vscode", ".idea", ".pytest_cache", ".mypy_cache", ".ruff_cache",
     ".psycolab_logs", "local_psychophysics_config", "local_psychophysics_data",
+    ".psycolab-recovery",
     "psycolab_data",
 }
 LOCAL_FILE_NAMES = {
@@ -43,15 +44,19 @@ SCAN_PREFIXES = (
     "scripts/",
     "configs/",
     ".github/",
+    "packaging/",
 )
 
 ROOT_TEXT_FILES = {
+    "psycolab.bat",
+    "psycolab_python.bat",
+    "psycolab_recovery.bat",
     "run_psycolab.bat",
     "pyproject.toml",
     ".gitignore",
 }
 
-ALLOWED_TEXT_SUFFIXES = {".py", ".json", ".toml", ".bat", ".sh", ".yaml", ".yml", ".txt"}
+ALLOWED_TEXT_SUFFIXES = {".py", ".json", ".toml", ".bat", ".cmd", ".cs", ".sh", ".yaml", ".yml", ".txt"}
 
 # Build the detector expressions from fragments so this checker does not trigger
 # on its own source code. These are detection rules, not project paths.
@@ -110,7 +115,7 @@ def shared_candidate_files() -> list[str]:
 
 def _is_scannable(relative: str) -> bool:
     normalized = relative.replace("\\", "/")
-    if normalized in ROOT_TEXT_FILES:
+    if normalized.lower() in ROOT_TEXT_FILES:
         return True
     if not any(normalized.startswith(prefix) for prefix in SCAN_PREFIXES):
         return False
@@ -144,7 +149,7 @@ def main() -> int:
         normalized = path.replace("\\", "/")
         parts = normalized.lower().split("/")
         name = parts[-1]
-        if any(part in LOCAL_DIRECTORY_NAMES or part.startswith(".venv.incompatible-")
+        if any(part in LOCAL_DIRECTORY_NAMES or part.startswith((".venv.incompatible-", ".venv-legacy-preserved-", ".venv-recovery-backup-", ".venv-dev-recovery-backup-"))
                for part in parts[:-1]):
             failures.append(f"tracked local configuration/environment/data: {path}")
         if name in LOCAL_FILE_NAMES or name == ".env" or (

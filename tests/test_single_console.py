@@ -13,10 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows console ownership")
 
 
-def test_actual_batch_reuses_parent_console_and_same_python_for_external_scripts(tmp_path):
+@pytest.mark.parametrize("entry", [("PsyCoLab_Python.bat",), ("PsyCoLab.bat", "--python")])
+def test_actual_batch_reuses_parent_console_and_same_python_for_external_scripts(tmp_path, entry):
     root = source(tmp_path, real_python=True)
     (root / "packaging/windows").mkdir(parents=True)
-    for name in ("PsyCoLab_Python.bat", "scripts/windows_startup.cmd", "packaging/windows/GuidedSetup.cs"):
+    for name in ("PsyCoLab.bat", "PsyCoLab_Python.bat", "scripts/windows_startup.cmd", "packaging/windows/GuidedSetup.cs"):
         shutil.copy2(ROOT / name, root / name)
     script = tmp_path / "independent researcher script.py"
     result_file = tmp_path / "script evidence.json"
@@ -29,7 +30,7 @@ def test_actual_batch_reuses_parent_console_and_same_python_for_external_scripts
     parent = tmp_path / "console parent.py"
     parent.write_text(
         'import os,subprocess,sys\nos.environ["PROBE_PARENT"]=str(os.getpid())\n'
-        'raise SystemExit(subprocess.call(["cmd.exe","/d","/c","call","PsyCoLab_Python.bat",*sys.argv[1:]]))\n')
+        f'raise SystemExit(subprocess.call(["cmd.exe","/d","/c","call",*{entry!r},*sys.argv[1:]]))\n')
     startup = subprocess.STARTUPINFO()
     startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     startup.wShowWindow = subprocess.SW_HIDE

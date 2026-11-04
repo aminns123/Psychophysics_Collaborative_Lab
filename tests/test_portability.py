@@ -80,7 +80,9 @@ def test_shared_runtime_files_do_not_contain_author_specific_path_literals():
                                  "nested/.env.local", ".psycolab_local.json", ".psycolab_preferences.lock",
                                  "local_psychophysics_config/profiles/display/current/luminance.json",
                                  "PsyCoLab_Data/S001/trials.tsv", "nested/.mypy_cache/cache.json",
-                                 ".ruff_cache/cache", "nested/.venv.incompatible-old/file.py"])
+                                 ".ruff_cache/cache", "nested/.venv.incompatible-old/file.py",
+                                 ".venv-legacy-preserved-example/file.py", ".venv-recovery-backup-example/file.py",
+                                 ".venv-dev-recovery-backup-example/file.py", ".psycolab-recovery/state.json"])
 def test_portability_checker_rejects_tracked_temporary_data_and_runtime_files(monkeypatch, name):
     from scripts import portability_check
 

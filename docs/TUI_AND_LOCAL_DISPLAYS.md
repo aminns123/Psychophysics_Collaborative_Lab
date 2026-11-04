@@ -1,6 +1,6 @@
 # TUI and machine-local display configuration
 
-Launch your existing checkout with `run_psycolab.bat`, or run
+Open `PsyCoLab.bat` and choose **1 — Launch PsyCoLab**, or run
 `.venv\Scripts\python.exe -m psychophysics_lab` from its root.
 
 ## Navigation and code inspection

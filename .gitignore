@@ -12,6 +12,10 @@ htmlcov/
 .venv/
 .venv-dev/
 .venv.incompatible-*/
+/.venv-legacy-preserved-*/
+/.venv-recovery-backup-*/
+/.venv-dev-recovery-backup-*/
+/.psycolab-recovery/
 build/
 dist/
 *.egg-info/

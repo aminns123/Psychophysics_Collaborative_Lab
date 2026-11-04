@@ -1,11 +1,17 @@
 # Windows launch and guided startup recovery
 
-**Run_PsyCoLab.bat** is the normal source entry point. It verifies an existing
-`.venv` or `.venv-dev` without changing it. Only a Git checkout with neither
-environment present invokes the existing first-time source development setup.
-Existing, damaged, unqualified and interrupted environments retain the recovery
-rules below; startup does not repair them. **PsyCoLab_Python.bat** uses the same
-verified environment. See [launcher inventory](WINDOWS_LAUNCHERS.md).
+**PsyCoLab.bat** is the single source entry point. Its Python-independent text
+menu offers launch, check/repair, Python Workspace and exit. Launch verifies an
+existing `.venv` or `.venv-dev` without changing it. Choose option **2** for
+initial setup or a supported repair, with an explanation and confirmation.
+See [launcher inventory and compatibility retirement](WINDOWS_LAUNCHERS.md).
+
+**Supported older source installations now have an explicit repair action.**
+Open `PsyCoLab.bat`, choose **2 — Check / Repair**, select **R — Repair source
+installation**, and confirm the explanation. The compatibility recovery dialog
+offers the same engine. See [repair, retry and restore](SOURCE_INSTALLATION_RECOVERY.md). No source
+update, environment conversion or dependency installation happens without that
+explicit action. Managed and qualified installations retain their existing gates.
 
 ## Maintainer Git checkout on a new PC
 
@@ -18,11 +24,10 @@ first setup.
 For first-time source use (or explicit development setup):
 
 1. Install 64-bit CPython 3.11. A python.org installation is supported here.
-2. Double-click `Run_PsyCoLab.bat` in a Git checkout without an environment;
-   `setup_psycolab_dev.bat` remains the explicit setup/retry entry.
-   It downloads the project's declared development dependencies into `.venv-dev`
+2. Double-click `PsyCoLab.bat`, select **2**, then **I — Install source environment**.
+   Confirm the explanation. It downloads the pinned development dependencies into `.venv-dev`
    and validates imports, dependency compatibility and editable source identity.
-3. Double-click `run_psycolab.bat` to open the normal TUI. Repeat launches only
+3. Select **1 — Launch PsyCoLab** to open the normal TUI. Repeat launches only
    check the development environment; they do not run pip install or write setup
    records. If dependencies or editable metadata change, rerun the explicit setup.
 
@@ -31,7 +36,9 @@ setup records use a distinct filename and `mode: development`; they do not write
 or substitute for laboratory qualification. The normal launcher selects
 `.venv-dev` only in a Git checkout with **no `.venv` present** and no managed
 installation record. A failing, legacy or damaged `.venv` never falls back to
-development. Preserve it and use a separate Git checkout instead. Managed
+development during ordinary launch. Recognised older source records can instead
+use the explicit recovery action to preserve `.venv` and prepare `.venv-dev`.
+Unknown or qualified evidence still needs separate review. Managed
 installed snapshots continue to require their existing source seals and locked
 environment checks.
 
@@ -45,8 +52,8 @@ data safeguards still apply.
 | Situation | Previous source batch | This change |
 | --- | --- | --- |
 | Healthy repeat launch | Called provisioning/setup before opening the app | Calls the existing read-only `launcher_setup.py --check`, then opens once |
-| Older `.venv` record | Setup refusal and terminal instructions/pause | Native explanation, available verified choices, diagnostics and Cancel |
-| Missing own environment | Searched registered/global interpreters to bootstrap | Git checkout only: existing source development setup runs once when both environments are absent; qualified deployment stays explicit |
+| Recognised older source `.venv` record | Setup refusal and terminal instructions/pause | Explicit explained backup, pinned replacement setup, verification and one TUI launch; retry/restore supported |
+| Missing own environment | Searched registered/global interpreters to bootstrap | Menu option 2 offers explained initial source setup when both environments are absent; qualified deployment stays explicit |
 | Source revision changes | Setup could refresh editable metadata | Environment-compatible changes pass existing checks; a mismatched identity is refused without repair |
 | Nonzero application exit | Terminal pause for every error | Startup phase or conservative incident explanation; no automatic retry |
 
@@ -60,6 +67,12 @@ that interpreter or changed the laboratory record.
 ## What the recovery window can offer
 
 Exactly one available action carries **[Recommended]**, with its reason:
+
+For a supported older source installation or an owned interrupted/damaged source
+development environment, **Repair older source installation** is recommended.
+It requires confirmation, preserves the historical environment and uses the
+existing source setup. It never supplies laboratory qualification. For other
+installations, the existing selection rules follow:
 
 1. A retained installation, when it has already passed its own read-only checks.
    It is checked again on selection. The failing invocation's experiment arguments
@@ -75,7 +88,8 @@ Exactly one available action carries **[Recommended]**, with its reason:
 
 Unverified options are omitted, with a short explanation. There is no arbitrary
 Python picker, automatic dependency reinstall or qualification-record editor.
-This change establishes no safe in-place repair, including a shortcut rewrite.
+The explicit source repair never reinstalls into the historical `.venv`, rewrites
+qualification evidence or changes shortcuts. No qualified in-place repair is offered.
 An administrator can use the existing setup's explicit version-specific shortcut
 action after checking the selected installation; startup does not guess a target.
 
@@ -120,7 +134,8 @@ does not resume an operation. A fatal native crash may lack phase information.
 
 ## Bootstrap and independent fallback
 
-Both batch files call `scripts/windows_startup.cmd`, which compiles the existing
+The authoritative batch and temporary compatibility wrappers share
+`scripts/windows_startup.cmd`, which compiles the existing
 `packaging/windows/GuidedSetup.cs` with Windows' .NET Framework C# compiler into
 a fresh user-temporary executable. It uses no application Python or new package
 manager. Compiling a temporary host adds a short startup delay. Executables and
@@ -128,8 +143,8 @@ compiler logs remain in the user's temporary directory; opening diagnostics
 explicitly writes a fresh JSON report there and opens Notepad. Cancel performs
 no recovery action, but does not undo those bootstrap/report artifacts.
 
-`psycolab_recovery.bat` is an optional fallback for opening the **same** diagnosis
-and recovery window without automatically launching the current application.
+`psycolab_recovery.bat` opens the **same** diagnosis and recovery window. Diagnosis
+alone does not launch the application; a successful selected repair opens it once.
 It is useful if application entry fails; it cannot repair a missing internal
 bootstrap or broken Windows native components. A compiler failure uses a static
 native message with the compiler-log location, plus console text. No PowerShell

@@ -1,4 +1,5 @@
 @echo off
-rem Recovery fallback only; does not automatically launch this application.
-call "%~dp0scripts\windows_startup.cmd" --recover "%~dp0."
+rem Compatibility only. Use PsyCoLab.bat. Retirement: see docs/WINDOWS_LAUNCHERS.md.
+rem Diagnose, explain and offer supported source repair. --restore undoes a repair.
+call "%~dp0scripts\windows_startup.cmd" --recover "%~dp0." %*
 exit /b %ERRORLEVEL%
