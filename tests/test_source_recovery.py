@@ -289,16 +289,15 @@ def test_real_batch_detects_python_started_outside_launcher(source):
     venv.EnvBuilder(with_pip=False).create(root / ".venv")
     before = snapshot(root / ".venv")
     child = subprocess.Popen([str(root / ".venv/Scripts/python.exe"), "-I", "-c",
-                              "import time;print('running',flush=True);time.sleep(30)"],
-                             stdout=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                              "import sys;print('running',flush=True);sys.stdin.readline()"],
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
     try:
         assert child.stdout.readline().strip() == "running"
         result = batch(source, "--repair")
         assert result.returncode != 0
         assert snapshot(root / ".venv") == before and not list(root.glob(".venv-recovery-backup-*"))
     finally:
-        child.terminate()
-        child.wait(timeout=10)
+        child.communicate("\n", timeout=10)
 
 
 def test_native_menu_survives_missing_python_and_returns_after_failed_launch(source):
