@@ -146,7 +146,8 @@ starting presentation; zero-motion boundary holds do not create reversals.
 
 ## Stimulus and rendering review
 
-All 23 registered classes were inventoried and their equations reviewed:
+All 23 registered stimuli were inventoried: 22 library classes and the
+`geometry_bar` calibration diagnostic. Their equations were reviewed:
 
 | Group | Classes and findings |
 | --- | --- |
@@ -156,6 +157,7 @@ All 23 registered classes were inventoried and their equations reviewed:
 | CSF | ContrastSensitivityGrating: compact Gaussian support, outer-sigma cosine taper. CircularWindowedSinusoidalGrating: full central amplitude, radial edge-only taper. Their envelopes are scientifically different; parity is not claimed between them. |
 | Independent detection objects | EllipseRing uses an axial inset on both semi-axes, not constant normal ring thickness. ProbeLine uses fractional pixel-area coverage. FlankerGrating uses signed amplitude. GaussianSceneFixation preserves raw, untruncated historical blend; GaussianFixationSpot uses truncated normalized headroom; GaussianFixation preserves its existing capped peak. |
 | Composition | ComposedScene remains a public recipe adapter; Scene/Drawing are still used by public classes and compatibility scripts. Their infrastructure is not an obsolete second stimulus library to delete. |
+| Calibration diagnostic | `geometry_bar` resolves requested millimetres or visual angle to independently calibrated x/y pixel pitch, rounds to a realizable bar length and records the realized size/angle. It requires a real ruler measurement to establish physical agreement. |
 
 Ordered `over` composition removes each layer's own premixed background once;
 it does not multiply pixel coverage twice. Explicit `add` adds the deviation
