@@ -2973,7 +2973,8 @@ class PsyCoLabSetupApp(App):
     def __init__(self, *, repo_root: Path, data_root: Path,
                  simulation_summary: str | None = None,
                  geometry_summary: str | None = None, include_historical: bool = False,
-                 refresh_state: dict | None = None) -> None:
+                 refresh_state: dict | None = None,
+                 session_state: dict | None = None, run_outcome: dict | None = None) -> None:
         super().__init__()
         from textual.theme import Theme
         self.register_theme(Theme(
@@ -2985,6 +2986,8 @@ class PsyCoLabSetupApp(App):
         self.theme = "laboratory"
 
         self.refresh_state = refresh_state
+        self.session_state = session_state
+        self.run_outcome = run_outcome
         self.include_historical = include_historical
         self.simulation_summary = simulation_summary
         self.geometry_summary = geometry_summary
@@ -3248,6 +3251,13 @@ class PsyCoLabSetupApp(App):
         await install_console(self.screen)
         self._refresh_experiment_context()
         self._refresh_run_intent()
+        if self.session_state:
+            from .session import restore_session
+            restore_session(self, self.session_state)
+        if self.run_outcome is not None:
+            from .session import RunResultScreen
+            await self.push_screen(RunResultScreen(self.run_outcome))
+            return
         if self.refresh_state is not None:
             self.call_after_refresh(self._restore_refreshed_setup)
         elif self.geometry_summary:
@@ -3255,6 +3265,12 @@ class PsyCoLabSetupApp(App):
 
     BINDINGS = [("f5", "refresh_files", "Refresh files"),
                 ("f6", "focus_navigation", "Sidebar")]
+
+    def exit(self, result=None, **kwargs):
+        if self.session_state is not None and self.is_running:
+            from .session import capture_session
+            capture_session(self, self.session_state)
+        return super().exit(result, **kwargs)
 
     def action_focus_navigation(self):
         section = getattr(self.screen, "console_section", None)
@@ -3558,9 +3574,12 @@ class PsyCoLabSetupApp(App):
 def run_setup_tui(*, repo_root: Path, data_root: Path,
                   simulation_summary: str | None = None,
                   geometry_summary: str | None = None,
-                  refresh_state: dict | None = None) -> SetupRequest | GeometryCheckRequest | None:
+                  refresh_state: dict | None = None,
+                  session_state: dict | None = None,
+                  run_outcome: dict | None = None) -> SetupRequest | GeometryCheckRequest | None:
     app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
                            simulation_summary=simulation_summary,
                            geometry_summary=geometry_summary, refresh_state=refresh_state,
-                           include_historical=bool(refresh_state and refresh_state.get("include_historical")))
+                           session_state=session_state, run_outcome=run_outcome,
+                           include_historical=bool((refresh_state or session_state or {}).get("include_historical")))
     return app.run()

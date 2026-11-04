@@ -91,6 +91,22 @@ def _print_geometry_summary(artifacts: Any) -> None:
     print("=" * 60)
 
 
+def _failed_run_directory(exc: BaseException) -> Path | None:
+    """Read the exact allocation from the failed runner, never a 'latest' run.
+
+    Keep the frozen scientific runner untouched. Its traceback retains the
+    local allocation after finalisation, including when the workspace save fails.
+    """
+    expected = Path(__file__).parent / "core" / "runner.py"
+    trace = exc.__traceback__
+    while trace is not None:
+        frame = trace.tb_frame
+        if frame.f_code.co_name == "run_request" and Path(frame.f_code.co_filename) == expected:
+            return frame.f_locals.get("run_dir")
+        trace = trace.tb_next
+    return None
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="psycolab",
@@ -294,6 +310,8 @@ def _main(
     simulation_summary: str | None = None
     geometry_summary: str | None = None
     recoverable_failures = 0
+    session_state: dict = {}
+    run_outcome = None
     while True:
         if diagnostic_context is not None:
             diagnostic_context["data_root"] = initial_data_root
@@ -302,6 +320,9 @@ def _main(
         from .ui.setup import run_setup_tui
 
         launch_options = {"simulation_summary": simulation_summary}
+        launch_options["session_state"] = session_state
+        if run_outcome is not None:
+            launch_options["run_outcome"] = run_outcome
         if refresh_state is not None:
             launch_options["refresh_state"] = refresh_state
             refresh_state = None
@@ -311,6 +332,7 @@ def _main(
                                **launch_options)
         simulation_summary = None
         geometry_summary = None
+        run_outcome = None
         if isinstance(action, RefreshRequest):
             return launch_refreshed(action, repo_root)
         if action is None:
@@ -330,17 +352,25 @@ def _main(
                 diagnostic_context['phase']='uncalibrated_presentation_test'
             try:
                 artifacts=run_presentation_test(action,repo_root=repo_root)
-            except Exception as exc:
+            except (Exception, KeyboardInterrupt) as exc:
                 recoverable_failures+=1
                 print(f'Uncalibrated presentation did not complete: {exc}')
                 # Never allocate an unmarked folder merely to log a preflight
                 # failure, and never write a presentation log into human data.
                 report=write_crash_report(exc,repo_root=repo_root,data_root=test_root,phase='uncalibrated_presentation_test') if (test_root/MARKER).is_file() else None
                 simulation_summary=f'[red]UNCALIBRATED presentation failed: {exc}[/red]\n'+(f'Test diagnostic: {report}' if report else 'No test run/report was created before preflight completed.')
+                run_outcome = {"data_root": test_root,
+                    "run_directory": _failed_run_directory(exc),
+                    "summary": f"UNCALIBRATED presentation failed or was interrupted: {exc}\nDiagnostic: {report}\nThis is not a completed human experiment."}
             else:
                 _print_run_summary(artifacts)
                 if artifacts.status=='error': recoverable_failures+=1
                 simulation_summary='UNCALIBRATED presentation status: '+artifacts.status+'. Output: '+str(artifacts.run_directory)+'. These are not human experimental records.'
+                run_outcome = {"data_root": test_root, "run_directory": artifacts.run_directory,
+                    "summary": simulation_summary + f"\nAccepted test responses: {artifacts.accepted_trials}"}
+            finally:
+                from .core.tone import finish_pending_beeps
+                finish_pending_beeps()
             continue
 
         from .core.simulation_request import SimulationLaunchRequest
@@ -536,12 +566,41 @@ def _main(
         # Pyglet/OpenGL imports happen only inside run_request, after Textual exits.
         from .core.runner import run_request
 
-        artifacts = run_request(action, repo_root=repo_root, data_root=selected_data_root)
-
+        try:
+            artifacts = run_request(action, repo_root=repo_root, data_root=selected_data_root)
+        except (Exception, KeyboardInterrupt, SystemExit) as exc:
+            recoverable_failures += 1
+            report = write_crash_report(exc, repo_root=repo_root, data_root=selected_data_root,
+                                        phase="experiment_acquisition")
+            directory = _failed_run_directory(exc)
+            run_outcome = {"run_directory": directory,
+                "summary": ("Experiment interrupted by keyboard; completion was not established."
+                            if isinstance(exc, KeyboardInterrupt) else f"Experiment failed: {exc}")
+                    + f"\nSaved run: {directory or 'No run folder was allocated.'}"
+                    + f"\nDiagnostic: {report or 'Could not write a diagnostic report.'}"
+                    + "\nPreserve partial records; this attempt is not a completed experiment."}
+        else:
+            _print_run_summary(artifacts)
+            if artifacts.status == "error":
+                recoverable_failures += 1
+            descriptions = {
+                "completed": "Experiment completed successfully.",
+                "aborted_by_user": "Participant aborted the experiment. Accepted responses were preserved.",
+                "max_trials_reached": "Response safety ceiling reached. Some staircases remain unfinished.",
+                "error": "Experiment or recording finalisation failed. Inspect the saved records.",
+            }
+            run_outcome = {"run_directory": artifacts.run_directory,
+                "summary": descriptions.get(artifacts.status,
+                    f"Experiment ended with status: {artifacts.status}. Completion was not established.")
+                    + f"\nAccepted responses: {artifacts.accepted_trials}"
+                    + f"\nSaved run: {artifacts.run_directory}"
+                    + "\nPhysical stimulus and timing validation remain separate."}
+        finally:
+            from .core.tone import finish_pending_beeps
+            finish_pending_beeps()
+        initial_data_root = selected_data_root
         if diagnostic_context is not None:
-            diagnostic_context["phase"] = "finished"
-        _print_run_summary(artifacts)
-        return 1 if artifacts.status == "error" else 0
+            diagnostic_context["phase"] = "post_experiment_review"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

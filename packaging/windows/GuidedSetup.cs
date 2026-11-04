@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 public static class SetupEngine
 {
@@ -234,6 +235,7 @@ public class SetupWindow : Form
         try {
             if(args.Length==2&&args[0]=="--launch")return StartupRecovery.LaunchFixed(SetupEngine.Full(args[1]));
             if(args.Length>=2&&args[0]=="--source")return StartupRecovery.LaunchSource(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
+            if(args.Length>=2&&args[0]=="--python")return StartupRecovery.LaunchPython(SetupEngine.Full(args[1]),args.Skip(2).ToArray());
             if(args.Length==2&&args[0]=="--recover")return StartupRecovery.Recover(SetupEngine.Full(args[1]));
             string bundle=AppDomain.CurrentDomain.BaseDirectory,store=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"PsyCoLab","Installations");
             if(args.Length==4&&args[0]=="--bundle"&&args[2]=="--store"){bundle=SetupEngine.Full(args[1]);store=SetupEngine.Full(args[3]);}
@@ -246,6 +248,21 @@ public class SetupWindow : Form
 // Startup only: no package resolution, qualification writes, branch changes or acquisition retry.
 public static class StartupRecovery
 {
+    [DllImport("kernel32.dll", SetLastError=true)]
+    static extern bool AttachConsole(uint processId);
+    delegate bool ConsoleControl(uint control);
+    [DllImport("kernel32.dll")]
+    static extern bool SetConsoleCtrlHandler(ConsoleControl handler, bool add);
+    static readonly ConsoleControl KeepObserver = control => control == 0 || control == 1;
+
+    static void UseParentConsole() {
+        // This host is a winexe. Without attachment its console Python child
+        // allocates another window while the double-clicked batch waits empty.
+        // ERROR_ACCESS_DENIED simply means an existing console is already owned.
+        // Direct GUI/shortcut launches have no parent console; Python then
+        // allocates the one console it needs, as before.
+        if(AttachConsole(unchecked((uint)-1)))SetConsoleCtrlHandler(KeepObserver,true);
+    }
     public class Diagnosis {
         public string category,message,details,root,original_root;
         public bool healthy,after_application,development;
@@ -398,6 +415,7 @@ public static class StartupRecovery
         string name="PsyCoLabStartup-"+Guid.NewGuid().ToString("N");
         using(var pipe=new System.IO.Pipes.NamedPipeServerStream(name,System.IO.Pipes.PipeDirection.In,1,System.IO.Pipes.PipeTransmissionMode.Byte,System.IO.Pipes.PipeOptions.Asynchronous)) {
             var read=Task.Run(()=>{try{pipe.WaitForConnection();using(var reader=new StreamReader(pipe,Encoding.UTF8)){var notice=SetupEngine.Json.Deserialize<ExitNotice>(reader.ReadLine());phase=notice.phase;applicationReport=notice.report;}}catch(Exception){ /* Missing or malformed evidence remains unknown. */ }});
+            UseParentConsole();
             start.EnvironmentVariables["PSYCOLAB_STARTUP_PIPE"]=name;start.CreateNoWindow=false;
             int code;bool started=false;
             try{using(var child=Process.Start(start)){started=true;child.WaitForExit();code=child.ExitCode;}}
@@ -413,6 +431,16 @@ public static class StartupRecovery
         var start=SourceProcess(root,SetupEngine.ApplicationArguments(args),d.development);
         start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
         return Observe(start,root);
+    }
+    public static int LaunchPython(string root,string[] args) {
+        var d=Diagnose(root);if(!d.healthy){Show(d);return 1;}
+        var start=SourceProcess(root,args.Length==0?new[]{"-E","-s","-B","-i"}:
+            new[]{"-E","-s","-B"}.Concat(args),d.development);
+        start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
+        UseParentConsole();start.CreateNoWindow=false;
+        // Researcher scripts own their exit code, rather than the application's
+        // crash protocol. They run once, with the verified application's Python.
+        using(var child=Process.Start(start)){child.WaitForExit();return child.ExitCode;}
     }
     public static int LaunchFixed(string instance) {
         try {

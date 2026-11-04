@@ -1,7 +1,13 @@
 @echo off
 setlocal EnableExtensions
 rem Internal bootstrap shared by normal launch and explicit recovery. No Python.
-if not "%~1"=="--source" if not "%~1"=="--recover" exit /b 2
+if not "%~1"=="--source" if not "%~1"=="--recover" if not "%~1"=="--python" exit /b 2
+rem Incorporate the working source setup only for a genuinely absent environment.
+rem Existing, damaged or qualified environments always go to read-only diagnosis.
+if not "%~1"=="--recover" if exist "%~2\.git" if not exist "%~2\.venv" if not exist "%~2\.venv-dev" (
+    call "%~dp0windows_development.cmd"
+    if errorlevel 1 goto source_setup_failed
+)
 rem Claim a private directory atomically. RANDOM can repeat across cmd processes
 rem or be fixed by an inherited environment variable; it is not a unique-file API.
 set /a "PSYCOLAB_BOOTSTRAP_ATTEMPT=0"
@@ -26,6 +32,10 @@ rem recursively delete a directory. Preserve failed attempts and their reports.
 del /q "%PSYCOLAB_NATIVE_HOST%" "%PSYCOLAB_BOOTSTRAP_LOG%" >nul 2>&1
 rmdir "%PSYCOLAB_NATIVE_DIR%" >nul 2>&1
 exit /b %PSYCOLAB_NATIVE_RESULT%
+:source_setup_failed
+echo PsyCoLab setup could not finish. Review the message above or use setup_psycolab_dev.bat.
+pause
+exit /b 1
 :bootstrap_failed
 rem Static native fallback, without script-file policy bypass or evaluated input.
 powershell.exe -NoLogo -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.MessageBox]::Show(('PsyCoLab startup recovery could not open. Nothing was installed or repaired. Ask the administrator to restore the reviewed launcher files and Windows .NET Framework support. Bootstrap report: '+[Environment]::GetEnvironmentVariable('PSYCOLAB_BOOTSTRAP_LOG')), 'PsyCoLab startup')"

@@ -1,0 +1,47 @@
+{
+  "scope": "Independent illustrative fixed-step logistic-observer simulation; no physical display, not a formal asymptotic proof",
+  "response_probability": ".5 + .5*logistic(level)",
+  "rule": "two consecutive correct down, one incorrect up, equal steps; median presented reversal coordinate",
+  "rows": [
+    {
+      "step_in_logistic_coordinate": 0.05,
+      "nominal_local_target": 0.7071067811865476,
+      "observed_correct_fraction": 0.706899,
+      "median_presented_reversal_coordinate": -0.34999999999999987,
+      "model_probability_at_median_reversal": 0.706691210541335,
+      "seed": 821,
+      "retained_virtual_responses": 1000000,
+      "burn_in": 100000
+    },
+    {
+      "step_in_logistic_coordinate": 0.5,
+      "nominal_local_target": 0.7071067811865476,
+      "observed_correct_fraction": 0.706008,
+      "median_presented_reversal_coordinate": -0.5,
+      "model_probability_at_median_reversal": 0.6887703343990728,
+      "seed": 821,
+      "retained_virtual_responses": 1000000,
+      "burn_in": 100000
+    },
+    {
+      "step_in_logistic_coordinate": 2.0,
+      "nominal_local_target": 0.7071067811865476,
+      "observed_correct_fraction": 0.703992,
+      "median_presented_reversal_coordinate": 0.0,
+      "model_probability_at_median_reversal": 0.75,
+      "seed": 821,
+      "retained_virtual_responses": 1000000,
+      "burn_in": 100000
+    },
+    {
+      "step_in_logistic_coordinate": 10.0,
+      "nominal_local_target": 0.7071067811865476,
+      "observed_correct_fraction": 0.702879,
+      "median_presented_reversal_coordinate": 0.0,
+      "model_probability_at_median_reversal": 0.75,
+      "seed": 821,
+      "retained_virtual_responses": 1000000,
+      "burn_in": 100000
+    }
+  ]
+}

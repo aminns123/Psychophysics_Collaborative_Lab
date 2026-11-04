@@ -1,0 +1,1403 @@
+{
+  "date": "2026-11-04",
+  "baseline_develop": "21e103aad08804213936a9e6c6b3d22e8dbd4145",
+  "inventory_scope": "Live Python source, simulations and scripts; AST/hash inventory is not scientific or physical certification",
+  "modules": [
+    {
+      "path": "src/psychophysics_lab/__init__.py",
+      "sha256_lf": "89af701140108d5e3d203aadeff8a66d4f530e0431ce640a610462554f482585",
+      "lines": 4,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/__main__.py",
+      "sha256_lf": "4b54b73c73b89533c3cbb134fb7e18f9e4b1a1d7015a0fd4daede7c611279f29",
+      "lines": 16,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/__init__.py",
+      "sha256_lf": "d4c8dc6caf6c94c5302a0d9d43f0f907db61f1353a645acf71283faab8c33f29",
+      "lines": 6,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/registry.py",
+      "sha256_lf": "e400a380e7214f67e1024f213bba0d552f5ae55cab575a561ed76548a4c9c8df",
+      "lines": 76,
+      "functions": 7,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/staircase.py",
+      "sha256_lf": "388e628314246e66bb030e2b1d36e58e49fc85b1c1438caa9de59a139a413c18",
+      "lines": 220,
+      "functions": 13,
+      "classes": 5
+    },
+    {
+      "path": "src/psychophysics_lab/adaptive/steps.py",
+      "sha256_lf": "05bb4a25b51d136dd57b4832a4fd456c081aaa23fcbfd063064f16db3a864d64",
+      "lines": 64,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/__init__.py",
+      "sha256_lf": "32a45ee3b392b36503a83a6be6d9cb4bf899163750a1e840d2446264e77df7b0",
+      "lines": 5,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/previews.py",
+      "sha256_lf": "8c211e99e9fa6c3eff4d5164c55753cec0fccb3823bdb8b9c9df63bbeacc2577",
+      "lines": 309,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/primary.py",
+      "sha256_lf": "eed030450388e00f4769e9022451d7ee9a0b7d8b80fd38399788cc420f9f6467",
+      "lines": 195,
+      "functions": 4,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/analysis/thresholds.py",
+      "sha256_lf": "96d22de6090513fc7a04837b602b4f5942a664ca1c01ab26eac312a43b0f8c8f",
+      "lines": 321,
+      "functions": 8,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/app.py",
+      "sha256_lf": "5ba6d520c14e9df49ee285da41619125ba55a4ad839b2a8dbbb4b83b5cb1e045",
+      "lines": 645,
+      "functions": 7,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/authoring.py",
+      "sha256_lf": "466da8532b3fc05e83ab38408b4737dd32636f26f7332e7fa6cc0ae7466e60de",
+      "lines": 252,
+      "functions": 12,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/config/__init__.py",
+      "sha256_lf": "0150809188bf409a3d6d570d2a5f8738fe52c737585e61912ce4ccbdaea769aa",
+      "lines": 3,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/background_mapping.py",
+      "sha256_lf": "cf92734aeaae5ebb5e9fc79f181741ba7f99e6b839df455afdff282cb44aeadd",
+      "lines": 89,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/calibration_dataset.py",
+      "sha256_lf": "10f8349a13f17c89fc1be3e8775f064588aa20cbd7b6b2794f06253a61f97826",
+      "lines": 294,
+      "functions": 13,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/calibration_progress.py",
+      "sha256_lf": "0ea3411b0196cb632f43ae4d7136f98733ba2620196a9cb1b387733a131f9253",
+      "lines": 136,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/calibration_review.py",
+      "sha256_lf": "9719c6035dcf5a6c9266b535777284915bf39d8c58e7307d913471fedf20f31f",
+      "lines": 194,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/calibration_templates.py",
+      "sha256_lf": "3d244788c9e67a79841d357c77e41f12306111aa34c5f3613de270865f93c66b",
+      "lines": 314,
+      "functions": 9,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/calibration_workflow.py",
+      "sha256_lf": "78d889e23dde24cf6597ec35ece021bbd4b3324bd59824b2be7bdf2ea843760a",
+      "lines": 92,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/experiment_parameters.py",
+      "sha256_lf": "09b3af3a6e9bc905ca79924c93186bb3d6ccaeee262832d44193b34f8dc71c1b",
+      "lines": 32,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/human_readiness.py",
+      "sha256_lf": "2d49a16dd7971f6605df6e9837037de2ac4e1e703ec478451e1cd97a93511221",
+      "lines": 94,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/input_constraints.py",
+      "sha256_lf": "7696e8089b3bb7e46c05fda89287629521f03337937a5f346cc6a2c48814e444",
+      "lines": 24,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/local.py",
+      "sha256_lf": "ab7a93ef1995f158c676df5944c8736ec11e1cc8531c1fbe8536e4173d9a71d6",
+      "lines": 212,
+      "functions": 8,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/models.py",
+      "sha256_lf": "6ae67b46578f249f57cfbdeaf4c4f674aa974c548016cd92b368c9c2995eecad",
+      "lines": 210,
+      "functions": 8,
+      "classes": 4
+    },
+    {
+      "path": "src/psychophysics_lab/config/monitor.py",
+      "sha256_lf": "9b8d021e8f030ff374fa1858dfb14edb964215164738b420f46a71e3091ad67a",
+      "lines": 100,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/preflight.py",
+      "sha256_lf": "b4ab7b2b3551932878ad605e0c26ec9ec488c965fc2e088f93a93c16ea6016a4",
+      "lines": 170,
+      "functions": 8,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/readiness.py",
+      "sha256_lf": "71af21758fa21cb2baa2cdfafb194307214522a819dd24d9939c61ce4dd07576",
+      "lines": 79,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/researcher_override.py",
+      "sha256_lf": "67f477f7979f4c3d14b7832866d97a5614a672494c662bdca41b193be5f4db11",
+      "lines": 81,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/spatial_observation.py",
+      "sha256_lf": "25dd6ad0d79a1cd0fc656509c226b5dcac71967de815896a8bc335865c708ed9",
+      "lines": 128,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/config/stimulus_parameters.py",
+      "sha256_lf": "73548f751f7127af3724160a61d9ae64f22a06bc52bc1124006783a52afc6fd2",
+      "lines": 224,
+      "functions": 9,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/contributions.py",
+      "sha256_lf": "e3463eee7732c14c069f105becc46d8a317e9263c6f59a013196165ac57ea4e7",
+      "lines": 10,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/__init__.py",
+      "sha256_lf": "d6ab178265deb69f8f2b018565c33a3a5b9fb3433ef577394443673984c02f89",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/display.py",
+      "sha256_lf": "60efd6cc15223835a4f30d6bb4f699b8b7ded28d3ab55e4b630400a1ec6c44ab",
+      "lines": 127,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/core/display_tests.py",
+      "sha256_lf": "0c94f983eafa18944387dfd9bdfdde7d2e4ed041ae7c4b95ca5d32cf853266f7",
+      "lines": 134,
+      "functions": 6,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/environment.py",
+      "sha256_lf": "d83355fbee467d75c8e91cb3a9ff0029dba3be9477186317192ece8fff0c2302",
+      "lines": 49,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/geometry_check.py",
+      "sha256_lf": "0bbabf41cb67a30f437647b61ff4283c401481427cebced28d5e8793af676a59",
+      "lines": 504,
+      "functions": 17,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/core/layer_composition.py",
+      "sha256_lf": "660acfde60b8127bd7683d2a97ab117f0d685f130e44f5ff99aa7e88b79ea7a1",
+      "lines": 87,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/lifecycle.py",
+      "sha256_lf": "0a143e75b79663777eb25f9fd13379fa85af18ed5f8d70b18f1a81f1c743c5b2",
+      "lines": 72,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/luminance_session.py",
+      "sha256_lf": "5f605e1b93a67a48fff4f76210efb7932f91f6d9df83d9f5c014f0bde2d16959",
+      "lines": 301,
+      "functions": 13,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/core/output_precision.py",
+      "sha256_lf": "f4c6dbd50f340d293f44f28e6046654ebf8dc3691dd95db7d1d70673eed971cb",
+      "lines": 283,
+      "functions": 7,
+      "classes": 9
+    },
+    {
+      "path": "src/psychophysics_lab/core/photometric_transfer.py",
+      "sha256_lf": "82b18490a27abb2c329b379f4ae2160d372ed0661dfa51aa22b2a96176822537",
+      "lines": 28,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/precision_session.py",
+      "sha256_lf": "1f40a2befc342945cfbffabe98c67b109587fdface4909899a157f6140386bd6",
+      "lines": 241,
+      "functions": 14,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/core/presentation.py",
+      "sha256_lf": "12b7b48330c6cb4535f96d0f0ca040a741d1a74cbd7652bfba401342368406fd",
+      "lines": 463,
+      "functions": 20,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/core/presentation_testing.py",
+      "sha256_lf": "0c16d04be59391def40447b9724870657ce8cbd47613a9e7c552457c29e67b0d",
+      "lines": 91,
+      "functions": 3,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/core/runner.py",
+      "sha256_lf": "1b3d4c18ab6aff6d16d7076480014f4a150587c7fd0734d402349b875cf14614",
+      "lines": 666,
+      "functions": 17,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/core/scene_primitives.py",
+      "sha256_lf": "0c9d77f7fd6e5fe9d9b6d2853990085750ee2b0ef674719d234a3bbe27642ef6",
+      "lines": 208,
+      "functions": 20,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/core/simulation_request.py",
+      "sha256_lf": "57b99feb439f6dc55c4ed381479ad2dbf6596bd27828a93913a3fee11e60c353",
+      "lines": 80,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/core/synthetic.py",
+      "sha256_lf": "09dd8c443fb38cb053ac40b3611863d0fb1130f528ff6e3e2025ff0af8c3b7fa",
+      "lines": 110,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/core/timeline.py",
+      "sha256_lf": "44d5a6a165de79166a2b41a43422201a8105778a3160dc7d05613ac46533b5de",
+      "lines": 396,
+      "functions": 33,
+      "classes": 8
+    },
+    {
+      "path": "src/psychophysics_lab/core/tone.py",
+      "sha256_lf": "087cccc07fe6e35d5254c6190d5da944054f80f0da20e7e3e2b3dadd1f57e643",
+      "lines": 52,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/core/trial_execution.py",
+      "sha256_lf": "f91a0c7816f2e7d26f114165b5fb621da698ba3a0bf47cd002807603c6d34a17",
+      "lines": 118,
+      "functions": 10,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/core/viewport.py",
+      "sha256_lf": "967f41944c7491dd6b94e4fc15a6b9964dde6e6f4d27677fe5d590131b9714f4",
+      "lines": 86,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/__init__.py",
+      "sha256_lf": "84f0b76c242139866b7fcd4b7e5b8743ed34f1298948909acd547821b968c699",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/identifiers.py",
+      "sha256_lf": "2e00c333cec644f263352570fc16c2b14965218a254db47837e706e4e4d7bfe4",
+      "lines": 22,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/index.py",
+      "sha256_lf": "88a49c16a4670735a6da689578178e3d17c7e628ea6c59441abbe014cc5b5b9d",
+      "lines": 84,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/locking.py",
+      "sha256_lf": "76bf977d4c0d4b7d9ce6d2144a3c3bd1c413b27fdf36017f025defb79ce679bb",
+      "lines": 31,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/participants.py",
+      "sha256_lf": "cf84c07e987edb5e041d072a93bc71f98eaac25bfa047df783d82b3a549c1715",
+      "lines": 49,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/reader.py",
+      "sha256_lf": "5b59ca9d8e3d61f9d702758900097ccb46a05011c2b679d46f2aae2ea26c22d0",
+      "lines": 166,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/session.py",
+      "sha256_lf": "20d8bbfe974a5fa2763c8da0981d34c935fd7523bd7cdbc2fb490692e8a790db",
+      "lines": 65,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/data/trials.py",
+      "sha256_lf": "abc2eebdce468889b91b1d2a5fbb4649a355d2c8725d43597f2a978ae1beb74f",
+      "lines": 345,
+      "functions": 7,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/data/workspace.py",
+      "sha256_lf": "297ca59d14d977b3e2fd5ebdbe1d97367805281903be9ace33e35ab583724600",
+      "lines": 274,
+      "functions": 12,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/development.py",
+      "sha256_lf": "4bbec449c4346d93db9756ec2bdef138c1a2e6200e5f0327c20d3cb3391b4e02",
+      "lines": 187,
+      "functions": 4,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/diagnostics.py",
+      "sha256_lf": "c852260215e3ada0e59f6588e9efc909a5f0368f5d23e6691f481cc67392a484",
+      "lines": 189,
+      "functions": 6,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/experiment_checks.py",
+      "sha256_lf": "e84ee9761ae574fb36c23123b7a0e57aeb7e9d80f38c5d56798312a83ed79378",
+      "lines": 154,
+      "functions": 9,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/experiment_reference.py",
+      "sha256_lf": "f486d443df90beae9004ece4539f524630c72e5cfbed28e1d8420281d43180a5",
+      "lines": 148,
+      "functions": 4,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/__init__.py",
+      "sha256_lf": "55519bf5f69891bf002693d6b9d15717b624e3127f4a5f275a11a2856ac9b6f9",
+      "lines": 11,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/__init__.py",
+      "sha256_lf": "99ec7b33ea0afa65b065742f1d5c0019128ddd20a58fb67018b4fee53b92868c",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/contributions.py",
+      "sha256_lf": "cfe9cdcd991cb83bed7fc3fe8d79ec2b66442ea244be886cf1e447004c9f1f0a",
+      "lines": 115,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/detection_limits.py",
+      "sha256_lf": "063e0a834908190b5840a5bc4947e89eb22ca8eae3e91fa4f5fa166f68ad7eff",
+      "lines": 174,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/library_builder.py",
+      "sha256_lf": "27f0ca5ea049d39c6a05a5c3a08f6b779a93d6bcf1567418ad9a4647d3f55679",
+      "lines": 393,
+      "functions": 18,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/parameter_compatibility.py",
+      "sha256_lf": "a3d49853cbd658bc18861839943d0430349c02302856192c1e2dfddf0133422a",
+      "lines": 23,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/registry.py",
+      "sha256_lf": "6787452a76597877fba889b7fc1a91659e1102fab1ca9d53ab122b86505ead13",
+      "lines": 35,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/responses.py",
+      "sha256_lf": "8b65db1e8d0fe37a3df5af681a69c5177964598eeb2b8be660bd657ff6db1dda",
+      "lines": 33,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/source_names.py",
+      "sha256_lf": "36304607be4bea317a1f516f364f2d7a6610e9ebc862239a9d064c58cacc3db1",
+      "lines": 6,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/_internal/spec.py",
+      "sha256_lf": "df8b3c61d7d741937b7a315d11ba8f9bd3c0acf5561fdd3574df4451e0a13b6b",
+      "lines": 268,
+      "functions": 11,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contrast_sensitivity.py",
+      "sha256_lf": "ce6199fea303ccd36c6ff9ae07f1f80292b84cd6c37e11f81f84171c2770f035",
+      "lines": 791,
+      "functions": 25,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/contrast_sensitivity_windowed.py",
+      "sha256_lf": "7141ad1e0bd219e1f1d3cc134a25f4d93a65b077f97354f5facc4dd5d8f2a882",
+      "lines": 261,
+      "functions": 9,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/ellipse_centre.py",
+      "sha256_lf": "a198dfb726780d9079d52da76be0fdf1a67d6cdd9350576eabd7569a68b9cc2e",
+      "lines": 636,
+      "functions": 21,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/ellipse_major_axis.py",
+      "sha256_lf": "826b5737d5692bebb8e3992b988fb32b8a0a04c719f9c8f6d76d81d1c29c0aef",
+      "lines": 672,
+      "functions": 21,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/ellipse_modular_centre.py",
+      "sha256_lf": "8b8cec76e8123c5e5ac0513208a5978a8e2e7b51fb55441b8a0cce66d43d695b",
+      "lines": 493,
+      "functions": 18,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/example_experiment.py",
+      "sha256_lf": "7b71e7a11ebe7d6670c00cc647a3a9b95f876ddfbc804cabf997cd821c3c3531",
+      "lines": 299,
+      "functions": 25,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/line_position_baseline.py",
+      "sha256_lf": "45ac27d2434adafc09905f80721041e07eb738ff699a444e85a7d58854831193",
+      "lines": 553,
+      "functions": 20,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/line_position_flanker.py",
+      "sha256_lf": "4149a99d834a457fd84f4afd069e7f7bc4f070e30c2bac8bef103b09bdbedead",
+      "lines": 583,
+      "functions": 21,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/orientation_adaptive.py",
+      "sha256_lf": "24f8896e4fd0d62029eb1a703bb1e96bbf4ed7dd4785fb28f290b418e3ddd198",
+      "lines": 401,
+      "functions": 21,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/orientation_task.py",
+      "sha256_lf": "6f30613d2c250f7987e16aa88b4349d85241a2a623a3a409ecb11e824ac5f5d7",
+      "lines": 338,
+      "functions": 20,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/experiments/probe_above_below.py",
+      "sha256_lf": "179c8438269c93d4a0a6bbb0dc50ef8226f89d1accf0bb4c950883fa6442113e",
+      "lines": 348,
+      "functions": 25,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/extensions.py",
+      "sha256_lf": "2e6fff8d3ecf43bf4a3c8d830e394c4db3f4e73d3f86a4089f0177609bd21ccd",
+      "lines": 593,
+      "functions": 30,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/laboratory_import.py",
+      "sha256_lf": "2154a2318eea13ef9d9993ce33bb200f8f3c4fd15c0a05601c299d9d0040bcfb",
+      "lines": 375,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/methods/__init__.py",
+      "sha256_lf": "1aca6717258ecbce38a4e2a107a254d1ed50527a255c002ef038e8c145f102ed",
+      "lines": 22,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/methods/contrast.py",
+      "sha256_lf": "0c4fa4b0f50abdb68986f90b2e5a6de6384f61c0229b2105a2abf3114c458775",
+      "lines": 293,
+      "functions": 16,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/methods/display_contrast.py",
+      "sha256_lf": "fb6ec9afaad2664a8ce44aba4305ebf273dc63e5864564a80ee45024e3e0260b",
+      "lines": 78,
+      "functions": 6,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/methods/probe.py",
+      "sha256_lf": "6b2f4a043b30650f565fd051b4085bd84da71f1c6d22ce21bd24f4dd5f336b3e",
+      "lines": 183,
+      "functions": 7,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/methods/teaching.py",
+      "sha256_lf": "756e20f26fd3111b00e615c921129b7b526b3b3cf6c819820ab235e8c7a426fe",
+      "lines": 264,
+      "functions": 19,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/paths.py",
+      "sha256_lf": "3d11252a3df19c9c53dee02b7359301282e20935bf6788060facf0a47a678d3b",
+      "lines": 85,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/researcher.py",
+      "sha256_lf": "9594e068d7f16c2f1e175ea37e11600161b371fd57ddba6235e8571cb1e596eb",
+      "lines": 698,
+      "functions": 33,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/__init__.py",
+      "sha256_lf": "68f97086043bd9be2f9fc9e442436cb0fe4213eed6bdccfa653a6e2c3c28d4ea",
+      "lines": 21,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/geometry.py",
+      "sha256_lf": "300309dee76d85cf1a8069fc4e005c74626d69f498c98c6c9f315ca3c410c781",
+      "lines": 180,
+      "functions": 8,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/registry.py",
+      "sha256_lf": "70585238a8641de772157b1fceeae81aeb1a75abc74d821154db721ecfdc6d18",
+      "lines": 91,
+      "functions": 4,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/stimuli/spatial_calibration.py",
+      "sha256_lf": "e465f303cf7dc532ce3848aed22e485d84be9a62deff46dacde3c013c229a448",
+      "lines": 83,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/stimulus_library.py",
+      "sha256_lf": "2e9cfe3824b1e040dc38d9207572b9148c61d736c414bdca44973ed45973c2e3",
+      "lines": 1037,
+      "functions": 64,
+      "classes": 23
+    },
+    {
+      "path": "src/psychophysics_lab/ui/__init__.py",
+      "sha256_lf": "581ad431262fbeca756d505a48e664a6f1d228e5cb3402bb78c25f14f521dc8a",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/authoring.py",
+      "sha256_lf": "23534f357ae038acfa5fd432973e1b2dd4b92c652b722c892d72be22b6879022",
+      "lines": 315,
+      "functions": 16,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/ui/calibration_guide.py",
+      "sha256_lf": "1785ff6ffebde4fbb0ec1eac1bb9f01bcbc35b67d0be6bda75d0234f462ce6d9",
+      "lines": 337,
+      "functions": 10,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/calibration_review.py",
+      "sha256_lf": "a92c71d97dd1f82c4abdebef811104f2e55ff05b6999e23fe94a7bdb4c1d583f",
+      "lines": 301,
+      "functions": 15,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/ui/calibration_stages.py",
+      "sha256_lf": "892d42d47e8baf5bbe3e1d3e9c7664d7816f87580f228f6b2eea87ce10c1b855",
+      "lines": 79,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/checkbox.py",
+      "sha256_lf": "1509b28f71ab1af3ad63214211c2f7fed987a8c83dbd088679d852e23e3f5f81",
+      "lines": 22,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/config_sections.py",
+      "sha256_lf": "ba2c26c24a35a9aa5e6aeefb70ed6a61df55d6421f22421ecf2b496474f366e9",
+      "lines": 45,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/console.py",
+      "sha256_lf": "d8b5ec6fcdc7a5be2cc39e818d8b6cf823e46296f8f5c869a4f89527a060d033",
+      "lines": 296,
+      "functions": 17,
+      "classes": 4
+    },
+    {
+      "path": "src/psychophysics_lab/ui/domain_feedback.py",
+      "sha256_lf": "ff1478f9c21f2161affa1f79ff539459f4d277a8b183e7caa075050645d88f16",
+      "lines": 112,
+      "functions": 4,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/editor.py",
+      "sha256_lf": "f510008d86f7fcb5f44734208e2cd6f103b35a1ba409d936aaea6f9c49479b22",
+      "lines": 59,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/extensions.py",
+      "sha256_lf": "e36f841426a74f69b8888506240133e9e871e6c9cd756e89fc3cefff0eac24d4",
+      "lines": 108,
+      "functions": 4,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/luminance_data.py",
+      "sha256_lf": "2aed413063278b6ad92876e9f8bb78b4294e24969448e648a9321e69548f464a",
+      "lines": 462,
+      "functions": 16,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/parameter_files.py",
+      "sha256_lf": "3032f5dfb13e0ae838af32d19c78f71217d61f7cecce5d6b122654a07de8c8a0",
+      "lines": 79,
+      "functions": 7,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/plots.py",
+      "sha256_lf": "b8b54842490248b132d7ca4a613e4f95d514140ee1951797d6fa1f0a404d65a1",
+      "lines": 51,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/presentation_testing.py",
+      "sha256_lf": "be44f07643a9e3aaeac07cb4f813055ba8c6b5a8318a9d4dc5c2d191f51ce7ca",
+      "lines": 71,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/preview.py",
+      "sha256_lf": "2be9b1f5580a5fec0fca66091dc06f24db4e329c74707e2c684acea23ddcd60e",
+      "lines": 39,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/profiles.py",
+      "sha256_lf": "6d049a9bae2c33a794ab50264cf7affbbe574732d1d773de60b9348d8deb1456",
+      "lines": 404,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/refresh.py",
+      "sha256_lf": "04ae4d71d7949b39358f205e3f1d0ea59313768fab031fee05940c28e48209bf",
+      "lines": 354,
+      "functions": 7,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/researcher_override.py",
+      "sha256_lf": "047e541779211761e27a98167fe4e75976a7f7c6034d3e99cd5f05669d672850",
+      "lines": 85,
+      "functions": 4,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/review_authority.py",
+      "sha256_lf": "52d329a6f2caf172253d7536de9d81c6e7ba5086185a11062007e445618490e0",
+      "lines": 80,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/review_files.py",
+      "sha256_lf": "c14ec27116c404480bbd0ed043788bd54240b23d3ed710ff45b7458c5bab0f79",
+      "lines": 222,
+      "functions": 8,
+      "classes": 0
+    },
+    {
+      "path": "src/psychophysics_lab/ui/review_fullscreen.py",
+      "sha256_lf": "3e887fb48f81044154e9ee2da19be0ce37c45ec59395889443636af258b1f2ea",
+      "lines": 180,
+      "functions": 10,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/review_table.py",
+      "sha256_lf": "570597c2fa292d9a1eeed6081e8ca99b8cf9623b746c263afcef18eff4ad02e9",
+      "lines": 46,
+      "functions": 2,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/session.py",
+      "sha256_lf": "96d63b5cbf393f90e4c9b4d320ea12a352c4c5de37c0b366758ab43b2e86c9ff",
+      "lines": 85,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/settings_review.py",
+      "sha256_lf": "e4b2cd6e7accbc8ec8f4b7c606cfc2ef9ffca62d2b9f44a47427e82785abe1ac",
+      "lines": 480,
+      "functions": 16,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/ui/setup.py",
+      "sha256_lf": "d360ad2cfbd0cc01de2c6e11f21f963bd7f9f4a7d1459d8f996576a0cab0d015",
+      "lines": 3585,
+      "functions": 134,
+      "classes": 13
+    },
+    {
+      "path": "src/psychophysics_lab/ui/simulations.py",
+      "sha256_lf": "a3540c6d67f838333973ee2ccd86482a7cdac87ed64d1d960871b0def70caae1",
+      "lines": 591,
+      "functions": 24,
+      "classes": 3
+    },
+    {
+      "path": "src/psychophysics_lab/ui/source_view.py",
+      "sha256_lf": "2082bfc9153e008035602670f1666a12a2302ff4ee95781aa746eb5433ea3b4c",
+      "lines": 19,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/stimulus_editor.py",
+      "sha256_lf": "dec6162101391cc2f3a07113ce9a0e4ceeeef8fafbfd6771399e8f83afbad226",
+      "lines": 119,
+      "functions": 5,
+      "classes": 1
+    },
+    {
+      "path": "src/psychophysics_lab/ui/stimulus_parameters.py",
+      "sha256_lf": "d58448e21754d7876226254548a45d9fc45b021c9966644a33ffaad55d4adf14",
+      "lines": 269,
+      "functions": 16,
+      "classes": 2
+    },
+    {
+      "path": "src/psychophysics_lab/ui/unified_run.py",
+      "sha256_lf": "2e1911f6912fca57d8e133b9c0ebf0d35e079971d0a06ce0363c79a238f167ba",
+      "lines": 208,
+      "functions": 10,
+      "classes": 1
+    },
+    {
+      "path": "simulations/__init__.py",
+      "sha256_lf": "01e61312bc4db9070d996c2ad7b1aad8c164fdc9aea03993362337f0f19a0953",
+      "lines": 1,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "simulations/__main__.py",
+      "sha256_lf": "2e7a01b5dfddf19918e6b6b02ee23814173b89ba34bd09862e4de541f2616dec",
+      "lines": 87,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "simulations/controls.py",
+      "sha256_lf": "edd8c987d1ae9ed6a82b67edae354efaf0d96571163c6c04de6a87c7ce3f9b08",
+      "lines": 39,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "simulations/legacy_families.py",
+      "sha256_lf": "b1dd44ac70f1eb81a88391c36b2fd3ae28fc5029ff95acc16db1b0917e370362",
+      "lines": 49,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "simulations/progress.py",
+      "sha256_lf": "00ed1bfca4fa0796e3899b64afb80fcec647bc319b8ed1f0070694a810cea8a3",
+      "lines": 29,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "simulations/psychometric.py",
+      "sha256_lf": "210c275adc5e1f72c48663cc27bf3358a990aa84ea3e88ac695f588315b92276",
+      "lines": 63,
+      "functions": 3,
+      "classes": 1
+    },
+    {
+      "path": "simulations/recovery.py",
+      "sha256_lf": "c6ad0f1c8da7e799a748516a67e3254630e72c51681648bc1e5dfab3f5044ea3",
+      "lines": 159,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "simulations/registry.py",
+      "sha256_lf": "c88746318d37b83f4f294332dad200a45637cf35775e8412a9939a7521888bcf",
+      "lines": 77,
+      "functions": 4,
+      "classes": 2
+    },
+    {
+      "path": "simulations/run.py",
+      "sha256_lf": "f53ad7c3459b95b9b3f2a68cd0e452ee6039a1cea0e2b72796697e06d3b61851",
+      "lines": 61,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "simulations/scaffold.py",
+      "sha256_lf": "680ccb475c538bd95ae4a5d210dc0d81f98187ae583b29157a0b992352671ce2",
+      "lines": 79,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "simulations/scenarios/__init__.py",
+      "sha256_lf": "7e74e60ba0210abebaffb4bba4f22bc4a0bab6be9773a0da640752ec6858ff47",
+      "lines": 9,
+      "functions": 0,
+      "classes": 0
+    },
+    {
+      "path": "simulations/scenarios/core.py",
+      "sha256_lf": "f8f5310aa618acf8f8ee6fd10dc50f8dfbd6c47d3e7abb102207234ce41552e3",
+      "lines": 42,
+      "functions": 1,
+      "classes": 1
+    },
+    {
+      "path": "simulations/scenarios/registry.py",
+      "sha256_lf": "fad7024a7ca64cb5376af675c8fa21ce392d20459f9d7b4fbdfdee3bd0593609",
+      "lines": 101,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "simulations/scenarios/run.py",
+      "sha256_lf": "ed8b0edb381f287fe0873750a1d5647cfa1e28de33854e422abca602ec3dee74",
+      "lines": 249,
+      "functions": 4,
+      "classes": 2
+    },
+    {
+      "path": "scripts/build_windows_candidate.py",
+      "sha256_lf": "b1bbb92378fd93be5170e5a38aa0d87f2bebc5cd433f455cfc512f81d6c57e01",
+      "lines": 131,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "scripts/capture_flanker_reference.py",
+      "sha256_lf": "33d1f6037409ac3331507569c26e25c652d1ecd4608d873b5a4e9953471ed5bf",
+      "lines": 73,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "scripts/capture_procedure_reference.py",
+      "sha256_lf": "274e34bc3e1e502a3c84d60b2d4b0b999f51939e1e3e93247312ad6cf211548a",
+      "lines": 65,
+      "functions": 3,
+      "classes": 0
+    },
+    {
+      "path": "scripts/ci_test_shard.py",
+      "sha256_lf": "a51b4e78f2805e7853d6e964ce9cce5870c5967e7ac4643ba480755b04fc56f0",
+      "lines": 87,
+      "functions": 2,
+      "classes": 0
+    },
+    {
+      "path": "scripts/cleanup_git_tracking.py",
+      "sha256_lf": "4d52981d765d6455a321d1cd1cca40180ef8683f0fee6e6b932eca8f30efbbc7",
+      "lines": 62,
+      "functions": 1,
+      "classes": 0
+    },
+    {
+      "path": "scripts/developer_setup.py",
+      "sha256_lf": "2de57625a192c69bddc155dfab7d4546ae64441672ee7b4d21cd0afa0e6561ee",
+      "lines": 100,
+      "functions": 5,
+      "classes": 0
+    },
+    {
+      "path": "scripts/launcher_setup.py",
+      "sha256_lf": "dec825bf69644a4116577a74711ae3ca1571378b5e98a1922c5763831d7678d7",
+      "lines": 485,
+      "functions": 21,
+      "classes": 1
+    },
+    {
+      "path": "scripts/portability_check.py",
+      "sha256_lf": "d1924acccbf3fd8b5fef32650215c32e72edb8e43f66c2f489ccb6f3a6424f2b",
+      "lines": 197,
+      "functions": 6,
+      "classes": 0
+    },
+    {
+      "path": "scripts/validate_run.py",
+      "sha256_lf": "9311cad2eca282802f101f14f9395e05759776484cf680f13c403bda8366f988",
+      "lines": 573,
+      "functions": 29,
+      "classes": 1
+    },
+    {
+      "path": "scripts/windows_display_preflight.py",
+      "sha256_lf": "a1ca414e35771d8d1aa5bac727309ca3b9faad349b4006a3263e39f0bd9a27aa",
+      "lines": 76,
+      "functions": 2,
+      "classes": 0
+    }
+  ],
+  "duplicate_top_level_definitions": [],
+  "experiments": [
+    {
+      "id": "example_experiment",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "target": "example_stimulus",
+        "ready_fixation": "fixation_cross"
+      },
+      "fields": 15,
+      "methods": [
+        "original",
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "orientation_adaptive",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "target": "teaching_gabor",
+        "ready_fixation": "fixation_cross"
+      },
+      "fields": 16,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "orientation_task",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "target": "teaching_gabor",
+        "ready_fixation": "fixation_cross"
+      },
+      "fields": 16,
+      "methods": [
+        "original",
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "probe_above_below",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "fixation": "fixation_cross",
+        "probe": "vertical_line_probe",
+        "ready_fixation": "fixation_cross"
+      },
+      "fields": 17,
+      "methods": [
+        "original",
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "contrast_sensitivity",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "ready_fixation": "gaussian_fixation",
+        "fixation": "gaussian_fixation",
+        "grating": "contrast_sensitivity_grating"
+      },
+      "fields": 21,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "contrast_sensitivity_windowed",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "ready_fixation": "gaussian_fixation",
+        "fixation": "gaussian_fixation",
+        "grating": "circular_windowed_sinusoidal_grating"
+      },
+      "fields": 22,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "ellipse_centre",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "ready_fixation": "gaussian_fixation",
+        "fixation": "gaussian_scene_fixation",
+        "ellipse": "ellipse_ring",
+        "probe": "probe_line"
+      },
+      "fields": 25,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "ellipse_major_axis",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "ready_fixation": "gaussian_fixation",
+        "fixation": "gaussian_scene_fixation",
+        "ellipse": "ellipse_ring",
+        "probe": "probe_line"
+      },
+      "fields": 27,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "ellipse_modular_centre",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "ellipse": "ellipse_ring",
+        "probe": "probe_line",
+        "fixation": "gaussian_fixation_spot"
+      },
+      "fields": 39,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "line_position_baseline",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "fixation": "gaussian_scene_fixation",
+        "probe": "probe_line",
+        "ready_fixation": "gaussian_fixation"
+      },
+      "fields": 22,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    },
+    {
+      "id": "line_position_flanker",
+      "historical": false,
+      "procedure": true,
+      "stimuli": {
+        "fixation": "gaussian_scene_fixation",
+        "probe": "probe_line",
+        "flanker": "flanker_grating",
+        "ready_fixation": "gaussian_fixation"
+      },
+      "fields": 23,
+      "methods": [
+        "adaptive",
+        "constant_stimuli"
+      ]
+    }
+  ],
+  "stimuli": [
+    {
+      "id": "annulus_patch",
+      "family": "shape",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "circular_windowed_sinusoidal_grating",
+      "family": "circular_windowed_sinusoidal_grating",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "composed_scene",
+      "family": "scene",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "contrast_sensitivity_grating",
+      "family": "contrast_sensitivity_grating",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "ellipse_patch",
+      "family": "shape",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "ellipse_ring",
+      "family": "ellipse_ring",
+      "floating_raster": true,
+      "layered": true
+    },
+    {
+      "id": "example_stimulus",
+      "family": "simple_line",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "fixation_cross",
+      "family": "fixation",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "flanker_grating",
+      "family": "flanker_grating",
+      "floating_raster": true,
+      "layered": true
+    },
+    {
+      "id": "gabor_patch",
+      "family": "gabor",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "gaussian_dot",
+      "family": "shape",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "gaussian_fixation",
+      "family": "gaussian_fixation",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "gaussian_fixation_spot",
+      "family": "fixation",
+      "floating_raster": true,
+      "layered": true
+    },
+    {
+      "id": "gaussian_scene_fixation",
+      "family": "fixation",
+      "floating_raster": true,
+      "layered": true
+    },
+    {
+      "id": "geometry_bar",
+      "family": "",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "new_probe_vertical_line",
+      "family": "simple_line",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "oriented_line",
+      "family": "line",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "probe_line",
+      "family": "probe_line",
+      "floating_raster": true,
+      "layered": true
+    },
+    {
+      "id": "rectangle_patch",
+      "family": "shape",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "sine_grating",
+      "family": "grating",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "square_patch",
+      "family": "shape",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "teaching_gabor",
+      "family": "orientation_patch",
+      "floating_raster": true,
+      "layered": false
+    },
+    {
+      "id": "vertical_line_probe",
+      "family": "line",
+      "floating_raster": true,
+      "layered": false
+    }
+  ]
+}

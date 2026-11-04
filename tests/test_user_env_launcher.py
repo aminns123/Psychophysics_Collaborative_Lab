@@ -9,17 +9,12 @@ from scripts import launcher_setup as setup
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_user_env_bootstrap_checks_main_venv_before_py_launcher():
-    batch = (ROOT / "run_user_env.bat").read_text(encoding="utf-8")
-    # "where py" succeeding must not prevent an existing working 3.11
-    # interpreter in .venv or on PATH from launching USER_env.
-    assert batch.index('if exist ".venv\\Scripts\\python.exe"') < batch.index('py -3.11 -c')
-    assert 'if not errorlevel 1 set "USERENV_BOOTSTRAP=py -3.11"' in batch
-    assert "where python >nul" in batch
-    assert '"scripts\\launcher_setup.py" --user-env' in batch
-    assert 'call "USER_env\\Scripts\\activate.bat"' in batch
-    assert '"%ComSpec%" /D /K "title PsyCoLab USER_env - Python 3.11"' in batch
-    assert '"USER_env\\Scripts\\python.exe" -m psychophysics_lab --user-env' not in batch
+def test_legacy_python_launcher_delegates_to_same_application_environment():
+    batch = (ROOT / "run_user_env.bat").read_text()
+    assert 'PsyCoLab_Python.bat" %*' in batch
+    assert "launcher_setup.py" not in batch and "USER_env\\Scripts" not in batch
+    supported = (ROOT / "PsyCoLab_Python.bat").read_text()
+    assert '--python "%~dp0." %*' in supported
 
 
 def test_setup_selects_isolated_environment_and_rejects_paths(tmp_path, monkeypatch):
@@ -49,14 +44,12 @@ def test_incompatible_user_env_backup_keeps_name_and_contents(tmp_path, monkeypa
     assert not setup.VENV.exists()
 
 
-def test_user_env_terminal_is_explicit_not_a_hidden_second_tui():
-    batch = (ROOT / "run_user_env.bat").read_text(encoding="utf-8")
-    assert batch.index('"scripts\\launcher_setup.py" --user-env') < batch.index('call "USER_env\\Scripts\\activate.bat"')
-    assert batch.index('call "USER_env\\Scripts\\activate.bat"') < batch.index('"%ComSpec%" /D /K')
-    assert 'python -m psychophysics_lab --dev-test my_experiment' in batch
-    assert 'python -m psychophysics_lab --user-env' not in batch
-    # An ordinary script can run with the already activated Python interpreter.
-    assert 'python "C:\\path\\to\\my_experiment.py"' in batch
+def test_shared_setup_has_one_interpreter_discovery_path():
+    shared = (ROOT / "scripts/windows_development.cmd").read_text()
+    assert 'PSYCOLAB_BOOTSTRAP_PYTHON' in shared and 'py -3.11' in shared
+    assert 'scripts\\developer_setup.py' in shared
+    assert 'windows_development.cmd' in (ROOT / "setup_psycolab_dev.bat").read_text()
+    assert 'windows_development.cmd' in (ROOT / "scripts/windows_startup.cmd").read_text()
 
 
 def test_extra_requirements_file_only_belongs_to_user_env(tmp_path, monkeypatch):
