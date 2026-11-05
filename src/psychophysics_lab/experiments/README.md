@@ -24,11 +24,12 @@ the three [progressive local lessons](../../../examples/laboratory_extensions/LE
 Configure contains universal controls; scientific values remain editable in Review.
 No TUI edit is needed for a new supported experiment or stimulus.
 
-Remaining official families retain their accepted scientific
-baseline until their family wave is approved. Read their session/trial events,
-scientific rules and stopping functions without treating their historical layout
-as the new authoring template. The [migration plan](../../../docs/EXPERIMENT_MIGRATION_PLAN.md)
-keeps each wave separately reviewed; this onboarding update does not migrate them.
+All ten official families now use this A1/A2/B structure and one `STIMULI`
+mapping. The atomic-stimulus migration is integrated; its
+[authoring contract](../../../docs/SCIENTIST_FIRST_AUTHORING.md) describes the
+current model. The [migration plan](../../../docs/EXPERIMENT_MIGRATION_PLAN.md)
+and frozen pre-atomic sources remain historical evidence, not pending onboarding
+steps. Keep those sources and recorded research data unchanged.
 
 `contrast_sensitivity_windowed.py` explicitly declares its circular-windowed
 grating and event order. Its named shared CSF functions deliberately reuse

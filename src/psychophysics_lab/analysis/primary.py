@@ -5,6 +5,7 @@ generic summaries remain separate. No staircase or acquisition records are edite
 """
 
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -136,12 +137,57 @@ def analyse_primary(*, data_root, run_directory, create_plot=True):
     root = Path(run_directory).resolve()
     if not root.is_relative_to(Path(data_root).resolve()):
         raise ValueError("Run outside data workspace.")
-    resolved = json.loads((root / "resolved_experiment.json").read_text())
-    manifest = json.loads((root / "manifest.json").read_text())
+    resolved = json.loads((root / "resolved_experiment.json").read_text(encoding="utf-8"))
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     rule = resolved["primary_estimator"]
     result = from_run(root, rule, resolved["expected_staircases"], manifest["status"])
     if not result["condition_thresholds"]:
         raise ValueError("Primary thresholds unavailable: no complete condition.")
+    # Carry source context into every independently shared derived report.
+    # Acquisition records and the protocol's numerical estimator stay unchanged.
+    data_kind = manifest.get("data_kind", "unknown")
+    incomplete = manifest["status"] != "completed"
+    warning_lines = []
+    if data_kind == "synthetic":
+        warning_lines.append("SYNTHETIC")
+    elif data_kind == "uncalibrated_presentation_test":
+        warning_lines.append("UNCALIBRATED PRESENTATION TEST")
+    elif data_kind != "human":
+        warning_lines.append("UNKNOWN DATA ORIGIN")
+    warning_lines.append("Protocol primary estimator" + (" — INCOMPLETE/CENSORED RUN" if incomplete else ""))
+    if result["excluded_staircases"]:
+        warning_lines.append("Some staircases have no primary estimate")
+    if result["boundary_affected_staircases"]:
+        warning_lines.append("BOUNDARY-AFFECTED estimates; review required")
+    warning_lines.append("Digital metric; physical calibration not established")
+    warning = "\n".join(warning_lines)
+    result.update({
+        "schema_version": 1,
+        "analysis": "protocol_primary_threshold_summary",
+        "analysis_role": "protocol_primary",
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "data_kind": data_kind,
+        "simulation": manifest.get("simulation"),
+        "source_run_relative": root.relative_to(Path(data_root).resolve()).as_posix(),
+        "source_run_uuid": manifest.get("run_uuid"),
+        "source_software": manifest.get("software"),
+        "participant_id": manifest.get("participant_id"),
+        "experiment_id": manifest.get("experiment_id"),
+        "monitor_profile_sha256": manifest.get("monitor_profile_sha256"),
+        "input_sha256": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+                         for name in ("manifest.json", "trials.tsv", "resolved_experiment.json")},
+        "quality_flags": {
+            "source_status": manifest["status"],
+            "incomplete_run": incomplete,
+            "missing_staircase_estimates": sorted(result["excluded_staircases"]),
+            "boundary_affected_staircases": result["boundary_affected_staircases"],
+            "calibration_status": manifest.get("calibration", {}).get("status", "unverified"),
+            "timing_status": manifest.get("runtime_display", {}).get("timing_status", "unverified"),
+            # A derived software analysis cannot establish photon timing.
+            "photon_timing_verified": False,
+        },
+        "scientific_warning": warning,
+    })
     output = (
         root
         / "analysis"
@@ -187,7 +233,7 @@ def analyse_primary(*, data_root, run_directory, create_plot=True):
         _plot(
             conditions,
             output / "threshold_vs_condition.png",
-            warning="Protocol primary estimator; digital metric",
+            warning=warning,
         )
         if create_plot
         else None

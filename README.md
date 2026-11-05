@@ -10,6 +10,11 @@ between hosted CI, Windows 11 installation testing and physical qualification.
 
 **Development baseline:** [accepted commit `5fec547`](docs/ACCEPTED_SOFTWARE_BASELINE.md) has passing Windows and Ubuntu headless CI. It is distinct from the older published `v0.3.0` pre-release and from a future reproducible laboratory release; follow the [Issue #82 stages](docs/ISSUE82_RELEASE_ROADMAP.md).
 
+The [5 November independent baseline audit](docs/BASELINE_AUDIT_20261105.md)
+records the current scientific review, new stress/authoring checks and remaining
+release gates. It proposes a software baseline; it does not publish a version or
+qualify laboratory apparatus.
+
 Build a visual stimulus, describe an experiment, and try it before collecting data.
 
 ## Start
