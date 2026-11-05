@@ -33,7 +33,7 @@ del /q "%PSYCOLAB_NATIVE_HOST%" "%PSYCOLAB_BOOTSTRAP_LOG%" >nul 2>&1
 rmdir "%PSYCOLAB_NATIVE_DIR%" >nul 2>&1
 exit /b %PSYCOLAB_NATIVE_RESULT%
 :source_setup_failed
-echo PsyCoLab setup could not finish. Review the message above or use setup_psycolab_dev.bat.
+echo PsyCoLab setup could not finish. Review the message above, then open PsyCoLab.bat and choose 2 - Check / Repair PsyCoLab.
 pause
 exit /b 1
 :bootstrap_failed

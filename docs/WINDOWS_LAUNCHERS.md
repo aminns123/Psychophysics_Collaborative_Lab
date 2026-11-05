@@ -82,28 +82,22 @@ without inheriting an ignore flag into Python. Experiment display windows remain
 independent. Nonzero application exits retain existing incident diagnostics;
 arbitrary researcher scripts retain their own exit semantics.
 
-## Entry-point inventory
+## Entry-point inventory (5 November 2026)
 
-| Entry | Before | After |
-| --- | --- | --- |
-| `PsyCoLab.bat` | Absent | **Only recommended user entry**; menu, launch, check/repair and Python Workspace. |
-| `Run_PsyCoLab.bat` (formerly lowercase name) | Application entry | Temporary compatibility wrapper for existing shortcuts and scripts. |
-| `PsyCoLab_Python.bat` | Python prompt / external script entry | Temporary compatibility wrapper; new users select menu option 3. |
-| `setup_psycolab_dev.bat` | Explicit source setup | Temporary compatibility wrapper retaining the previously successful setup path. |
-| `run_user_env.bat` | Older Python wrapper | Temporary compatibility alias; existing USER_env files remain preserved. |
-| `psycolab_recovery.bat` | Recovery/diagnostics | Temporary compatibility wrapper into the same recovery implementation. |
-| `scripts/windows_startup.cmd` | Internal bootstrap | Internal shared native-host compilation, temporary ownership and exit propagation. |
-| `scripts/windows_development.cmd` | Internal setup | Internal previously tested interpreter discovery/setup, retained for legacy calls. |
-| Python/native helpers | Existing setup and scientific launch | Same helpers reused; no new package manager or scientific framework. |
+| Entry | Current role |
+| --- | --- |
+| `PsyCoLab.bat` | **The only root batch file.** Launch, Check / Repair, Python Workspace and Exit; supported CLI options share these implementations. |
+| `scripts/windows_startup.cmd` | Internal native-host compilation, source/managed launch and recovery bootstrap. |
+| `scripts/windows_development.cmd` | Internal interpreter discovery/development setup; retained infrastructure, not a second researcher entry. |
+| Python/native helpers | Existing setup, qualification, recovery, application and Python execution implementations. |
 
-This inventories every tracked `.bat` and `.cmd`: five legacy root wrappers,
-one new authoritative root batch and two internal `.cmd` helpers. Compatibility
-names are not competing recommended entry points. They remain because published
-shortcuts, external scripts and existing clean-machine setup references use them.
-Keep them in the first tagged release containing `PsyCoLab.bat`; remove the five
-root compatibility wrappers in the following tagged release after reference
-migration and independent clean-Windows acceptance. If those checks fail, document
-the retirement delay in release notes rather than silently breaking shortcuts.
+The five former root wrappers are retired by the maintainer's 5 November
+consolidation decision. This supersedes the earlier plan to retain them through
+another tagged release. Exact non-executable snapshots and the full
+[shortcut/script migration table](../outdated_code/windows_launchers/README.md)
+are retained under `outdated_code/windows_launchers/`. Old external paths will
+break until retargeted; no compatibility at removed root paths is claimed.
+Version-specific packaged executable shortcuts are unaffected.
 
 ### Internal helpers
 
@@ -118,13 +112,13 @@ the retirement delay in release notes rather than silently breaking shortcuts.
 | `python -m psychophysics_lab.ui.refresh` | Internal fresh-source checker; refresh handoff restarts interpreter deliberately. |
 | `python -m simulations` | Existing explicit synthetic pipeline CLI; labelled virtual data. |
 
-There is one recommended daily batch file, `PsyCoLab.bat`. Compatibility files
-are retained under the retirement policy above while downstream references migrate.
+There is one recommended daily batch file, `PsyCoLab.bat`. The root
+compatibility files are retired; migrate external references as described above.
 The duplicated USER_env bootstrap discovery was removed from the batch layer.
 The locked installer and source development setup remain distinct because their
 scientific qualification contracts are different.
 
-## Verification and limits (4 November 2026)
+## Historical verification and limits (4 November 2026)
 
 Baseline: `develop` at `21e103a` includes merged PR #207; `main` at `c739f81`
 includes #208 and has the identical tree `8589249`. Both are protected. Work is
@@ -143,4 +137,5 @@ Additional official orientation/probe sequences use explicitly labelled virtual
 observers. These tests establish software navigation and record integrity, not
 native fullscreen photon timing, monitor calibration or human performance.
 Physical two-run acceptance and an independent clean-Windows machine remain
-separate checks; retain the known-working explicit setup path until those pass.
+separate checks. The later consolidation retains the implementation through
+PsyCoLab.bat while retiring only the root wrappers.

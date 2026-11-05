@@ -44,7 +44,8 @@ scripts outside the checkout. The launch working directory is the checkout;
 independent scripts should use explicit data paths or paths relative to `__file__`.
 Do not add packages to a qualified environment in place. Existing separate
 `USER_env` folders and their requirements files are preserved but no longer
-selected by the compatibility `run_user_env.bat` name.
+selected by the current launcher. The `run_user_env.bat` root wrapper is retired;
+retarget shortcuts/scripts using the [migration table](../outdated_code/windows_launchers/README.md).
 
 An existing environment is checked without installation. A failed check does not
 replace it, silently fall back to a different Python, or resume an interrupted

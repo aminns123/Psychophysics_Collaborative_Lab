@@ -120,7 +120,7 @@ def test_fresh_git_checkout_recovery_explains_maintainer_setup(native,tmp_path):
     # Inspection cannot approve a fresh environment: the real Python gate still runs.
     d=json.loads(native('inspect',root).stdout)
     form=native('recovery-form',json.dumps(d),tmp_path).stdout
-    assert 'setup_psycolab_dev.bat once' in form
+    assert 'PsyCoLab.bat, choose 2 - Check / Repair PsyCoLab' in form
     assert 'laboratory qualification is not granted' in form
 
 

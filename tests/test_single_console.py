@@ -13,11 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows console ownership")
 
 
-@pytest.mark.parametrize("entry", [("PsyCoLab_Python.bat",), ("PsyCoLab.bat", "--python")])
+@pytest.mark.parametrize("entry", [("PsyCoLab.bat", "--python")])
 def test_actual_batch_reuses_parent_console_and_same_python_for_external_scripts(tmp_path, entry):
     root = source(tmp_path, real_python=True)
     (root / "packaging/windows").mkdir(parents=True)
-    for name in ("PsyCoLab.bat", "PsyCoLab_Python.bat", "scripts/windows_startup.cmd", "packaging/windows/GuidedSetup.cs"):
+    for name in ("PsyCoLab.bat", "scripts/windows_startup.cmd", "packaging/windows/GuidedSetup.cs"):
         shutil.copy2(ROOT / name, root / name)
     script = tmp_path / "independent researcher script.py"
     result_file = tmp_path / "script evidence.json"
@@ -54,13 +54,22 @@ def test_missing_source_environment_runs_shared_setup_once_and_preserves_failure
     (root / ".git").mkdir()
     shutil.copy2(ROOT / "scripts/windows_startup.cmd", root / "scripts/windows_startup.cmd")
     shutil.copy2(ROOT / "scripts/windows_development.cmd", root / "scripts/windows_development.cmd")
-    shutil.copy2(ROOT / "Run_PsyCoLab.bat", root / "Run_PsyCoLab.bat")
+    shutil.copy2(ROOT / "PsyCoLab.bat", root / "PsyCoLab.bat")
+    (root / "packaging/windows").mkdir(parents=True)
+    shutil.copy2(ROOT / "packaging/windows/GuidedSetup.cs", root / "packaging/windows/GuidedSetup.cs")
+    (root / "pyproject.toml").write_text("# disposable source setup\n")
+    (root / "scripts/launcher_setup.py").write_text("# fixture presence\n")
+    profile = root / "requirements/windows-cp311"
+    profile.mkdir(parents=True)
+    for name in ("build", "runtime", "development"):
+        (profile / (name + ".lock")).write_text("# fixture; setup deliberately fails\n")
     (root / "scripts/developer_setup.py").write_text(
         'from pathlib import Path\np=Path("setup attempts");p.write_text("one")\n'
         'raise SystemExit(9)\n')
-    result = subprocess.run(["cmd.exe", "/d", "/c", "call", "Run_PsyCoLab.bat"], cwd=root,
-        env=os.environ | {"PSYCOLAB_BOOTSTRAP_PYTHON": sys.executable},
-        input="\n", capture_output=True, text=True, timeout=15)
-    assert result.returncode == 1 and "could not finish" in result.stdout
+    from _windows_launcher_process import run_launcher
+    from unittest.mock import patch
+    with patch.dict(os.environ, {"PSYCOLAB_BOOTSTRAP_PYTHON": sys._base_executable}):
+        result = run_launcher(["cmd.exe", "/d", "/c", "call", "PsyCoLab.bat", "--repair"], cwd=root, timeout=45)
+    assert result.returncode == 1 and "exit code 9" in result.stdout, result.stdout + result.stderr
     assert (root / "setup attempts").read_text() == "one"
     assert not (root / ".venv").exists()

@@ -71,7 +71,7 @@ def test_actual_batch_bootstrap_claims_unique_directories_during_concurrent_coll
         for name in ('first source','second source'):
             source=workspace/name;source.mkdir();sources.append(source)
             (source/'scripts').mkdir();(source/'packaging/windows').mkdir(parents=True)
-            shutil.copy2(root/'run_psycolab.bat',source/'run_psycolab.bat')
+            shutil.copy2(root/'PsyCoLab.bat',source/'PsyCoLab.bat')
             shutil.copy2(root/'scripts/windows_startup.cmd',source/'scripts/windows_startup.cmd')
             (source/'packaging/windows/GuidedSetup.cs').write_text(
                 'class BootstrapProbe { static int Main(string[] args) {'
@@ -79,7 +79,7 @@ def test_actual_batch_bootstrap_claims_unique_directories_during_concurrent_coll
                 ' System.IO.File.WriteAllText("claimed.txt",System.AppDomain.CurrentDomain.BaseDirectory);'
                 ' return 0; } }',encoding='utf-8')
         def launch(source):
-            return run_launcher(['cmd.exe','/d','/c','call run_psycolab.bat'],
+            return run_launcher(['cmd.exe','/d','/c','call PsyCoLab.bat --launch'],
                 cwd=source,timeout=20,bootstrap_root=bootstrap)
         with ThreadPoolExecutor(max_workers=2) as pool:
             results=list(pool.map(launch,sources))
@@ -98,11 +98,11 @@ def test_genuine_bootstrap_compile_failure_retains_report_and_is_not_approved():
         source=workspace/'source';source.mkdir()
         bootstrap=workspace/'native';bootstrap.mkdir()
         (source/'scripts').mkdir();(source/'packaging/windows').mkdir(parents=True)
-        shutil.copy2(root/'run_psycolab.bat',source/'run_psycolab.bat')
+        shutil.copy2(root/'PsyCoLab.bat',source/'PsyCoLab.bat')
         shutil.copy2(root/'scripts/windows_startup.cmd',source/'scripts/windows_startup.cmd')
         (source/'packaging/windows/GuidedSetup.cs').write_text('this is deliberately invalid CSharp',encoding='utf-8')
         try:
-            result=run_launcher(['cmd.exe','/d','/c','call run_psycolab.bat'],
+            result=run_launcher(['cmd.exe','/d','/c','call PsyCoLab.bat --launch'],
                 cwd=source,timeout=3,bootstrap_root=bootstrap)
         except subprocess.TimeoutExpired as error:
             diagnostic=error.stderr

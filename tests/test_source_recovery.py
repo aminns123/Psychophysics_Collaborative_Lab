@@ -49,8 +49,7 @@ def source(tmp_path):
         for name in ("scripts", "packaging", "requirements", "src", "configs"):
             shutil.copytree(ROOT / name, root / name,
                             ignore=shutil.ignore_patterns("__pycache__", "*.egg-info"))
-        for name in ("pyproject.toml", "README.md", ".gitignore", "Run_PsyCoLab.bat",
-                     "PsyCoLab_Python.bat", "psycolab_recovery.bat", "PsyCoLab.bat"):
+        for name in ("pyproject.toml", "README.md", ".gitignore", "PsyCoLab.bat"):
             shutil.copy2(ROOT / name, root / name)
         subprocess.run(["git", "init", "-q", str(root)], check=True)
         old = root / ".venv"
@@ -91,7 +90,7 @@ def source(tmp_path):
         yield root, outside, runs, env
 
 
-def batch(source, *args, launcher="psycolab_recovery.bat", input_text=None, timeout=180, **overrides):
+def batch(source, *args, launcher="PsyCoLab.bat", input_text=None, timeout=180, **overrides):
     root, _, _, env = source
     with patch.dict(os.environ, env | overrides, clear=True):
         try:
@@ -132,9 +131,12 @@ def test_real_batch_legacy_repair_repeat_corruption_and_restore(source, wheels):
     assert state["mode"] == "development" and "qualification" not in state
     log = root / ".psycolab-recovery/repair.log"
     log_before = log.read_bytes()
-    for launcher, args in (("Run_PsyCoLab.bat", ()), ("psycolab_recovery.bat", ("--repair",))):
-        result = batch(source, *args, launcher=launcher)
+    for args in (("--launch",), ("--repair",)):
+        result = batch(source, *args)
         assert result.returncode == 0, result.stdout + result.stderr
+    # Repair exits without acquisition; launch remains an explicit action.
+    assert runs.read_text() == "mounted\n" * 2
+    assert batch(source, "--launch").returncode == 0
     assert runs.read_text() == "mounted\n" * 3
     assert log.read_bytes() == log_before and list(root.glob(".venv-recovery-backup-*")) == backups
     # RECORD integrity detects tampering even if imports and pip check would pass.
@@ -147,15 +149,19 @@ def test_real_batch_legacy_repair_repeat_corruption_and_restore(source, wheels):
     assert check.returncode != 0
     result = batch(source, "--repair")
     assert result.returncode == 0, result.stdout + result.stderr
+    assert runs.read_text() == "mounted\n" * 3
+    assert batch(source, "--launch").returncode == 0
     assert changed.read_bytes() == good and runs.read_text() == "mounted\n" * 4
     # Bootstrap from CPython's bundled pip even if the target pip cannot import.
     (root / ".venv-dev/Lib/site-packages/pip/__main__.py").unlink()
     result = batch(source, "--repair")
     assert result.returncode == 0, result.stdout + result.stderr
+    assert runs.read_text() == "mounted\n" * 4
+    assert batch(source, "--launch").returncode == 0
     assert runs.read_text() == "mounted\n" * 5
     assert snapshot(backups[0]) == old and snapshot(data) == research
-    for launcher, args, text in (("PsyCoLab.bat", (), "2\nS\nYES\n4\n"), ("psycolab_recovery.bat", ("--restore",), None)):
-        result = batch(source, *args, launcher=launcher, input_text=text)
+    for args, text in (((), "2\nS\nYES\n4\n"), (("--restore",), None)):
+        result = batch(source, *args, input_text=text)
         assert result.returncode == 0, result.stdout + result.stderr
     assert snapshot(root / ".venv") == old
     assert len(list(root.glob(".venv-dev-recovery-backup-*"))) == 1
@@ -182,6 +188,8 @@ def test_real_batch_offline_failure_retries_same_backup(source, wheels, tmp_path
     env["PSYCOLAB_WHEELHOUSE"] = str(wheels)
     result = batch(source, "--repair")
     assert result.returncode == 0, result.stdout + result.stderr
+    assert not runs.exists()
+    assert batch(source, "--launch").returncode == 0
     assert snapshot(backup) == old and runs.read_text() == "mounted\n"
 
 
@@ -203,6 +211,8 @@ def test_failed_startup_check_is_rechecked_before_recovery_completes(source, whe
     assert json.loads((root / ".psycolab-recovery/state.json").read_text())["phase"] == "setup"
     result = batch(source, "--repair")
     assert result.returncode == 0, result.stdout + result.stderr
+    assert not runs.exists()
+    assert batch(source, "--launch").returncode == 0
     assert attempts.read_text() == "2" and runs.read_text() == "mounted\n"
     assert json.loads((root / ".psycolab-recovery/state.json").read_text())["phase"] == "verified"
     assert len(list(root.glob(".venv-recovery-backup-*"))) == 1
