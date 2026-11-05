@@ -27,8 +27,9 @@ class StimulusValueEditor(Screen):
             yield Label(self.panel.stimulus.display_name)
             with Horizontal(classes="buttons"):
                 yield Button("Preview", id="stimulus-values-preview")
+                yield Button("Apply for this run", id="stimulus-values-apply", variant="primary")
                 yield Button(
-                    "Save preset", id="stimulus-values-save", variant="primary"
+                    "Save preset", id="stimulus-values-save"
                 )
                 yield Button("Back", id="stimulus-values-back")
             yield Static("", id="stimulus-values-status", markup=False)
@@ -37,7 +38,11 @@ class StimulusValueEditor(Screen):
                 "Edit appearance here. The experiment may set position, strength or other values for each trial; use Try the experiment to see those changes."
             )
             for index, field in enumerate(self.panel.stimulus.parameters):
-                yield Label(field.display_label)
+                from .full_text import field_description
+                help_text = field_description(field)
+                label = Label(field.display_label)
+                label.tooltip = help_text
+                yield label
                 value = (self.effective.get(field.key, self.document["parameters"][field.key])
                          if field.key in self.controlled else self.document["parameters"][field.key])
                 if field.key in self.controlled:
@@ -52,12 +57,14 @@ class StimulusValueEditor(Screen):
                         allow_blank=False,
                         id=f"stimulus-value-{index}",
                         disabled=not field.editable or field.key in self.controlled,
+                        tooltip=help_text,
                     )
                 else:
                     yield Input(
                         value=str(value),
                         id=f"stimulus-value-{index}",
                         disabled=not field.editable or field.key in self.controlled,
+                        tooltip=help_text,
                     )
                 if field.help_text:
                     yield Static(field.help_text)
@@ -100,6 +107,18 @@ class StimulusValueEditor(Screen):
                 self.query_one("#stimulus-values-status", Static).update(
                     "Preview opened. Appearance only; physical contrast and timing are unverified."
                 )
+            elif event.button.id == "stimulus-values-apply":
+                from ..config.stimulus_parameters import snapshot
+                self.panel.loaded = snapshot(dict(self.document) | {"parameters": values},
+                                             file_identity="tui_values")
+                self.panel.path, self.panel.error = None, None
+                self.panel.external_json_pending = False
+                with self.panel.prevent(Input.Changed):
+                    self.panel.query_one("#stimulus-path-" + self.panel.slot, Input).value = ""
+                self.app.stimulus_drafts[self.panel.cache_key] = (self.panel.loaded, None)
+                self.panel.refresh_presets()
+                self.panel.refresh_summary()
+                self.app.pop_screen()
             elif event.button.id == "stimulus-values-save":
                 from ..config.stimulus_parameters import save_parameter_preset
 

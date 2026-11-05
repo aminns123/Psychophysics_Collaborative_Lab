@@ -157,6 +157,15 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
             targets.append(python(Path(__file__).parents[1]/"core/viewport.py",
                 function="stimulus_geometry" if group=="Stimulus geometry" else "angular_viewport",
                 note="Derived geometry; change the scientific inputs above, not this displayed result"))
+        elif group=="Display profile":
+            targets.append(python(Path(__file__).parents[1]/"config/models.py", owner="MonitorProfile",
+                                  note="Selected calibration/profile snapshot; edit via Calibration and reselect the profile, not this Python definition"))
+        elif group=="Ellipse geometry":
+            targets.append(python(Path(__file__).parents[1]/"stimulus_library.py", owner="EllipseRing", function="render",
+                note="Derived from the selected EllipseRing inputs and all configured aspect ratios; change those inputs through Review"))
+        elif group in {"Scientific definitions", "Fixed setup"}:
+            targets.append(python(key="SCIENTIFIC_SPEC" if group=="Scientific definitions" else "fixed_setup",
+                                  note="Fixed scientific declaration; inspect the experiment source"))
         elif group=="Threshold estimation":
             targets.append(python(function="primary_rule",
                                   note="Thresholds are estimated from recorded responses; this is the experiment's declared analysis rule"))
