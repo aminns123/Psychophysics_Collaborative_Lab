@@ -2,7 +2,7 @@
 from textual import events
 from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Static
+from textual.widgets import Button, Footer, Static, Input, Select, TextArea
 
 
 PAGES = (
@@ -184,11 +184,31 @@ async def install_console(screen):
     for button in screen.query('#console-workspace Button'):
         if button.tooltip is None:
             button.tooltip = str(button.label)
+    for widget in screen.query('#console-workspace Static'):
+        if widget.tooltip is None:
+            widget.tooltip = str(widget.renderable)
     await screen.mount(Static('PsyCoLab / '+title,id='console-heading',markup=False),
                        LaboratoryNavigation(section,title),before=0)
 
 
 class ConsoleScreen(Screen):
+    BINDINGS = [("f2", "full_text", "Full text")]
+
+    def action_full_text(self):
+        from .full_text import FullTextScreen
+        focused = self.focused
+        if isinstance(focused, (Input, Select)):
+            content = f"{focused.tooltip or focused.id}\nCurrent selection: {focused.value}"
+        elif isinstance(focused, TextArea):
+            content = focused.text
+        elif focused is not None and focused.tooltip:
+            content = str(focused.tooltip)
+        else:
+            content = ""
+        context = "\n\n".join(str(w.renderable) for w in self.query('#console-workspace Static'))
+        content += "\n\nSCREEN EXPLANATIONS\n" + context
+        self.app.push_screen(FullTextScreen("Complete text · Esc returns", content))
+
     def compose(self):
         yield from compose_workspace(self.compose_content())
 

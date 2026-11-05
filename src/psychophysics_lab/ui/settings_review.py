@@ -66,6 +66,8 @@ def describe_settings(spec, values, snapshots, *, profile=None):
     """
     result = {"stimuli": {slot: selected["document"]["parameters"] for slot, selected in snapshots.items()},
               "overrides": {}, "parameter_reads": {}, "conditions": [], "phases": [], "resolution": {}, "note": ""}
+    if profile is not None and callable(getattr(profile, "to_dict", None)):
+        result["display_profile"] = profile.to_dict()
     result["session_phases"] = spec.session_start.resolve(values).to_dict()["phases"]
     result["session_inputs"] = {event.name: {"duration": event.duration_ms, "key": event.key}
                                 for event in spec.session_start.phases}
@@ -202,13 +204,14 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     """One visible table of the values that feed the selected procedure."""
     saved = spec.settings_snapshot()
     defaults = saved["values"] if saved else {f.key: f.default for f in spec.fields}
+    from .full_text import field_description
     def origin(field):
         base = (saved["file_identity"] if saved and field.key in saved["document"]["values"] else "Python ConfigField default")
         meaning = field.help_text.strip() or (
             f"Researcher-selected {field.section.lower()} parameter in "
             f"{spec.display_name}; see its experiment Python declaration."
         )
-        return (f"Meaning: {meaning} | Setting: {field.key} "
+        return (f"Meaning: {meaning} | {field_description(field)} | Setting: {field.key} "
                 f"| Selected in TUI/saved setup; original {base} = {defaults[field.key]!r}")
     controls = set(spec.adaptive.controls) if spec.adaptive else set()
     method = values.get("contrast_method", "adaptive")
@@ -255,7 +258,7 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                 f"Parameter {field.key} controls the {stimulus.display_name} "
                 f"stimulus in slot {slot}; units are shown in the parameter column."
             )
-            source = (f"{explanation} | Stimulus slot: {slot}, "
+            source = (f"{explanation} | {field_description(field)} | Stimulus slot: {slot}, "
                       f"renderer: {identity}, source: {selected['file_identity']}")
             controller = parameter_controller(spec, slot, field.key)
             if controller:
@@ -269,6 +272,28 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
                          else "Selected base parameter read by the experiment")
                 source = f"{usage}. {source}"
             rows.append((slot, field.display_label, str(effective[field.key]), source))
+        rows.extend(ellipse_geometry_rows(slot, stimulus, effective, description))
+    def definition_rows(mapping, prefix=""):
+        for key, value in mapping.items():
+            label = f"{prefix} / {key}" if prefix else str(key)
+            if isinstance(value, Mapping):
+                yield from definition_rows(value, label)
+            else:
+                meaning = ("Original protocol declaration from the selected experiment. Optional contrast methods can supersede its adaptive/stopping/estimator text: the Run plan and Threshold estimation groups show the selected method's actual resolution. Numeric defaults in protocol text do not replace effective selected inputs above.")
+                if key == "geometry" and any(s["document"]["stimulus_id"] == "ellipse_ring" for s in snapshots.values()):
+                    meaning += " EllipseRing's default inset is axial; the actual selected inset and axes are shown in Ellipse geometry."
+                yield ("Scientific definitions", label,
+                       value if isinstance(value, str) else json.dumps(value, default=str),
+                       meaning)
+    rows.extend(definition_rows(spec.scientific_spec))
+    for key, value in description.get("display_profile", {}).items():
+        label = key.replace("_m", " (metres)") if key.endswith("_m") else key
+        label = label.replace("_hz", " (Hz)").replace("_px", " (pixels)").replace("_", " ")
+        rows.append(("Display profile", label, json.dumps(value, ensure_ascii=False, default=str),
+                     f"Selected display profile / calibration record: {key}. Read-only here; edit or measure through Calibration, then select the reviewed profile. Wakeup rate and display binding are presentation settings, not measured photon timing. Qualification/readiness checks still apply."))
+    if spec.fixed_setup:
+        rows.extend(("Fixed setup", key, str(value), "Fixed setup declared by the experiment")
+                    for key, value in spec.fixed_setup.items())
     from ..core.viewport import stimulus_geometry
     for slot, selected in snapshots.items():
         stimulus = get_stimulus(selected["document"]["stimulus_id"])
@@ -417,6 +442,33 @@ def review_rows(spec, values, snapshots, description, *, refresh_hz=None):
     return rows
 
 
+def ellipse_geometry_rows(slot, stimulus, effective, description):
+    """Explain the existing EllipseRing equations; never supply renderer inputs."""
+    if stimulus.id != "ellipse_ring":
+        return []
+    a = float(effective["outer_radius_deg"])
+    inset = float(effective["inner_inset_deg"])
+    ratios = list(dict.fromkeys(float(c["aspect_ratio"]) for c in description.get("conditions", ())
+                               if "aspect_ratio" in c)) if "aspect_ratio" in description.get("overrides", {}).get(slot, {}) else []
+    ratios = ratios or [float(effective["aspect_ratio"])]
+    note = ("Calculated from effective EllipseRing inputs. Local, unrotated axes in degrees: "
+            "a = outer_radius_deg, b = a × aspect_ratio. Changing b/a keeps 2a fixed. "
+            "Orientation rotates these axes; screen-aligned extents can differ. "
+            "Change the controlling input or selected stimulus base; this result is read-only.")
+    rows = [("Ellipse geometry", slot + " / Horizontal outer radius a (degrees)", str(a), note),
+            ("Ellipse geometry", slot + " / Horizontal outer diameter 2a (degrees)", str(2*a), note),
+            ("Ellipse geometry", slot + " / Axial inner inset (degrees)", str(inset),
+             "Selected inner_inset_deg: inner semi-axes are a−inset and b−inset. This is not constant perpendicular outline thickness. The inner ellipse must have positive axes. " + note)]
+    for ratio in ratios:
+        b = a * ratio
+        rows.extend([
+            ("Ellipse geometry", f"{slot} / b/a = {ratio:g}: vertical outer radius b (degrees)", str(b), note),
+            ("Ellipse geometry", f"{slot} / b/a = {ratio:g}: vertical outer diameter 2b (degrees)", str(2*b), note),
+            ("Ellipse geometry", f"{slot} / b/a = {ratio:g}: inner semi-axes (degrees)", f"a={a-inset}, b={b-inset}", note),
+        ])
+    return rows
+
+
 def probe_intensity_rows(spec, values, *, conditions=None):
     """Explain declared bright-probe log steps in digital units, not photometry.
 
@@ -450,6 +502,8 @@ def probe_intensity_rows(spec, values, *, conditions=None):
             ("Intensity", "Background intensity", f"{background:.10g}", digital_note),
             ("Contrast", "Starting difference from background", f"{difference:.10g}", "probe intensity minus background; adaptive/recorded strength"),
             ("Contrast", "Relative digital contrast", f"{difference/background:.10g}" if background else "undefined at black background", "(probe-background)/background; not luminance Weber contrast")]
+    rows.append(("Contrast", "Starting probe display headroom fraction", str(difference/(1-background)),
+                 "C = (I_start−B)/(1−B). Bright probe renderer: I = B + alpha × C × (1−B), where alpha includes shape/subpixel coverage. The staircase adjusts ΔI = I_start−B, not C or absolute intensity. Starting values are not measured thresholds; condition-specific additive headroom still applies."))
     if not adaptive:
         rows = [("Intensity", "Background intensity", f"{background:.10g}", digital_note)]
     if bounds:

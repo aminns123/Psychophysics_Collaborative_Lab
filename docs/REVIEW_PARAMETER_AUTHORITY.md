@@ -8,6 +8,20 @@ Configure field or the stimulus TUI editor. Expand table provides the same
 information in a full-terminal view. Advanced source/JSON navigation remains
 available explicitly; it is not the normal way to configure a study.
 
+Use **Show parameter group** to focus the list. **Full parameter details / F2**
+opens the complete selected row in a scrollable, soft-wrapped view, including
+declared ranges and choices; Escape returns. Hover also shows the explanation.
+F2 provides full text in Configure, the input/stimulus editors and authoring
+information views. Display/calibration snapshots and original protocol text are
+read-only; the selected method's Run plan explains its actual execution.
+
+In the stimulus editor, **Apply for this run** keeps a validated selection
+without saving a preset. Then **Apply to Review** validates the full experiment
+and updates Review. **Save preset** remains available for reusable selections.
+Derived geometry and trial-controlled values are explanations, not independent
+editable inputs. The [parameter audit](audits/parameter-accessibility-20261105.md)
+includes ellipse axes, intensity definitions and scientific decisions left open.
+
 The actual pipeline first resolves experiment settings and the selected stimulus
 snapshot (a validated JSON preset or copied Python defaults), then the experiment
 supplies its trial overrides to `run.stimulus_parameters`. Those overrides win.
@@ -27,7 +41,7 @@ through the stimulus TUI editor, including line dimensions and teaching geometry
 validates the complete replacement before applying anything. **Refresh (F5)**
 starts a fresh process with updated Python definitions while preserving selected
 experiment settings and stimulus snapshots. To adopt a new stimulus class
-default, press **Adopt current class defaults** in Configure. This explicit action
+default, press **Adopt current class defaults** in Review's input/stimulus editor. This explicit action
 also replaces a retained defaults snapshot when the selector already says
 Stimulus class defaults. An already
 selected run value is not silently overwritten by a changed Python default.
