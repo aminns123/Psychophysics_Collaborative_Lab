@@ -58,9 +58,12 @@ PsyCoLab after Python source edits; parameter edits within the interface do not
 require a restart.
 
 Open PsyCoLab → **Build Stimuli**, choose a stimulus, and press **Preview stimulus**.
-Its default appearance opens in your image viewer. In Experiment setup, **Edit
-parameters** previews different values and saves a named preset; shared defaults
-are preserved. Advanced JSON editing remains available when needed.
+Its default appearance opens in your image viewer. In Experiment → Review,
+**Edit selected value** opens the controlling input or stimulus editor. Use
+**Apply for this run**, then **Apply to Review**, for a current-run selection;
+**Save preset** optionally makes it reusable. F2 shows full descriptions and
+constraints. Shared defaults are preserved. Advanced JSON editing remains
+available when needed.
 
 An image preview is an 8-bit appearance aid, not a physical contrast measurement.
 Low requested contrasts can look identical in the preview. Actual scientific

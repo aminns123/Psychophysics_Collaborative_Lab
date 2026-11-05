@@ -23,12 +23,19 @@ def copy_review_table(source, destination):
         destination.add_column(label, width=width)
     for index in range(source.row_count):
         destination.add_row(*source.get_row_at(index), height=None)
+    destination.row_details = getattr(source, "row_details", ())
     if source.row_count:
         destination.move_cursor(row=min(coordinate.row, source.row_count - 1),
                                 column=min(coordinate.column, len(REVIEW_TABLE_COLUMNS) - 1))
 
 
 class ReviewSettingsTable(DataTable):
+    def _on_mouse_move(self, event):
+        super()._on_mouse_move(event)
+        row = event.style.meta.get("row", -1)
+        details = getattr(self, "row_details", ())
+        self.tooltip = details[row] if 0 <= row < len(details) else "Select a parameter; F2 opens its complete description."
+
     async def _on_click(self, event):
         meta=event.style.meta
         row,column=meta.get("row",-1),meta.get("column",-1)

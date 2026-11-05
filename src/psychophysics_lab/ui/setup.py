@@ -1852,13 +1852,14 @@ class _ExperimentInputsScreen(Screen):
     def _refresh_constraints(self):
         if not self.is_mounted: return
         from ..config.input_constraints import experiment_constraints
+        from .full_text import field_description
         raw=self._raw_values()
         profile=self.app.monitor_profiles[self.monitor_profile_id]
         reports,errors=experiment_constraints(self.experiment,profile,raw)
         for field in self.visible_fields:
             report=reports[field.key]; widget=self.query_one("#"+_field_widget_id(field))
             widget.set_class(bool(report['error']),"invalid-input")
-            widget.tooltip=report['domain']+"\n"+report['error']
+            widget.tooltip=field_description(field)+"\n"+report['domain']+"\n"+report['error']
             self.query_one("#domain-"+field.key.replace('_','-'),Static).update(report['domain']+("\nINVALID: "+report['error'] if report['error'] else ""))
         # Keep this universal field/error summary free of per-experiment geometry
         # prose. The same science is resolved from the chosen stimulus in Review.
@@ -1921,7 +1922,11 @@ class _ExperimentInputsScreen(Screen):
         self.query_one("#config-status", Static).update("Display changed. Draft experiment values retained; Review revalidates against this profile.")
 
     def _compose_field(self, field):
-        yield Label(field.display_label)
+        from .full_text import field_description
+        help_text = field_description(field)
+        label = Label(field.display_label)
+        label.tooltip = help_text
+        yield label
         value = self.defaults.get(field.key, field.default)
         widget_id = _field_widget_id(field)
         if field.kind == "choice":
@@ -1936,10 +1941,10 @@ class _ExperimentInputsScreen(Screen):
             kwargs = {"id": widget_id, "allow_blank": field.default is None}
             if value is not None:
                 kwargs["value"] = value
-            yield Select(options, disabled=not field.editable, **kwargs)
+            yield Select(options, disabled=not field.editable, tooltip=help_text, **kwargs)
         else:
             with Horizontal(classes="field-row"):
-                yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable)
+                yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable, tooltip=help_text)
                 if self.experiment.adaptive and self.experiment.adaptive.step_calculator:
                     if field.key == "logUNIT_UP":
                         yield Button("From down", id="calculate-up", disabled=not field.editable)
@@ -2400,6 +2405,10 @@ class ReviewScreen(Screen):
                 yield Button("Open selected file",id="review-open-file")
                 yield Button("Expand table",id="review-expand-table")
                 yield Button("Reload files and review",id="review-reload-files")
+                yield Button("Full parameter details / F2",id="review-full-text")
+            yield Label("Show parameter group")
+            yield Select([("All parameter groups", "all")], value="all", allow_blank=False,
+                         id="review-group", tooltip="Filter the existing Review rows by group; All restores the full list. F2 opens the selected parameter's complete description.")
             yield ReviewSettingsTable(id="resolved-settings-table",cursor_type="cell", zebra_stripes=True)
             yield Static("",id="review-file-location",markup=False)
             yield Static("Reload files rereads the saved JSON linked to this run. Refresh (F5) reloads Python definitions "
@@ -2488,13 +2497,13 @@ class ReviewScreen(Screen):
             description = {"stimuli": {}, "overrides": {}, "note": "Incomplete/invalid draft: " + str(exc)}
         from .review_files import actual_json_sources,targets_for_rows
         from .parameter_files import file_hash
-        from rich.text import Text
+        from .full_text import field_description
         key=self.app.settings_key(self.request)
         if getattr(self,"_file_request_key",None)!=key:
             self._file_sources=actual_json_sources(self.app,self.request)
             self._file_request_key=key
         rows = ([("Experiment", field.display_label, str(self.request.experiment_values.get(field.key)),
-                  f"Declared input {field.key}. {field.help_text}") for field in spec.fields]
+                  f"Declared input {field.key}. {field_description(field)}") for field in spec.fields]
                 if self.configuration_error else
                 review_rows(spec,self.request.experiment_values,snapshots,description,
                     refresh_hz=self.app.monitor_profiles[self.request.monitor_profile_id].refresh_rate_hz))
@@ -2507,13 +2516,27 @@ class ReviewScreen(Screen):
         for path in [self._file_sources["experiment"],*self._file_sources["stimuli"].values()]:
             if path is not None and str(path) not in tracked:
                 tracked[str(path)]=file_hash(path)
+        selector = self.query_one("#review-group", Select)
+        selected_group = selector.value
+        groups = list(dict.fromkeys(row[0] for row in rows))
+        with self.prevent(Select.Changed):
+            selector.set_options([("All parameter groups", "all")] + [(g, g) for g in groups])
+            selector.value = selected_group if selected_group in groups else "all"
+        self._populate_parameter_table()
+        self.query_one("#resolved-settings-note",Static).update(description["note"])
+
+    def _populate_parameter_table(self):
+        from rich.text import Text
         table = self.query_one("#resolved-settings-table",DataTable)
         cursor=table.cursor_coordinate
         table.clear(columns=True)
         from .review_table import REVIEW_TABLE_COLUMNS
         for label,width in REVIEW_TABLE_COLUMNS:
             table.add_column(label,width=width)
-        for row,target,authority in zip(rows,self._file_targets,self._row_authorities):
+        group = self.query_one("#review-group", Select).value
+        self._visible_rows = [i for i, row in enumerate(self._review_rows) if group == "all" or row[0] == group]
+        for index in self._visible_rows:
+            row, target, authority = self._review_rows[index], self._file_targets[index], self._row_authorities[index]
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
                      else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
             # Wrap scientific content, retaining exact values and source targets.
@@ -2521,18 +2544,32 @@ class ReviewScreen(Screen):
             table.add_row(*row[:3], authority["status"],
                           Text(address,style="underline bright_cyan",no_wrap=True,overflow="ellipsis"),
                           height=None)
-        table.move_cursor(row=min(cursor.row,max(0,len(rows)-1)),column=min(cursor.column,4))
-        self.query_one("#resolved-settings-note",Static).update(description["note"])
-        self._show_file_location(table.cursor_row)
+        table.row_details = [self._parameter_details(i) for i in self._visible_rows]
+        table.move_cursor(row=min(cursor.row,max(0,len(self._visible_rows)-1)),column=min(cursor.column,4))
+        if self._visible_rows:
+            self._show_file_location(self._visible_rows[table.cursor_row])
+
+    def _visible_row(self, row=None):
+        row = self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
+        return self._visible_rows[row]
+
+    def action_full_text(self):
+        from .full_text import FullTextScreen
+        if getattr(self, "_visible_rows", ()):
+            self.app.push_screen(FullTextScreen("Complete parameter details · Esc returns",
+                                               self._parameter_details(self._visible_row())))
 
     def _show_file_location(self,row):
         if not getattr(self,"_file_targets",None) or row>=len(self._file_targets):
             return
+        self.query_one("#review-file-location",Static).update(self._parameter_details(row))
+
+    def _parameter_details(self, row):
         target=self._file_targets[row]
         spec=get_experiment(self.request.experiment_id)
         record=self._review_rows[row]
         authority=self._row_authorities[row]
-        self.query_one("#review-file-location",Static).update(
+        return (
             f"STATUS: {authority['status']}\nWHERE TO CHANGE: {authority['route']}\n"
             f"PART: {record[0]}   PARAMETER: {record[1]}\nVALUE: {record[2]}\n"
             f"SCIENTIFIC MEANING / ORIGIN: {record[3]}\n"
@@ -2542,7 +2579,7 @@ class ReviewScreen(Screen):
             +target["note"])
 
     def _edit_review_parameter(self, row=None):
-        row = self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
+        row = self._visible_row() if row is None else row
         authority = self._row_authorities[row]
         if not authority["edit_kind"]:
             self.query_one("#review-status",Static).update(authority["route"])
@@ -2563,19 +2600,20 @@ class ReviewScreen(Screen):
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
-            self._show_file_location(event.coordinate.row)
+            if event.coordinate.row < len(getattr(self, "_visible_rows", ())):
+                self._show_file_location(self._visible_row(event.coordinate.row))
 
     def on_data_table_cell_selected(self,event):
         if event.data_table.id=="resolved-settings-table":
             event.stop()
-            self._open_review_file(event.coordinate.row)
+            self._open_review_file(self._visible_row(event.coordinate.row))
 
     def _open_review_file(self,row=None):
         from .parameter_files import parameter_info,file_hash
         from .review_files import export_current_json
         from .editor import open_parameter_file
         spec=get_experiment(self.request.experiment_id)
-        row=self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
+        row=self._visible_row() if row is None else row
         target=self._file_targets[row]
         try:
             if target["kind"]=="unavailable":
@@ -2677,6 +2715,9 @@ class ReviewScreen(Screen):
             if event.value in ("test", "human", "simulation"):
                 self.app.run_intent = str(event.value)
                 self._apply_run_intent()
+        elif event.select.id == "review-group" and hasattr(self, "_review_rows"):
+            event.stop()
+            self._populate_parameter_table()
 
     def _apply_run_intent(self) -> None:
         if not self.is_mounted:
@@ -2877,6 +2918,10 @@ class ReviewScreen(Screen):
         if button_id == "review-edit-value":
             event.stop()
             self._edit_review_parameter()
+            return
+        if button_id == "review-full-text":
+            event.stop()
+            self.action_full_text()
             return
         if button_id == "review-expand-table":
             event.stop()

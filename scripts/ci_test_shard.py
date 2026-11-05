@@ -77,7 +77,12 @@ def main(argv):
     return subprocess.call(
         [
             sys.executable, "-X", "faulthandler", "-u", "-m", "pytest",
-            "-vv", "-o", "faulthandler_timeout=30", "-o", "log_cli=true",
+            # Windows has repeatedly crashed while the timeout watchdog dumps
+            # another thread's stack (pytest-dev/pytest#7022). This option only
+            # controls diagnostic dumps; it is not a test execution deadline.
+            # Keep fatal-fault capture (-X above), every test and exit status.
+            # The Actions job supplies a real, finite execution deadline.
+            "-vv", "-o", "faulthandler_timeout=0", "-o", "log_cli=true",
             "-o", "log_cli_level=WARNING", *selection,
         ],
         cwd=root,

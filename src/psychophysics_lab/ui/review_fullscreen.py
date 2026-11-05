@@ -13,7 +13,7 @@ class ReviewTableFullscreen(Screen):
     validated reload and launch state; this screen only mirrors its rows.
     """
 
-    BINDINGS = [("escape", "close_table", "Back to Review")]
+    BINDINGS = [("escape", "close_table", "Back to Review"), ("f2", "full_text", "Full details")]
     DEFAULT_CSS = """
     ReviewTableFullscreen {
         background: #080808;
@@ -113,6 +113,9 @@ class ReviewTableFullscreen(Screen):
             self._show_location(destination.cursor_row)
 
     def _show_location(self, row):
+        if not 0 <= row < len(getattr(self.review, "_visible_rows", ())):
+            return
+        row = self.review._visible_row(row)
         if not 0 <= row < len(getattr(self.review, "_file_targets", ())):
             return
         target = self.review._file_targets[row]
@@ -140,7 +143,7 @@ class ReviewTableFullscreen(Screen):
         row = table.cursor_row if row is None else row
         if not 0 <= row < table.row_count:
             return
-        self.review._open_review_file(row)
+        self.review._open_review_file(self.review._visible_row(row))
         # Opening a previously unsaved parameter exports an ordinary JSON,
         # changing the file link on the Review screen. Mirror that exact row.
         selected = table.cursor_coordinate
@@ -158,7 +161,7 @@ class ReviewTableFullscreen(Screen):
             event.stop()
             row = self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row
             self.app.pop_screen()
-            self.review._edit_review_parameter(row)
+            self.review._edit_review_parameter(self.review._visible_row(row))
         elif identity == "expanded-review-open":
             event.stop()
             self._open()
@@ -178,3 +181,9 @@ class ReviewTableFullscreen(Screen):
             original.move_cursor(row=min(table.cursor_row, original.row_count - 1),
                                  column=min(table.cursor_column, 4))
         self.app.pop_screen()
+
+    def action_full_text(self):
+        from .full_text import FullTextScreen
+        row = self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row
+        self.app.push_screen(FullTextScreen("Complete parameter details · Esc returns",
+                                           self.review._parameter_details(self.review._visible_row(row))))

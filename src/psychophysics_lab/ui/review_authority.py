@@ -18,6 +18,15 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
     result = dict(status="Derived / scientific", route="Review → Edit inputs / stimuli",
                   edit_kind="configuration", field=None, slot=None, meaning=meaning,
                   explanation="Calculated by the selected experiment; this row is not an independent input.")
+    if group == "Display profile":
+        result.update(status="Selected calibration / display", edit_kind=None, route="Calibration → Display profile",
+                      explanation="From the selected profile; measurement and readiness evidence retain their existing checks.")
+        return result
+    if group in {"Ellipse geometry", "Stimulus geometry", "Viewport", "Scientific definitions", "Fixed setup"}:
+        result.update(edit_kind=None, route="Read-only; change the controlling inputs above or inspect the scientific declaration")
+        if group in {"Scientific definitions", "Fixed setup"}:
+            result.update(status="Scientific definition", explanation="Declared by the selected experiment; not an independent editable input.")
+        return result
     if group in snapshots:
         stimulus = get_stimulus(snapshots[group]["document"]["stimulus_id"])
         parameter = next((f for f in stimulus.parameters if f.display_label == label), None)

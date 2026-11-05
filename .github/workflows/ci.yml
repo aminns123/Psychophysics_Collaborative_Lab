@@ -42,6 +42,8 @@ jobs:
         os: [windows-latest]
         shard: [0, 1, 2, 3]
     runs-on: ${{ matrix.os }}
+    # Bound hangs externally without a background Python stack-dump thread.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
