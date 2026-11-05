@@ -93,13 +93,41 @@ class StimulusParametersPanel(Vertical):
     def refresh_presets(self):
         paths = [source_path(self.app.repo_root, self.stimulus, self.stimulus.default_config)] if self.stimulus.default_config else []
         paths += sorted((self.app.local_config_root / "stimulus_presets" / self.stimulus.id).glob("*.json"))
+        from .parameter_files import working_path
+        import re
+        local = working_path(self.app.local_config_root, self.configuration.experiment.id, self.slot)
+        local_paths = sorted((p for p in local.parent.glob(self.slot + "*.json")
+                              if p == local or re.fullmatch(re.escape(self.slot) + r"_[0-9a-f]{10}", p.stem)),
+                             key=lambda p: p.stat().st_mtime_ns, reverse=True)
+        paths += [p for p in local_paths if p not in paths]
         selector = self.query_one("#stimulus-preset-" + self.slot, Select)
         with self.prevent(Select.Changed):
-            options = [(p.name, str(p)) for p in paths]
+            options = [("Local experiment: " + p.name if p in local_paths else p.name, str(p)) for p in paths]
             options.insert(0, ("Stimulus class defaults", "library_defaults"))
             selector.set_options(options)
             selector.value = str(self.path) if self.path in paths else (
                 "library_defaults" if self.loaded and self.loaded["file_identity"] == "library_defaults" else Select.BLANK)
+
+    def save_local_selection(self, description):
+        """Save validated TUI edits without changing class defaults or presets."""
+        selected = self.current()
+        if selected["file_identity"] != "tui_values":
+            return
+        from .review_files import export_current_json
+        from .parameter_files import parameter_info
+        from .settings_review import parameter_sources, parameter_controller
+        document = dict(selected["document"])
+        controlled = parameter_sources(description, self.slot) | {
+            f.key for f in self.stimulus.parameters
+            if parameter_controller(self.configuration.experiment, self.slot, f.key)}
+        document["parameter_info"] = parameter_info(self.stimulus.parameters, controlled)
+        path = export_current_json(self.app.local_config_root, self.configuration.experiment,
+                                   document, self.slot)
+        self.load(path)
+        if self.error:
+            raise ValueError(self.error)
+        self.external_json_path = path
+        self.refresh_presets()
 
     def current(self):
         if getattr(self, "external_json_pending", False):

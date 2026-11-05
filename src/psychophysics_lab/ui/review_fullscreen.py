@@ -91,7 +91,7 @@ class ReviewTableFullscreen(Screen):
                 yield Button("Open selected file", id="expanded-review-open")
                 yield Button("Reload saved files", id="expanded-review-reload")
             yield Static(
-                "Expanded Review table  ·  Select a row; Enter or double-click opens its source.  Esc returns.",
+                "Expanded Review table · Enter/double-click edits the parameter in the TUI. The last column/Open selected file inspects JSON or definitions. Esc returns.",
                 id="expanded-review-note", markup=False,
             )
             yield ReviewSettingsTable(id="expanded-settings-table", cursor_type="cell", zebra_stripes=True)
@@ -136,7 +136,18 @@ class ReviewTableFullscreen(Screen):
     def on_data_table_cell_selected(self, event):
         if event.data_table.id == "expanded-settings-table":
             event.stop()
-            self._open(event.coordinate.row)
+            if event.coordinate.column == 4:
+                self._open(event.coordinate.row)
+            else:
+                self._edit(event.coordinate.row)
+
+    def _edit(self, row):
+        original = self.review._visible_row(row)
+        if self.review._row_authorities[original]["edit_kind"] is None:
+            self._show_location(row)
+            return
+        self.app.pop_screen()
+        self.review._edit_review_parameter(original)
 
     def _open(self, row=None):
         table = self.query_one("#expanded-settings-table", ReviewSettingsTable)
@@ -160,8 +171,7 @@ class ReviewTableFullscreen(Screen):
         elif identity == "expanded-review-edit":
             event.stop()
             row = self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row
-            self.app.pop_screen()
-            self.review._edit_review_parameter(self.review._visible_row(row))
+            self._edit(row)
         elif identity == "expanded-review-open":
             event.stop()
             self._open()

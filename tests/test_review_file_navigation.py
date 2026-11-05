@@ -60,30 +60,44 @@ async def click_cell(pilot,table,row,column,times=1):
     await pilot.pause()
 
 
-def test_default_probe_cell_opens_its_actual_class_definition_without_creating_json(tmp_path,monkeypatch):
+def test_default_probe_activation_configures_in_tui_and_advanced_link_opens_local_json(tmp_path,monkeypatch):
     opened=[]
     monkeypatch.setattr('psychophysics_lab.ui.setup.open_source',lambda root,path,line=1,**kwargs:opened.append((path,line)))
+    local=[]
+    monkeypatch.setattr('psychophysics_lab.ui.editor.open_parameter_file',lambda root,path,*args,**kwargs:local.append(path))
+    from psychophysics_lab.ui.stimulus_editor import StimulusValueEditor
+    shared=ROOT/'src/psychophysics_lab/stimulus_library.py'
+    original=shared.read_bytes()
     async def scenario():
         app=PsyCoLabSetupApp(repo_root=ROOT,data_root=tmp_path/'data')
         async with app.run_test(size=(240,65)) as pilot:
             _,screen,table=await review(app,pilot)
             assert len(table.columns)==5 and table.show_cursor and table.cursor_type=='cell'
             row=find_row(table,'Probe length','probe')
-            assert str(table.get_row_at(row)[4]).endswith('stimulus_library.py')
+            assert screen._file_targets[row]['kind']=='stimulus_json' and screen._file_targets[row]['path'] is None
             assert not (app.local_config_root/'parameter_files').exists()
             await click_cell(pilot,table,row,2)
             assert not opened and table.cursor_coordinate==Coordinate(row,2)
             await pilot.press('enter')
             await pilot.pause()
-            assert opened[-1][0]==ROOT/'src/psychophysics_lab/stimulus_library.py'
-            assert 'length_deg' in opened[-1][0].read_text(encoding='utf-8').splitlines()[opened[-1][1]-1]
-            before=len(opened)
+            assert isinstance(app.screen,StimulusValueEditor) and app.screen.focus_key=='length_deg'
+            assert not opened and not local
+            app.screen.query_one('#stimulus-values-back',Button).press()
+            await pilot.pause()
+            app.screen.query_one('#review',Button).press()
+            await pilot.pause()
             await click_cell(pilot,table,row,2,times=2)
-            assert len(opened)==before+1
-            before=len(opened)
+            assert isinstance(app.screen,StimulusValueEditor) and app.screen.focus_key=='length_deg'
+            app.screen.query_one('#stimulus-values-back',Button).press()
+            await pilot.pause()
+            app.screen.query_one('#review',Button).press()
+            await pilot.pause()
             await click_cell(pilot,table,row,4)
-            assert len(opened)==before+1
-            assert str(opened[-1][0]) in str(screen.query_one('#review-file-location',Static).renderable)
+            assert len(local)==1 and not opened
+            assert local[-1].is_relative_to(app.local_config_root/'parameter_files'/'line_position_baseline')
+            assert json.loads(local[-1].read_text())['parameters']['length_deg']==document_for(get_stimulus('probe_line'))['parameters']['length_deg']
+            assert str(local[-1]) in str(screen.query_one('#review-file-location',Static).renderable)
+            assert shared.read_bytes()==original
     asyncio.run(scenario())
 
 
@@ -103,7 +117,7 @@ def test_preset_link_edits_dimensions_and_reloads_values_used_by_actual_run(tmp_
             parent,screen,table=await review(app,pilot,path)
             row=find_row(table,'Probe length','probe')
             assert str(table.get_row_at(row)[4])==str(path)
-            table.move_cursor(row=row,column=2)
+            table.move_cursor(row=row,column=4)
             table.focus()
             await pilot.press('enter')
             await pilot.pause()
@@ -146,7 +160,7 @@ def test_unsaved_values_export_only_on_explicit_open_and_invalid_reload_is_atomi
             _,screen,table=await review(app,pilot)
             row=find_row(table,'Starting probe intensity','Experiment')
             assert 'Unsaved' in str(table.get_row_at(row)[4])
-            table.move_cursor(row=row,column=2)
+            table.move_cursor(row=row,column=4)
             table.focus()
             await pilot.press('enter')
             await pilot.pause()

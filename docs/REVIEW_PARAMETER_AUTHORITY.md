@@ -4,7 +4,8 @@ Review uses the selected experiment's real planning and `prepare_stimuli` path.
 The table shows effective values for one representative trial, with a short
 authority/status. Select a row for scientific meaning, units, selected base,
 source and **Where to change**. Use **Edit selected value** for the controlling
-Configure field or the stimulus TUI editor. Expand table provides the same
+Configure field or the stimulus TUI editor. Enter or double-click on a parameter
+does the same. Expand table provides the same
 information in a full-terminal view. Advanced source/JSON navigation remains
 available explicitly; it is not the normal way to configure a study.
 
@@ -15,12 +16,28 @@ F2 provides full text in Configure, the input/stimulus editors and authoring
 information views. Display/calibration snapshots and original protocol text are
 read-only; the selected method's Run plan explains its actual execution.
 
-In the stimulus editor, **Apply for this run** keeps a validated selection
-without saving a preset. Then **Apply to Review** validates the full experiment
-and updates Review. **Save preset** remains available for reusable selections.
+In the stimulus editor, **Use these values** retains the draft. Then
+**Apply to Review** validates the complete experiment and saves explicit edits
+in the existing `parameter_files/<experiment>/<slot>.json` format under local
+configuration. An existing different file is preserved and a new versioned JSON
+is selected. Review, Test, Run and provenance use that saved selection.
+No named preset or Python edit is required. **Save preset** remains optional.
+To restore a saved selection after restarting, use the stimulus selector's
+**Local experiment** JSON choices. Starting from class defaults still uses the
+original defaults until a local selection is chosen.
+
+The last table column and **Open selected file** retain explicit advanced
+JSON/definition inspection. Editable class-default parameters point to local
+JSON export, not to the shared Python class. Develop rendering implementations
+through **Build Stimuli → Open stimulus_library.py**. See the
+[configuration/authoring boundary audit](audits/local-stimulus-configuration-20261105.md).
 Derived geometry and trial-controlled values are explanations, not independent
 editable inputs. The [parameter audit](audits/parameter-accessibility-20261105.md)
 includes ellipse axes, intensity definitions and scientific decisions left open.
+
+Experimental Test/Run windows hide the OS cursor and restore it on close/error;
+the TUI cursor remains visible. Mouse-response implementations retain an explicit
+visible-cursor choice. See [native Windows cursor verification](audits/presentation-cursor-20261105.md).
 
 The actual pipeline first resolves experiment settings and the selected stimulus
 snapshot (a validated JSON preset or copied Python defaults), then the experiment
