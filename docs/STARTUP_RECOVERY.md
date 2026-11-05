@@ -143,9 +143,12 @@ compiler logs remain in the user's temporary directory; opening diagnostics
 explicitly writes a fresh JSON report there and opens Notepad. Cancel performs
 no recovery action, but does not undo those bootstrap/report artifacts.
 
-`psycolab_recovery.bat` opens the **same** diagnosis and recovery window. Diagnosis
-alone does not launch the application; a successful selected repair opens it once.
-It is useful if application entry fails; it cannot repair a missing internal
+Open `PsyCoLab.bat` and choose **2 - Check / Repair PsyCoLab**. This works without
+application Python; it offers supported setup, repair and restoration. For
+approved automation use `--repair` or `--restore`, then launch separately with
+`--launch` if needed. The old recovery wrapper is retired; migrate its external
+shortcuts using the [migration table](../outdated_code/windows_launchers/README.md).
+The entry cannot repair a missing internal
 bootstrap or broken Windows native components. A compiler failure uses a static
 native message with the compiler-log location, plus console text. No PowerShell
 execution-policy bypass is used. Managed machines that prohibit compilation or

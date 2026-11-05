@@ -232,7 +232,7 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, 
     diagnostic = logging.getLogger(__name__)
     # Run the actual batch entry point, using a hardware-free fake app and a
     # no-install setup hook. The real local environment is never changed.
-    shutil.copyfile(ROOT / "run_psycolab.bat", tmp_path / "run_psycolab.bat")
+    shutil.copyfile(ROOT / "PsyCoLab.bat", tmp_path / "PsyCoLab.bat")
     (tmp_path / "pyproject.toml").write_text("# launcher presence check\n")
     scripts = tmp_path / "scripts"
     scripts.mkdir()
@@ -276,13 +276,13 @@ def test_windows_launcher_forwards_cli_arguments_and_preserves_spaces(tmp_path, 
         "Path('received.json').write_text(json.dumps(sys.argv[1:]))\n")
     command = (
         '"' + os.environ.get("COMSPEC", "cmd.exe") + '" /d /c '
-        'call run_psycolab.bat --probe-token "a value with spaces" <NUL'
+        'call PsyCoLab.bat --launch --probe-token "a value with spaces" <NUL'
     )
     state = environment / (".psycolab-development.json" if development else ".psycolab-setup.json")
     before = state.read_bytes()
     commands = [command, ["powershell.exe", "-NoLogo", "-NoProfile",
         "-ExecutionPolicy", "Restricted", "-Command",
-        "& .\\run_psycolab.bat --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
+        "& .\\PsyCoLab.bat --launch --probe-token 'a value with spaces'; exit $LASTEXITCODE"]]
     # Restricted applies only to this child process; no policy is changed and
     # no .ps1 file or bypass is needed to compile/launch the native host.
     with tempfile.TemporaryDirectory(prefix='psy-batch-collision-') as folder:

@@ -168,7 +168,7 @@ participant data into the Git repository.
 
 ## Run from the PsyCoLab TUI (no command line required)
 
-Start PsyCoLab normally with `run_psycolab.bat`, then choose
+Start PsyCoLab normally with `PsyCoLab.bat`, then choose
 **Experiment → Configure Experiment → Review → Run simulation**. The same
 configured run can instead be launched as a human experiment. For advanced
 direct scenario tests, open the separate **Scenarios** page.

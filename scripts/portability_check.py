@@ -49,9 +49,6 @@ SCAN_PREFIXES = (
 
 ROOT_TEXT_FILES = {
     "psycolab.bat",
-    "psycolab_python.bat",
-    "psycolab_recovery.bat",
-    "run_psycolab.bat",
     "pyproject.toml",
     ".gitignore",
 }

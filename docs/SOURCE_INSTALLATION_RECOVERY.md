@@ -63,9 +63,10 @@ For scripted, explicitly approved repair, `PsyCoLab.bat --repair`
 performs the same preflight, backup, setup and verification, then exits. This
 flag supplies consent to the displayed repair explanation; ordinary double-click
 use asks before modifying the installation. No experiment arguments are replayed.
-The older `psycolab_recovery.bat` name remains a temporary compatibility entry:
-its recovery dialog offers the same engine and its approved repair opens the TUI
-once, matching that older workflow. New instructions use only `PsyCoLab.bat`.
+The older `psycolab_recovery.bat` root file has been retired. Retarget old
+shortcuts/scripts using the [migration table](../outdated_code/windows_launchers/README.md#migrate-existing-shortcuts-and-automation).
+Unlike that old wrapper, `PsyCoLab.bat --repair` exits after verification;
+choose option 1 or run `PsyCoLab.bat --launch` separately to open the TUI.
 
 ## Files and safeguards
 

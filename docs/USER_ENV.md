@@ -28,10 +28,11 @@ can invalidate its checks. Source dependencies are pinned; installing additional
 packages deliberately can introduce conflicts that require review and retesting.
 Optional packages and user_requirements.txt are never installed automatically.
 
-The older run_user_env.bat and PsyCoLab_Python.bat names are temporary
-compatibility entries. Existing USER_env folders and their personal files are
-preserved; the current launcher does not select or rewrite them. See the
-[launcher inventory and retirement policy](WINDOWS_LAUNCHERS.md).
+The older run_user_env.bat and PsyCoLab_Python.bat root files have been retired.
+Existing shortcuts naming them must be retargeted using the
+[migration table](../outdated_code/windows_launchers/README.md#migrate-existing-shortcuts-and-automation).
+Existing USER_env folders and their personal files are preserved; the current
+launcher does not select or rewrite them.
 
 For automation, use `PsyCoLab.bat --python "script path.py" arguments` to run once
 with the same verified Python and preserve the script's exit code. Use

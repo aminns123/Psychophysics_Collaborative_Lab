@@ -4,6 +4,11 @@
 
 This is a printable and GitHub-readable acceptance plan for laboratory operators, scientific protocol owners, developers and independent sites.
 
+**Historical v1 plan:** this Markdown/PDF pair describes the dated baseline above.
+For the current checkout use `PsyCoLab.bat`; old wrapper filenames in the cases
+are retired. Apply the [current launcher migration table](../outdated_code/windows_launchers/README.md)
+when carrying out these procedures today. The archived PDF retains its original text.
+
 > **Safety and scientific scope:** Passing software tests does not establish physical luminance, effective contrast precision, native panel depth, photon onset/offset, acoustic latency, experiment equivalence or scientific hypothesis validity. Green calibration pages reflect saved setup progress, not automatic physical verification. Do not use test photometry to qualify human acquisition.
 
 ## How to use this plan
