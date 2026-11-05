@@ -43,6 +43,11 @@ See [repair, retry and restore](docs/SOURCE_INSTALLATION_RECOVERY.md), the
 [launcher inventory and compatibility retirement](docs/WINDOWS_LAUNCHERS.md), and
 the [qualified Windows environment guide](docs/WINDOWS_ENVIRONMENT.md).
 
+**Older shortcuts/scripts:** the five former root batch wrappers have been
+retired. Retarget them using the [migration table](outdated_code/windows_launchers/README.md#migrate-existing-shortcuts-and-automation).
+`PsyCoLab.bat` is now the only root `.bat` file; existing external shortcut paths
+are not updated automatically.
+
 1. Choose **Experiment**, an experiment, and a display profile.
 2. Configure its conditions, timings, response keys and adaptive settings.
 3. In a stimulus panel, choose **Edit parameters** or **Preview**. Preview opens

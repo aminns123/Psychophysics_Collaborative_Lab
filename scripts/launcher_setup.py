@@ -89,7 +89,7 @@ def _extra_requirements() -> Path | None:
     if not path.exists():
         path.write_text(
             "# Optional packages for user-authored Python scripts.\n"
-            "# One pip requirement per line; relaunch run_user_env.bat.\n",
+            "# One pip requirement per line; this legacy USER_env file is not installed automatically by PsyCoLab.bat.\n",
             encoding="utf-8",
         )
     if path.is_symlink() or not path.is_file():

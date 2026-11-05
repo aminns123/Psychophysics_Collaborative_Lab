@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0.."
 echo PsyCoLab first-time source setup - Python 3.11 x64
 echo This prepares the existing development environment; no display calibration is granted.
-rem One bootstrap discovery path shared by setup and both supported launchers.
+rem One bootstrap discovery path shared by setup and the consolidated launcher.
 if exist ".venv-dev\Scripts\python.exe" (
     ".venv-dev\Scripts\python.exe" -I -B "scripts\developer_setup.py"
     goto finished
@@ -24,7 +24,7 @@ if not errorlevel 1 (
 )
 echo Python 3.11 is required. Install 64-bit Python 3.11 with your Python install manager:
 echo   py install 3.11
-echo Or download Python 3.11 from python.org. Reopen Run_PsyCoLab.bat afterwards.
+echo Or download Python 3.11 from python.org. Reopen PsyCoLab.bat afterwards and choose 2 - Check / Repair PsyCoLab.
 echo An existing Python installation and your global PATH will not be changed by PsyCoLab.
 exit /b 1
 :finished
