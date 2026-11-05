@@ -290,7 +290,12 @@ def test_full_pipeline_primary_matches_posthoc_and_keeps_protocol_description(tm
         data_root=tmp_path, run_directory=artifacts.run_directory, create_plot=False
     )
     later = json.loads(result.summary_json.read_text())
-    assert saved == later
+    # The post-hoc export adds provenance/quality context; every original
+    # canonical estimator field must still reproduce exactly, without a new
+    # expected value or changes to the acquisition file.
+    assert saved == {key: later[key] for key in saved}
+    assert later["data_kind"] == "synthetic"
+    assert later["quality_flags"]["source_status"] == artifacts.status
     resolved = json.loads(
         (artifacts.run_directory / "resolved_experiment.json").read_text()
     )
@@ -371,7 +376,9 @@ def test_new_protocols_finish_and_reproduce_primary_analysis(tmp_path, identity)
     result = analyse_thresholds(
         data_root=tmp_path, run_directory=artifacts.run_directory, create_plot=False
     )
-    assert saved == json.loads(result.summary_json.read_text())
+    later = json.loads(result.summary_json.read_text())
+    assert saved == {key: later[key] for key in saved}
+    assert later["data_kind"] == "synthetic"
     assert all(
         s.reversal_count == 4 and s.retained_count == 2
         for s in result.staircase_thresholds
