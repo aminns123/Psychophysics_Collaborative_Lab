@@ -78,8 +78,11 @@ if identity.endswith('study'):
     audio=science.trial_events(values|{'audio_cues':1},condition)
     assert audio[1].beep.frequency_hz==550 and audio[-1].beep.frequency_hz==750
 opened=[]
+configuration_opened=[]
 import psychophysics_lab.ui.setup as setup
+import psychophysics_lab.ui.editor as parameter_editor
 setup.open_source=lambda root,path,line=1,**kwargs:opened.append((Path(path),line))
+parameter_editor.open_parameter_file=lambda root,path,local,**kwargs:configuration_opened.append(Path(path))
 async def settle(app,pilot):
     for _ in range(100):
         await pilot.pause(.05)
@@ -110,10 +113,17 @@ async def scenario(method):
         assert opened[-1][0].resolve()==source.resolve() and opened[-1][1]>1
         if identity.endswith('study'):
             # Trial-controlled edge/width correctly link to experiment inputs.
-            # The renderer's independent patch extent links to its own class.
+            # Independent patch extent is experiment configuration, not source authoring.
             row=next(i for i,r in enumerate(review._review_rows) if r[0]=='target' and r[1]=='Patch extent (degrees)')
+            source_count=len(opened)
             review._open_review_file(row)
-            assert opened[-1][0].resolve()==stimulus_source.resolve()
+            path=configuration_opened[-1]
+            assert len(opened)==source_count
+            assert path.parent==app.local_config_root/'parameter_files'/identity and path.suffix=='.json'
+            document=json.loads(path.read_text(encoding='utf-8'))
+            selected=review.request.stimulus_snapshots['target']['document']
+            assert document['stimulus_id']==selected['stimulus_id']=='demolab__learning_line'
+            assert document['parameters']==selected['parameters']
         review._edit_review_parameter(next(i for i,r in enumerate(review._review_rows) if r[1]=='Line exposure (ms)'))
         await settle(app,pilot)
         editor=app.screen;assert type(editor) is ExperimentParametersScreen
