@@ -72,8 +72,11 @@ for target in (0,1):
 assert bool(spec.origin_namespace)==(route=='external')
 assert bool(stimulus.origin_namespace)==(route=='external')
 opened=[]
+configuration_opened=[]
 import psychophysics_lab.ui.setup as setup
+import psychophysics_lab.ui.editor as parameter_editor
 setup.open_source=lambda root,path,line=1,**kwargs:opened.append((Path(path),line))
+parameter_editor.open_parameter_file=lambda root,path,*args,**kwargs:configuration_opened.append(Path(path))
 async def settle(app,pilot):
     for _ in range(100):
         await pilot.pause(.05)
@@ -109,7 +112,9 @@ async def scenario():
         assert opened[-1][1]>1
         row=next(i for i,r in enumerate(review._review_rows) if r[0]=='ring' and r[1]=='Annulus radius (degrees)')
         review._open_review_file(row)
-        assert opened[-1][0].resolve()==stimulus_source.resolve()
+        assert review._file_targets[row]['kind']=='stimulus_json'
+        assert configuration_opened[-1].is_relative_to(app.local_config_root)
+        assert json.loads(configuration_opened[-1].read_text())['parameters']==review.request.stimulus_snapshots['ring']['document']['parameters']
         review._edit_review_parameter(row); await settle(app,pilot)
         assert isinstance(app.screen,StimulusValueEditor)
         radius=app.screen.query_one('#stimulus-value-1',Input)

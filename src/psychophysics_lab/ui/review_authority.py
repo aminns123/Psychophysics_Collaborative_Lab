@@ -46,7 +46,7 @@ def authority_for_row(spec, values, snapshots, description, row, target, sources
                                     f"Current Python default: {parameter.default!r}. Source: "
                                     f"{snapshots[group]['file_identity']}. "
                                     "The selected snapshot/preset takes precedence over later Python default edits. "
-                                    "Use Edit selected value for this run, or press Adopt current class defaults "
+                                    "Enter / Edit selected value configures this experiment in the TUI. Apply to Review saves its local JSON; shared Python is for Build Stimuli authoring. Press Adopt current class defaults "
                                     "in the Review parameter editor to replace the retained snapshot with refreshed defaults.")
                     if parameter.key in description["overrides"].get(group, {}):
                         result["explanation"] += " The experiment reads this base and transforms it during trials."

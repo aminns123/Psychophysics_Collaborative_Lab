@@ -98,7 +98,9 @@ def test_fullscreen_mirrors_review_and_can_edit_from_selected_cell(tmp_path, mon
             row = next(index for index in range(table.row_count)
                        if str(table.get_row_at(index)[0]) == "Adaptive"
                        and str(table.get_row_at(index)[1]) == label)
-            table.move_cursor(row=row, column=2)
+            # Explicit file column retains advanced JSON navigation; ordinary
+            # parameter activation now opens the TUI controlling input.
+            table.move_cursor(row=row, column=4)
             table.focus()
             await pilot.press("enter")
             await pilot.pause()

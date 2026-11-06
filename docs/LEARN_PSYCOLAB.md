@@ -60,8 +60,11 @@ require a restart.
 Open PsyCoLab → **Build Stimuli**, choose a stimulus, and press **Preview stimulus**.
 Its default appearance opens in your image viewer. In Experiment → Review,
 **Edit selected value** opens the controlling input or stimulus editor. Use
-**Apply for this run**, then **Apply to Review**, for a current-run selection;
-**Save preset** optionally makes it reusable. F2 shows full descriptions and
+**Use these values**, then **Apply to Review**, to save a validated selection in
+experiment-local JSON. Previous different JSON selections are preserved. The
+stimulus selector's **Local experiment** choices restore these files;
+**Save preset** remains optional. Enter/double-click edits a Review parameter;
+the last column/Open selected file is advanced inspection. F2 shows full descriptions and
 constraints. Shared defaults are preserved. Advanced JSON editing remains
 available when needed.
 
