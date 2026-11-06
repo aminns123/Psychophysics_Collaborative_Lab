@@ -160,10 +160,12 @@ def presentation_frames(duration_ms, refresh_hz):
 class Presentation:
     synthetic = False
     background_intensity = .5
-    def __init__(self, profile, responses, *, background_intensity=.5, show_response_instructions=True):
+    def __init__(self, profile, responses, *, background_intensity=.5, show_response_instructions=True, show_mouse_cursor=False):
         import math
         if type(show_response_instructions) is not bool:
             raise ValueError("Show response-key guidance must be a boolean.")
+        if type(show_mouse_cursor) is not bool:
+            raise ValueError("Show mouse cursor must be a boolean.")
         self.show_response_instructions = show_response_instructions
         if type(background_intensity) not in (int, float) or not math.isfinite(background_intensity) or not 0 <= background_intensity <= 1:
             raise ValueError("Background must be a finite digital command in [0, 1].")
@@ -171,22 +173,29 @@ class Presentation:
         from .display import select_screen
         screen, identity = select_screen(profile)
         from .output_precision import create_output_window
-        self.window, precision = create_output_window(screen, fullscreen=True, vsync=True, caption="PsyCoLab — Escape aborts")
-        self.profile, self.responses = profile, responses
-        self.background_intensity = background_intensity
-        self.held = set()
-        self.window.push_handlers(on_key_release=lambda symbol, modifiers: self.held.discard(symbol))
-        self.resolution = (self.window.width, self.window.height)
-        self.refresh_rate_hz = profile.refresh_rate_hz
-        if profile.expected_resolution_px != self.resolution:
+        from .cursor import presentation_window_class
+        self.window, precision = create_output_window(screen, fullscreen=True, vsync=True,
+            caption="PsyCoLab — Escape aborts", visible=False,
+            window_factory=presentation_window_class(pyglet.window.Window, show_mouse_cursor=show_mouse_cursor))
+        try:
+            self.profile, self.responses = profile, responses
+            self.background_intensity = background_intensity
+            self.held = set()
+            self.window.push_handlers(on_key_release=lambda symbol, modifiers: self.held.discard(symbol))
+            self.resolution = (self.window.width, self.window.height)
+            self.refresh_rate_hz = profile.refresh_rate_hz
+            if profile.expected_resolution_px != self.resolution:
+                raise ValueError("Actual fullscreen size differs from calibration; rebind the display.")
+            self.metadata = {"show_response_instructions": show_response_instructions, "geometry_basis": "flat-screen atan(pixel-centre position / viewing distance), independent x/y pitch; local angles relative to requested patch centre","monitor_profile_id": profile.id, "physical_display_used": True,
+                             "resolution_px": self.resolution, "display_identity": identity,
+                             "photon_timing_verified": False, "input_latency_verified": False,
+                             "timing_basis": "vsync frame-counted show stages; self-paced response",
+                             "output_precision_verified":False, "display_encoding":"float textures; inspected framebuffer; physical precision unverified",
+                             "output_precision": precision}
+            self.window.set_visible(True)
+        except BaseException:
             self.window.close()
-            raise ValueError("Actual fullscreen size differs from calibration; rebind the display.")
-        self.metadata = {"show_response_instructions": show_response_instructions, "geometry_basis": "flat-screen atan(pixel-centre position / viewing distance), independent x/y pitch; local angles relative to requested patch centre","monitor_profile_id": profile.id, "physical_display_used": True,
-                         "resolution_px": self.resolution, "display_identity": identity,
-                         "photon_timing_verified": False, "input_latency_verified": False,
-                         "timing_basis": "vsync frame-counted show stages; self-paced response",
-                         "output_precision_verified":False, "display_encoding":"float textures; inspected framebuffer; physical precision unverified",
-                         "output_precision": precision}
+            raise
 
     def close(self):
         self.window.close()

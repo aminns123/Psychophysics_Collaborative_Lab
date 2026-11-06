@@ -1,4 +1,4 @@
-"""File navigation on deliberate cell activation; normal clicks highlight."""
+"""Parameter activation edits configuration; the last column inspects files."""
 from textual.widgets import DataTable
 
 
@@ -44,8 +44,7 @@ class ReviewSettingsTable(DataTable):
             event.stop()
             self.focus()
             self.move_cursor(row=row,column=column)
-            # File addresses behave as links; values require a double click.
-            # Enter continues to use DataTable's normal selection message.
+            # Explicit file links inspect files; value activation edits in TUI.
             if column==4 or event.chain==2:
                 self.action_select_cursor()
             return

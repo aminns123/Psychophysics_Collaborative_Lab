@@ -27,7 +27,7 @@ class StimulusValueEditor(Screen):
             yield Label(self.panel.stimulus.display_name)
             with Horizontal(classes="buttons"):
                 yield Button("Preview", id="stimulus-values-preview")
-                yield Button("Apply for this run", id="stimulus-values-apply", variant="primary")
+                yield Button("Use these values", id="stimulus-values-apply", variant="primary")
                 yield Button(
                     "Save preset", id="stimulus-values-save"
                 )
@@ -35,7 +35,7 @@ class StimulusValueEditor(Screen):
             yield Static("", id="stimulus-values-status", markup=False)
         with VerticalScroll():
             yield Static(
-                "Edit appearance here. The experiment may set position, strength or other values for each trial; use Try the experiment to see those changes."
+                "Configure this experiment here. Use these values, then Apply to Review to validate and save experiment-local JSON. Shared stimulus Python defines rendering and defaults; edit it through Build Stimuli when developing an implementation. Experiment/trial-controlled values remain resolved by their controlling inputs."
             )
             for index, field in enumerate(self.panel.stimulus.parameters):
                 from .full_text import field_description

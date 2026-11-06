@@ -75,6 +75,10 @@ def test_every_declared_scientific_input_visible_in_actual_review(tmp_path, iden
                     detail = table.row_details[i]
                     assert field.key in detail and field.display_label in detail
                     assert "Range" in detail or "Choices" in detail
+                    if review._row_authorities[i]["edit_kind"] == "stimulus":
+                        assert review._file_targets[i]["kind"] == "stimulus_json", (identity, slot, field.key)
+                        path = review._file_targets[i]["path"]
+                        assert path is None or path.suffix == ".json"
             assert any(row[0] == "Scientific definitions" for row in review._review_rows)
             assert any(row[0] == "Display profile" and "(metres)" in row[1] for row in review._review_rows)
             assert all(a["edit_kind"] is None for r, a in zip(review._review_rows, review._row_authorities)
@@ -85,7 +89,7 @@ def test_every_declared_scientific_input_visible_in_actual_review(tmp_path, iden
 @pytest.mark.parametrize("size", [(80, 24), (120, 40)])
 def test_grouped_rows_keep_full_details_edit_and_source_targets(tmp_path, monkeypatch, size):
     opened = []
-    monkeypatch.setattr("psychophysics_lab.ui.editor.open_parameter_file", lambda root, path, **kw: opened.append(path))
+    monkeypatch.setattr("psychophysics_lab.ui.editor.open_parameter_file", lambda root, path, *args, **kw: opened.append(path))
     monkeypatch.setattr("psychophysics_lab.ui.setup.open_source", lambda root, path, **kw: opened.append(path))
     async def scenario():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
@@ -110,9 +114,10 @@ def test_grouped_rows_keep_full_details_edit_and_source_targets(tmp_path, monkey
             assert "length_deg" in text.text and "20" in text.text and "degrees" in text.text
             await pilot.press("escape")
             await pilot.pause()
-            target = review._file_targets[review._visible_row()]["path"]
             review._open_review_file()
-            assert opened[-1] == target
+            assert opened[-1] == review._file_targets[review._visible_row()]["path"]
+            assert opened[-1].is_relative_to(app.local_config_root)
+            assert json.loads(opened[-1].read_text())["stimulus_id"] == "probe_line"
             review._edit_review_parameter()
             await pilot.pause()
             editor = app.screen
@@ -216,7 +221,11 @@ def test_ellipse_tui_edits_feed_render_execution_and_provenance(tmp_path, monkey
                 app.screen.query_one("#review", Button).press()
                 await pilot.pause()
                 assert app.screen is review and review.configuration_error is None
-                assert review.request.stimulus_snapshots[slot]["file_identity"] == "tui_values"
+                from psychophysics_lab.config.stimulus_parameters import load_parameters
+                path = review._file_sources["stimuli"][slot]
+                assert path.is_relative_to(app.local_config_root / "parameter_files" / "ellipse_centre")
+                saved = load_parameters(path, get_stimulus(review.request.stimulus_snapshots[slot]["document"]["stimulus_id"]))
+                assert saved == review.request.stimulus_snapshots[slot]
             app.verify_settings_current(review.request)
             assert not list(app.local_config_root.glob("stimulus_presets/**/*.json"))
             description = describe_settings(get_experiment("ellipse_centre"), review.request.experiment_values,

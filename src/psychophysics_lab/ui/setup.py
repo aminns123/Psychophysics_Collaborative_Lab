@@ -401,6 +401,7 @@ class StimuliScreen(HubPage):
         with VerticalScroll(classes="page-body"):
             yield Static("STIMULUS LIBRARY", classes="section-title")
             yield Static("[b]ONE place for all stimulus science[/b]\n"
+                "Author rendering implementations here. To configure an existing experiment's dimensions, use Experiment → Review → Edit selected value; Apply to Review saves experiment-local JSON.\n"
                 "Open stimulus_library.py. Define LibraryStimulus classes "
                 "with PARAMETERS, render(), and SPEC. There is no new-file generator "
                 "or manual per-stimulus registry step. Restart after Python edits; parameter changes preview immediately.")
@@ -2246,7 +2247,7 @@ class _ExperimentInputsScreen(Screen):
             # Planning errors belong in the editable configuration screen, before
             # Review mounting or handing control to physical acquisition.
             from .settings_review import describe_settings
-            describe_settings(self.experiment, request.experiment_values,
+            description = describe_settings(self.experiment, request.experiment_values,
                               request.stimulus_snapshots,
                               profile=self.app.monitor_profiles[self.monitor_profile_id])
             if getattr(self,"parameter_json_path",None) and hasattr(self,"parameter_json_hash"):
@@ -2254,6 +2255,13 @@ class _ExperimentInputsScreen(Screen):
                 self.parameter_json_hash = replace_reviewed_json(self.parameter_json_path,
                     {"schema_version":1,"experiment_id":self.experiment.id,"values":values,
                      "parameter_info":parameter_info(self.experiment.fields)}, self.parameter_json_hash)
+            # Persist explicit stimulus edits only after complete scientific
+            # validation/planning. Use the existing per-experiment JSON format.
+            from .stimulus_parameters import StimulusParametersPanel
+            for panel in self.query(StimulusParametersPanel):
+                panel.save_local_selection(description)
+            self.stimulus_snapshots = self._selected_stimuli(values)
+            request = replace(request, stimulus_snapshots=self.stimulus_snapshots)
             self.app.review_parameter_files[self.app.settings_key(request)] = self._parameter_files()
             self.remember_draft()
             if self.review_return is not None:
@@ -2394,7 +2402,7 @@ class ReviewScreen(Screen):
                 id="review-experiment-context", markup=False, classes="info-card",
             )
             from .review_table import ReviewSettingsTable
-            yield Static("Select a row to read its meaning, authority and where to change it below. Edit selected value opens the generic Review parameter editor. Enter/double-click and source links are advanced file actions.",markup=False)
+            yield Static("Enter or double-click a parameter to edit it in the TUI. Apply to Review validates and saves stimulus selections as experiment-local JSON. The last column and Open selected file are advanced JSON/definition inspection. Develop stimulus Python through Build Stimuli.",markup=False)
             yield Static("EDITABLE = selected input · DERIVED / TRIAL-CONTROLLED = computed by the experiment · "
                          "INACTIVE = retained for another method. Missing/invalid inputs must be corrected before running. "
                          "Software Test → Ready does not qualify physical apparatus.",
@@ -2538,7 +2546,7 @@ class ReviewScreen(Screen):
         for index in self._visible_rows:
             row, target, authority = self._review_rows[index], self._file_targets[index], self._row_authorities[index]
             address=(str(target["path"]) if target["path"] else "Source not recorded" if target["kind"]=="unavailable"
-                     else "Saved snapshot — Enter to save JSON" if target.get("slot") else "Unsaved values — Enter to save JSON")
+                     else "Local JSON — Open file to export" if target.get("slot") else "Unsaved values — Open file to export JSON")
             # Wrap scientific content, retaining exact values and source targets.
             # File paths stay compact in the table; full addresses remain below.
             table.add_row(*row[:3], authority["status"],
@@ -2606,7 +2614,11 @@ class ReviewScreen(Screen):
     def on_data_table_cell_selected(self,event):
         if event.data_table.id=="resolved-settings-table":
             event.stop()
-            self._open_review_file(self._visible_row(event.coordinate.row))
+            row = self._visible_row(event.coordinate.row)
+            if event.coordinate.column == 4:
+                self._open_review_file(row)
+            else:
+                self._edit_review_parameter(row)
 
     def _open_review_file(self,row=None):
         from .parameter_files import parameter_info,file_hash
@@ -2638,7 +2650,7 @@ class ReviewScreen(Screen):
                 target=self._file_targets[row]
             path=Path(target["path"])
             executable=preferences(self.app.local_config_root).get("editor_executable")
-            if path.resolve().is_relative_to(self.app.repo_root.resolve()) or extension_source(self.app.repo_root, path):
+            if target["kind"] == "python":
                 open_source(self.app.repo_root,path,line=target["line"],executable=executable)
             else:
                 open_parameter_file(self.app.repo_root,path,self.app.local_config_root,

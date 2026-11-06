@@ -142,14 +142,14 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
                 targets.append(dict(kind="stimulus_json",path=sources["stimuli"][slot],slot=slot,key=field.key if field else None,
                     line=json_value_line(sources["stimuli"][slot], field.key if field else None),
                     note="Selected stimulus JSON; save and Reload files"))
-            elif (snapshots[slot]["file_identity"]=="library_defaults"
+            elif (field is None or not field.editable) and (snapshots[slot]["file_identity"]=="library_defaults"
                   and snapshots[slot]["document"]["parameters"]=={field.key:field.default for field in stimulus.parameters}):
                 owner=stimulus.render.__qualname__.split(".")[0] if stimulus.render else None
                 targets.append(python(source_path(root, stimulus, stimulus.source_path),key=field.key if field else None,owner=owner,
                     note="Stimulus class defaults; save Python changes, then Refresh (F5) to apply updated defaults"))
             else:
                 targets.append(dict(kind="stimulus_json",path=None,slot=slot,key=field.key if field else None,line=1,
-                    note="Saved snapshot without its original file; Enter saves an ordinary JSON copy"))
+                    note="Configure this experiment in the TUI; Apply to Review saves local JSON. Open file exports a local JSON copy; shared stimulus Python is for authoring."))
         elif group in {"Intensity","Contrast","Adaptive scale"}:
             path=Path(__file__).with_name("settings_review.py")
             targets.append(python(path,function="probe_intensity_rows",note="Derived display value; this function calculates it from the experiment settings above"))
