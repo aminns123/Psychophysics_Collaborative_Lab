@@ -9,6 +9,12 @@ does the same. Expand table provides the same
 information in a full-terminal view. Advanced source/JSON navigation remains
 available explicitly; it is not the normal way to configure a study.
 
+**Save configuration**, **Export JSON…** and **Import JSON…** beside the table
+share the complete selected experiment/stimulus configuration. Import previews
+all values and differences before approval. Dedicated scientific editors retain
+authority. See [Sharing configurations](SHARING_CONFIGURATIONS.md); calibration
+and participant information are never transferred.
+
 Use **Show parameter group** to focus the list. **Full parameter details / F2**
 opens the complete selected row in a scrollable, soft-wrapped view, including
 declared ranges and choices; Escape returns. Hover also shows the explanation.

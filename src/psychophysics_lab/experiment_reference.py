@@ -22,7 +22,7 @@ from . import extensions
 SCIENCE_FILES = ("trials.tsv", "trial_actions.json", "trial_presentations.json")
 
 
-def source_digest(repo_root, spec):
+def source_digest(repo_root, spec, *, normalize_newlines=False):
     """Source identity is deterministic and scoped to declared experiment files."""
     digest = hashlib.sha256()
     digest.update(spec.id.encode("utf-8"))
@@ -48,7 +48,8 @@ def source_digest(repo_root, spec):
     for (namespace, relative), file in sorted(paths.items()):
         digest.update(namespace.encode("utf-8"))
         digest.update(relative.encode("utf-8"))
-        digest.update(file.read_bytes())
+        raw = file.read_bytes()
+        digest.update(raw.replace(b"\r\n", b"\n") if normalize_newlines else raw)
     return digest.hexdigest()
 
 
