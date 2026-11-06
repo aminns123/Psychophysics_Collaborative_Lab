@@ -1,0 +1,93 @@
+{
+  "format": "psycolab.experiment.configuration",
+  "schema_version": 1,
+  "experiment": {
+    "schema_version": 1,
+    "experiment_id": "ellipse_centre",
+    "values": {
+      "fixation_ms": 500,
+      "stimulus_ms": 250,
+      "staircases_per_condition": 1,
+      "starting_probe_intensity": 0.52,
+      "background_intensity": 0.5,
+      "n_down": 4,
+      "n_up": 1,
+      "logUNIT_UP": 0.36,
+      "logUNIT_DW": 0.30294,
+      "initial_one_down_limit": 0,
+      "reversal_termination": 10,
+      "threshold_reversals": 8,
+      "max_trials": 12,
+      "isi_ms": 250,
+      "ring_increment": 0.03,
+      "aspect_ratios": "0.5,0.75,1",
+      "ellipse_centre_y_deg": 0.6,
+      "ring_radius_deg": 0.5,
+      "auditory_cues": true,
+      "cue_hz": 550,
+      "cue_ms": 35,
+      "contrast_method": "adaptive",
+      "fixed_contrasts": "0.005,0.01,0.02",
+      "fixed_repetitions": 10,
+      "response_keys": "1,2"
+    }
+  },
+  "stimuli": {
+    "ready_fixation": {
+      "schema_version": 1,
+      "stimulus_id": "gaussian_fixation",
+      "parameters": {
+        "size_deg": 0.5,
+        "sigma_deg": 0.035,
+        "increment": 0.09,
+        "background": 0.5
+      }
+    },
+    "fixation": {
+      "schema_version": 1,
+      "stimulus_id": "gaussian_scene_fixation",
+      "parameters": {
+        "size_deg": 14.0,
+        "background": 0.5,
+        "increment": 0.09,
+        "sigma_deg": 0.035
+      }
+    },
+    "ellipse": {
+      "schema_version": 1,
+      "stimulus_id": "ellipse_ring",
+      "parameters": {
+        "size_deg": 14.0,
+        "background": 0.5,
+        "display_contrast": 0.2,
+        "outer_radius_deg": 6.0,
+        "aspect_ratio": 1.0,
+        "orientation_deg": 0.0,
+        "inner_inset_deg": 0.16
+      }
+    },
+    "probe": {
+      "schema_version": 1,
+      "stimulus_id": "probe_line",
+      "parameters": {
+        "size_deg": 2.0,
+        "background": 0.5,
+        "display_contrast": 0.04,
+        "length_deg": 1.4,
+        "width_deg": 0.035
+      }
+    }
+  },
+  "presentation": {
+    "show_response_instructions": true
+  },
+  "software": {
+    "psycolab_version": "0.3.0",
+    "source_sha256": "9214875d630f7fb469bb80e2def9638776a8f8b4c8581aa33d671cab3b87de4d",
+    "engine_sha256": "348aead2e6de7c35fb67d3e87a8b5b144455111a43bbc098447d60c94344b857",
+    "dependencies": {
+      "numpy": "1.26.4",
+      "pyglet": "1.5.27"
+    }
+  }
+}

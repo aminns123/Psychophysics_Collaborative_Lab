@@ -53,6 +53,11 @@ def replace_reviewed_json(path, document, expected_hash):
 
 def load_experiment_json(path, spec):
     document = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    return validate_experiment_json(document, spec)
+
+
+def validate_experiment_json(document, spec):
+    """Use the same experiment document for local files and portable sharing."""
     if (not isinstance(document, dict) or document.get("schema_version") != 1
             or document.get("experiment_id") != spec.id or not isinstance(document.get("values"), dict)):
         raise ValueError("Experiment JSON needs schema_version=1, the selected experiment_id and a values object.")
