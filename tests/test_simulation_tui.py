@@ -159,8 +159,8 @@ def test_tui_receives_and_displays_last_simulation_report(tmp_path):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("configuration_origin", [{}, {"document_sha256": "a"*64}])
-def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeypatch, configuration_origin):
+@pytest.mark.parametrize("show_response_instructions", [True, False])
+def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeypatch, show_response_instructions):
     from psychophysics_lab import app as app_module
     from psychophysics_lab.ui import setup as tui_module
     from simulations import scenarios
@@ -170,8 +170,9 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
         "contrast_sensitivity", "teaching_demo", data_root,
         (11,), observer_parameters={"threshold": 0.1, "slope": 3.0},
         experiment_values={"max_trials": 1},
-        configuration_origin=configuration_origin,
-        show_response_instructions=not bool(configuration_origin),
+        stimulus_snapshots=({"probe": {"configuration_origin": {"document_sha256": "a"*64}}}
+                            if not show_response_instructions else {}),
+        show_response_instructions=show_response_instructions,
     )
     calls = []
     results = [request, None]
@@ -195,7 +196,7 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
     assert app_module._main([]) == 0
     assert [event[0] for event in calls] == ["tui", "simulate", "tui"]
     assert calls[1][1]["seeds"] == (11,)
-    assert calls[1][1].get("configuration_origin", {}) == configuration_origin
+    assert calls[1][1]["stimulus_snapshots"] == request.stimulus_snapshots
     assert calls[1][1].get("show_response_instructions", True) == request.show_response_instructions
     assert "PASSED" in calls[2][1]
 

@@ -400,9 +400,8 @@ def _main(
                         monitor_profile_id=action.monitor_profile_id,
                         monitor_profile_hash=action.monitor_profile_hash,
                         stimulus_snapshots=action.stimulus_snapshots,
-                        **({"configuration_origin": action.configuration_origin,
-                            "show_response_instructions": action.show_response_instructions}
-                           if action.configuration_origin or not action.show_response_instructions else {}),
+                        **({"show_response_instructions": action.show_response_instructions}
+                           if not action.show_response_instructions else {}),
                     )
             except Exception as exc:
                 recoverable_failures += 1

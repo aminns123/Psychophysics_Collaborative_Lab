@@ -213,13 +213,13 @@ def test_ellipse_shared_dimensions_adaptive_trace_and_saved_provenance(tmp_path)
     for name, chosen in (("source", request), ("recipient", imported)):
         result, _ = simulate(repo_root=ROOT, data_root=tmp_path/name, experiment_id=chosen.experiment_id,
             values=chosen.experiment_values, stimulus_snapshots=chosen.stimulus_snapshots, seed=41, analyse=False,
-            configuration_origin=chosen.configuration_origin, show_response_instructions=chosen.show_response_instructions)
+            show_response_instructions=chosen.show_response_instructions)
         results.append(result)
     assert results[0].trial_log_file.read_bytes() == results[1].trial_log_file.read_bytes()
     for name in ("trial_actions.json", "trial_presentations.json", "adaptive_session.json"):
         assert (results[0].run_directory/name).read_bytes() == (results[1].run_directory/name).read_bytes()
     saved = json.loads((results[1].run_directory/"experiment_config.json").read_text())["request"]
-    assert saved["configuration_origin"]["document_sha256"] == digest(document)
+    assert saved["stimulus_snapshots"]["probe"]["configuration_origin"]["document_sha256"] == digest(document)
     assert saved["experiment_values"] == imported.experiment_values
     assert saved["stimulus_snapshots"] == imported.stimulus_snapshots
     assert saved["show_response_instructions"] is False

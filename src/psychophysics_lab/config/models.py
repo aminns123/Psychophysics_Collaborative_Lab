@@ -208,6 +208,3 @@ class SetupRequest:
     researcher_override: ResearcherOverride | None = None
     # Purely visual presentation preference; default preserves older runs.
     show_response_instructions: bool = True
-    # Transfer-file identity only; effective settings and local apparatus are
-    # still recorded independently. Empty for existing, unshared workflows.
-    configuration_origin: dict[str, Any] = field(default_factory=dict)

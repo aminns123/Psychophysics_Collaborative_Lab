@@ -171,7 +171,6 @@ class VirtualObserverOptionsScreen(Screen):
             monitor_profile_id=self.request.monitor_profile_id,
             monitor_profile_hash=self.request.monitor_profile_hash,
             stimulus_snapshots=self.request.stimulus_snapshots,
-            configuration_origin=self.request.configuration_origin,
             show_response_instructions=self.request.show_response_instructions,
         )
 

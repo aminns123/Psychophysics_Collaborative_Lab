@@ -153,7 +153,7 @@ class StimulusParametersPanel(Vertical):
             value = self.configuration.query_one("#field-" + key.replace("_", "-")).value
             field = next(item for item in self.stimulus.parameters if item.key == parameter)
             values[parameter] = field.coerce(value)
-        return snapshot(document_for(self.stimulus, values),
+        return (dict(selected) if selected else {}) | snapshot(document_for(self.stimulus, values),
                         file_identity=selected["file_identity"] if selected else "experiment_values",
                         file_sha256=selected.get("file_sha256") if selected else None)
 
@@ -175,7 +175,10 @@ class StimulusParametersPanel(Vertical):
 
     def load(self, path):
         try:
+            origin = (self.loaded or {}).get("configuration_origin")
             self.loaded = load_parameters(path, self.stimulus)
+            if origin:
+                self.loaded["configuration_origin"] = origin
             self.path, self.error = Path(path), None
             self.app.stimulus_drafts[self.cache_key] = (self.loaded, self.path)
             with self.prevent(Input.Changed):

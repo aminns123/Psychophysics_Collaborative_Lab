@@ -119,7 +119,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _runtime_source_fingerprints(repo_root: Path, *, normalize_newlines=False) -> dict[str, str]:
+def _runtime_source_fingerprints(repo_root: Path) -> dict[str, str]:
     """Hash the acquisition source inventory, independent of Git availability.
 
     Python sources in the supported package and simulation roots are fingerprinted.
@@ -161,8 +161,7 @@ def _runtime_source_fingerprints(repo_root: Path, *, normalize_newlines=False) -
                         and (within_package or not name.startswith("test_"))
                         and (within_package or not name.endswith("_test.py"))):
                     paths.append(path)
-    return {path.relative_to(repo_root).as_posix():
-            (hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest() if normalize_newlines else _sha256(path))
+    return {path.relative_to(repo_root).as_posix(): _sha256(path)
             for path in sorted(paths, key=lambda path: path.relative_to(repo_root).as_posix())}
 
 
@@ -228,8 +227,6 @@ def _relative(run_dir: Path, path: Path) -> str:
 def _portable_request_payload(request: SetupRequest) -> dict:
     payload = asdict(request)
     payload["data_root"] = None
-    if not payload.get("configuration_origin"):
-        payload.pop("configuration_origin", None)
     return payload
 
 

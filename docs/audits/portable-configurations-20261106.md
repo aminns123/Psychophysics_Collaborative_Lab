@@ -35,15 +35,16 @@ Review remains the settings interface. A file browser and read-only differences
 table add no new scientific controls.
 
 Source fingerprints reuse the existing inventories and source-digest helper,
-with opt-in newline normalization for portable comparison. Existing raw-byte
-fingerprints and historical reference semantics retain their defaults. Missing
+with newline normalization for portable comparison outside the runner. Existing raw-byte
+runner fingerprints and historical reference semantics remain unchanged. Missing
 implementations and changed scientific sources/engines/dependency versions are
 rejected, without importing code specified by a file. Different application
 version labels alone warn when all checked scientific identities match.
 
-The request optionally records the transfer document's canonical content hash
-and software identity. This survives Test, Run, simulation and existing editor
-handoffs. Workflows without sharing retain the existing serialized request shape.
+The existing selected stimulus snapshots optionally record the transfer document's
+canonical content hash and software identity. This survives Test, Run, simulation
+and existing editor handoffs. The request model and scientific runner are unchanged,
+including the exact frozen runner byte hash; no baseline test or fixture is weakened.
 The local profile, calibration and saved run's effective settings remain separate
 and authoritative; imported acquisition overrides are cleared.
 

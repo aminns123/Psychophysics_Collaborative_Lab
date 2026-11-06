@@ -1712,7 +1712,7 @@ class _ExperimentInputsScreen(Screen):
                 bindings = self.experiment.stimulus_field_bindings.get(slot, {})
                 if bindings:
                     params = dict(saved['document']['parameters']) | {key: values[field] for key, field in bindings.items()}
-                    saved = snapshot(document_for(get_stimulus(saved['document']['stimulus_id']), params),
+                    saved = dict(saved) | snapshot(document_for(get_stimulus(saved['document']['stimulus_id']), params),
                         file_identity=saved['file_identity'], file_sha256=saved.get('file_sha256'))
                 selected[slot] = saved
         return resolve_stimuli(self.experiment, values, selected, repo_root=self.app.repo_root)
@@ -2241,8 +2241,6 @@ class _ExperimentInputsScreen(Screen):
                 stimulus_snapshots=self.stimulus_snapshots,
                 show_response_instructions=(self.review_return.request.show_response_instructions
                                             if self.review_return is not None else True),
-                configuration_origin=(self.review_return.request.configuration_origin
-                                      if self.review_return is not None else {}),
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.app.verify_loaded_sources(self.experiment, self.stimulus_snapshots)

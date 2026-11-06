@@ -110,7 +110,8 @@ class StimulusValueEditor(Screen):
             elif event.button.id == "stimulus-values-apply":
                 from ..config.stimulus_parameters import snapshot
                 self.panel.loaded = snapshot(dict(self.document) | {"parameters": values},
-                                             file_identity="tui_values")
+                                             file_identity="tui_values") | {
+                    k: v for k, v in (self.panel.loaded or {}).items() if k == "configuration_origin"}
                 self.panel.path, self.panel.error = None, None
                 self.panel.external_json_pending = False
                 with self.panel.prevent(Input.Changed):

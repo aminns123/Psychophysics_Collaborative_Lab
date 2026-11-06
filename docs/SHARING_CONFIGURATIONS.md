@@ -91,12 +91,12 @@ parameter_files/<experiment>/configuration_<unique-id>/
 Review tracks the exact local JSON bytes before Test/Run, independently of the
 downloaded file. Import keeps the local participant, data workspace and display
 profile. A transfer-file content hash and software identity are retained in the
-request's optional `configuration_origin`, including saved-run
+selected stimulus snapshots' optional `configuration_origin`, including saved-run
 `experiment_config.json`. This describes the original shared configuration;
 later edits may differ. The run's existing effective experiment values, stimulus
 snapshots, trial records and local environment/calibration provenance remain the
-authority for what actually ran. Workflows without sharing omit this optional
-origin from the existing saved request format.
+authority for what actually ran. The existing request model and runner stay
+unchanged; workflows without sharing have no additional origin metadata.
 
 ## Cross-laboratory reproducibility
 

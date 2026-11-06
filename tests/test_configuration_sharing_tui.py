@@ -146,7 +146,6 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             app.screen.query_one("#review", Button).press()
             await pilot.pause()
             assert app.screen is review
-            assert review.request.configuration_origin == imported.configuration_origin
             assert review.request.stimulus_snapshots == imported.stimulus_snapshots
             app.verify_settings_current(review.request)
             # Execution no longer depends on the sender's/download location.
@@ -158,7 +157,6 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             await pilot.pause()
             assert app.screen is not review, str(review.query_one("#review-status", Static).renderable)
             launch = app.screen._launch_request()
-            assert launch.configuration_origin == imported.configuration_origin
             assert launch.stimulus_snapshots == imported.stimulus_snapshots
             app.pop_screen()
             await pilot.pause()

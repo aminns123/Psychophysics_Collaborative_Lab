@@ -3,6 +3,7 @@ from dataclasses import replace
 from copy import deepcopy
 from importlib.metadata import version, PackageNotFoundError
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -29,7 +30,8 @@ def software_identity(root, spec, snapshots):
     # science; engine/configuration/analysis changes require explicit retesting.
     prefixes = tuple("src/psychophysics_lab/" + p for p in
                      ("core/", "adaptive/", "methods/", "config/", "experiments/_internal/", "stimuli/", "data/"))
-    inventory = {p: h for p, h in _runtime_source_fingerprints(Path(root), normalize_newlines=True).items()
+    inventory = {p: hashlib.sha256((Path(root)/p).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+                 for p in _runtime_source_fingerprints(Path(root))
                  if p.startswith(prefixes) or p == "src/psychophysics_lab/researcher.py"}
     if not inventory:
         raise ValueError("Installed scientific engine source is unavailable; configuration compatibility cannot be checked.")
@@ -110,7 +112,8 @@ def validate_portable(document, root, current, profile):
         if not isinstance(sid, str) or sid not in stimuli:
             raise ValueError(f"{slot}: required stimulus {sid!r} is not installed/enabled locally. Install and verify it separately.")
         _complete(data["parameters"], stimuli[sid].parameters, slot)
-        snapshots[slot] = snapshot(validate_document(data, stimuli[sid]), file_identity="configuration.json")
+        snapshots[slot] = snapshot(validate_document(data, stimuli[sid]), file_identity="configuration.json") | {
+            "configuration_origin": {"document_sha256": digest(document), "software": deepcopy(document["software"])}}
     presentation = document["presentation"]
     _object(presentation, ("show_response_instructions",), "Presentation")
     if type(presentation["show_response_instructions"]) is not bool:
@@ -124,8 +127,7 @@ def validate_portable(document, root, current, profile):
         raise ValueError("Incompatible experiment/stimulus source revision, scientific engine or dependency version. Use compatible, separately verified software; settings were not applied.")
     candidate = replace(current, experiment_id=identity, experiment_values=values, stimulus_snapshots=snapshots,
                         monitor_profile_hash=None, researcher_override=None,
-                        show_response_instructions=presentation["show_response_instructions"],
-                        configuration_origin={"document_sha256": digest(document), "software": deepcopy(incoming)})
+                        show_response_instructions=presentation["show_response_instructions"])
     candidate = validate_setup(candidate, spec, profile, mode="configuration")
     describe_settings(spec, candidate.experiment_values, candidate.stimulus_snapshots, profile=profile)
     warnings = (["PsyCoLab version differs; declared scientific sources, engine and dependency fingerprints match."]
@@ -198,7 +200,8 @@ def save_local(root, repo, document, current, profile):
         for slot, data in document["stimuli"].items():
             name = validate_path_component(slot, label="slot") + "_" + token + ".json"
             atomic_write_json(staging/name, data)
-            snapshots[slot] = load_parameters(staging/name, get_stimulus(data["stimulus_id"]))
+            snapshots[slot] = load_parameters(staging/name, get_stimulus(data["stimulus_id"])) | {
+                "configuration_origin": deepcopy(candidate.stimulus_snapshots[slot]["configuration_origin"])}
         candidate = validate_setup(replace(candidate, stimulus_snapshots=snapshots),
                                    get_experiment(candidate.experiment_id), profile, mode="configuration")
         # Both paths are newly allocated children of this local configuration
