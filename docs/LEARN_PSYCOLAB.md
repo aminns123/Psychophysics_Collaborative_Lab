@@ -13,6 +13,11 @@ outputs; selecting a row gives full details and its actual source location.
 Unsaved drafts are not a successful validation. Correct errors and apply to
 Review before running. Saved presets never overwrite Python defaults.
 
+To collaborate, use **Review → Save configuration / Export JSON… / Import JSON…**.
+Import previews differences and asks for approval before creating a new local
+copy. See [Sharing configurations](SHARING_CONFIGURATIONS.md) for the complete
+workflow and the limits of cross-laboratory physical reproducibility.
+
 
 ## The basic model: independent objects plus one scientific experiment
 

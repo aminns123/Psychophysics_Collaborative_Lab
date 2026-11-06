@@ -2241,6 +2241,8 @@ class _ExperimentInputsScreen(Screen):
                 stimulus_snapshots=self.stimulus_snapshots,
                 show_response_instructions=(self.review_return.request.show_response_instructions
                                             if self.review_return is not None else True),
+                configuration_origin=(self.review_return.request.configuration_origin
+                                      if self.review_return is not None else {}),
             )
             request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
             self.app.verify_loaded_sources(self.experiment, self.stimulus_snapshots)
@@ -2391,6 +2393,11 @@ class ReviewScreen(Screen):
             yield Static("", id="selected-run-readiness", markup=False, classes="info-card")
             yield Static("", id="display-configuration-notes", markup=False, classes="info-card")
             yield Static("CONFIGURATION & SOURCE FILES", classes="section-title")
+            with Horizontal(classes="buttons"):
+                yield Button("Save configuration", id="review-save-configuration")
+                yield Button("Export JSON…", id="review-export-configuration")
+                yield Button("Import JSON…", id="review-import-configuration")
+            yield Static("Save keeps a new local configuration. Export shares scientific settings only; import previews changes before approval. Local calibration stays separate.", markup=False)
             yield Label("Parameters used by this experiment")
             yield Static(
                 f"STUDY: {experiment.display_name} [{experiment.id}]\n"
@@ -2605,6 +2612,28 @@ class ReviewScreen(Screen):
             participant_id=self.request.participant_id, session_mode=self.request.session_mode,
             experiment=get_experiment(self.request.experiment_id), monitor_profile_id=self.request.monitor_profile_id,
             defaults=dict(self.request.experiment_values), review_return=self))
+
+    def apply_shared_configuration(self, saved, *, imported=False):
+        request, files, path = saved
+        previous_key = (self.request.participant_id, self.request.experiment_id, self.request.monitor_profile_id)
+        previous_mapping = dict(self.app.mapping_drafts.get(previous_key, {}))
+        key = (request.participant_id, request.experiment_id, request.monitor_profile_id)
+        self.app.config_drafts[key] = dict(request.experiment_values)
+        # Imported digital settings remain explicit; local mapping observations
+        # are retained, but must not replace the chosen background command.
+        self.app.mapping_drafts[key] = {"manual": True, "pending": False}
+        self.app.review_parameter_files[self.app.settings_key(request)] = files
+        for slot, selected in request.stimulus_snapshots.items():
+            self.app.stimulus_drafts[(*key, slot)] = (selected, path.parent/selected["file_identity"])
+        if imported:
+            review = ReviewScreen(request=request)
+            review.sharing_parent = (self, previous_mapping)
+            self.app.push_screen(review)
+        else:
+            self.request = request
+            self._refresh_parameter_table()
+            self._refresh_readiness()
+            self.query_one("#review-status", Static).update(f"Saved new local configuration: {path}. Existing saves are preserved.")
 
     def on_data_table_cell_highlighted(self,event):
         if event.data_table.id=="resolved-settings-table":
@@ -2919,6 +2948,22 @@ class ReviewScreen(Screen):
         if _handle_nav(self, event):
             return
         button_id = event.button.id
+        if button_id in {"review-save-configuration", "review-export-configuration", "review-import-configuration"}:
+            event.stop()
+            try:
+                self.app.verify_settings_current(self.request)
+                if button_id == "review-save-configuration":
+                    from ..config.sharing import make_document, save_local
+                    profile = self.app.monitor_profiles[self.request.monitor_profile_id]
+                    document = make_document(self.app.repo_root, self.request, profile)
+                    self.apply_shared_configuration(save_local(self.app.local_config_root, self.app.repo_root,
+                                                              document, self.request, profile))
+                else:
+                    from .configuration_sharing import ConfigurationSharingScreen
+                    self.app.push_screen(ConfigurationSharingScreen(self, importing=button_id == "review-import-configuration"))
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                self.query_one("#review-status", Static).update(str(exc))
+            return
         if button_id == "review-edit-inputs":
             event.stop()
             self._edit_experiment_inputs()
@@ -2976,6 +3021,14 @@ class ReviewScreen(Screen):
                 self.app.push_screen(CalibrationGuideScreen(
                     self.request, initial_stage=stage))
             elif button_id == "back":
+                if hasattr(self, "sharing_parent"):
+                    previous, mapping = self.sharing_parent
+                    prior = previous.request
+                    key = (prior.participant_id, prior.experiment_id, prior.monitor_profile_id)
+                    self.app.config_drafts[key] = dict(prior.experiment_values)
+                    self.app.mapping_drafts[key] = mapping
+                    for slot, selected in prior.stimulus_snapshots.items():
+                        self.app.stimulus_drafts[(*key, slot)] = (selected, previous._file_sources["stimuli"].get(slot))
                 self.app.pop_screen()
             elif button_id == "run-presentation-test":
                 from .presentation_testing import PresentationTestScreen
