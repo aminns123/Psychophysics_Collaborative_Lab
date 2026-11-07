@@ -763,7 +763,7 @@ public static class SourceMenu
             string choice=Answer();if(choice==null||choice.Trim()=="4")return 0;
             int result;
             try {
-                if(choice.Trim()=="1")result=Launch(root,new string[0]);
+                if(choice.Trim()=="1")result=Launch(root,new string[0],splash:true);
                 else if(choice.Trim()=="2")result=Check(root);
                 else if(choice.Trim()=="3")result=Workspace(root);
                 else {Console.WriteLine("Please choose 1, 2, 3 or 4.");continue;}
@@ -771,10 +771,11 @@ public static class SourceMenu
             if(result!=0)Console.WriteLine("The operation returned exit code "+result+". Choose 2 to check this installation. No experiment will be retried automatically.");
         }
     }
-    public static int Launch(string root,string[] args) {
+    public static int Launch(string root,string[] args,bool splash=false) {
         using(var lease=SourceRecovery.Acquire(root)) {
             var d=StartupRecovery.Diagnose(root);
             if(!d.healthy){Console.WriteLine(d.message+"\nChoose 2 - Check / Repair PsyCoLab. No installation was changed.");return 1;}
+            if(splash)StartupSplash.Show();
             return StartupRecovery.LaunchChecked(root,args,d);
         }
     }
@@ -814,6 +815,100 @@ public static class SourceMenu
             start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
             using(var child=Process.Start(start)){child.WaitForExit();return child.ExitCode;}
         }
+    }
+}
+
+// The source menu owns this short, best-effort console presentation.
+public static class StartupSplash
+{
+    const string Escape = "\x1b[";
+    const double Duration = 5.0;
+    const uint ProcessedInput = 0x1;
+    const uint ProcessedOutput = 0x1, WrapAtEndOfLine = 0x2, VirtualTerminalOutput = 0x4;
+    static readonly string[] Logo = {
+        "██████╗ ███████╗██╗   ██╗ ██████╗ ██████╗ ██╗      █████╗ ██████╗",
+        "██╔══██╗██╔════╝╚██╗ ██╔╝██╔════╝██╔═══██╗██║     ██╔══██╗██╔══██╗",
+        "██████╔╝███████╗ ╚████╔╝ ██║     ██║   ██║██║     ███████║██████╔╝",
+        "██╔═══╝ ╚════██║  ╚██╔╝  ██║     ██║   ██║██║     ██╔══██║██╔══██╗",
+        "██║     ███████║   ██║   ╚██████╗╚██████╔╝███████╗██║  ██║██████╔╝",
+        "╚═╝     ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝"
+    };
+
+    [DllImport("kernel32.dll")] static extern IntPtr GetStdHandle(int kind);
+    [DllImport("kernel32.dll")] static extern bool GetConsoleMode(IntPtr handle,out uint mode);
+    [DllImport("kernel32.dll")] static extern bool SetConsoleMode(IntPtr handle,uint mode);
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,ExactSpelling=true)]
+    static extern bool WriteConsoleW(IntPtr handle,string value,uint count,out uint written,IntPtr reserved);
+
+    static void Write(IntPtr output,string text) {
+        uint written;
+        if(!WriteConsoleW(output,text,(uint)text.Length,out written,IntPtr.Zero)||written!=text.Length)
+            throw new IOException("Could not draw the startup splash.");
+    }
+
+    static string Frame(int top,int left,int width,double progress) {
+        double spread=width*0.14;
+        double centre=-3*spread+progress*(width-1+6*spread);
+        var colours=new string[width];
+        for(int col=0;col<width;col++) {
+            double distance=(col-centre)/spread;
+            double glow=Math.Exp(-0.5*distance*distance);
+            colours[col]=Escape+"38;2;"+(int)(6+39*glow)+";"+(int)(99+156*glow)+";"+(int)(131+124*glow)+"m";
+        }
+        var frame=new StringBuilder();
+        for(int row=0;row<Logo.Length;row++) {
+            frame.Append(Escape).Append(top+row).Append(';').Append(left).Append('H');
+            string colour=null;
+            for(int col=0;col<Logo[row].Length;col++) {
+                char cell=Logo[row][col];
+                if(cell!=' '&&colours[col]!=colour)frame.Append(colour=colours[col]);
+                frame.Append(cell);
+            }
+        }
+        return frame.ToString();
+    }
+
+    public static void Show() {
+        try {
+            var output=GetStdHandle(-11);
+            var input=GetStdHandle(-10);
+            uint outputMode,inputMode;
+            // Redirected launches must leave scripted input and output alone.
+            if(!GetConsoleMode(output,out outputMode)||!GetConsoleMode(input,out inputMode))return;
+            int columns=Console.WindowWidth,rows=Console.WindowHeight;
+            int width=Logo.Max(line=>line.Length);
+            if(columns<=width||rows<=Logo.Length||
+                !SetConsoleMode(output,(outputMode|ProcessedOutput|VirtualTerminalOutput)&~WrapAtEndOfLine)) {
+                if(columns>"PsyCoLab".Length)Write(output,"PsyCoLab\r\n");
+                return;
+            }
+            bool entered=false,inputChanged=false;
+            bool cursorVisible=true;
+            try {
+                cursorVisible=Console.CursorVisible;
+                // Treat Ctrl+C as an ordinary skip key for this screen only.
+                inputChanged=SetConsoleMode(input,inputMode&~ProcessedInput);
+                if(!inputChanged)return;
+                entered=true;
+                Write(output,Escape+"?1049h"+Escape+"?25l"+Escape+"48;2;0;0;0m"+Escape+"2J");
+                int top=(rows-Logo.Length)/2+1,left=(columns-width)/2+1;
+                var timer=Stopwatch.StartNew();
+                while(timer.Elapsed.TotalSeconds<Duration) {
+                    if(Console.KeyAvailable){Console.ReadKey(true);break;}
+                    // Leave the screen if resized, keeping the title stationary.
+                    if(Console.WindowWidth!=columns||Console.WindowHeight!=rows)break;
+                    Write(output,Frame(top,left,width,timer.Elapsed.TotalSeconds/Duration));
+                    System.Threading.Thread.Sleep(33);
+                }
+            }finally {
+                try {
+                    if(entered)Write(output,Escape+"0m"+Escape+"?1049l"+Escape+(cursorVisible?"?25h":"?25l"));
+                }finally {
+                    if(inputChanged)SetConsoleMode(input,inputMode);
+                    SetConsoleMode(output,outputMode);
+                }
+            }
+        }catch(Exception) { /* An unavailable splash must never block launch. */ }
     }
 }
 

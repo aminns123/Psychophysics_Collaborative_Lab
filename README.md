@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/psycolab-logo.png" alt="PsyCoLab" width="900">
+</p>
+
 # PsyCoLab — Psychophysics Collaborative Lab
 
 **Supported platform: Windows 11, 64-bit Python 3.11.** Windows is the sole
@@ -22,8 +26,9 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 Double-click **PsyCoLab.bat**, the single Windows starting point. Its native menu
 works even when Python is missing:
 
-1. **Launch PsyCoLab** checks and opens the laboratory TUI. Closing the TUI returns
-   here; finishing an experiment stays inside the TUI.
+1. **Launch PsyCoLab** checks the installation, plays a five-second logo sweep,
+   and opens the laboratory TUI. Press a key to skip the sweep. Closing the TUI
+   returns here; finishing an experiment stays inside the TUI.
 2. **Check / Repair PsyCoLab** explains initial setup or a supported repair and asks
    before changing anything. For an older setup-record error, it preserves the
    old environment and prepares a verified replacement. Install 64-bit Python 3.11
