@@ -80,10 +80,12 @@ parameter_editor.open_parameter_file=lambda root,path,*args,**kwargs:configurati
 async def settle(app,pilot):
     for _ in range(100):
         await pilot.pause(.05)
+        if app.loading.busy:
+            await asyncio.wait_for(app.loading.foreground.wait(), timeout=15)
         screen=app.screen
         if screen.is_mounted and all(w.is_mounted for w in screen.query('*')):
             await pilot.pause(.05)
-            if app.screen is screen: return
+            if app.screen is screen and not app.loading.busy: return
     raise AssertionError('Interface did not settle')
 async def scenario():
     app=PsyCoLabSetupApp(repo_root=root,data_root=root.parent/'saved_data')

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 from dataclasses import replace
 from datetime import datetime
@@ -8,7 +9,7 @@ from pathlib import Path
 import traceback
 from typing import Any
 
-from textual import work
+from textual import events, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll, Vertical
 from .console import ConsoleScreen as Screen
@@ -24,6 +25,8 @@ from ..config.preflight import compatible, validate_setup
 from ..config.readiness import readiness_text
 from .editor import open_source
 from .authoring import AuthoringPanel
+from .loading import LoadingFeedback
+from .startup import StartupReveal, take_handoff
 from ..core.display_tests import TESTS, resolve_test
 from ..core.geometry_check import (
     GeometryCheckRequest,
@@ -1575,42 +1578,7 @@ class DataScreen(HubPage):
                 event.stop(); self._inspect("adaptive_session.json", "Saved staircase/adaptive state")
             elif event.button.id in {"analyse-threshold", "preview-figures"}:
                 event.stop()
-                from ..analysis.previews import create_staircase_preview
-                preview = None
-                if event.button.id == "preview-figures":
-                    preview = create_staircase_preview(
-                        data_root=self.app.data_root, run_directory=self._run_dir(),
-                    )
-                mode = str(self.query_one("#threshold-retention-mode", Select).value)
-                last_n = int(self.query_one("#threshold-last-n", Input).value) if mode == "count" else None
-                fraction = float(self.query_one("#threshold-fraction", Input).value) if mode == "fraction" else .80
-                column = str(self.query_one("#threshold-column", Select).value)
-                try:
-                    result = analyse_thresholds(
-                        data_root=self.app.data_root,
-                        run_directory=self._run_dir(),
-                        retain_fraction=fraction,
-                        last_n_reversals=last_n,
-                        reversal_value_column=column,
-                        create_plot=True,
-                        exploratory=True,
-                    )
-                except ValueError as exc:
-                    if preview is None or "No reversal observations" not in str(exc):
-                        raise
-                    status.update(
-                        "[yellow]Staircases plotted; no threshold estimate is possible yet.[/yellow]\n"
-                        f"Staircase image: {preview.plot_file}\nReason: {exc}"
-                    )
-                    return
-                plot_text = str(result.plot_file) if result.plot_file else "plot unavailable"
-                status.update(
-                    "[green]Exploratory derived figures created.[/green]\n"
-                    + (f"Staircase image: {preview.plot_file}\n" if preview else "")
-                    + f"THC plot: {plot_text}\n"
-                    + f"Derived condition table: {result.condition_table}\n"
-                    + f"Retention: {'last ' + str(last_n) + ' reversals' if last_n is not None else str(fraction) + ' fraction'}"
-                )
+                self.app.loading.run(self, self._generate_figures, event.button.id == "preview-figures")
             elif event.button.id in {"open-staircase-image", "open-threshold-image"}:
                 event.stop()
                 from ..analysis.previews import latest_staircase_plot, latest_threshold_plot
@@ -1623,6 +1591,43 @@ class DataScreen(HubPage):
                     raise ValueError("No saved PNG for this run. Choose Generate staircase + THC previews first.")
                 open_analysis_png(self.app.data_root, plot)
                 status.update(f"Opened derived figure: {plot}")
+        except Exception as exc:
+            status.update(f"[red]{exc}[/red]")
+
+
+    async def _generate_figures(self, with_preview):
+        status = self.query_one("#data-status", Static)
+        try:
+            root, run = self.app.data_root, self._run_dir()
+            mode = str(self.query_one("#threshold-retention-mode", Select).value)
+            last_n = int(self.query_one("#threshold-last-n", Input).value) if mode == "count" else None
+            fraction = float(self.query_one("#threshold-fraction", Input).value) if mode == "fraction" else .80
+            column = str(self.query_one("#threshold-column", Select).value)
+            preview = None
+            if with_preview:
+                from ..analysis.previews import create_staircase_preview
+                preview = await asyncio.to_thread(create_staircase_preview, data_root=root, run_directory=run)
+            try:
+                result = await asyncio.to_thread(
+                    analyse_thresholds, data_root=root, run_directory=run,
+                    retain_fraction=fraction, last_n_reversals=last_n, reversal_value_column=column,
+                    create_plot=True, exploratory=True,
+                )
+            except ValueError as exc:
+                if preview is None or "No reversal observations" not in str(exc):
+                    raise
+                status.update(
+                    "[yellow]Staircases plotted; no threshold estimate is possible yet.[/yellow]\n"
+                    f"Staircase image: {preview.plot_file}\nReason: {exc}"
+                )
+                return
+            status.update(
+                "[green]Exploratory derived figures created.[/green]\n"
+                + (f"Staircase image: {preview.plot_file}\n" if preview else "")
+                + f"THC plot: {result.plot_file or 'plot unavailable'}\n"
+                + f"Derived condition table: {result.condition_table}\n"
+                + f"Retention: {'last ' + str(last_n) + ' reversals' if last_n is not None else str(fraction) + ' fraction'}"
+            )
         except Exception as exc:
             status.update(f"[red]{exc}[/red]")
 
@@ -2229,6 +2234,18 @@ class _ExperimentInputsScreen(Screen):
             self.app.review_parameter_files[self.app.settings_key(request)] = self._parameter_files()
             self.app.push_screen(ReviewScreen(request=request, draft_error=draft_error))
             return
+        self.app.loading.run(self, self._apply_to_review)
+
+    def _validate_review_settings(self, request, profile):
+        from .settings_review import describe_settings
+        request = validate_setup(request, self.experiment, profile, mode="configuration")
+        self.app.verify_loaded_sources(self.experiment, request.stimulus_snapshots)
+        description = describe_settings(self.experiment, request.experiment_values,
+                                        request.stimulus_snapshots, profile=profile)
+        return request, description
+
+    async def _apply_to_review(self):
+        status = self.query_one("#config-status", Static)
         try:
             values = self._collect()
             request = SetupRequest(
@@ -2242,14 +2259,11 @@ class _ExperimentInputsScreen(Screen):
                 show_response_instructions=(self.review_return.request.show_response_instructions
                                             if self.review_return is not None else True),
             )
-            request = validate_setup(request, self.experiment, self.app.monitor_profiles[self.monitor_profile_id], mode="configuration")
-            self.app.verify_loaded_sources(self.experiment, self.stimulus_snapshots)
             # Planning errors belong in the editable configuration screen, before
             # Review mounting or handing control to physical acquisition.
-            from .settings_review import describe_settings
-            description = describe_settings(self.experiment, request.experiment_values,
-                              request.stimulus_snapshots,
-                              profile=self.app.monitor_profiles[self.monitor_profile_id])
+            request, description = await asyncio.to_thread(
+                self._validate_review_settings, request, self.app.monitor_profiles[self.monitor_profile_id]
+            )
             if getattr(self,"parameter_json_path",None) and hasattr(self,"parameter_json_hash"):
                 from .parameter_files import replace_reviewed_json, parameter_info
                 self.parameter_json_hash = replace_reviewed_json(self.parameter_json_path,
@@ -2948,19 +2962,7 @@ class ReviewScreen(Screen):
         button_id = event.button.id
         if button_id in {"review-save-configuration", "review-export-configuration", "review-import-configuration"}:
             event.stop()
-            try:
-                self.app.verify_settings_current(self.request)
-                if button_id == "review-save-configuration":
-                    from ..config.sharing import make_document, save_local
-                    profile = self.app.monitor_profiles[self.request.monitor_profile_id]
-                    document = make_document(self.app.repo_root, self.request, profile)
-                    self.apply_shared_configuration(save_local(self.app.local_config_root, self.app.repo_root,
-                                                              document, self.request, profile))
-                else:
-                    from .configuration_sharing import ConfigurationSharingScreen
-                    self.app.push_screen(ConfigurationSharingScreen(self, importing=button_id == "review-import-configuration"))
-            except (ValueError, OSError, KeyError, TypeError) as exc:
-                self.query_one("#review-status", Static).update(str(exc))
+            self.app.loading.run(self, self._share_configuration, button_id)
             return
         if button_id == "review-edit-inputs":
             event.stop()
@@ -3001,11 +3003,31 @@ class ReviewScreen(Screen):
         if button_id not in {"back", "run", "run-simulation", "run-presentation-test", "run-researcher-override", "review-calibration-guide"}:
             return
         event.stop()
+        if button_id in {"run", "run-simulation", "run-presentation-test", "run-researcher-override"}:
+            self.app.loading.run(self, self._prepare_run, button_id)
+        else:
+            self._navigate_from_review(button_id)
+
+    def _save_configuration(self, request, profile):
+        from ..config.sharing import make_document, save_local
+        document = make_document(self.app.repo_root, request, profile)
+        return save_local(self.app.local_config_root, self.app.repo_root, document, request, profile)
+
+    async def _share_configuration(self, button_id):
         try:
-            if button_id in {"run", "run-simulation", "run-presentation-test", "run-researcher-override"}:
-                if self.configuration_error:
-                    raise ValueError(self.configuration_error)
-                self.app.verify_settings_current(self.request)
+            await asyncio.to_thread(self.app.verify_settings_current, self.request)
+            if button_id == "review-save-configuration":
+                profile = self.app.monitor_profiles[self.request.monitor_profile_id]
+                saved = await asyncio.to_thread(self._save_configuration, self.request, profile)
+                self.apply_shared_configuration(saved)
+            else:
+                from .configuration_sharing import ConfigurationSharingScreen
+                self.app.push_screen(ConfigurationSharingScreen(self, importing=button_id == "review-import-configuration"))
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            self.query_one("#review-status", Static).update(str(exc))
+
+    def _navigate_from_review(self, button_id):
+        try:
             if button_id == "review-calibration-guide":
                 from .calibration_guide import CalibrationGuideScreen
                 from ..config.human_readiness import next_human_requirement
@@ -3028,18 +3050,32 @@ class ReviewScreen(Screen):
                     for slot, selected in prior.stimulus_snapshots.items():
                         self.app.stimulus_drafts[(*key, slot)] = (selected, previous._file_sources["stimuli"].get(slot))
                 self.app.pop_screen()
-            elif button_id == "run-presentation-test":
+        except Exception as exc:
+            self._run_blocked(exc, button_id)
+
+    def _check_run_settings(self, request, button_id):
+        self.app.verify_settings_current(request)
+        if button_id == "run-presentation-test":
+            return None
+        current = load_monitor_profiles(self.app.repo_root)[request.monitor_profile_id]
+        if button_id in {"run", "run-simulation"}:
+            validate_setup(request, get_experiment(request.experiment_id), current,
+                           mode="simulation" if button_id == "run-simulation" else "human")
+        return current
+
+    async def _prepare_run(self, button_id):
+        try:
+            if self.configuration_error:
+                raise ValueError(self.configuration_error)
+            current = await asyncio.to_thread(self._check_run_settings, self.request, button_id)
+            if button_id == "run-presentation-test":
                 from .presentation_testing import PresentationTestScreen
                 self.app.push_screen(PresentationTestScreen(self.request))
             elif button_id == "run-researcher-override":
                 from .researcher_override import ResearcherOverrideScreen
-                current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
                 self.app.push_screen(ResearcherOverrideScreen(
                     self.request, get_experiment(self.request.experiment_id), current))
             else:
-                spec = get_experiment(self.request.experiment_id)
-                current = load_monitor_profiles(self.app.repo_root)[self.request.monitor_profile_id]
-                validate_setup(self.request, spec, current, mode="simulation" if button_id == "run-simulation" else "human")
                 if button_id == "run-simulation":
                     from .unified_run import VirtualObserverOptionsScreen
                     from simulations.scenarios import list_scenarios
@@ -3060,11 +3096,14 @@ class ReviewScreen(Screen):
                     preflight_fullscreen_display(current)
                     self.app.exit(self.request)
         except Exception as exc:
-            self._refresh_readiness()
-            self.query_one("#review-status", Static).update("Run not started. " + (str(exc) if "\n" not in str(exc) else "See Human Experiment Readiness for the outstanding requirements."))
-            self.query_one("#readiness-technical", Static).update(str(exc))
-            if not isinstance(exc, (ValueError, KeyError)):
-                _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
+            self._run_blocked(exc, button_id)
+
+    def _run_blocked(self, exc, button_id):
+        self._refresh_readiness()
+        self.query_one("#review-status", Static).update("Run not started. " + (str(exc) if "\n" not in str(exc) else "See Human Experiment Readiness for the outstanding requirements."))
+        self.query_one("#readiness-technical", Static).update(str(exc))
+        if not isinstance(exc, (ValueError, KeyError)):
+            _report_ui_exception(self.app, exc, phase=f"tui_review_{button_id}")
 
 
 class PsyCoLabSetupApp(App):
@@ -3082,8 +3121,11 @@ class PsyCoLabSetupApp(App):
                  simulation_summary: str | None = None,
                  geometry_summary: str | None = None, include_historical: bool = False,
                  refresh_state: dict | None = None,
-                 session_state: dict | None = None, run_outcome: dict | None = None) -> None:
-        super().__init__()
+                 session_state: dict | None = None, run_outcome: dict | None = None,
+                 driver_class=None, reveal_startup: bool = False) -> None:
+        super().__init__(driver_class=driver_class)
+        self._startup_reveal = StartupReveal() if reveal_startup else None
+        self.loading = LoadingFeedback(self)
         from textual.theme import Theme
         self.register_theme(Theme(
             name="laboratory", primary="#cccccc", secondary="#aaaaaa",
@@ -3357,6 +3399,7 @@ class PsyCoLabSetupApp(App):
     async def on_mount(self) -> None:
         from .console import install_console
         await install_console(self.screen)
+        self.set_interval(self.loading.POLL_INTERVAL, self.loading.update)
         self._refresh_experiment_context()
         self._refresh_run_intent()
         if self.session_state:
@@ -3370,6 +3413,18 @@ class PsyCoLabSetupApp(App):
             self.call_after_refresh(self._restore_refreshed_setup)
         elif self.geometry_summary:
             self.call_after_refresh(self._restore_diagnostic_review)
+        elif self._startup_reveal is not None:
+            await self._startup_reveal.prepare(self)
+
+    async def on_event(self, event: events.Event) -> None:
+        if isinstance(event, (events.InputEvent, events.Paste)) and not event.is_forwarded:
+            if self._startup_reveal is not None and self._startup_reveal.active:
+                if isinstance(event, events.Key):
+                    self._startup_reveal.finish()
+                return
+            if self.loading.busy:
+                return
+        await super().on_event(event)
 
     BINDINGS = [("f5", "refresh_files", "Refresh files"),
                 ("f6", "focus_navigation", "Sidebar")]
@@ -3685,9 +3740,11 @@ def run_setup_tui(*, repo_root: Path, data_root: Path,
                   refresh_state: dict | None = None,
                   session_state: dict | None = None,
                   run_outcome: dict | None = None) -> SetupRequest | GeometryCheckRequest | None:
+    driver_class, reveal = take_handoff()
     app = PsyCoLabSetupApp(repo_root=repo_root, data_root=data_root,
                            simulation_summary=simulation_summary,
                            geometry_summary=geometry_summary, refresh_state=refresh_state,
                            session_state=session_state, run_outcome=run_outcome,
+                           driver_class=driver_class, reveal_startup=reveal,
                            include_historical=bool((refresh_state or session_state or {}).get("include_historical")))
     return app.run()
