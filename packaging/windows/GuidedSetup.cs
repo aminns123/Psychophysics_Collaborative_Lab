@@ -826,8 +826,10 @@ public static class SourceMenu
 public sealed class StartupSplash : IDisposable
 {
     const string Escape = "\x1b[";
-    const double SweepSeconds = 5.0, DockSeconds = 2.5;
+    const double FadeSeconds = 2.1, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
+    // The logo's PSY, CO and LAB groups begin at columns 0, 25 and 42.
+    const int CoStart = 25, LabStart = 42;
     const string Brand = "PsyCoLab", Cyan = Escape+"38;2;6;99;131m";
     const uint ProcessedInput = 0x1, QuickEdit = 0x40, ExtendedInput = 0x80;
     const uint ProcessedOutput = 0x1, WrapAtEndOfLine = 0x2, VirtualTerminalOutput = 0x4;
@@ -861,15 +863,32 @@ public sealed class StartupSplash : IDisposable
             throw new IOException("Could not draw the startup splash.");
     }
 
-    static string Frame(int top,int left,int width,double progress) {
-        double spread=width*0.14;
-        double centre=-3*spread+progress*(width-1+6*spread);
-        var colours=new string[width];
-        for(int col=0;col<width;col++) {
+    static string FadeFrame(int top,int left,double progress) {
+        var shades=new string[3];
+        for(int group=0;group<shades.Length;group++) {
+            double stage=Math.Max(0,Math.Min(1,progress*shades.Length-group));
+            double level=stage*stage*(3-2*stage);
+            shades[group]=Escape+"38;2;"+(int)(6*level)+";"+(int)(99*level)+";"+(int)(131*level)+"m";
+        }
+        var colours=new string[LogoWidth];
+        for(int col=0;col<LogoWidth;col++)
+            colours[col]=shades[col<CoStart?0:col<LabStart?1:2];
+        return Frame(top,left,colours);
+    }
+
+    static string SweepFrame(int top,int left,double progress) {
+        double spread=LogoWidth*0.14;
+        double centre=-3*spread+progress*(LogoWidth-1+6*spread);
+        var colours=new string[LogoWidth];
+        for(int col=0;col<LogoWidth;col++) {
             double distance=(col-centre)/spread;
             double glow=Math.Exp(-0.5*distance*distance);
             colours[col]=Escape+"38;2;"+(int)(6+39*glow)+";"+(int)(99+156*glow)+";"+(int)(131+124*glow)+"m";
         }
+        return Frame(top,left,colours);
+    }
+
+    static string Frame(int top,int left,string[] colours) {
         var frame=new StringBuilder();
         for(int row=0;row<Logo.Length;row++) {
             frame.Append(Escape).Append(top+row).Append(';').Append(left).Append('H');
@@ -911,9 +930,15 @@ public sealed class StartupSplash : IDisposable
     bool Animate(int columns,int rows) {
         int top=(rows-Logo.Length)/2+1,left=(columns-LogoWidth)/2+1;
         var timer=Stopwatch.StartNew();
+        while(timer.Elapsed.TotalSeconds<FadeSeconds) {
+            if(Interrupted(columns,rows))return false;
+            Write(output,FadeFrame(top,left,timer.Elapsed.TotalSeconds/FadeSeconds));
+            System.Threading.Thread.Sleep(FrameMilliseconds);
+        }
+        timer.Restart();
         while(timer.Elapsed.TotalSeconds<SweepSeconds) {
             if(Interrupted(columns,rows))return false;
-            Write(output,Frame(top,left,LogoWidth,timer.Elapsed.TotalSeconds/SweepSeconds));
+            Write(output,SweepFrame(top,left,timer.Elapsed.TotalSeconds/SweepSeconds));
             System.Threading.Thread.Sleep(FrameMilliseconds);
         }
         string[][] sizes={Logo,ReducedLogo(49,5),ReducedLogo(33,3),ReducedLogo(23,2),new[]{Brand}};
