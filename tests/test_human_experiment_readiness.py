@@ -6,13 +6,15 @@ from types import SimpleNamespace
 import pytest
 from textual.widgets import Button, Checkbox, Input, Select, Static
 from test_calibration_review_completion import ROOT, fixture_profile, values, revisions
+from test_configure_review_separation import independent_lab
 from psychophysics_lab.config.local import config_root, save_profile
 from psychophysics_lab.config.monitor import load_monitor_profiles
 from psychophysics_lab.config.models import SetupRequest
-from psychophysics_lab.config.preflight import validate_setup
+from psychophysics_lab.config.preflight import qualification_checks, validate_setup
 from psychophysics_lab.config.human_readiness import experiment_readiness
 from psychophysics_lab.config.calibration_review import qualify_experiment
 from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
+from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentParametersScreen, DisplayCheckScreen
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
@@ -20,6 +22,110 @@ from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, 
 
 def request(p, v=None):
     return validate_setup(SetupRequest('fixture_subject','new',CSF_SPEC.id,p.id,v or values()),CSF_SPEC,p,mode='configuration')
+
+
+@pytest.mark.parametrize("identity,requires_photometry", [
+    ("contrast_sensitivity", True),
+    ("orientation_task", False),
+    ("auditlab__alternating_flash", False),
+])
+def test_calibration_stage_requirements_follow_the_reviewed_study(
+        tmp_path, independent_lab, identity, requires_photometry):
+    profile = fixture_profile()
+    spec = get_experiment(identity)
+    reviewed = validate_setup(
+        SetupRequest("fixture_subject", "new", identity, profile.id, spec.field_defaults()),
+        spec, profile, mode="configuration")
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"data")
+        async with app.run_test(size=(120, 36)) as pilot:
+            app.query_one("#nav-display", Button).press()
+            await pilot.pause()
+            standalone = app.screen
+            assert isinstance(standalone, DisplayCheckScreen)
+            assert standalone.query_one("#cal-stage-luminance", Button).variant == "warning"
+            app.pop_screen()
+            await pilot.pause()
+            review = ReviewScreen(request=reviewed)
+            await app.push_screen(review)
+            await pilot.pause()
+            for key in ("luminance", "timing"):
+                row = next(item for item in review.readiness_report["requirements"] if item["key"] == key)
+                assert row["required"] == requires_photometry
+                assert row["passed"] != requires_photometry
+            review.resolve_requirement("setup")
+            await pilot.pause()
+            page = app.screen
+            assert isinstance(page, DisplayCheckScreen)
+            for key in ("luminance", "timing"):
+                button = page.query_one("#cal-stage-" + key, Button)
+                assert button.variant == ("warning" if requires_photometry else "default")
+                assert ("Required" if requires_photometry else "Optional") in str(button.tooltip)
+            assert spec.display_name in str(page.query_one("#calibration-stage-summary", Static).render())
+            page.query_one("#calibration-return", Button).press()
+            await pilot.pause()
+            assert app.screen is review
+
+    asyncio.run(scenario())
+    assert load_monitor_profiles(ROOT)[profile.id] == profile
+
+
+def test_qualification_uses_selected_stimulus_requirements(tmp_path, monkeypatch, independent_lab):
+    from psychophysics_lab.config.stimulus_parameters import document_for, snapshot
+    from psychophysics_lab.stimuli.registry import _REGISTRY, get_stimulus
+
+    profile = fixture_profile()
+    spec = get_experiment("auditlab__alternating_flash")
+    profile = save_profile(config_root(ROOT), replace(profile, geometry_status="verified"),
+                           expected_revision=profile.revision)
+    alternate = get_stimulus("new_probe_vertical_line")
+    alternate = replace(alternate, calibration_requirements=("geometry", "luminance"))
+    monkeypatch.setitem(_REGISTRY, alternate.id, alternate)
+    assert all(row["key"] != "luminance" for row in qualification_checks(spec, profile))
+    reviewed = validate_setup(
+        SetupRequest("fixture_subject", "new", spec.id, profile.id, spec.field_defaults(),
+                     stimulus_snapshots={"target": snapshot(document_for(alternate), file_identity="defaults")}),
+        spec, profile, mode="configuration")
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"data")
+        async with app.run_test(size=(120, 36)) as pilot:
+            review = ReviewScreen(request=reviewed)
+            await app.push_screen(review)
+            await pilot.pause()
+            assert any(row["key"] == "luminance" for row in review.readiness_report["blockers"])
+            review.resolve_requirement("qualification")
+            await pilot.pause()
+            qualification = app.screen
+            assert isinstance(qualification, ExperimentQualificationScreen)
+            assert qualification.query_one("#qualification-save", Button).disabled
+            assert qualification.query_one("#qualification-resolve-luminance", Button).display
+            selector = qualification.query_one("#qualification-experiment", Select)
+            selector.value = "orientation_task"
+            await pilot.pause()
+            assert not qualification.query_one("#qualification-save", Button).disabled
+            assert not qualification.query_one("#qualification-resolve-luminance", Button).display
+            selector.value = spec.id
+            await pilot.pause()
+            assert qualification.query_one("#qualification-save", Button).disabled
+            qualification.query_one("#qualification-back", Button).press()
+            await pilot.pause()
+            review.resolve_requirement("setup")
+            await pilot.pause()
+            page = app.screen
+            assert isinstance(page, DisplayCheckScreen)
+            assert "Required" in str(page.query_one("#cal-stage-luminance", Button).tooltip)
+            page.query_one("#review-qualification", Button).press()
+            await pilot.pause()
+            qualification = app.screen
+            assert isinstance(qualification, ExperimentQualificationScreen)
+            assert qualification.query_one("#qualification-experiment", Select).value == spec.id
+            assert qualification.query_one("#qualification-save", Button).disabled
+            assert qualification.query_one("#qualification-resolve-luminance", Button).display
+
+    asyncio.run(scenario())
+    assert load_monitor_profiles(ROOT)[profile.id] == profile
 
 
 @pytest.mark.parametrize("background,expected",[(.1,.2),(.25,.5),(.5,1.),(.75,.5),(.9,.2)])
@@ -198,6 +304,8 @@ def test_fullscreen_diagnostic_restart_restores_calibration_then_review(tmp_path
         async with restart.run_test() as pilot:
             await pilot.pause()
             assert isinstance(restart.screen,DisplayCheckScreen)
+            assert CSF_SPEC.display_name in str(restart.screen.query_one('#calibration-stage-summary',Static).render())
+            assert 'Required' in str(restart.screen.query_one('#cal-stage-luminance',Button).tooltip)
             restart.screen.query_one('#calibration-return',Button).press(); await pilot.pause()
             assert isinstance(restart.screen,ReviewScreen)
             assert restart.screen.request==reviewed

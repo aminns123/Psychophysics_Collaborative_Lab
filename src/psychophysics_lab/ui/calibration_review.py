@@ -6,7 +6,7 @@ from textual.widgets import Button, Checkbox, Input, Select, Static, Label, Coll
 from .checkbox import ExplicitCheckbox as Checkbox
 
 from ..config.calibration_review import save_verification, save_one_verification, qualify_experiment
-from ..config.preflight import qualification_checks
+from ..config.preflight import effective_requirements, qualification_checks
 from psychophysics_lab.experiments._internal.registry import list_experiments, get_experiment
 
 
@@ -204,11 +204,12 @@ class PhysicalVerificationScreen(Screen):
 
 
 class ExperimentQualificationScreen(Screen):
-    def __init__(self,profile,*,experiment_id=None,values=None):
+    def __init__(self,profile,*,experiment_id=None,values=None,stimulus_snapshots=None):
         super().__init__()
         self.profile=profile
         self.experiment_id=experiment_id
         self.values=values
+        self.stimulus_snapshots=stimulus_snapshots
 
     def compose_content(self) -> ComposeResult:
         with Vertical(id='fixed-shell'):
@@ -229,6 +230,8 @@ class ExperimentQualificationScreen(Screen):
 
     def _spec_values(self):
         spec=get_experiment(str(self.query_one('#qualification-experiment',Select).value))
+        if spec.id == self.experiment_id:
+            spec = effective_requirements(spec, self.stimulus_snapshots)
         # Use an actual existing draft, never invent scientific parameter values.
         candidates=[values for (_,experiment,profile),values in self.app.config_drafts.items() if experiment==spec.id and profile==self.profile.id]
         return spec,self.values if spec.id==self.experiment_id and self.values is not None else candidates[-1] if candidates else None
@@ -242,8 +245,9 @@ class ExperimentQualificationScreen(Screen):
             text+='\n\nNo experiment parameter draft is available. Qualification covers declared hardware requirements; configure and Review the experiment before acquisition.'
         if spec.id in self.profile.qualified_experiments:
             text+='\n\nQualification is already declared; unchanged Save will not create a revision.'
+        checked = {item.get("key") for item in checks}
         for key in ('binding','geometry','luminance','timing','contrast'):
-            self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in spec.calibration_requirements or key=='contrast' and spec.id=='legacy_contrast_sensitivity'
+            self.query_one('#qualification-resolve-'+key,Button).display=key=='binding' or key in checked or key=='contrast' and spec.id=='legacy_contrast_sensitivity'
         self.query_one('#qualification-checks',Static).update(text)
         failures=[item for item in checks if not item['passed']]
         self.query_one('#qualification-overview',Static).update(
