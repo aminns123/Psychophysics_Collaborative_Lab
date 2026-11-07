@@ -8,7 +8,7 @@
 | --- | --- |
 | **Test an experiment** | Use the connected display and valid geometry/digital intensity bounds. Existing **test/synthetic** luminance pairs may be used for uncalibrated presentations. A photometer and human-acquisition qualification are **not** required. |
 | **Simulation** | Virtual observer. No display photometer required. |
-| **Human acquisition** | Physically applicable monitor binding and geometry, genuine calibrated photometry, any applicable independent timing evidence, explicit experiment qualification, and final preflight. Test values can **never** be declared physically measured. |
+| **Human acquisition** | The selected experiment and stimuli determine the required display binding and physical checks. Experiment qualification and final preflight still apply. Test values cannot count as physical measurements. |
 
 Select the purpose under **Experiment**. You may enter Calibration and return without making new measurements.
 
@@ -34,7 +34,9 @@ All reading, editing and acceptance controls are in **Calibrate → Luminance �
 - If there are unsaved rows, metadata edits or typed readings, first save the changes or choose **Discard draft; keep saved values** on the Luminance page. Acceptance never silently discards them.
 - **Saved values — no unsaved dataset changes** means no Save is needed. Acceptance does not rewrite the dataset, create a revision, change its provenance, physically verify it or qualify human acquisition.
 
-Two or more saved intensity points already complete the green Luminance stage. **TEST DATA — NOT PHYSICALLY VERIFIED** remains correct after acceptance; green records setup completion, not physical certification.
+Two or more saved intensity points complete the luminance recording step.
+Saved readings awaiting physical verification appear amber where the check is
+required. **TEST DATA — NOT PHYSICALLY VERIFIED** remains correct after acceptance.
 
 On versions without the acceptance button, **Discard draft / Back → 5 · Output precision** (or **7 · Review**) keeps saved values and discards only unsaved edits. The older “Saved + unsaved draft” heading appears even when the draft is unchanged.
 
@@ -65,7 +67,11 @@ If old and new physical settings already agree, you do **not** need replacement:
 
 ## Wording and buttons
 
-**Green stage** = saved stage evidence. **Verified** = a separate, independently reviewed physical laboratory declaration. **Human ready** = the experiment-specific qualification and all final preflight checks passed. These are **different outcomes**.
+Opened on its own, **Calibrate** shows display setup evidence. The calibration
+guide and the physical stages opened from **Experiment Review** use the
+reviewed experiment and selected stimuli. A grey stage is optional for that
+selection, and the saved display evidence remains available. Green indicates
+the stated check or setup step is satisfied. Final acquisition checks still apply.
 
 If something fails, the step should name the missing value or evidence and leave you on the same page. Technical JSON paths, recovery history and raw metadata belong under **Advanced**, not in the default sequence.
 
