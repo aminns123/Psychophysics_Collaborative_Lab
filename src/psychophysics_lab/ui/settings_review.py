@@ -475,8 +475,21 @@ def probe_intensity_rows(spec, values, *, conditions=None):
     Read the experiment's own maximum and shared update arithmetic. No separate
     scientific bounds, adaptation rule or participant-response prediction.
     """
-    if not ("starting_probe_intensity" in values and "background_intensity" in values
-            and spec.migrate_values is not None):
+    from ..experiments._internal.parameter_compatibility import migrate_probe_intensity
+
+    steps = {"logUNIT_DW", "logUNIT_UP", "n_down", "n_up", "initial_one_down_limit"}
+    required = steps | {"starting_probe_intensity", "background_intensity"}
+    selection = spec.adaptive
+    if (spec.migrate_values is not migrate_probe_intensity or selection is None
+            or selection.step_parameterization != "log10_display_contrast"
+            or not steps.issubset(selection.controls)
+            or not required <= values.keys()
+            or spec.procedure is None):
+        return []
+    module = sys.modules.get(spec.procedure.__module__)
+    make_conditions = getattr(module, "make_conditions", None)
+    maximum_contrast = getattr(module, "maximum_contrast", None)
+    if not callable(make_conditions) or not callable(maximum_contrast):
         return []
     import math
     from ..adaptive.steps import bounded_log_step
@@ -489,12 +502,11 @@ def probe_intensity_rows(spec, values, *, conditions=None):
         raise ValueError("Use finite 0..1 intensities (probe at or above background, background below 1) and positive log steps.")
     difference = intensity - background
     adaptive = values.get("contrast_method", "adaptive") == "adaptive"
-    module = sys.modules[spec.procedure.__module__]
     try:
         # Some study conditions are still incomplete while typing. The shared
         # minimum condition fields can nevertheless resolve the exact ceiling.
-        conditions = conditions or module.make_conditions(values)
-        bounds = [module.maximum_contrast(values, condition) for condition in conditions]
+        conditions = conditions or make_conditions(values)
+        bounds = [maximum_contrast(values, condition) for condition in conditions]
     except (ValueError, TypeError, KeyError):
         bounds = []
     digital_note = "Digital commands; not measured luminance or optical contrast"
