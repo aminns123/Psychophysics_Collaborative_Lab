@@ -826,7 +826,7 @@ public static class SourceMenu
 public sealed class StartupSplash : IDisposable
 {
     const string Escape = "\x1b[";
-    const double PsyFadeSeconds = 10.0, GroupFadeSeconds = 0.7;
+    const double PsyFadeSeconds = 5.0, GroupFadeSeconds = 0.7;
     const double FadeSeconds = PsyFadeSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
     // The logo's PSY, CO and LAB groups begin at columns 0, 25 and 42.
