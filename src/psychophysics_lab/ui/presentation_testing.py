@@ -1,5 +1,7 @@
 """Confirm an isolated physical test, without changing study parameters."""
 
+import asyncio
+
 from textual.screen import ModalScreen
 from textual.containers import Vertical
 from textual.widgets import Static, Checkbox, Button, Input, Label
@@ -45,27 +47,25 @@ class PresentationTestScreen(ModalScreen):
         if event.button.id == "presentation-cancel":
             self.app.pop_screen()
         elif event.button.id == "presentation-launch":
-            try:
-                if not self.query_one("#presentation-ack", Checkbox).value:
-                    raise ValueError("Select Save this as test data to continue.")
-                from ..core.presentation_testing import (
-                    PresentationTestRequest,
-                    validate_presentation,
-                )
-                from ..config.monitor import load_monitor_profiles
-                from ..experiments._internal.registry import get_experiment
+            self.app.loading.run(self, self._prepare_presentation)
 
-                raw = self.query_one("#presentation-trial-limit", Input).value.strip()
-                action = PresentationTestRequest(
-                    self.request, int(raw) if raw else None
-                )
-                profile = load_monitor_profiles(self.app.repo_root)[
-                    self.request.monitor_profile_id
-                ]
-                validate_presentation(
-                    self.request, get_experiment(self.request.experiment_id), profile
-                )
-                self.app.verify_settings_current(self.request)
-                self.app.exit(action)
-            except (ValueError, OSError) as exc:
-                self.query_one("#presentation-feedback", Static).update(str(exc))
+    async def _prepare_presentation(self):
+        try:
+            if not self.query_one("#presentation-ack", Checkbox).value:
+                raise ValueError("Select Save this as test data to continue.")
+            from ..core.presentation_testing import PresentationTestRequest, validate_presentation
+            from ..config.monitor import load_monitor_profiles
+            from ..experiments._internal.registry import get_experiment
+
+            raw = self.query_one("#presentation-trial-limit", Input).value.strip()
+            action = PresentationTestRequest(self.request, int(raw) if raw else None)
+            profiles = await asyncio.to_thread(load_monitor_profiles, self.app.repo_root)
+            # Fullscreen and graphics-driver checks stay on the existing UI thread.
+            validate_presentation(
+                self.request, get_experiment(self.request.experiment_id),
+                profiles[self.request.monitor_profile_id],
+            )
+            await asyncio.to_thread(self.app.verify_settings_current, self.request)
+            self.app.exit(action)
+        except (ValueError, OSError) as exc:
+            self.query_one("#presentation-feedback", Static).update(str(exc))

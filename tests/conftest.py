@@ -8,11 +8,12 @@ def isolated_local_configuration(tmp_path_factory, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def wait_for_textual_mounts(monkeypatch):
-    """Pilot idle can precede mounting a newly pushed large scenario screen.
+    """Pilot idle can precede a foreground worker or a new screen finishing.
 
     Wait on real widget state, not a forced value or a fixed machine-speed
     assumption. This changes only the test driver, never application timing.
     """
+    import asyncio
     from textual.pilot import Pilot
     original_pause = Pilot.pause
 
@@ -21,6 +22,9 @@ def wait_for_textual_mounts(monkeypatch):
         for _ in range(100):
             if not pilot.app.screen_stack:
                 return
+            loading = getattr(pilot.app, "loading", None)
+            if loading is not None and loading.busy:
+                await asyncio.wait_for(loading.foreground.wait(), timeout=15)
             screen = pilot.app.screen
             widgets = list(screen.query("*"))
             if screen.is_mounted and all(widget.is_mounted for widget in widgets):
@@ -30,7 +34,7 @@ def wait_for_textual_mounts(monkeypatch):
                 # before returning to an assertion about its values/layout.
                 if not pilot.app.screen_stack:
                     return
-                if pilot.app.screen is screen and screen.is_mounted and all(
+                if (loading is None or not loading.busy) and pilot.app.screen is screen and screen.is_mounted and all(
                     widget.is_mounted for widget in screen.query("*")
                 ):
                     return

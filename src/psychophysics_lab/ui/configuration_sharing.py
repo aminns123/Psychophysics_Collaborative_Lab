@@ -1,4 +1,5 @@
 """Review-adjacent file sharing; scientific controls remain in existing editors."""
+import asyncio
 from pathlib import Path
 
 from rich.text import Text
@@ -126,7 +127,7 @@ class ConfigurationSharingScreen(Screen):
                 path = Path(path)/(self.original.experiment_id + "_configuration.json")
             self.query_one("#configuration-path", Input).value = str(path)
 
-    def _preview(self, document, profile):
+    def _prepare_preview(self, document, profile):
         candidate, warnings = validate_portable(document, self.app.repo_root, self.original, profile)
         from ..experiments._internal.registry import get_experiment
         from ..stimuli.registry import get_stimulus
@@ -142,6 +143,9 @@ class ConfigurationSharingScreen(Screen):
             for field in get_stimulus(data["stimulus_id"]).parameters:
                 rows.append((slot + ": " + field.display_label, old.get("parameters", {}).get(field.key, "—"), data["parameters"][field.key]))
         rows.append(("Show response-key guidance", self.original.show_response_instructions, candidate.show_response_instructions))
+        return spec, rows, warnings, (document, digest(document))
+
+    def _show_preview(self, spec, rows, warnings, preview):
         table = self.query_one("#configuration-differences", DataTable)
         table.clear(columns=True)
         for label, width in (("Setting", 26), ("Current", 16), ("Imported", 16), ("Difference", 10)):
@@ -153,7 +157,7 @@ class ConfigurationSharingScreen(Screen):
             f"{spec.display_name} [{spec.id}]: {len(rows)} settings; {changed} differences. "
             "Approve saves a new local copy and opens Review. Cancel keeps your current configuration.\n"
             + "\n".join(warnings) + "\n" + CALIBRATION_NOTICE)
-        self.preview = (document, digest(document))
+        self.preview = preview
         self.query_one("#configuration-approve", Button).disabled = False
 
     def on_button_pressed(self, event):
@@ -169,29 +173,41 @@ class ConfigurationSharingScreen(Screen):
             self.app.push_screen(ConfigurationFilePicker(start, folders=not self.importing,
                                                          saved_only=name == "configuration-saved"), self._chosen)
             return
+        if name in {"configuration-export", "configuration-preview", "configuration-approve"}:
+            self.app.loading.run(self, self._share, name)
+
+    def _prepare_operation(self, name, path, profile, preview):
+        self.app.verify_settings_current(self.original)
+        if name == "configuration-export":
+            write_export(path, make_document(self.app.repo_root, self.original, profile))
+            return
+        document = read_document(path)
+        if name == "configuration-preview":
+            return self._prepare_preview(document, profile)
+        if preview is None or digest(document) != preview[1]:
+            raise ValueError("Import file changed or no preview is available. Preview it again; nothing was applied.")
+        candidate, _ = validate_portable(preview[0], self.app.repo_root, self.original, profile)
+        from ..experiments._internal.registry import get_experiment
+        self.app.verify_loaded_sources(get_experiment(candidate.experiment_id), candidate.stimulus_snapshots)
+        return save_local(self.app.local_config_root, self.app.repo_root, preview[0], self.original, profile)
+
+    async def _share(self, name):
         try:
-            self.app.verify_settings_current(self.original)
             if self.review.request != self.original:
                 raise ValueError("Current settings changed; cancel and preview again.")
             profile = self.app.monitor_profiles[self.original.monitor_profile_id]
             path = Path(self.query_one("#configuration-path", Input).value).expanduser()
-            if name == "configuration-export":
-                document = make_document(self.app.repo_root, self.original, profile)
-                write_export(path, document)
-                self.query_one("#configuration-feedback", Static).update(f"Exported {path}. Share this JSON file; local calibration is not included.")
-            elif name == "configuration-preview":
+            if name == "configuration-preview":
                 self.preview = None
                 self.query_one("#configuration-approve", Button).disabled = True
-                self._preview(read_document(path), profile)
-            elif name == "configuration-approve":
-                if self.preview is None or digest(read_document(path)) != self.preview[1]:
-                    raise ValueError("Import file changed or no preview is available. Preview it again; nothing was applied.")
-                candidate, _ = validate_portable(self.preview[0], self.app.repo_root, self.original, profile)
-                from ..experiments._internal.registry import get_experiment
-                self.app.verify_loaded_sources(get_experiment(candidate.experiment_id), candidate.stimulus_snapshots)
-                saved = save_local(self.app.local_config_root, self.app.repo_root, self.preview[0], self.original, profile)
+            result = await asyncio.to_thread(self._prepare_operation, name, path, profile, self.preview)
+            if name == "configuration-export":
+                self.query_one("#configuration-feedback", Static).update(f"Exported {path}. Share this JSON file; local calibration is not included.")
+            elif name == "configuration-preview":
+                self._show_preview(*result)
+            else:
                 self.app.pop_screen()
-                self.review.apply_shared_configuration(saved, imported=True)
+                self.review.apply_shared_configuration(result, imported=True)
         except (ValueError, OSError, KeyError, TypeError) as exc:
             if self.importing:
                 self.preview = None

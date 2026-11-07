@@ -27,8 +27,9 @@ Double-click **PsyCoLab.bat**, the single Windows starting point. Its native men
 works even when Python is missing:
 
 1. **Launch PsyCoLab** checks the installation, plays a five-second logo sweep,
-   and opens the laboratory TUI. Press a key to skip the sweep. Closing the TUI
-   returns here; finishing an experiment stays inside the TUI.
+   then moves the title into place as the laboratory TUI fades in. Press any key
+   to skip the introduction. To disable it, set `PSYCOLAB_SKIP_INTRO=1`.
+   Closing the TUI returns here. Finishing an experiment stays inside the TUI.
 2. **Check / Repair PsyCoLab** explains initial setup or a supported repair and asks
    before changing anything. For an older setup-record error, it preserves the
    old environment and prepares a verified replacement. Install 64-bit Python 3.11
