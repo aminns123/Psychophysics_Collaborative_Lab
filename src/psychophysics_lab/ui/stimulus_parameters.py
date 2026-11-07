@@ -9,6 +9,14 @@ from ..stimuli.registry import list_stimuli, get_stimulus
 from ..config.stimulus_parameters import load_parameters, save_parameter_preset, snapshot, document_for
 
 
+def retain_configuration_origin(selected, previous):
+    """Carry history from a known source or edit of the same stimulus."""
+    if (previous and "configuration_origin" in previous
+            and previous["document"]["stimulus_id"] == selected["document"]["stimulus_id"]):
+        return selected | {"configuration_origin": previous["configuration_origin"]}
+    return selected
+
+
 class JsonPresetEditor(Screen):
     def __init__(self, panel):
         super().__init__()
@@ -30,9 +38,10 @@ class JsonPresetEditor(Screen):
         elif event.button.id == "json-save":
             try:
                 document = json.loads(self.query_one("#stimulus-json-editor", TextArea).text)
+                previous = self.panel.current()
                 path = save_parameter_preset(self.app.local_config_root,
                     self.query_one("#stimulus-preset-name", Input).value, self.panel.stimulus, document)
-                self.panel.load(path)
+                self.panel.load(path, derived_from=previous)
                 self.panel.refresh_presets()
                 self.app.pop_screen()
             except (ValueError, OSError, TypeError) as exc:
@@ -123,7 +132,7 @@ class StimulusParametersPanel(Vertical):
         document["parameter_info"] = parameter_info(self.stimulus.parameters, controlled)
         path = export_current_json(self.app.local_config_root, self.configuration.experiment,
                                    document, self.slot)
-        self.load(path)
+        self.load(path, derived_from=selected)
         if self.error:
             raise ValueError(self.error)
         self.external_json_path = path
@@ -173,13 +182,14 @@ class StimulusParametersPanel(Vertical):
             self.query_one("#stimulus-path-" + self.slot, Input).value = ""
         self.refresh_summary()
 
-    def load(self, path):
+    def load(self, path, *, derived_from=None):
         try:
-            origin = (self.loaded or {}).get("configuration_origin")
-            self.loaded = load_parameters(path, self.stimulus)
-            if origin:
-                self.loaded["configuration_origin"] = origin
-            self.path, self.error = Path(path), None
+            path = Path(path)
+            previous = derived_from
+            if previous is None and self.path is not None and self.path.resolve() == path.resolve():
+                previous = self.loaded
+            self.loaded = retain_configuration_origin(load_parameters(path, self.stimulus), previous)
+            self.path, self.error = path, None
             self.app.stimulus_drafts[self.cache_key] = (self.loaded, self.path)
             with self.prevent(Input.Changed):
                 self.query_one("#stimulus-path-" + self.slot, Input).value = str(self.path)

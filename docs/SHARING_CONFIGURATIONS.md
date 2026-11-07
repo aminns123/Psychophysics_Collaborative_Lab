@@ -33,7 +33,7 @@ source code, transfer participant data or qualify another laboratory's apparatus
 
 ## What the JSON contains
 
-The small version-1 container uses `format: "psycolab.experiment.configuration"`.
+The version-2 container uses `format: "psycolab.experiment.configuration"`.
 It embeds the existing experiment JSON (`schema_version`, `experiment_id`,
 `values`) and the existing complete stimulus documents (`schema_version`,
 `stimulus_id`, `parameters`), indexed by experiment slot. It also includes the
@@ -61,13 +61,26 @@ experiment and stimulus validators, bindings, geometry checks and actual plannin
 path remain authoritative. Existing local JSON/presets and historical results
 retain their existing formats and compatibility handling.
 
-The registered experiment and selected stimulus sources, scientific engine and
-NumPy/Pyglet versions must match the export's fingerprints. Paths do not travel
-with the file; source fingerprints tolerate checkout-folder and LF/CRLF line-ending
-differences. A different PsyCoLab version label alone produces a warning if the
-checked sources and dependency versions still match. Other source/version
-differences are conservatively rejected; there is no automatic approval or
-silent migration of different scientific implementations.
+The registered experiment, selected stimuli, shared scientific source including
+the primary estimator, and NumPy/Pyglet versions must match the export's
+fingerprints. A retained JSON-library study includes its verified design digest.
+A laboratory extension includes the existing verified laboratory source and
+preset inventory, including imported helpers. The check is conservative, so
+changes within those inventories can require a new export. Use the same
+separately verified environment for any additional lab-specific packages or
+resources outside those inventories. Paths do not travel with the file.
+Framework and laboratory source hashes normalize LF/CRLF differences. The
+retained JSON-library route uses its existing exact-byte Ready digest.
+A different PsyCoLab version label alone produces a warning if the checked
+fingerprints and dependency versions match.
+
+**Older portable exports:** Version 1 omitted scientific dependencies and cannot
+establish version-2 compatibility. Ask the sender to open the verified original
+settings in Review and export again using the updated application. Existing
+local experiment and stimulus files can be opened using their ordinary editors.
+Keep the old transfer file for reference if the original settings or software
+are unavailable. The embedded local JSON and historical run formats stay at
+their existing schema versions.
 
 Missing custom/third-party experiments or stimuli must be installed, trusted and
 verified separately through the existing authoring workflow. JSON contains no
@@ -93,10 +106,12 @@ downloaded file. Import keeps the local participant, data workspace and display
 profile. A transfer-file content hash and software identity are retained in the
 selected stimulus snapshots' optional `configuration_origin`, including saved-run
 `experiment_config.json`. This describes the original shared configuration;
-later edits may differ. The run's existing effective experiment values, stimulus
-snapshots, trial records and local environment/calibration provenance remain the
-authority for what actually ran. The existing request model and runner stay
-unchanged; workflows without sharing have no additional origin metadata.
+later edits may differ. Reloading the same selected component files or saving
+the current configuration keeps this history. Selecting an independent file or
+a different stimulus drops the prior origin for that slot. The run's effective
+experiment values, stimulus snapshots, trial records and local calibration and
+environment provenance remain the authority for what actually ran. Workflows
+without a portable save or import have no additional origin metadata.
 
 ## Cross-laboratory reproducibility
 
