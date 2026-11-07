@@ -17,6 +17,7 @@ from psychophysics_lab.experiments.contrast_sensitivity import SPEC as CSF_SPEC
 from psychophysics_lab.experiments._internal.registry import get_experiment
 from psychophysics_lab.stimulus_library import ContrastSensitivityGrating
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen, ExperimentParametersScreen, DisplayCheckScreen
+from psychophysics_lab.ui.calibration_guide import CalibrationGuideScreen, GUIDE_STEPS
 from psychophysics_lab.ui.calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
 
 
@@ -66,6 +67,15 @@ def test_calibration_stage_requirements_follow_the_reviewed_study(
             page.query_one("#calibration-return", Button).press()
             await pilot.pause()
             assert app.screen is review
+            await app.push_screen(CalibrationGuideScreen(review.request, initial_stage="luminance"))
+            await pilot.pause()
+            guide = app.screen
+            for key in ("luminance", "timing"):
+                assert GUIDE_STEPS[guide.stage_index][0] == key
+                label = str(guide.query_one("#guide-progress", Static).render())
+                assert ("OPTIONAL" in label) == (not requires_photometry)
+                guide.query_one("#guide-next", Button).press()
+                await pilot.pause()
 
     asyncio.run(scenario())
     assert load_monitor_profiles(ROOT)[profile.id] == profile
@@ -95,6 +105,13 @@ def test_qualification_uses_selected_stimulus_requirements(tmp_path, monkeypatch
             await app.push_screen(review)
             await pilot.pause()
             assert any(row["key"] == "luminance" for row in review.readiness_report["blockers"])
+            await app.push_screen(CalibrationGuideScreen(review.request, initial_stage="luminance"))
+            await pilot.pause()
+            guide = app.screen
+            assert "INCOMPLETE" in str(guide.query_one("#guide-progress", Static).render())
+            guide.query_one("#guide-close", Button).press()
+            await pilot.pause()
+            assert app.screen is review
             review.resolve_requirement("qualification")
             await pilot.pause()
             qualification = app.screen

@@ -11,6 +11,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from ..config.preflight import effective_requirements, human_requirements
 from ..config.readiness import profile_readiness
 from psychophysics_lab.experiments._internal.registry import get_experiment
 
@@ -216,24 +217,37 @@ class CalibrationGuideScreen(ModalScreen[None]):
         self._render_stage()
 
     def _render_stage(self) -> None:
-        spec = get_experiment(self.request.experiment_id)
+        spec = effective_requirements(get_experiment(self.request.experiment_id), self.request.stimulus_snapshots)
         profile = self.app.monitor_profiles[self.request.monitor_profile_id]
         ready = profile_readiness(spec, profile,
                                   repo_root=self.app.repo_root,
                                   values=self.request.experiment_values)
-        statuses = guide_statuses(ready, profile, self.request.experiment_values)
+        statuses = list(guide_statuses(ready, profile, self.request.experiment_values))
+        checks = {row["key"]: row for row in human_requirements(spec, profile)}
+        for index, (stage, _) in enumerate(GUIDE_STEPS):
+            if stage not in ("geometry", "luminance", "timing"):
+                continue
+            check = checks.get(stage)
+            if check is None:
+                statuses[index] = ("optional", "Optional for the reviewed experiment and selected stimuli.")
+            elif check["passed"]:
+                statuses[index] = ("verified", check["detail"])
+            elif statuses[index][0] in ("verified", "recorded"):
+                statuses[index] = ("partial", check["detail"])
         key, name = GUIDE_STEPS[self.stage_index]
         state, reason = statuses[self.stage_index]
-        color = {"verified": "green", "recorded": "green", "partial": "yellow",
-                 "bound": "green", "missing": "red"}[state]
+        colors = {"verified": "green", "recorded": "green", "partial": "yellow",
+                  "bound": "green", "missing": "red", "optional": "dim"}
+        color = colors[state]
         status_label = {"verified": "DECLARED/READY", "recorded": "TEST RECORDED",
                         "partial": "REVIEW NEEDED", "bound": "BOUND",
-                        "missing": "INCOMPLETE"}[state]
+                        "missing": "INCOMPLETE", "optional": "OPTIONAL"}[state]
         panel = self.query_one("#calibration-guide-panel")
         panel.remove_class("guide-done", "guide-warning", "guide-blocked")
-        panel.add_class("guide-done" if state in {"verified", "recorded", "bound"}
-                        else "guide-warning" if state == "partial"
-                        else "guide-blocked")
+        if state != "optional":
+            panel.add_class("guide-done" if state in {"verified", "recorded", "bound"}
+                            else "guide-warning" if state == "partial"
+                            else "guide-blocked")
         self.query_one("#guide-heading", Static).update(
             f"Calibration guide — {name}")
         self.query_one("#guide-progress", Static).update(
@@ -241,16 +255,17 @@ class CalibrationGuideScreen(ModalScreen[None]):
             f"[{color}]{status_label}[/{color}]  ·  ←/→ to browse · Esc to close"
         )
         flow = " → ".join(
-            f"[{('green' if x[0] in {'verified', 'recorded', 'bound'} else 'yellow' if x[0] == 'partial' else 'red')}]"
-            f"{i + 1}[/{('green' if x[0] in {'verified', 'recorded', 'bound'} else 'yellow' if x[0] == 'partial' else 'red')}]"
-            for i, x in enumerate(statuses)
+            f"[{colors[status]}]{i + 1}[/{colors[status]}]"
+            for i, (status, _) in enumerate(statuses)
         )
+        help_text = ("You can still inspect or record this display evidence in Calibrate."
+                     if state == "optional" else STAGE_HELP[key])
         text = (
             f"[b]Profile[/b] {profile.id}, revision {profile.revision}\n"
             f"[b]Progress[/b] {flow}\n"
             f"[b]Experiment ID[/b] {spec.id}\n\n"
             f"[{color}][b]{reason}[/b][/{color}]\n\n"
-            f"{STAGE_HELP[key]}\n\n"
+            f"{help_text}\n\n"
             "[dim]A green recorded-test indicator is NOT proof of physical "
             "luminance, spatial accuracy or photon timing. Human acquisition "
             "remains subject to independent review/qualification checks.[/dim]"

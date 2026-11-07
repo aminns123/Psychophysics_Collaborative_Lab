@@ -67,11 +67,11 @@ If old and new physical settings already agree, you do **not** need replacement:
 
 ## Wording and buttons
 
-Opened on its own, **Calibrate** shows display setup evidence. When opened
-from **Experiment Review**, the physical stages use the reviewed experiment
-and selected stimuli. A grey stage is optional for that selection and still
-shows any saved evidence. Green indicates the stated check or setup step is
-satisfied. Final human acquisition checks still apply.
+Opened on its own, **Calibrate** shows display setup evidence. The calibration
+guide and the physical stages opened from **Experiment Review** use the
+reviewed experiment and selected stimuli. A grey stage is optional for that
+selection, and the saved display evidence remains available. Green indicates
+the stated check or setup step is satisfied. Final acquisition checks still apply.
 
 If something fails, the step should name the missing value or evidence and leave you on the same page. Technical JSON paths, recovery history and raw metadata belong under **Advanced**, not in the default sequence.
 

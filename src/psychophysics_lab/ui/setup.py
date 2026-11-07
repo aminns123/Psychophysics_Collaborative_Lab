@@ -830,10 +830,11 @@ class DisplayCheckScreen(HubPage):
         scope = "Display setup evidence. See Experiment Review for the selected study's requirements."
         if self.review_request is not None:
             from rich.markup import escape
-            from ..config.preflight import effective_requirements, qualification_checks
+            from ..config.preflight import effective_requirements, human_requirements
             request = self.review_request
             spec = effective_requirements(get_experiment(request.experiment_id), request.stimulus_snapshots)
-            physical = {row["key"]: row["passed"] for row in qualification_checks(spec, profile)}
+            physical = {row["key"]: row["passed"] for row in human_requirements(spec, profile)
+                        if row["key"] in physical_stages}
             optional = set(physical_stages) - physical.keys()
             scope = f"Calibration requirements for {escape(spec.display_name)}. Grey stages are optional for this study."
         colours = {key: ("grey" if key in optional else
