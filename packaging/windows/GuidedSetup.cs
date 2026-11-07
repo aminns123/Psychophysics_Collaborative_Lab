@@ -826,7 +826,8 @@ public static class SourceMenu
 public sealed class StartupSplash : IDisposable
 {
     const string Escape = "\x1b[";
-    const double FadeSeconds = 2.1, SweepSeconds = 5.0, DockSeconds = 2.5;
+    const double PsyFadeSeconds = 10.0, GroupFadeSeconds = 0.7;
+    const double FadeSeconds = PsyFadeSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
     // The logo's PSY, CO and LAB groups begin at columns 0, 25 and 42.
     const int CoStart = 25, LabStart = 42;
@@ -863,10 +864,13 @@ public sealed class StartupSplash : IDisposable
             throw new IOException("Could not draw the startup splash.");
     }
 
-    static string FadeFrame(int top,int left,double progress) {
+    static string FadeFrame(int top,int left,double elapsed) {
+        double groupPosition=elapsed<PsyFadeSeconds
+            ?elapsed/PsyFadeSeconds
+            :1+(elapsed-PsyFadeSeconds)/GroupFadeSeconds;
         var shades=new string[3];
         for(int group=0;group<shades.Length;group++) {
-            double stage=Math.Max(0,Math.Min(1,progress*shades.Length-group));
+            double stage=Math.Max(0,Math.Min(1,groupPosition-group));
             double level=stage*stage*(3-2*stage);
             shades[group]=Escape+"38;2;"+(int)(6*level)+";"+(int)(99*level)+";"+(int)(131*level)+"m";
         }
@@ -932,7 +936,7 @@ public sealed class StartupSplash : IDisposable
         var timer=Stopwatch.StartNew();
         while(timer.Elapsed.TotalSeconds<FadeSeconds) {
             if(Interrupted(columns,rows))return false;
-            Write(output,FadeFrame(top,left,timer.Elapsed.TotalSeconds/FadeSeconds));
+            Write(output,FadeFrame(top,left,timer.Elapsed.TotalSeconds));
             System.Threading.Thread.Sleep(FrameMilliseconds);
         }
         timer.Restart();
