@@ -230,6 +230,8 @@ def make_spec(root: Path, identity: str):
             state = dict(run.trial_state)
         run.complete()
 
+    procedure.library_design_sha256 = expected_hash
+
     # The same public spec, slots, calibration and recording as Python-authored tasks.
     return experiment(
         id=identity, name=doc["display_name"], description=doc["description"],
@@ -240,6 +242,16 @@ def make_spec(root: Path, identity: str):
         monitor_capabilities=("display_binding", "resolution"), supports_simulation=True,
         source_paths=("src/psychophysics_lab/experiments/_internal/library_builder.py",),
     )
+
+
+def portable_design_fingerprint(root, spec):
+    """Reuse the loaded design's existing execution/Ready dependency digest."""
+    if getattr(spec.procedure, "__module__", None) != __name__:
+        return None
+    current = _digest(Path(root).resolve(), spec.id)
+    if current != getattr(spec.procedure, "library_design_sha256", None):
+        raise ValueError("Library design or stimulus changed since loading; restart and retest before sharing.")
+    return current
 
 
 def load_library(root=None, *, include_drafts=False, tolerate_errors=True):

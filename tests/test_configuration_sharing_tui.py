@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 from textual.widgets import Button, Input, Static, DataTable, DirectoryTree, Select
 
-from psychophysics_lab.config.sharing import make_document, read_document, write_export
+from psychophysics_lab.config.sharing import digest, make_document, read_document, write_export
+from psychophysics_lab.config.stimulus_parameters import document_for
+from psychophysics_lab.stimuli.registry import get_stimulus
 from psychophysics_lab.ui.setup import PsyCoLabSetupApp, ReviewScreen
 from psychophysics_lab.ui.configuration_sharing import ConfigurationSharingScreen, ConfigurationFilePicker, JSONTree
 from test_parameter_accessibility import OFFICIAL, selected_values, enter_review
@@ -87,12 +89,22 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
     sender_bytes = {p: p.read_bytes() for p in sender_local.rglob("*.json")}
     recipient_local = tmp_path/"recipient configuration"
     monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(recipient_local))
+    from psychophysics_lab.config.local import save_profile
+    from psychophysics_lab.config.monitor import load_monitor_profiles
+    from psychophysics_lab.core.presentation_testing import PresentationTestRequest, run_presentation_test
+    from test_stage_b_event_first import software_window
+
+    reference = load_monitor_profiles(ROOT)["legacy_reference_display"]
+    recipient_profile = save_profile(recipient_local, replace(reference, id="recipient_display", origin="local",
+        expected_resolution_px=(1000, 600),
+        display_binding={"index": 0, "x": 0, "y": 0, "width": 1000, "height": 600}))
     sentinel = tmp_path/"recipient data"/"historical result.txt"
     sentinel.parent.mkdir()
     sentinel.write_text("Preserve original data")
     async def recipient():
         app = PsyCoLabSetupApp(repo_root=ROOT, data_root=sentinel.parent)
         async with app.run_test(size=(80, 24)) as pilot:
+            app.query_one("#monitor-profile", Select).value = recipient_profile.id
             old = await enter_review(app, pilot, "ellipse_centre", selected_values(get_experiment("ellipse_centre")))
             old.request = replace(old.request, participant_id="RECIPIENT_ONLY")
             previous = deepcopy(old.request)
@@ -136,6 +148,10 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             assert review.request.stimulus_snapshots["probe"]["document"]["parameters"]["width_deg"] == .035
             assert any(row[0] == "probe" and row[2] == "1.4" for row in review._review_rows)
             imported = review.request
+            review.query_one("#review-reload-files", Button).press()
+            await pilot.pause()
+            assert review.request.stimulus_snapshots == imported.stimulus_snapshots
+            imported = review.request
             review.query_one("#run-presentation-test", Button).press()
             await pilot.pause()
             assert app.screen.request is imported
@@ -148,6 +164,43 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             assert app.screen is review
             assert review.request.stimulus_snapshots == imported.stimulus_snapshots
             app.verify_settings_current(review.request)
+            origin = deepcopy(imported.stimulus_snapshots["probe"]["configuration_origin"])
+            probe_file = review._file_sources["stimuli"]["probe"]
+            original_hash = imported.stimulus_snapshots["probe"]["file_sha256"]
+            edited = json.loads(probe_file.read_bytes())
+            edited["parameters"]["length_deg"] = -1
+            probe_file.write_text(json.dumps(edited), encoding="utf-8")
+            tracked = dict(app.review_parameter_files[app.settings_key(imported)])
+            review.query_one("#review-reload-files", Button).press()
+            await pilot.pause()
+            assert review.request == imported
+            assert app.review_parameter_files[app.settings_key(imported)] == tracked
+            edited["parameters"]["length_deg"] = 1.6
+            probe_file.write_text(json.dumps(edited), encoding="utf-8")
+            review.query_one("#review-reload-files", Button).press()
+            await pilot.pause()
+            probe = review.request.stimulus_snapshots["probe"]
+            assert probe["configuration_origin"] == origin
+            assert probe["document"]["parameters"]["length_deg"] == 1.6
+            assert probe["file_sha256"] != original_hash
+            review.query_one("#review-save-configuration", Button).press()
+            await pilot.pause()
+            copied = review.request
+            copied_probe = copied.stimulus_snapshots["probe"]
+            assert copied_probe["configuration_origin"] == origin
+            assert copied_probe["file_identity"] != probe["file_identity"]
+            profile = app.monitor_profiles[copied.monitor_profile_id]
+            assert digest(make_document(ROOT, copied, profile)) != origin["document_sha256"]
+            review.query_one("#review-reload-files", Button).press()
+            await pilot.pause()
+            assert review.request == copied
+            review.query_one("#run-presentation-test", Button).press()
+            await pilot.pause()
+            test_request = app.screen.request
+            assert test_request == copied
+            app.screen.query_one("#presentation-cancel", Button).press()
+            await pilot.pause()
+            assert review.request == copied
             # Execution no longer depends on the sender's/download location.
             export.unlink()
             app.verify_settings_current(review.request)
@@ -157,7 +210,7 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             await pilot.pause()
             assert app.screen is not review, str(review.query_one("#review-status", Static).renderable)
             launch = app.screen._launch_request()
-            assert launch.stimulus_snapshots == imported.stimulus_snapshots
+            assert launch.stimulus_snapshots == copied.stimulus_snapshots
             app.pop_screen()
             await pilot.pause()
             review.query_one("#back", Button).press()
@@ -168,7 +221,23 @@ def test_ellipse_two_researchers_save_export_browse_preview_cancel_import_and_te
             from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
             probe = next(p for p in app.screen.query(StimulusParametersPanel) if p.slot == "probe")
             assert probe.current()["document"]["parameters"] == previous.stimulus_snapshots["probe"]["document"]["parameters"]
-    asyncio.run(recipient())
+            return copied, test_request
+    chosen, test_request = asyncio.run(recipient())
+    with monkeypatch.context() as patch:
+        software_window(patch)
+        patch.setattr("psychophysics_lab.core.display.preflight_fullscreen_display", lambda p: None)
+        tested = run_presentation_test(PresentationTestRequest(test_request, trial_limit=2), repo_root=ROOT)
+    assert tested.status == "test_finished" and tested.accepted_trials == 2
+    recorded_test = json.loads((tested.run_directory/"experiment_config.json").read_bytes())["request"]
+    assert recorded_test["stimulus_snapshots"] == chosen.stimulus_snapshots
+    assert recorded_test["experiment_values"] == chosen.experiment_values
+    from simulations.run import simulate
+    run, _ = simulate(repo_root=ROOT, data_root=tmp_path/"simulated result",
+                      experiment_id=chosen.experiment_id, values=chosen.experiment_values,
+                      stimulus_snapshots=chosen.stimulus_snapshots, seed=41, analyse=False)
+    recorded = json.loads((run.run_directory/"experiment_config.json").read_bytes())["request"]
+    assert recorded["stimulus_snapshots"] == chosen.stimulus_snapshots
+    assert recorded["experiment_values"] == chosen.experiment_values
     assert shared_class.read_bytes() == original_source
     assert all(p.read_bytes() == data for p, data in sender_bytes.items())
     assert sentinel.read_text() == "Preserve original data"
@@ -202,6 +271,48 @@ def test_invalid_and_changed_import_do_not_partially_apply(tmp_path):
             assert screen.query_one("#configuration-approve", Button).disabled
             assert review.request == previous and app.config_drafts == drafts
             assert not list(app.local_config_root.glob("parameter_files/**/configuration.json"))
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("replacement", ["stimulus", "file"])
+def test_replaced_imported_stimulus_does_not_inherit_origin(tmp_path, replacement):
+    from psychophysics_lab.config.sharing import save_local
+    from psychophysics_lab.ui.stimulus_parameters import StimulusParametersPanel
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path/"data")
+        async with app.run_test(size=(100, 36)) as pilot:
+            spec = get_experiment("probe_above_below")
+            old = await enter_review(app, pilot, spec.id, selected_values(spec))
+            profile = app.monitor_profiles[old.request.monitor_profile_id]
+            document = make_document(ROOT, old.request, profile)
+            saved = save_local(app.local_config_root, ROOT, document, old.request, profile)
+            old.apply_shared_configuration(saved, imported=True)
+            await pilot.pause()
+            review = app.screen
+            previous = review.request.stimulus_snapshots
+            if replacement == "stimulus":
+                path = review._file_sources["stimuli"]["probe"]
+                stimulus = get_stimulus("oriented_line")
+                path.write_text(json.dumps(document_for(stimulus)), encoding="utf-8")
+                review.query_one("#review-reload-files", Button).press()
+            else:
+                path = tmp_path/"independently selected line.json"
+                stimulus = get_stimulus("vertical_line_probe")
+                path.write_text(json.dumps(document_for(stimulus)), encoding="utf-8")
+                review._edit_experiment_inputs()
+                await pilot.pause()
+                panel = next(item for item in app.screen.query(StimulusParametersPanel) if item.slot == "probe")
+                panel.load(path)
+                app.screen.query_one("#review", Button).press()
+            await pilot.pause()
+            assert app.screen is review and review.configuration_error is None
+            current = review.request.stimulus_snapshots
+            assert current["probe"]["document"]["stimulus_id"] == stimulus.id
+            assert "configuration_origin" not in current["probe"]
+            assert current["fixation"]["configuration_origin"] == previous["fixation"]["configuration_origin"]
+            app.verify_settings_current(review.request)
+
     asyncio.run(scenario())
 
 

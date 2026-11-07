@@ -145,6 +145,46 @@ def ready(lab):
     ext.publish(ROOT, 'experiment', EXPERIMENT)
 
 
+def test_portable_identity_covers_retested_laboratory_helper(lab):
+    from psychophysics_lab.config.models import SetupRequest
+    from psychophysics_lab.config.monitor import load_monitor_profiles
+    from psychophysics_lab.config.sharing import make_document, validate_portable
+
+    identity = "demolab__line_strength"
+    source = lab/"experiments"/(identity + ".py")
+    text = source.read_text(encoding="utf-8")
+    original = 'x = (-1 if condition["target"] == 0 else 1) * condition["value"]'
+    assert original in text
+    source.write_text("from .helper import scale_position\n" + text.replace(
+        original, original.replace('condition["value"]', 'scale_position(condition["value"])'), 1
+    ), encoding="utf-8")
+    helper = lab/"experiments/helper.py"
+    helper.write_bytes(b"def scale_position(value):\n    return value\n")
+    profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
+
+    def tested_request():
+        enable(lab)
+        assert execute_user_action(ROOT, "test", identity, {"trial_count": 3}) == 0
+        ext.publish(ROOT, "experiment", identity)
+        spec = get_experiment(identity)
+        return SetupRequest("PORTABLE_TEST", "new", identity, profile.id,
+                            spec.normalise_values({"trial_count": 3}))
+
+    request = tested_request()
+    document = make_document(ROOT, request, profile)
+    ext.unload()
+    helper.write_bytes(b"def scale_position(value):\r\n    return value\r\n")
+    same = tested_request()
+    assert make_document(ROOT, same, profile) == document
+
+    ext.unload()
+    helper.write_bytes(b"def scale_position(value):\n    return value * 1.25\n")
+    changed = tested_request()
+    assert changed == request
+    with pytest.raises(ValueError, match="Incompatible"):
+        validate_portable(document, ROOT, changed, profile)
+
+
 def test_opt_in_and_builtin_discovery(lab):
     official = {s.id for s in list_experiments()}
     assert ext.configured(ROOT) is None

@@ -2705,21 +2705,30 @@ class ReviewScreen(Screen):
         from .parameter_files import load_experiment_json,file_hash
         from ..config.stimulus_parameters import load_parameters,snapshot
         from ..stimuli.registry import get_stimulus
+        from .stimulus_parameters import StimulusParametersPanel, retain_configuration_origin
         spec=get_experiment(self.request.experiment_id)
         self.app.verify_loaded_sources(spec,self.request.stimulus_snapshots)
         sources=self._file_sources
+        tracked = self.app.review_parameter_files.get(self.app.settings_key(self.request), {})
         from .parameter_files import ensure_unchanged
         files={str(path):file_hash(path) for path in [sources["experiment"],*sources["stimuli"].values()] if path is not None}
         values=load_experiment_json(sources["experiment"],spec) if sources["experiment"] else dict(self.request.experiment_values)
         snapshots=dict(self.request.stimulus_snapshots)
         for slot,path in sources["stimuli"].items():
             document=json.loads(Path(path).read_text(encoding="utf-8-sig"))
-            snapshots[slot]=load_parameters(path,get_stimulus(document["stimulus_id"]))
+            selected = load_parameters(path, get_stimulus(document["stimulus_id"]))
+            previous = snapshots.get(slot)
+            if (previous and previous["file_identity"] == Path(path).name
+                    and previous["file_sha256"] is not None
+                    and previous["file_sha256"] == tracked.get(str(path))):
+                selected = retain_configuration_origin(selected, previous)
+            snapshots[slot] = selected
         for slot,bindings in spec.stimulus_field_bindings.items():
             selected=snapshots[slot]
             document=dict(selected["document"])
             document["parameters"]=dict(document["parameters"])|{key:values[field] for key,field in bindings.items()}
-            snapshots[slot]=snapshot(document,file_identity=selected["file_identity"],file_sha256=selected.get("file_sha256"))
+            snapshots[slot] = selected | snapshot(
+                document, file_identity=selected["file_identity"], file_sha256=selected.get("file_sha256"))
         candidate=validate_setup(replace(self.request,experiment_values=values,stimulus_snapshots=snapshots,monitor_profile_hash=None),
             spec,self.app.monitor_profiles[self.request.monitor_profile_id],mode="configuration")
         ensure_unchanged(files)
@@ -2741,13 +2750,13 @@ class ReviewScreen(Screen):
                     screen.parameter_json_path=sources["experiment"]
                     screen.parameter_json_hash=files[str(sources["experiment"])]
                     screen.parameter_json_pending=False
-                from .stimulus_parameters import StimulusParametersPanel
                 for panel in screen.query(StimulusParametersPanel):
                     if panel.slot in sources["stimuli"]:
                         panel.stimulus=get_stimulus(candidate.stimulus_snapshots[panel.slot]["document"]["stimulus_id"])
                         with panel.prevent(Select.Changed):
                             panel.query_one("#stimulus-select-"+panel.slot,Select).value=panel.stimulus.id
-                        panel.load(sources["stimuli"][panel.slot])
+                        panel.load(sources["stimuli"][panel.slot],
+                                   derived_from=candidate.stimulus_snapshots[panel.slot])
         self._refresh_readiness()
         self._apply_run_intent()
         self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. For Python edits, use Refresh (F5).")
@@ -3011,7 +3020,8 @@ class ReviewScreen(Screen):
     def _save_configuration(self, request, profile):
         from ..config.sharing import make_document, save_local
         document = make_document(self.app.repo_root, request, profile)
-        return save_local(self.app.local_config_root, self.app.repo_root, document, request, profile)
+        return save_local(self.app.local_config_root, self.app.repo_root, document, request, profile,
+                          preserve_origin=True)
 
     async def _share_configuration(self, button_id):
         try:
