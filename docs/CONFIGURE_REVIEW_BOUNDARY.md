@@ -52,6 +52,12 @@ units. See [the authoring standard](EXPERIMENT_AUTHORING_STANDARD.md). An older
 extension without planning hooks still shows its literal inputs and source
 inspection guidance, rather than invented derived science.
 
+Specialised scientific explanations depend on the study's declarations.
+The bright-probe explanation uses the relevant contrast convention, log-step
+controls and planning hooks. Other studies show their own intensity and
+background fields through the same generic table. See [parameter authority](REVIEW_PARAMETER_AUTHORITY.md)
+and [saving and sharing from Review](SHARING_CONFIGURATIONS.md).
+
 ## Demonstration and regression evidence
 
 Before this correction, Configure included expandable adaptive, condition,

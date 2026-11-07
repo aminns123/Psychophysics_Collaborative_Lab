@@ -1,9 +1,10 @@
 # PsyCoLab — One scientist-first authoring model
 
-**Current design contract, accompanying PR #207.** A researcher should
-understand a study by reading one experiment Python file and the independent
-stimulus classes named there in stimulus_library.py. No intermediate scene
-builder should hide protocol rules or physical stimulus definitions.
+All ten official studies follow the scientist-first model integrated in
+[PR #207](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/207).
+Read one experiment Python file and the independent stimulus classes it names
+in `stimulus_library.py` to follow the protocol and rendering. Use the
+[authoring standard](EXPERIMENT_AUTHORING_STANDARD.md) for new studies.
 
 ## Scientific reading order
 
@@ -20,6 +21,20 @@ The default blend is over; explicitly declare blend="add" for additive
 digital increments. Stimulus classes own their own validation, geometry,
 raster and alpha; experiments own spatial placement, conditions, response
 interpretation and methods.
+
+## Selected values in Review
+
+Declare fields with meaningful units, ranges and help text. Configure supplies
+common run controls. Review uses the selected study's declarations and trial
+plan, and directs edits to the controlling input or stimulus parameter.
+Researchers save selected values in local JSON. Python changes are for
+developing protocol rules, rendering or reusable stimulus definitions.
+
+The optional bright-probe explanation uses the official ellipse and line
+protocols' declared contrast convention, step controls and planning hooks.
+An independent study with its own intensity or background controls uses its
+own declared meanings. See [Review parameter authority](REVIEW_PARAMETER_AUTHORITY.md)
+and [sharing selected values](SHARING_CONFIGURATIONS.md).
 
 ## Probe semantics
 
@@ -69,7 +84,7 @@ compare event chronology, visual pixel commands, condition/target geometry,
 state updates, thresholds and recordings semantically; report provenance
 shape changes explicitly. Never rewrite frozen scientific fixtures.
 
-## Merge gates
+## Scientific validation
 
 - Ten official experiment authoring files use the single mapping and
   independently declared trial events and method parameters.
@@ -79,6 +94,5 @@ shape changes explicitly. Never rewrite frozen scientific fixtures.
   silent clipping; event timing and response outcomes are checked.
 - Review navigation, refresh, saved-setting migration and old-data reading
   work without a live composite-scene dependency.
-- Windows CI and separate native display acceptance pass before merge.
-
-This cleanup removes redundant implementations, not scientific safeguards.
+- Hosted Windows CI checks the software. Native Windows 11 acceptance and
+  apparatus measurements are recorded separately for the scope they verify.

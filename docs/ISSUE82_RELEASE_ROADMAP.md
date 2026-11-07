@@ -1,29 +1,28 @@
 # Issue #82 — reproducible Windows installation and safe updates
 
-**Approved plan, recorded 26 October 2026; status reconciled 28 October 2026.**
-The [26 October baseline](ACCEPTED_SOFTWARE_BASELINE.md) at
-`5fec547ecf3f86cd6bbd202a9e463637deca07d3` is historical evidence, not
-the current release candidate. The source/package identity repair is merged,
-the event-first migration is complete and Windows-only acceptance is in force.
-Use the latest reviewed `main` and exact-commit Windows evidence for new work.
-Earlier reports of 12 or 23 baseline failures are not current blockers.
+**Status updated 7 November 2026.** The approved plan dates to 26 October.
+The [26 October baseline](ACCEPTED_SOFTWARE_BASELINE.md) records its own
+revision. Current development evidence and the scope of hosted Windows CI
+are listed in the [release policy](RELEASE_POLICY.md). The
+[Issue #82 checklist](https://github.com/aminns123/Psychophysics_Collaborative_Lab/issues/82)
+tracks the remaining release and acceptance decisions.
 
-The five stages below remain separate acceptance units. Stage numbers are
-plan stages, not PR numbers. **Stages 1 and 2 are completed; stage 3 is next.**
-Stages 4 and 5 must validate the selected stage-3 environment, rather than
-treating one-machine rehearsal as independent qualification.
+**Stages 1–3 are complete. Stages 4–5 remain open.** Same-workstation
+installation and rollback rehearsals are recorded as bounded evidence.
+Independent Windows 11 acceptance and the intended release-to-release
+update and rollback still need their own results.
 
 | Stage | Scope | Dependencies and acceptance |
 |---|---|---|
 | **1 — Baseline documentation and release evidence** | Completed in merged #121 and subsequent acceptance documentation. | Historical results remain dated; do not misrepresent them as current CI. |
 | **2 — Editable-install identity repair** | Completed in merged #122. | Editable source/metadata identity checks remain required on reuse. |
-| **3 — Reviewed Windows constraints and launcher integration** | Select an approved x64 Python 3.11 distribution/patch; pin runtime/transitive, bootstrap/build and separate development dependencies; validate environment identity on setup, reuse and recovery. | Build on stage 2's identity handling. Review complete versions/artifact hashes and how constraints affect optional lab requirements. Preserve user requirements; no new package manager or architecture. |
-| **4 — Real fresh-install acceptance** | Exercise the existing launcher/setup using disposable full checkouts and empty environments; verify imports, source/package identity, catalogue, a short synthetic validation, repeat launch and failure recovery. | Uses the stage 3 environment specification. Reconstruct twice and compare inventories, then record an independent Windows workstation rehearsal. CI's direct `pip install -e .[dev]` and mocked launcher tests are not substitutes. |
-| **5 — Safe update/rollback rehearsal and versioned release guidance** | Test old/new pinned checkouts with separate environments and copied lab/config/archive fixtures; record preservation, readiness, archive compatibility and recovery steps. | Uses stages 3–4's accepted environments; can draft guidance earlier, but must validate it before sign-off. Retain old installation, protect newer observations and document downgrade boundaries. |
+| **3 — Reviewed Windows constraints and launcher integration** | Complete in [PR #161](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/161), merged as `56d8eff`. The approved [Windows profile](WINDOWS_ENVIRONMENT.md) identifies conda-forge CPython 3.11.15 x64 and hash-locked runtime, build and development artifacts. | Two real fresh setups and repeat startup passed on the same host. The source setup and existing qualified installation remain separate routes. |
+| **4 — Real fresh-install acceptance** | Open. Use a separate Windows 11 workstation, a fresh interpreter provisioner and an independent first-time researcher. Verify setup, imports and source/package identity, catalogue, a short synthetic run, repeat launch and recovery. | Use the approved Stage 3 profile and disposable source, configuration and data. Record native Configure and Review, external authoring, developer Test → Ready and execution as specified in the issue checklist. |
+| **5 — Safe update/rollback rehearsal and versioned release guidance** | Open. Validate the intended approved old and new releases with separate environments and copied lab/config/archive fixtures. | Record readiness changes, archive compatibility, protected-root preservation, recovery and supported downgrade boundaries before sign-off. Preserve participant observations. |
 
-Stages 3–5 remain open. The approved implementation sequence must not change
-scientific equations, stimulus rendering, experimental defaults, UI appearance,
-calibration, participant data or the established architecture.
+Exercise the supported `PsyCoLab.bat` entry point and follow the
+[installation guide](INSTALLATION.md) for each route. Preserve the laboratory's
+existing scientific source, calibration and data during acceptance.
 
 ## Deployment boundaries to preserve
 
@@ -61,14 +60,10 @@ Issue #80 is closed for its software scope. Its remaining native-editor/current
 readiness acceptance is consolidated into #82; do not repeat the extension audit. Broader installation/update/
 rollback acceptance belongs to stages 4–5, not a new extension feature project.
 
-Keep [Issue #82](https://github.com/aminns123/Psychophysics_Collaborative_Lab/issues/82)
-open for stages 3–5, native researcher acceptance, licensing/ownership and
-third-party attribution decisions, and maintainer approval of a new software
-version/tag. Apparatus-specific acquisition qualification is a separate,
-recorded laboratory obligation, not a universal software-release blocker. Existing `v0.3.0` remains its original
-research pre-release. A stable software development baseline is neither a
-reproducible laboratory release nor a physically qualified experiment.
-
-No release or merge is automatic. Stage 3 must have its own reviewed,
-Windows-validated implementation. See [release policy](RELEASE_POLICY.md),
-[installation](INSTALLATION.md) and [safe updates](SAFE_UPDATES_AND_LOCAL_WORK.md).
+Issue #82 remains open for Stages 4–5, native researcher acceptance, licensing,
+ownership and third-party attribution, and maintainer approval of a new
+version and tag. Its checklist retains other unresolved acceptance items.
+Apparatus-specific acquisition qualification is recorded separately by each
+laboratory. The existing `v0.3.0` identifies its original research pre-release.
+See [release policy](RELEASE_POLICY.md) and
+[safe updates](SAFE_UPDATES_AND_LOCAL_WORK.md).

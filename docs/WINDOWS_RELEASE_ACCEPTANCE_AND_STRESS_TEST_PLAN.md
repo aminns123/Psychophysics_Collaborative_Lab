@@ -1,5 +1,10 @@
 # PsyCoLab — Windows acceptance and historical stress-audit plan
 
+**Supersession note, 7 November 2026.** This document preserves its dated
+acceptance evidence. For the current Windows CI scope and open release gates,
+use the [release policy](RELEASE_POLICY.md) and the
+[Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md).
+
 ## Current disposition — 26 October 2026
 
 The reliability-repair phase is complete at the

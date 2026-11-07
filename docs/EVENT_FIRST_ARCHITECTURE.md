@@ -1,5 +1,10 @@
 # Event-first researcher interface: architecture and Stage A
 
+**Supersession note, 7 November 2026.** The active
+[scientist-first authoring guide](SCIENTIST_FIRST_AUTHORING.md) describes the
+A1/A2/B layout and independent stimulus classes now used by the ten official
+experiments. The implementation description below records Stage C's history.
+
 **Current implementation:** Stage C extends Stage B's six-section Python-first
 narrative, `trial_events()` and SPACE/1,000 ms opening to all ten official
 experiments and the bundled laboratory starters. See the

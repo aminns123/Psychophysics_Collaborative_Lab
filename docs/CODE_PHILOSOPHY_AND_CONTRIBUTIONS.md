@@ -2,7 +2,10 @@
 
 **Audience:** researchers, students, maintainers, reviewers and AI coding assistants.
 
-**Status:** project design principles and contribution policy. Read this before authoring an experiment, changing the framework, or asking an AI to make a pull request. This is a long-lived guide to *intent*, not a claim that every part of the event-first migration is already implemented. The implementation status and staged acceptance evidence live in [the event-first architecture plan](EVENT_FIRST_ARCHITECTURE.md) and [session-event examples](SESSION_EVENTS.md).
+Read this before authoring an experiment, changing the framework or preparing
+a contribution. See the [current architecture](ARCHITECTURE.md) for the
+implementation and the [event-first record](EVENT_FIRST_ARCHITECTURE.md) for
+earlier decisions and acceptance evidence.
 
 ## The guiding idea
 
@@ -27,14 +30,16 @@ PsyCoLab should remain useful when there are ten experiments, a hundred experime
 
 ## What researchers should see in an experiment
 
-The intended **event-first researcher-facing narrative** is:
+The ten official studies follow the
+[A1/A2/B authoring model](SCIENTIST_FIRST_AUTHORING.md).
 
-1. **PARAMETERS:** editable values, units, accepted bounds, defaults and scientific meanings.
-2. **SESSION START — ONCE:** an optional participant-ready screen, start key, settling fixation or instructions.
-3. **TRIAL EVENTS — REPEATED:** an explicit chronological list of fixation, stimulus, interval, response and optional audio events.
-4. **SCIENTIFIC RULES:** how conditions are selected, how responses are interpreted, and how subsequent stimulus parameters are updated.
-5. **STOPPING AND RESULTS:** termination, exclusions, estimator, saved measurements and their meaning.
-6. **FRAMEWORK REGISTRATION:** a short final connection to the shared execution system.
+1. **A1 — Experimental choices.** Declare scientific inputs and units, one
+   stimulus mapping, response meanings, the optional session opening and the
+   chronological trial events.
+2. **A2 — Scientific methods.** Keep condition construction, stimulus
+   preparation, response updates, stopping and results visible.
+3. **B — Framework integration.** Connect the study to the existing runner,
+   recorder and discovery through `SPEC`.
 
 Keep the scientifically important choices in the experiment file. Name any genuinely reusable functions so that a reader can locate their purpose immediately. Avoid a chain of anonymous adapters merely to make a short event list possible.
 
@@ -55,7 +60,12 @@ SESSION_START = [
 # SESSION_START = []
 ```
 
-The opening is passed through `experiment(..., session_start=SESSION_START)` and occurs *once*, before Trial 1. Readiness is **not** a scientific response or staircase update, and Trial 1's actual response is retained. A readiness screen is the **intended default for official experiments as they migrate**, but researchers can choose an empty session sequence for a protocol that does not need one. Stage C now applies this declaration to all ten official experiments; see its [implementation and acceptance evidence](STAGE_C_EVENT_FIRST.md). Register a pure fixation in `ready_fixation`; do not reuse a task slot whose base parameters contain a probe.
+The opening is passed through `experiment(..., session_start=SESSION_START)`
+and occurs once before Trial 1. Scientific response counting and staircase
+updates begin with the trial responses. The ten official studies use a
+readiness screen and settling fixation. A protocol can supply an empty
+session sequence or a pure fixation in its `ready_fixation` slot. See
+[Stage C's implementation evidence](STAGE_C_EVENT_FIRST.md).
 
 Small functions returning flat event lists may be composed like Lego pieces. There should be **one canonical event representation and one execution path**, shared across real presentation, simulation and Review. The existing `TrialTimeline` and other supported legacy authoring APIs remain available through the staged migration.
 

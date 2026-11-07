@@ -45,6 +45,15 @@ Ordinary version-1 updates continue to archive their previous document
 before writing. None of this upgrades files during read, changes scientific
 parameter defaults or affects saved trial observations.
 
+## Portable experiment configuration
+
+Portable schema 2 embeds the existing local experiment and stimulus documents
+and adds verified scientific source and dependency identity. For an older
+version 1 portable export, open the verified original settings in Review and
+export a fresh file with the current software. Ordinary local JSON and
+historical run readers retain their existing formats. See the
+[configuration sharing guide](SHARING_CONFIGURATIONS.md).
+
 ## Read-only archived extension and workspace compatibility (Issue #81 Stage 3)
 
 New schema-3 manifests can include a separate `laboratory_extensions`

@@ -9,11 +9,19 @@ does the same. Expand table provides the same
 information in a full-terminal view. Advanced source/JSON navigation remains
 available explicitly; it is not the normal way to configure a study.
 
+Review works from each study's declarations and planning functions. The
+specialised bright-probe explanation appears when the study uses the shared
+digital-increment convention, declares the required log-step controls, and
+supplies the condition and contrast-bound hooks. The four official ellipse and
+line studies retain this explanation for their supported methods. Independent
+studies with their own intensity and background controls receive their own
+declared fields and meanings.
+
 **Save configuration**, **Export JSON…** and **Import JSON…** beside the table
-share the complete selected experiment/stimulus configuration. Import previews
-all values and differences before approval. Dedicated scientific editors retain
-authority. See [Sharing configurations](SHARING_CONFIGURATIONS.md); calibration
-and participant information are never transferred.
+share the complete selected experiment/stimulus configuration in portable
+schema 2. Import previews values and differences before approval. Dedicated
+scientific editors retain authority. The recipient keeps local calibration and
+participant information. See [Sharing configurations](SHARING_CONFIGURATIONS.md).
 
 Use **Show parameter group** to focus the list. **Full parameter details / F2**
 opens the complete selected row in a scrollable, soft-wrapped view, including
@@ -60,8 +68,11 @@ Trial-controlled frequency/strength rows describe a sample; their conditions and
 method settings determine later trials. Other stimulus-base inputs remain editable
 through the stimulus TUI editor, including line dimensions and teaching geometry.
 
-**Reload files** rereads the saved JSON files currently linked to the run and
-validates the complete replacement before applying anything. **Refresh (F5)**
+**Reload files and review** rereads the saved JSON linked to the run and
+validates the complete replacement before applying it. Reloading the same
+selected files and saving derived edits carry the original import history
+alongside current values and file hashes. Selecting an independent preset or a
+different stimulus drops the earlier origin for that slot. **Refresh (F5)**
 starts a fresh process with updated Python definitions while preserving selected
 experiment settings and stimulus snapshots. To adopt a new stimulus class
 default, press **Adopt current class defaults** in Review's input/stimulus editor. This explicit action

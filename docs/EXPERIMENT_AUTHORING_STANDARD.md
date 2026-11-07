@@ -1,9 +1,8 @@
 # PsyCoLab experiment authoring standard — version 1
 
 **Approved version-1 narrative, Issue #165.** Use A1/A2/B for new experiments.
-Official science remains the accepted implementation on the current merged
-baseline; the family migration is separately reviewed. The two Wave 1 teaching
-files are migrated. Independent novice comprehension remains NOT VERIFIED.
+All ten official experiments use this narrative and a single `STIMULI`
+mapping. Independent novice comprehension remains NOT VERIFIED.
 Begin with the [short walkthrough](LEARN_PSYCOLAB.md) and
 [basic / adaptive-and-fixed local examples](../examples/laboratory_extensions/METHODS.md).
 
@@ -16,7 +15,8 @@ Use **one ordinary Python file per experiment**, read in this order:
 
 1. **Part A1 — Experimental choices:** question, meaningful parameters/units,
    factors, alternatives/placement, session opening, chronological trial events,
-   and explicitly declared measurements. Everyday editing starts here.
+   and explicitly declared measurements. Begin here when reading or changing a
+   protocol.
 2. **Part A2 — Scientific methods:** condition/track construction, selection and
    balancing, scoring, effective stimulus conversion, response-dependent updates,
    initial scientific state, bounds, stopping, estimators and scientific checks.
@@ -48,9 +48,11 @@ optical contrast, acoustic onset or photon timing.
 Use existing `ConfigField` declarations where generic run-value editing is useful.
 Common run controls appear in Configure; scientific inputs and stimulus editing
 are reached through Review. See [the Configure/Review boundary](CONFIGURE_REVIEW_BOUNDARY.md).
-Plain Python constants/lists remain valid choices; no mandatory TUI toggle or
-second parameter store is introduced. Effective selected values override Python
-defaults. Changing a default does not overwrite a previously selected preset.
+Plain Python constants and lists remain valid choices for protocol-owned values.
+Researchers can save or share selected values through the
+[existing JSON workflow](SHARING_CONFIGURATIONS.md). Explicitly selected
+values take precedence over Python defaults, and Review explains which source
+controls each value.
 
 Declare response alternatives as meanings and physical targets, not unexplained
 integers. In the CSF example, `TARGETS` lists left/right names, keys and coordinate
@@ -265,8 +267,8 @@ Gaussian reference, the measurement boundary and the family-based migration
 plan**, with the documented independent-usability limitation. A merge alone is
 not a physical apparatus qualification or proof of novice comprehension.
 
-The narrative is approved; individual migrations still require review. Follow [five independent family waves](EXPERIMENT_MIGRATION_PLAN.md), capturing
-each wave's actual current-main baseline before editing. Each requires its own
-review, full Windows checks and explicit merge decision. Completion of one wave
-does not approve or merge the next. Stage 4 native/independent acceptance and
-Stage 5 rollback remain separate milestones.
+The [five family waves](EXPERIMENT_MIGRATION_PLAN.md) and
+[atomic stimulus integration](SCIENTIST_FIRST_AUTHORING.md) document how the
+official experiments reached this structure. Preserve the frozen scientific
+comparisons when reviewing future changes. Independent Windows 11 acceptance
+and release-to-release rollback remain separate [Issue #82 gates](ISSUE82_RELEASE_ROADMAP.md).
