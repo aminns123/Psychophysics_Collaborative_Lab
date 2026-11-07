@@ -26,10 +26,11 @@ Build a visual stimulus, describe an experiment, and try it before collecting da
 Double-click **PsyCoLab.bat**, the single Windows starting point. Its native menu
 works even when Python is missing:
 
-1. **Launch PsyCoLab** checks the installation and fades in **PSY**, **CO**, then
-   **LAB** from black. The five-second light sweep follows, then the title moves
-   into place as the laboratory TUI fades in. Press any key to skip the
-   introduction. To disable it, set `PSYCOLAB_SKIP_INTRO=1`.
+1. **Launch PsyCoLab** checks the installation and fades in **PSY** from black
+   over about ten seconds, then brings in **CO** and **LAB**. The five-second light
+   sweep follows, then the title moves into place as the laboratory TUI fades in.
+   Press any key to skip the introduction or set `PSYCOLAB_SKIP_INTRO=1` to
+   disable it.
    Closing the TUI returns here. Finishing an experiment stays inside the TUI.
 2. **Check / Repair PsyCoLab** explains initial setup or a supported repair and asks
    before changing anything. For an older setup-record error, it preserves the
