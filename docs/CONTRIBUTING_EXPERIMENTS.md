@@ -19,19 +19,19 @@ and [experiment file guide](../src/psychophysics_lab/experiments/README.md).
 
 Start from a known correct **example**, not an assumed formula. The code itself remains editable in an ordinary Python editor; the TUI is the hub for selecting, configuring, inspecting, calibrating and testing. New `SPEC`-declaring experiment files in the supported public directory are discovered automatically; manual calls to the internal registry are not normally required. Saved-design compatibility, managed Draft/Test/Ready status and legacy names have additional constraints.
 
-Use the current six-section event-first narrative and one flat
-`trial_events(settings, condition)` definition for execution and Review.
-The [Stage C guide](STAGE_C_EVENT_FIRST.md) maps editable source locations;
-the [extension walkthrough](../examples/laboratory_extensions/METHODS.md)
-is the starting point for a uniquely identified local study. Legacy authoring
-APIs remain supported, without requiring their authors to migrate now.
+Use the [A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md), one `STIMULI`
+mapping and one flat `trial_events(settings, condition)` definition for
+execution and Review. Start a uniquely identified local study with the
+[extension walkthrough](../examples/laboratory_extensions/METHODS.md).
+Existing experiments using the supported historical APIs can still be read
+and run through their compatibility paths.
 
 ## Submitting an experiment/stimulus PR
 
-1. Fork the repository, or obtain collaborator write access, and make a dedicated branch. Do not edit `main` directly.
+1. Fork the repository, or obtain collaborator write access, and make a dedicated branch. Open a pull request targeting `develop`.
 2. Write the study definition and stable unique ID. Document the number of stimulus intervals and spatial alternatives separately from the number of response keys; visual-angle units, digital contrast versus measured luminance, randomisation and timing, correct response/alternatives, adaptive method (if any), and the declared primary estimate. Avoid `2AFTC`; describe genuine first/second temporal tasks as 2IFC.
 3. For new stimuli, inspect more than a single nominal preview: check low/high values, backgrounds, cropping, both response alternatives, sampling and invalid inputs. Preserve digital precision and actual output requirements.
-4. For experiments, verify that `ConfigField` defaults/ranges/units match the code, that each selected value influences real trial presentation and saved metadata, and that no implicit scientific constant overrides the selected setting.
+4. Verify that `ConfigField` defaults, ranges and units match the code, and that selected values reach Review, real trial presentation and saved metadata. Use existing local JSON and [portable sharing](SHARING_CONFIGURATIONS.md) for configuration, with explicit source-dependency declarations for the scientific code.
 5. Test a representative simulation when supported. `--dev-preview STIMULUS_ID` previews drawing; `--dev-stage experiment ID`, `--dev-test ID` and `--dev-ready experiment ID` govern declared Draft/Test/Ready stages. Some hardware-dependent results remain unqualified even when tests pass.
 6. Verify canonical output and provenance: manifest, `resolved_experiment.json`, `trials.tsv`, interpretation of presented-versus-next stimulus values, response mapping, profile revision, source hashes and analysis status.
 7. Add deterministic software tests. Do not hard-code an accidental default when the actual contract is that a selected parameter is honoured. Do not remove or relax an existing scientific test to make a PR green without demonstrating why its expectation was outdated.
@@ -59,7 +59,10 @@ A contribution does not need expensive NVIDIA hardware to **compile or simulate*
 
 ## Licensing, ownership and attribution
 
-No software licence is selected in the repository at the time this document was written. Public visibility does not automatically grant permission to redistribute code. The maintainer/institution must select an appropriate licence and consider consent for the bundled legacy renderer before accepting externally redistributed contributions. Contributor source ownership, permission to publish, acknowledgement and citations should be clarified in the PR. Do not add a guessed licence on behalf of the owner.
+Document contributor ownership, permission to publish, acknowledgement and
+third-party materials in the PR. The project owner and institution decide
+licensing and distribution terms. See the [release checklist](RELEASE_POLICY.md)
+and [citation metadata](../CITATION.cff).
 
 ## Local extensions versus official contributions
 

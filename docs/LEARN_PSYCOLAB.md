@@ -1,10 +1,12 @@
 # Your first PsyCoLab experiment
 
 Start in **Learn / Help → Read the short walkthrough**, or **Build Experiments**.
-Start with the three [progressive left/right lessons](../examples/laboratory_extensions/LESSONS.md):
-Beginner → Intermediate → Advanced. Each is executable ordinary Python, using the approved
-[A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md). New science normally belongs
-in your own trusted laboratory folder, not an edited official reference.
+On Windows 11, open **PsyCoLab.bat** and choose **Launch PsyCoLab**. Use
+**Check / Repair PsyCoLab** for first setup. See [installation](INSTALLATION.md).
+To develop a study, start with the three
+[progressive left/right lessons](../examples/laboratory_extensions/LESSONS.md).
+They use ordinary Python and the approved [A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md).
+Develop new science in your own trusted laboratory folder.
 
 Configure supplies universal run controls. **Review → Edit inputs / stimuli**
 edits the declared scientific inputs and stimulus values for this run. Review's
@@ -15,14 +17,16 @@ Review before running. Saved presets never overwrite Python defaults.
 
 To collaborate, use **Review → Save configuration / Export JSON… / Import JSON…**.
 Import previews differences and asks for approval before creating a new local
-copy. See [Sharing configurations](SHARING_CONFIGURATIONS.md) for the complete
-workflow and the limits of cross-laboratory physical reproducibility.
+copy. The portable file uses schema 2. Ask for a fresh export from verified
+original settings if you receive a version 1 portable file. Use ordinary local
+JSON files through their existing editors. See [Sharing configurations](SHARING_CONFIGURATIONS.md)
+for the ellipse example and the limits of cross-laboratory reproducibility.
 
 
 ## The basic model: independent objects plus one scientific experiment
 
-This is the authoring contract for **new** scientist-first files. Names should
-describe what appears on the screen, not which experiment happens to use it.
+All ten official experiments follow this authoring model. Name a stimulus
+for what appears on the screen so other experiments can reuse it.
 Each stimulus is an ordinary `LibraryStimulus` class. The experiment chooses
 its roles **once**, avoiding duplicate slot-family/default maps:
 
@@ -41,14 +45,12 @@ declared coverage; the framework executes and records the experiment.
 **A1** contains the scientist's choices/events, **A2** the conditions, methods
 and measurements, and a small **B** connects them to the shared runner.
 
-The next official source migration uses `STIMULI` for all ten built-in studies.
-The old line/ellipse studies still contain the historical `DetectionScene`
-renderer until its additive/overlapping pixels are proven equivalent to new
-independent classes. Do not interpret a single map as automatic pixel parity.
-A new `ellipse_modular_centre.py` protocol illustrates the independent objects
-and ordered transparency, but is **scientifically distinct** from the old
-ellipse centre's raw digital increment. No existing participant values are
-reinterpreted.
+The official ellipse and line studies use independent probe, fixation, ellipse
+and flanker classes as applicable. The historical `DetectionScene` is preserved
+in [archived source and comparison tests](SCIENTIST_FIRST_AUTHORING.md#frozen-historical-science).
+The optional `ellipse_modular_centre.py` example is a separate protocol with
+its own settings. Use `ellipse_centre` for the official centre protocol and
+its raw digital probe increment.
 
 Keep the TUI for setup, calibration, source-file creation/opening,
 parameter editing in Review, Test/Ready and data review. Write the protocol in
@@ -165,8 +167,8 @@ For source inspection, select the actual external file in Build Experiments or
 Review. An identically named repository file is not a substitute. A project
 experiment file exporting SPEC is also discovered without a registry/TUI edit;
 official source changes still need review. Older make_trial/TrialTimeline files
-remain compatible. The remaining six-section official files are scientific
-references pending family migration, not the recommended new-author template.
+remain compatible through the existing adapter. Use the
+[A1/A2/B standard](EXPERIMENT_AUTHORING_STANDARD.md) for new protocols.
 
 Every official experiment has once-only SPACE readiness and 1,000 ms settling.
 Local examples show how to edit the list or use `SESSION_START=[]`. Readiness

@@ -3,8 +3,8 @@
 ## Local ownership and safe updates
 
 These steps describe contribution to the **official** PsyCoLab source tree.
-A local scientist should normally change selected values in the TUI and save
-them as **local presets**, not edit official source defaults.
+For an existing study, select scientific values in Review and save them as
+local JSON. See [saving and sharing configurations](SHARING_CONFIGURATIONS.md).
 
 **Independent laboratory experiments are now supported through an explicitly
 trusted external source folder**. Follow the separate
@@ -16,16 +16,18 @@ See [safe Git updates](SAFE_UPDATES_AND_LOCAL_WORK.md),
 [contributor policy](CONTRIBUTING_EXPERIMENTS.md) and
 [the architecture roadmap](INTERNATIONAL_LAB_ROADMAP.md).
 
-## The only authoring workflow
+## Authoring an official contribution
 
 1. **Stimulus:** edit `src/psychophysics_lab/stimulus_library.py`.
    Each `LibraryStimulus` class keeps `PARAMETERS`, `render()` and `SPEC`
-   together. Add primitives/functions and build complex Scene compositions
-   *in the same file*. Do not create individual stimulus modules.
+   together. Keep appearance reusable and independent of the experiment's
+   trial placement and method.
 2. **Experiment:** add `src/psychophysics_lab/experiments/<task>.py`
    with `ConfigField` defaults and a matching `SPEC.id`; JSON presets are
-   optional and discovery needs no module-list edit. A scientific trial owns
-   conditions, placement, timing, optional beeps, responses and adaptation.
+   optional and discovery needs no module-list edit. Use
+   [A1/A2/B](EXPERIMENT_AUTHORING_STANDARD.md), one `STIMULI` mapping and
+   a chronological `trial_events()` function. The study owns conditions,
+   placement, timing, responses and adaptation.
 3. **Test:** `python -m psychophysics_lab --dev-preview ID` for raster
    stimuli, `--dev-stage experiment ID` then `--dev-test ID`, then
    `--dev-ready experiment ID`. Virtual simulation does not validate

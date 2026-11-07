@@ -33,7 +33,8 @@ source code, transfer participant data or qualify another laboratory's apparatus
 
 ## What the JSON contains
 
-The version-2 container uses `format: "psycolab.experiment.configuration"`.
+The portable container uses `format: "psycolab.experiment.configuration"`
+and `schema_version: 2`.
 It embeds the existing experiment JSON (`schema_version`, `experiment_id`,
 `values`) and the existing complete stimulus documents (`schema_version`,
 `stimulus_id`, `parameters`), indexed by experiment slot. It also includes the
@@ -74,13 +75,13 @@ retained JSON-library route uses its existing exact-byte Ready digest.
 A different PsyCoLab version label alone produces a warning if the checked
 fingerprints and dependency versions match.
 
-**Older portable exports:** Version 1 omitted scientific dependencies and cannot
-establish version-2 compatibility. Ask the sender to open the verified original
-settings in Review and export again using the updated application. Existing
-local experiment and stimulus files can be opened using their ordinary editors.
-Keep the old transfer file for reference if the original settings or software
-are unavailable. The embedded local JSON and historical run formats stay at
-their existing schema versions.
+**Older portable exports.** Import rejects version 1 because its fingerprints
+omitted scientific dependencies. Ask the sender to open the verified original
+settings in Review on an installation that supports schema 2, then choose
+**Export JSON…** and save a new file. If the original settings or required
+software cannot be verified, retain the old transfer as a reference. Open
+ordinary local experiment and stimulus files through their existing editors.
+Those files and historical run records retain their existing formats.
 
 Missing custom/third-party experiments or stimuli must be installed, trusted and
 verified separately through the existing authoring workflow. JSON contains no
@@ -103,15 +104,16 @@ parameter_files/<experiment>/configuration_<unique-id>/
 
 Review tracks the exact local JSON bytes before Test/Run, independently of the
 downloaded file. Import keeps the local participant, data workspace and display
-profile. A transfer-file content hash and software identity are retained in the
-selected stimulus snapshots' optional `configuration_origin`, including saved-run
-`experiment_config.json`. This describes the original shared configuration;
-later edits may differ. Reloading the same selected component files or saving
-the current configuration keeps this history. Selecting an independent file or
-a different stimulus drops the prior origin for that slot. The run's effective
-experiment values, stimulus snapshots, trial records and local calibration and
-environment provenance remain the authority for what actually ran. Workflows
-without a portable save or import have no additional origin metadata.
+profile. Selected stimulus snapshots can retain the original portable document's
+canonical content hash, schema version and software identity in
+`configuration_origin`, including in the saved run's `experiment_config.json`.
+Reloading the same selected component files or saving derived edits keeps this
+history. The current file and effective-value hashes describe the edited
+selection. Selecting an independent file or a different stimulus drops the
+prior origin for that slot. Effective experiment values, stimulus snapshots,
+trial records and local calibration and environment provenance describe what
+actually ran. Workflows without a portable save or import have no additional
+origin metadata.
 
 ## Cross-laboratory reproducibility
 

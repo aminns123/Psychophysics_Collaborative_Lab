@@ -7,15 +7,11 @@ Windows 11 and 64-bit Python 3.11. See the
 [acceptance policy](WINDOWS_ACCEPTANCE_POLICY.md); historical cross-platform
 results below remain evidence for their dated revisions, not support promises.
 
-The [historical accepted development baseline](ACCEPTED_SOFTWARE_BASELINE.md) is
-`5fec547ecf3f86cd6bbd202a9e463637deca07d3`, with passing Windows and Ubuntu
-headless CI. This is separate from the earlier `v0.3.0` research pre-release
-and does not yet certify a reproducible fresh laboratory installation.
-The [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) tracks the approved
-installation identity, dependency, fresh-install and rollback stages. Stage 2
-adds the editable identity check described below. The Stage 3 candidate uses the
-[exact Windows environment profile](WINDOWS_ENVIRONMENT.md); independent
-fresh-install/update acceptance remains separate under Stages 4–5.
+The approved Stage 3 route uses the
+[exact Windows environment profile](WINDOWS_ENVIRONMENT.md). Independent
+Windows 11 fresh-install and update/rollback acceptance remain separate under
+Stages 4–5. See the [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) for the
+remaining gates and the [release policy](RELEASE_POLICY.md) for tested revisions.
 
 Git contains the shared software. Each computer creates its own Python environment
 and physical-display configuration. Scientific records live in an external data
