@@ -36,10 +36,12 @@ mark("Trusted disposable source configured")
 async def settle(app, pilot):
     for _ in range(150):
         await pilot.pause(.03)
+        if app.loading.busy:
+            await asyncio.wait_for(app.loading.foreground.wait(), timeout=15)
         screen = app.screen
         if screen.is_mounted and all(w.is_mounted for w in screen.query("*")):
             await pilot.pause(.03)
-            if app.screen is screen:
+            if app.screen is screen and not app.loading.busy:
                 return
     raise AssertionError("TUI did not settle")
 
