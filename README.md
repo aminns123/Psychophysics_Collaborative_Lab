@@ -2,7 +2,7 @@
   <img src="docs/images/psycolab-logo.png" alt="PsyCoLab" width="900">
 </p>
 
-# PsyCoLab — Psychophysics Collaborative Lab
+# PsyCoLab — Psychophysics Collaborative Laboratory
 
 **Supported platform: Windows 11, 64-bit Python 3.11.** Windows is the sole
 official software acceptance and release target. See the
