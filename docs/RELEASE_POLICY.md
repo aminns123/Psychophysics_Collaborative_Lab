@@ -1,6 +1,8 @@
 # Release policy and evidence checklist
 
-PsyCoLab currently exposes a Python software version, but a version string alone is not a validated international laboratory release. `main` remains a development integration branch until a maintainer explicitly publishes a reviewed tagged release.
+Identify a stable software release by its reviewed source, approved Windows
+environment, recorded acceptance scope and maintainer-approved tag. Development
+branches and package version strings identify software for review and testing.
 
 ## Release scope: software is not apparatus certification
 
@@ -46,12 +48,18 @@ The earlier **1,505-pass** Windows result at `98f4119` on 25 October remains
 historical evidence for that earlier revision; it is superseded as the current
 baseline, not erased or applied retroactively to `v0.3.0`.
 
-The [five approved Issue #82 stages](ISSUE82_RELEASE_ROADMAP.md) separate
-baseline documentation, editable-install identity, exact Windows environment,
-fresh-install acceptance and safe update/rollback guidance. Stages 1–2 are
-complete; stage 3 is next. The original 26 October evidence above remains a
-historical snapshot, not the current accepted release target. Source version
-`0.3.0` alone does not identify an approved environment or authorize a release.
+On 7 November 2026, `develop` at `b96791fe97306bbc12f6018583b44fd8f502555e`
+passed [post-merge Windows CI](https://github.com/aminns123/Psychophysics_Collaborative_Lab/actions/runs/42400122737)
+after integration of PRs #235 and #236. Scientific smoke, all four regression
+shards, portability checks and the required Windows gate passed. This evidence
+applies to the tested source revision. A proposed release needs its own
+exact-commit verification.
+
+The [Issue #82 roadmap](ISSUE82_RELEASE_ROADMAP.md) records Stages 1–3 as
+complete, including the approved, hash-locked Windows profile. Independent
+Windows 11 installation, recovery and native researcher acceptance (Stage 4)
+and release-to-release update/rollback (Stage 5) remain open. Keep the rights,
+attribution and maintainer decision gates in the same review.
 
 For any **future** proposed release, review all changes and their scientific
 impact, use an independently reproduced clean installation, record the exact
@@ -65,10 +73,16 @@ retains the historical evidence matrix; Issue #82 remains the stable release gat
 
 ## Before a stable release
 
-- [ ] Repo owner/institution selects a **software licence**, checks ownership and bundled third-party graphics/runtime licences, and documents citation/attribution requirements.
+- [ ] Repo owner/institution decides the **software licence** and confirms
+  ownership, contributor permissions and bundled third-party source, graphics
+  and runtime terms. The repository currently has no top-level licence or
+  package licence declaration. Contributor roles and attribution remain for
+  owner review. The citation metadata lists the GitHub handle `aminns123`.
+  See [CITATION.cff](../CITATION.cff) and the
+  [Windows candidate redistribution review](WINDOWS_INSTALLER_LICENSING.md).
 - [ ] Scientific core, official experiments and external/local extension boundary are clear. No duplicate active authoring systems.
 - [x] The historical accepted baseline and subsequent Windows regression evidence are recorded. The release target must still pass its own exact-commit Windows tests. Windows 11 is the sole supported target; see [acceptance policy](WINDOWS_ACCEPTANCE_POLICY.md).
-- [ ] Installation documented for supported OS, Python version, dependency constraints and reproducible clean environment.
+- [x] Stage 3 records the approved [Windows interpreter and dependency profile](WINDOWS_ENVIRONMENT.md) and installation procedure. Independent reproduction remains Stage 4.
 - [ ] Source provenance records every executable scientific file, including supported local extensions where applicable.
 - [ ] Canonical data formats, old-version readers and any migrations are tested against preserved fixtures.
 - [ ] A real researcher completes a native Windows 11 workflow acceptance on a fresh, approved installation (separate from headless tests and virtual observers).

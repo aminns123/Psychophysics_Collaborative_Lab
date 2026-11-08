@@ -13,7 +13,7 @@ from .stimulus_parameters import digest, resolve_stimuli, snapshot, validate_doc
 from .preflight import validate_setup
 
 FORMAT = "psycolab.experiment.configuration"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_BYTES = 1024 * 1024
 CALIBRATION_NOTICE = (
     "Scientific settings only. Your participant, data location, local display and calibration are retained. "
@@ -23,25 +23,57 @@ CALIBRATION_NOTICE = (
 
 
 def software_identity(root, spec, snapshots):
-    from .. import __version__
+    from .. import __version__, extensions
     from ..experiment_reference import source_digest
     from ..core.runner import _runtime_source_fingerprints
+    from ..experiments._internal.library_builder import portable_design_fingerprint
+
+    root = Path(root).resolve()
     # Reuse existing source inventories. UI/docs changes need not invalidate
-    # science; engine/configuration/analysis changes require explicit retesting.
-    prefixes = tuple("src/psychophysics_lab/" + p for p in
-                     ("core/", "adaptive/", "methods/", "config/", "experiments/_internal/", "stimuli/", "data/"))
-    inventory = {p: hashlib.sha256((Path(root)/p).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
-                 for p in _runtime_source_fingerprints(Path(root))
-                 if p.startswith(prefixes) or p == "src/psychophysics_lab/researcher.py"}
-    if not inventory:
+    # science. Include shared analysis and framework-local scientific helpers
+    # even when a procedure imports them indirectly.
+    framework = "src/psychophysics_lab/"
+    prefixes = ("simulations/",) + tuple(framework + part for part in
+        ("core/", "adaptive/", "methods/", "config/", "experiments/", "stimuli/", "data/", "analysis/"))
+    shared = {framework + name for name in ("researcher.py", "stimulus_library.py", "extensions.py")}
+    inventory = {path: _normalized_source_hash(root/path, recorded)
+                 for path, recorded in _runtime_source_fingerprints(root).items()
+                 if path.startswith(prefixes) or path in shared}
+    if framework + "analysis/primary.py" not in inventory:
         raise ValueError("Installed scientific engine source is unavailable; configuration compatibility cannot be checked.")
+
     selected = replace(spec, stimulus_defaults={s: v["document"]["stimulus_id"] for s, v in snapshots.items()})
+    sources = {"declared": source_digest(root, selected, normalize_newlines=True)}
+    design = portable_design_fingerprint(root, spec)
+    if design is not None:
+        sources["library_design"] = design
+    # The existing Ready check covers indirect laboratory helpers and presets,
+    # including an external stimulus selected by an otherwise official study.
+    laboratory = extensions.check_run(root, spec, snapshots)
+    if laboratory is not None:
+        configured = extensions.configured(root)
+        if configured is None or configured[1] != laboratory["namespace"]:
+            raise ValueError("Laboratory extension selection changed during configuration verification.")
+        sources["laboratory"] = {
+            path: _normalized_source_hash(extensions.source_at(configured[0], path), recorded)
+            for path, recorded in laboratory["source_sha256"].items()
+        }
+        if extensions.fingerprint(root) != laboratory["fingerprint"]:
+            raise ValueError("Laboratory source changed during configuration verification; restart and retest.")
+
     try:
         dependencies = {name: version(name) for name in ("numpy", "pyglet")}
     except PackageNotFoundError as exc:
         raise ValueError("A required installed scientific dependency is missing; repair the local installation first.") from exc
-    return {"psycolab_version": __version__, "source_sha256": source_digest(root, selected, normalize_newlines=True),
+    return {"psycolab_version": __version__, "source_sha256": digest(sources),
             "engine_sha256": digest(inventory), "dependencies": dependencies}
+
+
+def _normalized_source_hash(path, expected):
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != expected:
+        raise ValueError("Scientific source changed during configuration verification; retry with verified source.")
+    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _object(value, keys, label):
@@ -91,6 +123,9 @@ def validate_portable(document, root, current, profile):
     experiments = {s.id: s for s in list_experiments(include_historical=True)}
     stimuli = {s.id: s for s in list_stimuli()}
     _object(document, ("format", "schema_version", "experiment", "stimuli", "presentation", "software"), "Configuration")
+    if document["format"] == FORMAT and type(document["schema_version"]) is int and document["schema_version"] == 1:
+        raise ValueError("Portable configuration version 1 lacks complete scientific fingerprints. "
+                         "Ask the sender to open the verified original settings in Review and export again with this version of PsyCoLab.")
     if document["format"] != FORMAT or type(document["schema_version"]) is not int or document["schema_version"] != SCHEMA_VERSION:
         raise ValueError("Unsupported portable configuration format/schema; use a supported PsyCoLab export.")
     experiment = document["experiment"]
@@ -113,7 +148,9 @@ def validate_portable(document, root, current, profile):
             raise ValueError(f"{slot}: required stimulus {sid!r} is not installed/enabled locally. Install and verify it separately.")
         _complete(data["parameters"], stimuli[sid].parameters, slot)
         snapshots[slot] = snapshot(validate_document(data, stimuli[sid]), file_identity="configuration.json") | {
-            "configuration_origin": {"document_sha256": digest(document), "software": deepcopy(document["software"])}}
+            "configuration_origin": {"document_sha256": digest(document),
+                                     "schema_version": document["schema_version"],
+                                     "software": deepcopy(document["software"])}}
     presentation = document["presentation"]
     _object(presentation, ("show_response_instructions",), "Presentation")
     if type(presentation["show_response_instructions"]) is not bool:
@@ -178,7 +215,7 @@ def write_export(path, document):
     return path
 
 
-def save_local(root, repo, document, current, profile):
+def save_local(root, repo, document, current, profile, *, preserve_origin=False):
     """Stage existing JSON files, validate them, then publish one new directory."""
     from ..data.session import atomic_write_json
     from ..data.identifiers import validate_path_component
@@ -200,8 +237,13 @@ def save_local(root, repo, document, current, profile):
         for slot, data in document["stimuli"].items():
             name = validate_path_component(slot, label="slot") + "_" + token + ".json"
             atomic_write_json(staging/name, data)
+            origin = candidate.stimulus_snapshots[slot]["configuration_origin"]
+            previous = current.stimulus_snapshots.get(slot)
+            if (preserve_origin and current.experiment_id == candidate.experiment_id and previous
+                    and previous["document"]["stimulus_id"] == data["stimulus_id"]):
+                origin = previous.get("configuration_origin", origin)
             snapshots[slot] = load_parameters(staging/name, get_stimulus(data["stimulus_id"])) | {
-                "configuration_origin": deepcopy(candidate.stimulus_snapshots[slot]["configuration_origin"])}
+                "configuration_origin": deepcopy(origin)}
         candidate = validate_setup(replace(candidate, stimulus_snapshots=snapshots),
                                    get_experiment(candidate.experiment_id), profile, mode="configuration")
         # Both paths are newly allocated children of this local configuration

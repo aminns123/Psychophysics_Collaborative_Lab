@@ -20,6 +20,15 @@ from test_parameter_accessibility import OFFICIAL, selected_values
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture
+def portable_checkout(tmp_path):
+    other = tmp_path/"different computer and folder"
+    shutil.copytree(ROOT/"src", other/"src", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(ROOT/"configs", other/"configs")
+    shutil.copytree(ROOT/"simulations", other/"simulations", ignore=shutil.ignore_patterns("__pycache__"))
+    return other
+
+
 def request_for(identity="ellipse_centre"):
     spec = get_experiment(identity)
     profile = load_monitor_profiles(ROOT)["legacy_reference_display"]
@@ -144,12 +153,10 @@ def test_save_is_new_transaction_and_failed_write_preserves_previous(tmp_path, m
     assert all(p.read_bytes() == value for p, value in before.items())
 
 
-def test_compatibility_uses_portable_source_identity_and_accepts_version_label_only_change(tmp_path):
+def test_compatibility_uses_portable_source_identity_and_accepts_version_label_only_change(portable_checkout):
     request, profile = request_for()
     document = make_document(ROOT, request, profile)
-    other = tmp_path/"different computer and folder"
-    shutil.copytree(ROOT/"src", other/"src", ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copytree(ROOT/"configs", other/"configs")
+    other = portable_checkout
     for path in (other/"src").rglob("*.py"):
         path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
     assert software_identity(other, get_experiment(request.experiment_id), request.stimulus_snapshots) == document["software"]
@@ -162,6 +169,49 @@ def test_compatibility_uses_portable_source_identity_and_accepts_version_label_o
     document["software"]["psycolab_version"] = "compatible-version-label"
     _, warnings = validate_portable(document, ROOT, request, profile)
     assert len(warnings) == 1 and "fingerprints match" in warnings[0]
+
+
+@pytest.mark.parametrize(("relative_path", "original", "replacement"), [
+    ("analysis/primary.py", b'"median": median', b'"median": mean'),
+    ("core/scene_primitives.py", b"mask = r2 <= 1", b"mask = r2 <= 0.5"),
+])
+def test_shared_scientific_dependency_change_invalidates_portable_identity(
+        portable_checkout, relative_path, original, replacement):
+    request, profile = request_for()
+    document = make_document(ROOT, request, profile)
+    path = portable_checkout/"src/psychophysics_lab"/relative_path
+    source = path.read_bytes()
+    changed = source.replace(original, replacement, 1)
+    assert changed != source
+    path.write_bytes(changed)
+    with pytest.raises(ValueError, match="Incompatible"):
+        validate_portable(document, portable_checkout, request, profile)
+
+
+def test_different_json_library_design_cannot_pass_with_same_selected_values(portable_checkout, monkeypatch):
+    from psychophysics_lab.experiments._internal.library_builder import create_design, make_spec
+    from psychophysics_lab.experiments._internal.registry import _REGISTRY
+
+    current, profile = request_for()
+    identity = "portable_spatial_task"
+    path = create_design(portable_checkout, identity)
+    spec = make_spec(portable_checkout, identity)
+    monkeypatch.setitem(_REGISTRY, identity, spec)
+    request = replace(current, experiment_id=identity, experiment_values=spec.normalise_values({}),
+                      stimulus_snapshots={})
+    document = make_document(portable_checkout, request, profile)
+
+    design = json.loads(path.read_bytes())
+    design["conditions"][0]["probe_position_deg"][1] = 3.0
+    path.write_text(json.dumps(design), encoding="utf-8")
+    changed = make_spec(portable_checkout, identity)
+    monkeypatch.setitem(_REGISTRY, identity, changed)
+    assert changed.normalise_values({}) == request.experiment_values
+    with pytest.raises(ValueError, match="Incompatible"):
+        validate_portable(document, portable_checkout, request, profile)
+    monkeypatch.setitem(_REGISTRY, identity, spec)
+    with pytest.raises(ValueError, match="changed.*restart"):
+        make_document(portable_checkout, request, profile)
 
 
 def test_missing_local_dependency_and_invalid_local_geometry_do_not_create_saves(tmp_path, monkeypatch):
@@ -180,6 +230,29 @@ def test_missing_local_dependency_and_invalid_local_geometry_do_not_create_saves
     with pytest.raises(ValueError):
         save_local(tmp_path/"local", ROOT, document, request, invalid)
     assert not (tmp_path/"local").exists()
+
+
+def test_version_one_export_requires_verified_reexport_and_leaves_local_json_readable(tmp_path):
+    from psychophysics_lab.ui.parameter_files import load_experiment_json
+
+    request, profile = request_for()
+    legacy = make_document(ROOT, request, profile)
+    legacy["schema_version"] = 1
+    legacy_file = tmp_path/"old-export.json"
+    write_export(legacy_file, legacy)
+    before = legacy_file.read_bytes()
+    with pytest.raises(ValueError, match=r"version 1.*verified original settings.*export again"):
+        save_local(tmp_path/"local", ROOT, read_document(legacy_file), request, profile)
+    assert legacy_file.read_bytes() == before
+    assert not (tmp_path/"local").exists()
+    component = tmp_path/"experiment.json"
+    component.write_text(json.dumps(legacy["experiment"]), encoding="utf-8")
+    assert load_experiment_json(component, get_experiment(request.experiment_id)) == request.experiment_values
+    version_two = make_document(ROOT, request, profile)
+    assert version_two["schema_version"] == 2
+    assert version_two["experiment"] == legacy["experiment"]
+    assert version_two["stimuli"] == legacy["stimuli"]
+    assert validate_portable(version_two, ROOT, request, profile)[0].experiment_values == request.experiment_values
 
 
 def test_shared_configuration_does_not_qualify_human_acquisition():

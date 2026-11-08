@@ -33,7 +33,8 @@ source code, transfer participant data or qualify another laboratory's apparatus
 
 ## What the JSON contains
 
-The small version-1 container uses `format: "psycolab.experiment.configuration"`.
+The portable container uses `format: "psycolab.experiment.configuration"`
+and `schema_version: 2`.
 It embeds the existing experiment JSON (`schema_version`, `experiment_id`,
 `values`) and the existing complete stimulus documents (`schema_version`,
 `stimulus_id`, `parameters`), indexed by experiment slot. It also includes the
@@ -61,13 +62,26 @@ experiment and stimulus validators, bindings, geometry checks and actual plannin
 path remain authoritative. Existing local JSON/presets and historical results
 retain their existing formats and compatibility handling.
 
-The registered experiment and selected stimulus sources, scientific engine and
-NumPy/Pyglet versions must match the export's fingerprints. Paths do not travel
-with the file; source fingerprints tolerate checkout-folder and LF/CRLF line-ending
-differences. A different PsyCoLab version label alone produces a warning if the
-checked sources and dependency versions still match. Other source/version
-differences are conservatively rejected; there is no automatic approval or
-silent migration of different scientific implementations.
+The registered experiment, selected stimuli, shared scientific source including
+the primary estimator, and NumPy/Pyglet versions must match the export's
+fingerprints. A retained JSON-library study includes its verified design digest.
+A laboratory extension includes the existing verified laboratory source and
+preset inventory, including imported helpers. The check is conservative, so
+changes within those inventories can require a new export. Use the same
+separately verified environment for any additional lab-specific packages or
+resources outside those inventories. Paths do not travel with the file.
+Framework and laboratory source hashes normalize LF/CRLF differences. The
+retained JSON-library route uses its existing exact-byte Ready digest.
+A different PsyCoLab version label alone produces a warning if the checked
+fingerprints and dependency versions match.
+
+**Older portable exports.** Import rejects version 1 because its fingerprints
+omitted scientific dependencies. Ask the sender to open the verified original
+settings in Review on an installation that supports schema 2, then choose
+**Export JSON…** and save a new file. If the original settings or required
+software cannot be verified, retain the old transfer as a reference. Open
+ordinary local experiment and stimulus files through their existing editors.
+Those files and historical run records retain their existing formats.
 
 Missing custom/third-party experiments or stimuli must be installed, trusted and
 verified separately through the existing authoring workflow. JSON contains no
@@ -90,13 +104,16 @@ parameter_files/<experiment>/configuration_<unique-id>/
 
 Review tracks the exact local JSON bytes before Test/Run, independently of the
 downloaded file. Import keeps the local participant, data workspace and display
-profile. A transfer-file content hash and software identity are retained in the
-selected stimulus snapshots' optional `configuration_origin`, including saved-run
-`experiment_config.json`. This describes the original shared configuration;
-later edits may differ. The run's existing effective experiment values, stimulus
-snapshots, trial records and local environment/calibration provenance remain the
-authority for what actually ran. The existing request model and runner stay
-unchanged; workflows without sharing have no additional origin metadata.
+profile. Selected stimulus snapshots can retain the original portable document's
+canonical content hash, schema version and software identity in
+`configuration_origin`, including in the saved run's `experiment_config.json`.
+Reloading the same selected component files or saving derived edits keeps this
+history. The current file and effective-value hashes describe the edited
+selection. Selecting an independent file or a different stimulus drops the
+prior origin for that slot. Effective experiment values, stimulus snapshots,
+trial records and local calibration and environment provenance describe what
+actually ran. Workflows without a portable save or import have no additional
+origin metadata.
 
 ## Cross-laboratory reproducibility
 

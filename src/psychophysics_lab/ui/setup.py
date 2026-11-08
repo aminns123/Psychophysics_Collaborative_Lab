@@ -465,6 +465,10 @@ class StimuliScreen(HubPage):
 class DisplayCheckScreen(HubPage):
     page_title = "Display Calibration"
 
+    def __init__(self, *, review_request: SetupRequest | None = None):
+        super().__init__()
+        self.review_request = review_request
+
     def compose_content(self) -> ComposeResult:
         profiles = list(self.app.monitor_profiles.values())
         options = [(f"{p.display_name} [{p.id} · rev {p.revision}]", p.id) for p in profiles]
@@ -819,20 +823,34 @@ class DisplayCheckScreen(HubPage):
                 number(difference.get('difference_standard_error_cdm2')))
         states = stage_states(profile, self.app.local_config_root)
         from ..config.calibration_progress import calibration_progress
-        from ..config.preflight import qualification_checks
         progress = calibration_progress(profile, self.app.local_config_root)
-        # These physical indicators use the same declarations as acquisition.
-        from ..experiments.contrast_sensitivity import SPEC as CSF_SPEC
-        physical = {row['key']: row['passed'] for row in qualification_checks(CSF_SPEC, profile)}
-        colours = {key: ('green' if key != 'precision' and physical.get(key, item['completed']) else
-                         'yellow' if item['completed'] else 'red') for key, item in progress.items()}
+        physical_stages = ("geometry", "luminance", "timing")
+        physical = {key: progress[key]["completed"] and progress[key]["verified"] for key in physical_stages}
+        optional = set()
+        scope = "Display setup evidence. See Experiment Review for the selected study's requirements."
+        if self.review_request is not None:
+            from rich.markup import escape
+            from ..config.preflight import effective_requirements, human_requirements
+            request = self.review_request
+            spec = effective_requirements(get_experiment(request.experiment_id), request.stimulus_snapshots)
+            physical = {row["key"]: row["passed"] for row in human_requirements(spec, profile)
+                        if row["key"] in physical_stages}
+            optional = set(physical_stages) - physical.keys()
+            scope = f"Calibration requirements for {escape(spec.display_name)}. Grey stages are optional for this study."
+        colours = {key: ("grey" if key in optional else
+                         "green" if key != "precision" and physical.get(key, item["completed"]) else
+                         "yellow" if item["completed"] else "red") for key, item in progress.items()}
+        variants = {"green": "success", "yellow": "warning", "red": "error", "grey": "default"}
+        markers = {"green": "✓", "yellow": "!", "red": "✕", "grey": "—"}
         for stage, title in STAGES:
-            ready, _ = states[stage]
+            colour = colours[stage]
             button = self.query_one(f"#cal-stage-{stage}", Button)
-            button.variant = {'green': 'success', 'yellow': 'warning', 'red': 'error'}[colours[stage]]
-            marker = '✓' if colours[stage] == 'green' else '!' if ready else '✕'
-            button.tooltip = f"{title}: {states[stage][1]}"
-            button.label = f"{title.split(' · ')[0] if self.app.size.width < 100 else title} {marker}"
+            button.variant = variants[colour]
+            requirement = ""
+            if self.review_request is not None and stage in physical_stages:
+                requirement = "Optional for this study. " if stage in optional else "Required for this study. "
+            button.tooltip = f"{title}: {requirement}{states[stage][1]}"
+            button.label = f"{title.split(' · ')[0] if self.app.size.width < 100 else title} {markers[colour]}"
             button.set_class(stage == self.active_calibration_stage, "calibration-active")
         for identity, full, short in (
             ("calibration-start", "Start at page 1", "Start"),
@@ -845,11 +863,11 @@ class DisplayCheckScreen(HubPage):
             control.tooltip = full
         self.query_one("#calibration-stage-summary", Static).update(
             "[b]GREEN = stated check satisfied; AMBER = saved, physical verification pending; RED = missing.[/b] "
-            "Spatial and Review describe setup records only. Human readiness applies the selected experiment's requirements.\n"
+            f"Display, Spatial and Review describe setup records only.\n{scope}\n"
             f"[b]{profile.display_name}[/b] · revision {profile.revision} | "
             + "   ".join(
-                f"[{colours[k]}]"
-                f"{'✓' if states[k][0] else '✕'} {title.split(' · ')[1]}[/]"
+                f"[{'dim' if k in optional else colours[k]}]"
+                f"{markers[colours[k]]} {title.split(' · ')[1]}[/]"
                 for k, title in STAGES
             )
             + "\n" + states[self.active_calibration_stage][1]
@@ -862,7 +880,8 @@ class DisplayCheckScreen(HubPage):
         self.query_one("#calibration-finish", Button).display = self.active_calibration_stage == "review"
         if self.active_calibration_stage == "review":
             self.query_one("#calibration-stage-summary", Static).update(
-                f"{profile.display_name} · revision {profile.revision}\nSetup completion, physical verification and experiment qualification are separate.")
+                f"{profile.display_name} · revision {profile.revision}\n{scope}\n"
+                "Setup completion, physical verification and experiment qualification are separate.")
         self.query_one("#calibration-bind-detail", Static).update(
             _monitor_summary(profile) + "\n\n[b]Display status:[/b] " + states["bind"][1]
         )
@@ -1184,8 +1203,15 @@ class DisplayCheckScreen(HubPage):
                     self.app.notify(message, timeout=15)
                 else:
                     from .calibration_review import PhysicalVerificationScreen, ExperimentQualificationScreen
-                    cls = PhysicalVerificationScreen if event.button.id == "review-physical-verification" else ExperimentQualificationScreen
-                    self.app.push_screen(cls(profile))
+                    if event.button.id == "review-physical-verification":
+                        self.app.push_screen(PhysicalVerificationScreen(profile))
+                    elif self.review_request is not None:
+                        request = self.review_request
+                        self.app.push_screen(ExperimentQualificationScreen(
+                            profile, experiment_id=request.experiment_id, values=request.experiment_values,
+                            stimulus_snapshots=request.stimulus_snapshots))
+                    else:
+                        self.app.push_screen(ExperimentQualificationScreen(profile))
             except (OSError, ValueError) as exc:
                 self.query_one("#geometry-status", Static).update(str(exc))
             return
@@ -2705,21 +2731,30 @@ class ReviewScreen(Screen):
         from .parameter_files import load_experiment_json,file_hash
         from ..config.stimulus_parameters import load_parameters,snapshot
         from ..stimuli.registry import get_stimulus
+        from .stimulus_parameters import StimulusParametersPanel, retain_configuration_origin
         spec=get_experiment(self.request.experiment_id)
         self.app.verify_loaded_sources(spec,self.request.stimulus_snapshots)
         sources=self._file_sources
+        tracked = self.app.review_parameter_files.get(self.app.settings_key(self.request), {})
         from .parameter_files import ensure_unchanged
         files={str(path):file_hash(path) for path in [sources["experiment"],*sources["stimuli"].values()] if path is not None}
         values=load_experiment_json(sources["experiment"],spec) if sources["experiment"] else dict(self.request.experiment_values)
         snapshots=dict(self.request.stimulus_snapshots)
         for slot,path in sources["stimuli"].items():
             document=json.loads(Path(path).read_text(encoding="utf-8-sig"))
-            snapshots[slot]=load_parameters(path,get_stimulus(document["stimulus_id"]))
+            selected = load_parameters(path, get_stimulus(document["stimulus_id"]))
+            previous = snapshots.get(slot)
+            if (previous and previous["file_identity"] == Path(path).name
+                    and previous["file_sha256"] is not None
+                    and previous["file_sha256"] == tracked.get(str(path))):
+                selected = retain_configuration_origin(selected, previous)
+            snapshots[slot] = selected
         for slot,bindings in spec.stimulus_field_bindings.items():
             selected=snapshots[slot]
             document=dict(selected["document"])
             document["parameters"]=dict(document["parameters"])|{key:values[field] for key,field in bindings.items()}
-            snapshots[slot]=snapshot(document,file_identity=selected["file_identity"],file_sha256=selected.get("file_sha256"))
+            snapshots[slot] = selected | snapshot(
+                document, file_identity=selected["file_identity"], file_sha256=selected.get("file_sha256"))
         candidate=validate_setup(replace(self.request,experiment_values=values,stimulus_snapshots=snapshots,monitor_profile_hash=None),
             spec,self.app.monitor_profiles[self.request.monitor_profile_id],mode="configuration")
         ensure_unchanged(files)
@@ -2741,13 +2776,13 @@ class ReviewScreen(Screen):
                     screen.parameter_json_path=sources["experiment"]
                     screen.parameter_json_hash=files[str(sources["experiment"])]
                     screen.parameter_json_pending=False
-                from .stimulus_parameters import StimulusParametersPanel
                 for panel in screen.query(StimulusParametersPanel):
                     if panel.slot in sources["stimuli"]:
                         panel.stimulus=get_stimulus(candidate.stimulus_snapshots[panel.slot]["document"]["stimulus_id"])
                         with panel.prevent(Select.Changed):
                             panel.query_one("#stimulus-select-"+panel.slot,Select).value=panel.stimulus.id
-                        panel.load(sources["stimuli"][panel.slot])
+                        panel.load(sources["stimuli"][panel.slot],
+                                   derived_from=candidate.stimulus_snapshots[panel.slot])
         self._refresh_readiness()
         self._apply_run_intent()
         self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. For Python edits, use Refresh (F5).")
@@ -2933,6 +2968,7 @@ class ReviewScreen(Screen):
                 kwargs["focus_category"] = "calibration_status" if key=="luminance" else key+"_status"
             else:
                 kwargs["values"] = self.request.experiment_values
+                kwargs["stimulus_snapshots"] = self.request.stimulus_snapshots
             self.app.push_screen(cls(profile, **kwargs))
         elif row["destination"] == "settings":
             self.app.push_screen(ExperimentParametersScreen(data_root=Path(self.request.data_root or self.app.data_root),
@@ -2949,7 +2985,7 @@ class ReviewScreen(Screen):
             from dataclasses import asdict
             save_preferences(self.app.local_config_root, calibration_active_stage=row.get("stage") or "review",
                 calibration_review_return={"request":asdict(self.request),"snapshot":self.reviewed_profile_snapshot})
-            page = DisplayCheckScreen()
+            page = DisplayCheckScreen(review_request=self.request)
             page.return_to_configuration = True
             page.return_to_review = True
             self.app.push_screen(page)
@@ -3011,7 +3047,8 @@ class ReviewScreen(Screen):
     def _save_configuration(self, request, profile):
         from ..config.sharing import make_document, save_local
         document = make_document(self.app.repo_root, request, profile)
-        return save_local(self.app.local_config_root, self.app.repo_root, document, request, profile)
+        return save_local(self.app.local_config_root, self.app.repo_root, document, request, profile,
+                          preserve_origin=True)
 
     async def _share_configuration(self, button_id):
         try:
@@ -3491,6 +3528,7 @@ class PsyCoLabSetupApp(App):
         save_preferences(self.local_config_root, calibration_navigation=None)
         try:
             from_review = navigation.get("return_to_review", False) if isinstance(navigation, dict) else True
+            request = None
             if from_review and isinstance(saved, dict):
                 request = SetupRequest(**saved["request"])
                 get_experiment(request.experiment_id)
@@ -3505,7 +3543,7 @@ class PsyCoLabSetupApp(App):
                 self.display_draft = dict(navigation.get("settings", {}))
             self.display_draft["geometry-monitor"] = profile_id
             self.display_guide_target_profile_id = profile_id
-            page = DisplayCheckScreen()
+            page = DisplayCheckScreen(review_request=request)
             page.return_to_configuration = from_review and isinstance(saved, dict)
             page.return_to_review = page.return_to_configuration
             await self.push_screen(page)

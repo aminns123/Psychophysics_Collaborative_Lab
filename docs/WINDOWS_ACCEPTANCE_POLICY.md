@@ -7,9 +7,10 @@ No Linux or macOS acquisition, installation or release support is implied.
 
 ## Continuous integration and repository settings
 
-The automatic Headless checks workflow runs the full regression suite and the
-existing portability guard on Windows only. Its existing check name,
-`test (windows-latest)`, is retained to avoid an unnecessary status-name change.
+The automatic Headless checks workflow runs scientific smoke and the full
+regression suite across four Windows shards, with portability checks. Its
+required check `test (windows-latest)` succeeds only after scientific smoke
+and all four shards pass.
 Repository administrators should make that Windows check required in the active
 branch protection/ruleset and remove any obsolete required Ubuntu check. Workflow
 source cannot itself change repository protection settings; verify those settings

@@ -14,9 +14,10 @@ from psychophysics_lab.core.presentation import render_values
 from psychophysics_lab.stimuli.registry import get_stimulus
 from psychophysics_lab.ui.parameter_files import load_experiment_json
 from psychophysics_lab.ui.settings_review import probe_intensity_rows
-from psychophysics_lab.researcher import RunContext
+from psychophysics_lab.researcher import ConfigField, RunContext, experiment
 from simulations.registry import TeachingObserver
 from simulations.run import simulate
+from test_parameter_accessibility import enter_review
 
 ROOT = Path(__file__).resolve().parents[1]
 TASKS = ('line_position_baseline', 'line_position_flanker', 'ellipse_centre', 'ellipse_major_axis')
@@ -117,6 +118,55 @@ def test_step_scale_explains_real_updates_and_does_not_invent_steps_to_backgroun
     assert any(value == 'undefined at black background' for _,_,value,_ in black)
     equal = probe_intensity_rows(spec, values | {'starting_probe_intensity':.5})
     assert any(value == 'Already at background' for _,_,value,_ in equal)
+
+
+def test_independent_intensity_fields_use_generic_review(tmp_path, monkeypatch):
+    from psychophysics_lab.experiments._internal.registry import _REGISTRY
+    from psychophysics_lab.ui.setup import PsyCoLabSetupApp
+
+    def procedure(run):
+        run.initialise(expected_trials=1, resolution={})
+        run.present(target=0, condition="independent intensity")
+        run.complete()
+
+    def migrate_local_fields(values):
+        return values
+
+    get_experiment(TASKS[0])  # Populate the built-ins before adding the local fixture.
+    spec = experiment(
+        id="local_intensity", name="Local intensity", description="Independent intensity study.",
+        procedure=procedure, stimuli={"target": "vertical_line_probe"},
+        fields=(
+            ConfigField("starting_probe_intensity", "Local starting intensity", "float", .45),
+            ConfigField("background_intensity", "Local background intensity", "float", .5),
+        ),
+        calibration_requirements=("geometry",),
+        monitor_capabilities=("display_binding", "resolution"),
+        migrate_values=migrate_local_fields,
+    )
+    monkeypatch.setitem(_REGISTRY, spec.id, spec)
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path)
+        async with app.run_test(size=(130, 50)) as pilot:
+            review = await enter_review(app, pilot, spec.id, spec.normalise_values({}))
+            assert review.configuration_error is None
+            assert ("Experiment", "Local starting intensity", "0.45") in [
+                row[:3] for row in review._review_rows
+            ]
+            assert not any(row[0] == "Adaptive scale" for row in review._review_rows)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("identity", TASKS)
+def test_official_probe_review_retains_adaptive_and_fixed_explanations(identity):
+    spec = get_experiment(identity)
+    values = values_for(identity, starting_probe_intensity=.52)
+    assert any(row[1] == "After one decrease" for row in probe_intensity_rows(spec, values))
+    fixed = probe_intensity_rows(spec, values | {"contrast_method": "constant_stimuli"})
+    assert any(row[1] == "Maximum nominal probe intensity" for row in fixed)
+    assert not any(row[0] == "Adaptive scale" for row in fixed)
 
 
 def test_live_tui_and_review_show_absolute_input_and_derived_step_scale(tmp_path):

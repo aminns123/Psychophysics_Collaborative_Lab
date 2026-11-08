@@ -4,6 +4,42 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **Generic Review for independent studies ([#235](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/235)).**
+  The specialised bright-probe explanation now requires the study's declared
+  contrast convention, log-step controls and planning hooks. The four official
+  ellipse and line studies retain their explanation. Other studies use their
+  own field declarations.
+- **Portable configuration schema 2 ([#236](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/236)).**
+  Compatibility now covers the primary estimator and shared scientific source,
+  verified JSON-library designs and laboratory helpers. Review preserves
+  imported origin when reloading the same selected files and saving derived
+  edits. Replacement sources drop the old origin for the affected slot.
+  Version 1 portable exports require a fresh export from verified original
+  settings. Local experiment and stimulus JSON and historical run formats
+  keep their existing schemas. See [sharing configurations](docs/SHARING_CONFIGURATIONS.md).
+- **Configuration sharing ([#224](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/224)).**
+  Review can save local configurations, export portable JSON and preview
+  changes before approving an import.
+- **Scientific inputs and presentation ([#219](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/219),
+  [#222](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/222)).**
+  Review directs researchers to the controlling input or stimulus editor.
+  Editable stimulus geometry such as ellipse probe height and width uses local
+  JSON. Presentation windows manage cursor visibility during Test and Run.
+- **One Windows launcher ([#217](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/217)).**
+  `PsyCoLab.bat` provides launch, setup/repair and Python Workspace.
+  Use the [migration table](outdated_code/windows_launchers/README.md#migrate-existing-shortcuts-and-automation)
+  to retarget shortcuts using retired wrappers.
+- **Derived result provenance ([#215](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/215)).**
+  Primary-analysis JSON and plots identify synthetic or unqualified origin,
+  incomplete runs and boundary-affected estimates where applicable. The
+  derived report preserves source and input identity alongside the result.
+- **Scientist-first official protocols ([#207](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/207)).**
+  The ten official experiments use A1/A2/B and one `STIMULI` map each.
+  The official ellipse and line studies use separate stimulus layers, with
+  historical source and comparisons retained.
+
+### Earlier development evidence
+
 - **Accepted development baseline (26 October 2026):** commit
   `5fec547ecf3f86cd6bbd202a9e463637deca07d3`, after PRs #114–#120;
   **1,562 Windows / 1,560 Ubuntu tests passed**, zero failures and both
@@ -19,10 +55,10 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
   descriptions aligned; CLI help regression uses the existing public entry point;
   nested-root checks remain cross-platform, with Windows junction and POSIX symlink
   tests running on their native platforms. No UI layout fix is claimed.
-- **Issue #82 stage 1 (this documentation PR):** reconcile baseline, release and
-  Issue #80 evidence; record [five approved stages](docs/ISSUE82_RELEASE_ROADMAP.md).
-  Editable-install identity, exact environment, clean installation and rollback
-  work remain separate future PRs. No runtime implementation changes here.
+- **Issue #82 Stage 1 (merged PR #121):** reconciled baseline, release and
+  Issue #80 evidence and recorded the [five approved stages](docs/ISSUE82_RELEASE_ROADMAP.md).
+  Editable-install identity and the exact Windows environment followed in
+  PRs #122 and #161. Independent installation and rollback remain separate gates.
 
 - **Issue #81 Stage 3 (merged PR #97):** read-only archived extension provenance
   v1 structural checks; reject explicitly newer/malformed nested metadata
