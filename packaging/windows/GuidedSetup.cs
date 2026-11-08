@@ -826,23 +826,27 @@ public static class SourceMenu
 public sealed class StartupSplash : IDisposable
 {
     const string Escape = "\x1b[";
-    const double PsyFadeSeconds = 3.0, CoFadeStartSeconds = PsyFadeSeconds-1.0, GroupFadeSeconds = 0.7;
-    const double FadeSeconds = CoFadeStartSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
+    const double FadeOverlapSeconds = 1.0, PsyFadeSeconds = 3.0, CoFadeSeconds = 1.7, LabFadeSeconds = 1.0;
+    const double CoFadeStartSeconds = PsyFadeSeconds-FadeOverlapSeconds;
+    const double LabFadeStartSeconds = CoFadeStartSeconds+CoFadeSeconds-FadeOverlapSeconds;
+    const double FadeSeconds = LabFadeStartSeconds+LabFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
-    // The hand-drawn Psy, Co and Lab groups begin at columns 0, 21 and 35.
-    const int CoStart = 21, LabStart = 35;
+    // The hand-drawn Psy, Co and Lab groups begin at columns 0, 23 and 39.
+    const int CoStart = 23, LabStart = 39;
     const string Brand = "PsyCoLab", Cyan = Escape+"38;2;6;99;131m";
     const uint ProcessedInput = 0x1, QuickEdit = 0x40, ExtendedInput = 0x80;
     const uint ProcessedOutput = 0x1, WrapAtEndOfLine = 0x2, VirtualTerminalOutput = 0x4;
-    // Original seven-row mixed-case pixel lettering: Psy / Co / Lab.
+    // Original nine-row mixed-case pixel lettering: Psy / Co / Lab.
     static readonly string[] Logo = {
-        "████                  ████         █             █",
-        "█   █   ███   █   █  █       ███   █       ███   █",
-        "█   █  █      █   █  █      █   █  █          █  ████",
-        "████    ███    ████  █      █   █  █       ████  █   █",
-        "█          █      █  █      █   █  █      █   █  █   █",
-        "█      ████   ████   █       ███   █       ████  ████",
-        "█                     ████         █████"
+        "█████                   █████          ██            ██",
+        "██  ██                 ██              ██            ██",
+        "██  ██  █████ ██  ██   ██      ████    ██      ████  █████",
+        "█████  ██     ██  ██   ██     ██  ██   ██         ██ ██  ██",
+        "██      ████  ██  ██   ██     ██  ██   ██      █████ ██  ██",
+        "██         ██  █████   ██     ██  ██   ██     ██  ██ ██  ██",
+        "██         ██     ██   ██     ██  ██   ██     ██  ██ ██  ██",
+        "██     █████     ██     █████  ████    ██████  █████ █████",
+        "              ████"
     };
     static readonly int LogoWidth=Logo.Max(line=>line.Length);
     readonly IntPtr output;
@@ -867,11 +871,14 @@ public sealed class StartupSplash : IDisposable
     }
 
     static string FadeFrame(int top,int left,double elapsed) {
-        double coProgress=(elapsed-CoFadeStartSeconds)/GroupFadeSeconds;
-        var shades=new string[3];
+        double[] progress={
+            elapsed/PsyFadeSeconds,
+            (elapsed-CoFadeStartSeconds)/CoFadeSeconds,
+            (elapsed-LabFadeStartSeconds)/LabFadeSeconds
+        };
+        var shades=new string[progress.Length];
         for(int group=0;group<shades.Length;group++) {
-            double progress=group==0?elapsed/PsyFadeSeconds:coProgress-(group-1);
-            double stage=Math.Max(0,Math.Min(1,progress));
+            double stage=Math.Max(0,Math.Min(1,progress[group]));
             double level=stage*stage*(3-2*stage);
             shades[group]=Escape+"38;2;"+(int)(6*level)+";"+(int)(99*level)+";"+(int)(131*level)+"m";
         }

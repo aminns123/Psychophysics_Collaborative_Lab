@@ -48,9 +48,8 @@ Keep scientific changes explicit and separate from infrastructure cleanup.
 
 ## Licensing
 
-The repository has no top-level software licence or licence declaration in its
-package metadata. Record contributor authorship, permission to contribute and
-third-party materials for review. The owner and institution must resolve
-licensing, ownership and distribution permissions. Use [CITATION.cff](CITATION.cff)
-for citation metadata and the [release policy](docs/RELEASE_POLICY.md) for the
-outstanding decisions.
+PsyCoLab software uses the [BSD 3-Clause licence](LICENSE). Confirm that you
+have permission to submit your contribution under those terms. Record
+authorship, preferred credit and any third-party material or notices in the PR.
+See the [third-party notices](THIRD_PARTY_NOTICES.md) and
+[release policy](docs/RELEASE_POLICY.md) for distribution scope.
