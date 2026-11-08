@@ -10,15 +10,15 @@ def test_original_wordmark_is_shared_by_readme_and_windows_splash():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     launcher = (ROOT / "packaging/windows/GuidedSetup.cs").read_text(encoding="utf-8")
 
-    assert readme.startswith("# PsyCoLab — Psychophysics Collaborative Laboratory\\n".replace("\\\\n", "\\n"))
+    assert readme.startswith("# PsyCoLab — Psychophysics Collaborative Laboratory\n")
     assert "docs/images/psycolab-logo.png" not in readme
-    expected = re.search(r"(?m)^\\x60\\x60\\x60text\\n([\\s\\S]*?)\\n\\x60\\x60\\x60", readme)
-    assert expected is not None
-    markdown_rows = expected.group(1).splitlines()
+    block = re.search(r"(?m)^\x60\x60\x60text\n([\s\S]*?)\n\x60\x60\x60", readme)
+    assert block is not None
+    markdown_rows = block.group(1).splitlines()
 
-    source = re.search(r"static readonly string\\[\\] Logo = \\{([\\s\\S]*?)\\n    \\};", launcher)
+    source = re.search(r"static readonly string\[\] Logo = \{([\s\S]*?)\n    \};", launcher)
     assert source is not None
-    launcher_rows = re.findall(r'^\\s*"(.*?)",?$', source.group(1), re.M)
+    launcher_rows = re.findall(r'^\s*"(.*?)",?$', source.group(1), re.M)
     assert markdown_rows == launcher_rows
     assert len(launcher_rows) == 7
     assert len({len(row) for row in launcher_rows}) > 1
