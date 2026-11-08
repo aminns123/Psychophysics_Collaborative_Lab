@@ -38,6 +38,12 @@ scientific meaning of such unversioned settings must be checked. Files with
 an explicitly present, unsupported version (including a string or boolean)
 are skipped with an actionable warning instead of being interpreted as version 1.
 
+**Save new preset** requires an unused filename. It preserves any existing
+file or folder at that name, including a preset hidden by an unsupported
+version or unreadable JSON. On Windows, names that differ only in
+capitalisation can refer to the same file. Choose a different name if the
+save reports a collision.
+
 The explicit `update_preset` action refuses to overwrite **any** missing or
 unsupported version, even if an older file can be inspected. Save an updated
 configuration under a **new preset name**, preserving its original bytes.

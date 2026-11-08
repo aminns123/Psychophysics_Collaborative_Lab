@@ -2176,23 +2176,17 @@ class _ExperimentInputsScreen(Screen):
             verb = {"save-preset": "saved", "load-preset": "loaded",
                     "update-preset": "updated"}[operation]
             try:
-                all_presets = load_presets(self.app.local_config_root, self.experiment.id)
+                if operation != "save-preset":
+                    all_presets = load_presets(self.app.local_config_root, self.experiment.id)
                 if operation == "save-preset":
                     name = self.query_one("#preset-name", Input).value
-                    if name in all_presets:
-                        raise ValueError(
-                            f"Preset '{name}' already exists. Choose a new name or "
-                            "select it and press Update selected preset."
-                        )
                     snapshot = self._collect()
                     saved_path = save_preset(self.app.local_config_root, name, self.experiment.id, snapshot)
-                    loaded = load_presets(self.app.local_config_root, self.experiment.id).get(name)
-                    if loaded != snapshot:
+                    saved_presets = load_presets(self.app.local_config_root, self.experiment.id)
+                    if saved_presets.get(name) != snapshot:
                         raise RuntimeError(f"Preset save could not be verified: {saved_path}")
                     selector = self.query_one("#config-preset", Select)
-                    selector.set_options([(item, item) for item in load_presets(
-                        self.app.local_config_root, self.experiment.id
-                    )])
+                    selector.set_options([(item, item) for item in saved_presets])
                     selector.value = name
                 elif operation == "update-preset":
                     raw = self.query_one("#config-preset", Select).value
