@@ -829,18 +829,20 @@ public sealed class StartupSplash : IDisposable
     const double PsyFadeSeconds = 3.0, CoFadeStartSeconds = PsyFadeSeconds-1.0, GroupFadeSeconds = 0.7;
     const double FadeSeconds = CoFadeStartSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
-    // The logo's PSY, CO and LAB groups begin at columns 0, 25 and 42.
-    const int CoStart = 25, LabStart = 42;
+    // The hand-drawn Psy, Co and Lab groups begin at columns 0, 21 and 35.
+    const int CoStart = 21, LabStart = 35;
     const string Brand = "PsyCoLab", Cyan = Escape+"38;2;6;99;131m";
     const uint ProcessedInput = 0x1, QuickEdit = 0x40, ExtendedInput = 0x80;
     const uint ProcessedOutput = 0x1, WrapAtEndOfLine = 0x2, VirtualTerminalOutput = 0x4;
+    // Original seven-row mixed-case pixel lettering: Psy / Co / Lab.
     static readonly string[] Logo = {
-        "██████╗ ███████╗██╗   ██╗ ██████╗ ██████╗ ██╗      █████╗ ██████╗",
-        "██╔══██╗██╔════╝╚██╗ ██╔╝██╔════╝██╔═══██╗██║     ██╔══██╗██╔══██╗",
-        "██████╔╝███████╗ ╚████╔╝ ██║     ██║   ██║██║     ███████║██████╔╝",
-        "██╔═══╝ ╚════██║  ╚██╔╝  ██║     ██║   ██║██║     ██╔══██║██╔══██╗",
-        "██║     ███████║   ██║   ╚██████╗╚██████╔╝███████╗██║  ██║██████╔╝",
-        "╚═╝     ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═════╝"
+        "████                  ████         █             █",
+        "█   █   ███   █   █  █       ███   █       ███   █",
+        "█   █  █      █   █  █      █   █  █          █  ████",
+        "████    ███    ████  █      █   █  █       ████  █   █",
+        "█          █      █  █      █   █  █      █   █  █   █",
+        "█      ████   ████   █       ███   █       ████  ████",
+        "█                     ████         █████"
     };
     static readonly int LogoWidth=Logo.Max(line=>line.Length);
     readonly IntPtr output;
