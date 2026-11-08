@@ -45,9 +45,14 @@ inspected font resources contain no embedded font programs.
 
 ## Retained documentation assets
 
-Confirm the handbook text and the retained recovery screenshot's provenance
-and public distribution scope before publishing a source release. The
-original text wordmark supersedes the previous branding images. Their
+The maintainer confirmed, to the best of his knowledge, that the handbook and
+recovery screenshot were made for PsyCoLab by him or with AI assistance. The
+PDF's 83 case headings and case fields match the [historical Markdown at its
+introduction](https://github.com/aminns123/Psychophysics_Collaborative_Lab/blob/65cea37/docs/PsyCoLab_International_Manual_Validation_Handbook_v1.md).
+The review found standard font references and no embedded images, attachments
+or private details in the inspected text and metadata. The recovery image
+shows the PsyCoLab dialog. Both retain their historical documentation role.
+The original text wordmark supersedes the previous branding images, whose
 historical revisions retain their original provenance.
 
 ## Dependencies and distribution
