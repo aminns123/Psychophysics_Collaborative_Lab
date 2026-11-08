@@ -20,8 +20,9 @@ def test_original_wordmark_is_shared_by_readme_and_windows_splash():
     assert source is not None
     launcher_rows = re.findall(r'^\s*"(.*?)",?$', source.group(1), re.M)
     assert markdown_rows == launcher_rows
-    assert len(launcher_rows) == 7
+    assert len(launcher_rows) == 9
+    assert max(map(len, launcher_rows)) == 59
     assert len({len(row) for row in launcher_rows}) > 1
-    assert "const int CoStart = 21, LabStart = 35;" in launcher
+    assert "const int CoStart = 23, LabStart = 39;" in launcher
     assert 'const string Brand = "PsyCoLab"' in launcher
     assert "██╔══██╗" not in launcher
