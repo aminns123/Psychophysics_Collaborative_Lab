@@ -73,12 +73,10 @@ retains the historical evidence matrix; Issue #82 remains the stable release gat
 
 ## Before a stable release
 
-- [ ] Repo owner/institution decides the **software licence** and confirms
-  ownership, contributor permissions and bundled third-party source, graphics
-  and runtime terms. The repository currently has no top-level licence or
-  package licence declaration. Contributor roles and attribution remain for
-  owner review. The citation metadata lists the GitHub handle `aminns123`.
-  See [CITATION.cff](../CITATION.cff) and the
+- [ ] Confirm that the exact release archive and any attached binaries have
+  the required contributor permissions and third-party notices. PsyCoLab
+  software uses the [BSD 3-Clause licence](../LICENSE). Review the
+  [third-party notices](../THIRD_PARTY_NOTICES.md) and
   [Windows candidate redistribution review](WINDOWS_INSTALLER_LICENSING.md).
 - [ ] Scientific core, official experiments and external/local extension boundary are clear. No duplicate active authoring systems.
 - [x] The historical accepted baseline and subsequent Windows regression evidence are recorded. The release target must still pass its own exact-commit Windows tests. Windows 11 is the sole supported target; see [acceptance policy](WINDOWS_ACCEPTANCE_POLICY.md).

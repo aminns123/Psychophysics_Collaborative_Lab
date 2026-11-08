@@ -1,7 +1,9 @@
 cff-version: 1.2.0
-message: "If you use PsyCoLab, please cite this software repository."
-title: "PsyCoLab - Psychophysics Collaborative Lab"
+message: "If you use PsyCoLab, please cite this software and report the source revision used."
+title: "PsyCoLab — Psychophysics Collaborative Laboratory"
 type: software
 authors:
-  - name: "aminns123"
+  - family-names: Minns
+    given-names: Alexander A.
 repository-code: "https://github.com/aminns123/Psychophysics_Collaborative_Lab"
+license: BSD-3-Clause
