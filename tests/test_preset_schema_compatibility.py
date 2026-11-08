@@ -166,9 +166,10 @@ def test_save_new_preset_preserves_existing_symlink(tmp_path, dangling):
         original.symlink_to(target)
     except OSError as exc:
         pytest.skip(f"File symlinks unavailable: {exc}")
+    original_target = original.readlink()
     with pytest.raises(ValueError, match="already exists. Choose a new preset name"):
         save_preset(tmp_path, "held", experiment, {})
-    assert original.is_symlink() and original.readlink() == target
+    assert original.is_symlink() and original.readlink() == original_target
     if dangling:
         assert not target.exists()
     else:
