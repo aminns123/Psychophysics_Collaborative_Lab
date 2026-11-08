@@ -84,7 +84,7 @@
   "software": {
     "psycolab_version": "0.3.0",
     "source_sha256": "9217ed350f6cf05d80fcc7f76794168a228760b73026037c1451b8b7080652ee",
-    "engine_sha256": "0fcfe84993e0015aa80b981380277d767490c9e8eed193baafce27ee65b48143",
+    "engine_sha256": "1aed3629d9f843615a25bbf924d94c7e6f043bed130e3b48f309dd062b34b19d",
     "dependencies": {
       "numpy": "1.26.4",
       "pyglet": "1.5.27"

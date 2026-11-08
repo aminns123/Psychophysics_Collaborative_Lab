@@ -83,6 +83,14 @@ software cannot be verified, retain the old transfer as a reference. Open
 ordinary local experiment and stimulus files through their existing editors.
 Those files and historical run records retain their existing formats.
 
+The preset safety correction changes a configuration file included in the
+engine fingerprint. Schema 2 exports and complete local saves from the
+earlier candidate (`53b8cacf`) need a fresh export or save. Keep the originals.
+Review the verified settings in a matching installation, or load the saved
+`experiment.json` and per-slot stimulus JSON through the current parameter
+editors and compare the effective values before exporting again. Preserve
+the archived `configuration.json` and its original provenance.
+
 Missing custom/third-party experiments or stimuli must be installed, trusted and
 verified separately through the existing authoring workflow. JSON contains no
 Python import path, installation command or executable instruction. Import uses

@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
+import hashlib
+import json
+import os
 from pathlib import Path
 
 import pytest
@@ -180,4 +183,79 @@ def test_experiment_preset_save_load_reopen_and_duplicate_block(tmp_path, monkey
             app.pop_screen()
             await pilot.pause()
             assert screen.query_one("#field-frequencies-cpd", Input).value == "1,5,9"
+    asyncio.run(scenario())
+
+
+def test_save_new_preset_rejections_preserve_research_files(tmp_path, monkeypatch):
+    config = tmp_path / "configuration"
+    data = tmp_path / "archive"
+    monkeypatch.setenv("PSYCOLAB_CONFIG_DIR", str(config))
+    experiment = get_experiment("contrast_sensitivity")
+    directory = config / "presets" / experiment.id
+    retained = {
+        directory / "future.json": json.dumps({
+            "schema_version": 999, "experiment_id": experiment.id, "values": {"future_key": 4},
+        }).encode(),
+        directory / "malformed.json": b'{"schema_version":',
+        directory / "Retained.json": json.dumps({
+            "schema_version": 1, "experiment_id": experiment.id, "values": experiment.field_defaults(),
+        }).encode(),
+        directory / "occupied.json" / "retained.txt": b"directory entry to keep",
+        config / "preferences.json": b'{"example":true}',
+        config / "profiles" / "archived-calibration.json": b'{"geometry_status":"unverified"}',
+        config / "parameter_files" / experiment.id / "configuration_imported" / "configuration.json":
+            b'{"schema_version":2,"example":"already imported"}',
+        data / "historical" / "run_001" / "trials.tsv": b"trial_index\tcorrect\n1\t1\n",
+    }
+    for path, contents in retained.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+
+    def hashes():
+        return {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in retained}
+
+    async def scenario():
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=data)
+        async with app.run_test(size=(100, 30)) as pilot:
+            app.push_screen(ExperimentParametersScreen(
+                data_root=data, participant_id="TEST_ONLY", session_mode="new",
+                experiment=experiment, monitor_profile_id="legacy_reference_display",
+                defaults=experiment.field_defaults(),
+            ))
+            await pilot.pause()
+            screen = app.screen
+            next(panel for panel in screen.query(Collapsible) if panel.title == "Local presets").collapsed = False
+            await pilot.pause()
+            assert hashes() == {path: hashlib.sha256(raw).hexdigest() for path, raw in retained.items()}
+            before = hashes()
+            entries = sorted(directory.iterdir())
+
+            async def reject(name, message):
+                screen.query_one("#preset-name", Input).value = name
+                screen.query_one("#save-preset", Button).press()
+                await pilot.pause()
+                status = str(screen.query_one("#config-status", Static).render())
+                assert "Preset NOT saved" in status and message in status
+                assert hashes() == before
+                assert sorted(directory.iterdir()) == entries
+
+            names = ["future", "malformed", "occupied", "Retained"]
+            if (directory / "retained.json").exists():
+                names.append("retained")
+            for name in names:
+                await reject(name, "Choose a new preset name")
+            await reject("../escape", "invalid filename")
+
+            operation = "rename" if os.name == "nt" else "link"
+            publish = getattr(os, operation)
+
+            def fail_publish(source, destination):
+                if Path(destination) == directory / "cannot_publish.json":
+                    raise PermissionError("injected publication failure")
+                return publish(source, destination)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(os, operation, fail_publish)
+                await reject("cannot_publish", "Check the preset folder and try again")
+
     asyncio.run(scenario())
