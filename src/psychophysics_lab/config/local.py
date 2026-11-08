@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import tempfile
 import warnings
 from pathlib import Path
 from uuid import uuid4
@@ -136,11 +137,43 @@ def save_profile(root: Path, profile, *, expected_revision: int = 0):
         return saved
 
 def save_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path:
-    name=validate_path_component(name,label='preset')
-    exp=validate_path_component(experiment_id,label='experiment')
-    path=(root/'presets'/exp/f'{name}.json').resolve()
-    if not path.is_relative_to(root.resolve()): raise ValueError('Preset path escapes local configuration.')
-    atomic_write_json(path,{'schema_version':PRESET_SCHEMA_VERSION,'experiment_id':exp,'values':values,'saved_utc':datetime.now(timezone.utc).isoformat()})
+    """Publish a complete new preset without following or replacing its filename."""
+    name = validate_path_component(name, label="preset")
+    experiment = validate_path_component(experiment_id, label="experiment")
+    directory = (root / "presets" / experiment).resolve()
+    if not directory.is_relative_to(root.resolve()):
+        raise ValueError("Preset path escapes local configuration.")
+    if not isinstance(values, dict):
+        raise ValueError("Preset values must be a JSON object.")
+    path = directory / f"{name}.json"
+    encoded = json.dumps({
+        "schema_version": PRESET_SCHEMA_VERSION, "experiment_id": experiment,
+        "values": values, "saved_utc": datetime.now(timezone.utc).isoformat(),
+    }, indent=2, default=str, allow_nan=False)
+    temporary = None
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=directory,
+                                         prefix=".preset-", suffix=".tmp", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            # Windows rename is no-replace. On POSIX a hard link publishes
+            # the complete file with the same create-only guarantee.
+            if os.name == "nt":
+                os.rename(temporary, path)
+                temporary = None
+            else:
+                os.link(temporary, path)
+        except FileExistsError as exc:
+            raise ValueError(f"Preset name '{name}' already exists. Choose a new preset name.") from exc
+    except OSError as exc:
+        raise OSError(f"Could not create preset '{name}'. Check the preset folder and try again. {exc}") from exc
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 def update_preset(root: Path, name: str, experiment_id: str, values: dict) -> Path:

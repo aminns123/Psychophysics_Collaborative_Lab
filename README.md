@@ -2,7 +2,7 @@
   <img src="docs/images/psycolab-logo.png" alt="PsyCoLab" width="900">
 </p>
 
-# PsyCoLab — Psychophysics Collaborative Lab
+# PsyCoLab — Psychophysics Collaborative Laboratory
 
 **PsyCoLab is a scientist-first psychophysics laboratory for designing,
 understanding, configuring, testing and sharing reproducible experiments
