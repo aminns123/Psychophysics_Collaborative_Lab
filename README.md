@@ -108,6 +108,10 @@ see the [release policy](docs/RELEASE_POLICY.md) and [changelog](CHANGELOG.md).
 Keep participant records, calibration and lab-owned source separate from the
 checkout when [updating or moving computers](docs/SAFE_UPDATES_AND_LOCAL_WORK.md).
 
+PsyCoLab's software uses the [BSD 3-Clause licence](LICENSE). See the
+[acknowledgements](ACKNOWLEDGEMENTS.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
 Use [CITATION.cff](CITATION.cff) to cite PsyCoLab and report the exact source
-revision used in your study. Project licensing and distribution approvals are
-tracked in the [release checklist](docs/RELEASE_POLICY.md#before-a-stable-release).
+revision used in your study. Distribution approvals are tracked in the
+[release checklist](docs/RELEASE_POLICY.md#before-a-stable-release).

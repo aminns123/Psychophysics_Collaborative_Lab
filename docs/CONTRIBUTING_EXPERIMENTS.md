@@ -59,9 +59,9 @@ A contribution does not need expensive NVIDIA hardware to **compile or simulate*
 
 ## Licensing, ownership and attribution
 
-Document contributor ownership, permission to publish, acknowledgement and
-third-party materials in the PR. The project owner and institution decide
-licensing and distribution terms. See the [release checklist](RELEASE_POLICY.md)
+Confirm that you have permission to contribute under the
+[BSD 3-Clause licence](../LICENSE). Record authorship, preferred credit and
+third-party material in the PR. See the [release checklist](RELEASE_POLICY.md)
 and [citation metadata](../CITATION.cff).
 
 ## Local extensions versus official contributions
