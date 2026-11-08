@@ -826,8 +826,8 @@ public static class SourceMenu
 public sealed class StartupSplash : IDisposable
 {
     const string Escape = "\x1b[";
-    const double PsyFadeSeconds = 5.0, GroupFadeSeconds = 0.7;
-    const double FadeSeconds = PsyFadeSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
+    const double PsyFadeSeconds = 3.0, CoFadeStartSeconds = PsyFadeSeconds-1.0, GroupFadeSeconds = 0.7;
+    const double FadeSeconds = CoFadeStartSeconds+2*GroupFadeSeconds, SweepSeconds = 5.0, DockSeconds = 2.5;
     const int FrameMilliseconds = 33;
     // The logo's PSY, CO and LAB groups begin at columns 0, 25 and 42.
     const int CoStart = 25, LabStart = 42;
@@ -865,12 +865,11 @@ public sealed class StartupSplash : IDisposable
     }
 
     static string FadeFrame(int top,int left,double elapsed) {
-        double groupPosition=elapsed<PsyFadeSeconds
-            ?elapsed/PsyFadeSeconds
-            :1+(elapsed-PsyFadeSeconds)/GroupFadeSeconds;
+        double coProgress=(elapsed-CoFadeStartSeconds)/GroupFadeSeconds;
         var shades=new string[3];
         for(int group=0;group<shades.Length;group++) {
-            double stage=Math.Max(0,Math.Min(1,groupPosition-group));
+            double progress=group==0?elapsed/PsyFadeSeconds:coProgress-(group-1);
+            double stage=Math.Max(0,Math.Min(1,progress));
             double level=stage*stage*(3-2*stage);
             shades[group]=Escape+"38;2;"+(int)(6*level)+";"+(int)(99*level)+";"+(int)(131*level)+"m";
         }
