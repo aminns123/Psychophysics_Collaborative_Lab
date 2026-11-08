@@ -73,6 +73,26 @@ trust and test laboratory source before marking it software Ready. To propose a
 fix or contribute an experiment to the official catalogue, see the
 [contributor guide](CONTRIBUTING.md).
 
+## Open research and collaboration
+
+PsyCoLab is an independently developed, scientist-first psychophysics platform
+created to make experimental research more accessible, understandable and
+reproducible.
+
+The project supports the freedom to use, inspect, modify and share scientific
+software. Researchers, students, educators and developers are welcome to use
+PsyCoLab for their own work, build independent experiments and stimuli, and
+contribute improvements to the wider project.
+
+PsyCoLab is intended to encourage open scientific collaboration without
+requiring researchers to contribute their private modifications.
+
+The project was initiated and developed by Alexander A. Minns, with assistance
+from AI-based development tools.
+
+See [release status and citation](#release-status-and-citation) for the
+current licensing status.
+
 ## Release status and citation
 
 The current source includes work after the published
