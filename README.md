@@ -105,6 +105,8 @@ current licensing status.
 
 The current source includes work after the published
 [`v0.3.0` research pre-release](https://github.com/aminns123/Psychophysics_Collaborative_Lab/releases/tag/v0.3.0).
+See the [v0.4.0 candidate notes](docs/releases/v0.4.0.md) for the proposed
+source distribution, update instructions and outstanding acceptance.
 For tested revisions, remaining Windows 11 acceptance and distribution decisions,
 see the [release policy](docs/RELEASE_POLICY.md) and [changelog](CHANGELOG.md).
 Keep participant records, calibration and lab-owned source separate from the
