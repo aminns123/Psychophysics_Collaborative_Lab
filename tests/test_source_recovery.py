@@ -472,7 +472,7 @@ site = target / "Lib/site-packages/psychophysics_lab"
 site.mkdir(parents=True)
 (site / "__init__.py").write_text("")
 (site / "__main__.py").write_text(
-    "import sys\nprint('Fixture using', sys.prefix)\n")
+    "import sys\nfrom pathlib import Path\nprint('Fixture using', Path(sys.prefix).name)\n")
 record = json.loads((root / ".venv/.psycolab-setup.json").read_text())
 record["pyproject_sha256"] = hashlib.sha256((root / "pyproject.toml").read_bytes()).hexdigest()
 (target / ".psycolab-setup.json").write_text(json.dumps(record))
@@ -511,7 +511,8 @@ def test_locked_requirements_change_decline_fail_repair_and_repeat(locked_mismat
     assert "could not be found" not in healthy.stdout
     for _ in range(2):
         launched = batch(locked_mismatch, "--launch")
-        assert launched.returncode == 0 and str(target) in launched.stdout
+        assert launched.returncode == 0
+        assert f"Fixture using {target.name}" in launched.stdout.splitlines()
     workspace = batch(locked_mismatch, "--workspace", input_text=(
         'python -c "import sys; from pathlib import Path; print(Path(sys.prefix).name)"\nexit\n'
     ))
