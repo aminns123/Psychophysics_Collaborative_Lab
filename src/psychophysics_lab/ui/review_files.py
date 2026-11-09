@@ -1,5 +1,6 @@
 """Locate real parameter sources. Never invent editable derived parameters."""
 import ast
+from functools import cache
 import inspect
 import json
 from pathlib import Path
@@ -10,10 +11,19 @@ from ..stimuli.registry import get_stimulus
 from .settings_review import parameter_sources, parameter_controller
 
 
-def definition_line(path, *, key=None, owner=None, function=None):
+def _read_definition(path):
     try:
-        tree=ast.parse(Path(path).read_text(encoding="utf-8-sig"))
+        return ast.parse(Path(path).read_text(encoding="utf-8-sig"))
     except (OSError,SyntaxError,UnicodeError):
+        return None
+
+
+def definition_line(path, *, key=None, owner=None, function=None):
+    return _definition_line(_read_definition(path), key=key, owner=owner, function=function)
+
+
+def _definition_line(tree, *, key=None, owner=None, function=None):
+    if tree is None:
         return 1
     if owner:
         tree=next((node for node in ast.walk(tree) if isinstance(node,ast.ClassDef) and node.name==owner),tree)
@@ -39,9 +49,18 @@ def json_value_line(path, key):
     """
     if not key or path is None:
         return 1
+    return _json_value_line(_read_json_lines(path), key)
+
+
+def _read_json_lines(path):
     try:
-        lines = Path(path).read_text(encoding="utf-8-sig").splitlines()
+        return Path(path).read_text(encoding="utf-8-sig").splitlines()
     except (OSError, UnicodeError):
+        return ()
+
+
+def _json_value_line(lines, key):
+    if not key:
         return 1
     # Generated and imported JSON can have different indentation. Match
     # the key under its data section, not a duplicate inside parameter_info.
@@ -113,13 +132,25 @@ def actual_json_sources(app,request):
 
 def targets_for_rows(spec,snapshots,description,rows,sources,root):
     source=experiment_source(spec,root)
+    # Resolve every row against one read per source in this table build.
+    # The next refresh reads the current files again.
+    read_definition = cache(_read_definition)
+    read_json = cache(_read_json_lines)
+
+    @cache
+    def python_line(path, key, owner, function):
+        return _definition_line(read_definition(path), key=key, owner=owner, function=function)
+
+    def json_line(path, key):
+        return _json_value_line(read_json(path), key) if path is not None and key else 1
+
     def python(path=source,*,key=None,owner=None,function=None,note="Defined in Python; save changes, then Refresh (F5)"):
         if path is None:
             return dict(kind="unavailable",path=None,line=1,note="This component records no inspectable source file; file navigation is unavailable for this row")
-        return dict(kind="python",path=Path(path),line=definition_line(path,key=key,owner=owner,function=function),note=note)
+        return dict(kind="python",path=Path(path),line=python_line(Path(path),key,owner,function),note=note)
     def experiment(key=None):
         return dict(kind="experiment_json",path=sources["experiment"],key=key,
-            line=json_value_line(sources["experiment"], key),
+            line=json_line(sources["experiment"], key),
             note="Edit ordinary JSON, save, then Reload files" if sources["experiment"] else "Unsaved TUI values; Enter saves an ordinary JSON copy and opens it")
     fields={field.display_label:field for field in spec.fields}
     targets=[]
@@ -140,7 +171,7 @@ def targets_for_rows(spec,snapshots,description,rows,sources,root):
                 targets.append(python(function="prepare_stimuli",note="Trial-controlled value: edit the experiment procedure, not a preset"))
             elif slot in sources["stimuli"]:
                 targets.append(dict(kind="stimulus_json",path=sources["stimuli"][slot],slot=slot,key=field.key if field else None,
-                    line=json_value_line(sources["stimuli"][slot], field.key if field else None),
+                    line=json_line(sources["stimuli"][slot], field.key if field else None),
                     note="Selected stimulus JSON; save and Reload files"))
             elif (field is None or not field.editable) and (snapshots[slot]["file_identity"]=="library_defaults"
                   and snapshots[slot]["document"]["parameters"]=={field.key:field.default for field in stimulus.parameters}):
