@@ -8,13 +8,11 @@ or Textual. Choose **1 — Launch PsyCoLab**, **2 — Check / Repair PsyCoLab**,
 launcher session using the existing Windows .NET bootstrap. Operations use the
 same console; no detached application shell is created.
 
-For first setup or an older source-record error, choose **2**. Read the proposed
-action and type **YES** to proceed. Install 64-bit Python 3.11 if requested
-(`py install 3.11` with the Python install manager), then choose **2** again.
-Setup uses existing pinned requirements and does not grant laboratory
-qualification. A supported legacy repair preserves the old environment, verifies
-its replacement and returns to the menu. Choose **1** to open the TUI. Closing
-the TUI returns to this menu; finishing an experiment remains inside the TUI.
+For first setup from Git or an environment error, choose **2**. If a supported
+action is available, type **Y** to proceed or **N** to return to the menu. See
+[Windows source installation recovery](SOURCE_INSTALLATION_RECOVERY.md) for
+the two setup routes and the administrator cases. Successful setup returns to
+the menu. Choose **1** to open the TUI. Closing the TUI returns to this menu.
 
 Choose **3** for a normal command prompt with the verified environment's Python
 first on its local PATH. Its banner identifies the interpreter and qualification
@@ -31,12 +29,10 @@ the checkout; use explicit output locations or script-relative paths in your
 code. Scripts execute with your ordinary account permissions. The launcher does
 not automatically install optional packages or `user_requirements.txt`.
 
-Existing laboratory `.venv` checks, qualification records and packaged source
-seals remain authoritative. A broken or interrupted existing environment is
-preserved, never replaced by the source setup. Use diagnostics and the retained
-explicit setup path. Offline launches of a healthy environment need no package
-index; a new install still needs the dependencies. Recovery reports distinguish
-missing Python, setup failure and invalid installation evidence.
+Existing laboratory qualification and packaged source seals remain authoritative.
+When the same approved profile can be reused, option **2** prepares a separate
+environment and retains the original. Offline launches of a healthy environment
+need no package index. A new install still needs the dependencies.
 
 ## Why acquisition used to close the application
 

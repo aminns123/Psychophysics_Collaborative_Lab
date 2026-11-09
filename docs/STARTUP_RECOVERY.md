@@ -6,12 +6,11 @@ existing `.venv` or `.venv-dev` without changing it. Choose option **2** for
 initial setup or a supported repair, with an explanation and confirmation.
 See [launcher inventory and compatibility retirement](WINDOWS_LAUNCHERS.md).
 
-**Supported older source installations now have an explicit repair action.**
-Open `PsyCoLab.bat`, choose **2 — Check / Repair**, select **R — Repair source
-installation**, and confirm the explanation. The compatibility recovery dialog
-offers the same engine. See [repair, retry and restore](SOURCE_INSTALLATION_RECOVERY.md). No source
-update, environment conversion or dependency installation happens without that
-explicit action. Managed and qualified installations retain their existing gates.
+Open `PsyCoLab.bat` and choose **2 — Check / Repair**. A healthy installation
+reports that it needs no repair. If a supported repair is available, confirm
+with **Y**, or choose **N** to return to the menu. For an existing qualified
+source installation, a replacement uses the same approved profile in a separate
+environment. See [repair, retry and restore](SOURCE_INSTALLATION_RECOVERY.md).
 
 ## Maintainer Git checkout on a new PC
 
@@ -24,8 +23,8 @@ first setup.
 For first-time source use (or explicit development setup):
 
 1. Install 64-bit CPython 3.11. A python.org installation is supported here.
-2. Double-click `PsyCoLab.bat`, select **2**, then **I — Install source environment**.
-   Confirm the explanation. It downloads the pinned development dependencies into `.venv-dev`
+2. Double-click `PsyCoLab.bat`, select **2**, then type **Y** at the prompt.
+   It installs the pinned development dependencies into `.venv-dev`
    and validates imports, dependency compatibility and editable source identity.
 3. Select **1 — Launch PsyCoLab** to open the normal TUI. Repeat launches only
    check the development environment; they do not run pip install or write setup
@@ -54,7 +53,7 @@ data safeguards still apply.
 | Healthy repeat launch | Called provisioning/setup before opening the app | Calls the existing read-only `launcher_setup.py --check`, then opens once |
 | Recognised older source `.venv` record | Setup refusal and terminal instructions/pause | Explicit explained backup, pinned replacement setup, verification and one TUI launch; retry/restore supported |
 | Missing own environment | Searched registered/global interpreters to bootstrap | Menu option 2 offers explained initial source setup when both environments are absent; qualified deployment stays explicit |
-| Source revision changes | Setup could refresh editable metadata | Environment-compatible changes pass existing checks; a mismatched identity is refused without repair |
+| Source revision changes | Setup could refresh editable metadata | Option **2** can build a separate environment when the same approved profile is available |
 | Nonzero application exit | Terminal pause for every error | Startup phase or conservative incident explanation; no automatic retry |
 
 The reported legacy problem is reproducible: the previously tested laboratory
@@ -87,7 +86,7 @@ installations, the existing selection rules follow:
    already healthy installation, Cancel is recommended; normal launch is separate.
 
 Unverified options are omitted, with a short explanation. There is no arbitrary
-Python picker, automatic dependency reinstall or qualification-record editor.
+Python picker or qualification-record editor.
 The explicit source repair never reinstalls into the historical `.venv`, rewrites
 qualification evidence or changes shortcuts. No qualified in-place repair is offered.
 An administrator can use the existing setup's explicit version-specific shortcut
@@ -111,8 +110,8 @@ incomplete or source-seal-mismatched entries are never offered as launch choices
 | Evidence | Category and safe next step |
 | --- | --- |
 | No/older/malformed setup record | Missing, legacy or unreadable qualification; preserve it and obtain administrator review |
-| Recorded source root differs | Path changed; offer the original only if it still passes its own gate |
-| Profile inventory hash or dependency specification differs | Changed profile/requirements; separate approved environment required |
+| Recorded source root differs | The compatibility window can offer the original only if it still passes its gate. Option **2** can build a separate environment at the new source location with the same approved profile |
+| Profile inventory hash or dependency specification differs | A changed profile requires administrator review. If the approved profile is unchanged, option **2** can build a separate environment for changed project requirements |
 | Scientific Python edit with unchanged dependency contract | May pass environment checks; **not scientific approval** or a Ready promotion |
 | Missing interpreter, failed process creation, failed existing check | Missing/damaged environment or failed check; diagnostics preserve the specific evidence |
 | Owned pending attempt without successful state | Interrupted setup; ordinary launch never resumes it |

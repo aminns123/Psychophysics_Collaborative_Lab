@@ -64,9 +64,10 @@ rehearsal remains Stage 4, not an implication of these commands.
 
 ## First and repeat setup
 
-`PsyCoLab.bat --launch` checks the checkout's own qualified `.venv` without
-provisioning or repairing it. The menu's source repair never converts a qualified
-installation. See [startup recovery](STARTUP_RECOVERY.md).
+`PsyCoLab.bat --launch` checks the checkout's qualified environment without
+provisioning or repairing it. For supported repairs, option **2** can verify a
+separate replacement with the same approved profile and preserve `.venv`.
+See [startup recovery](STARTUP_RECOVERY.md).
 For the administrator/source provisioning route above, explicitly run
 `scripts/launcher_setup.py` using the separately approved interpreter before the
 first launch. `PSYCOLAB_BOOTSTRAP_PYTHON` in that example is a shell variable used
@@ -91,9 +92,10 @@ scripts are sealed per installation, not assumed byte-identical across computers
 If explicit setup fails before successful state is written, the matching owned
 pending attempt can retry the **same** reviewed profile through explicit setup,
 never ordinary launch. It uses the same exact hashes,
-never an unrestricted upgrade. A changed profile/specification, pre-existing
-unqualified environment, wrong interpreter, wrong version or changed package file
-is preserved and refused with instructions to use a separate reviewed checkout.
+never an unrestricted upgrade. A changed profile, unrecognised setup record or
+unavailable approved interpreter requires administrator review. A dependency
+specification or package-file mismatch can use option **2** when the existing
+profile is still approved and available.
 No old environment is silently renamed/deleted. Only explicit setup may refresh
 editable source metadata after the core environment is verified; ordinary launch
 refuses stale metadata without repairing it. Dependencies remain fixed. A lost/

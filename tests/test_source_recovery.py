@@ -122,7 +122,7 @@ def test_real_batch_legacy_repair_repeat_corruption_and_restore(source, wheels):
     env["PSYCOLAB_WHEELHOUSE"] = str(wheels)
     old = snapshot(root / ".venv")
     research = snapshot(data)
-    result = batch(source, launcher="PsyCoLab.bat", input_text="2\nR\nYES\n1\n4\n")
+    result = batch(source, launcher="PsyCoLab.bat", input_text="2\nY\n1\n4\n")
     assert result.returncode == 0, result.stdout + result.stderr
     backups = list(root.glob(".venv-recovery-backup-*"))
     assert len(backups) == 1 and snapshot(backups[0]) == old
@@ -160,11 +160,11 @@ def test_real_batch_legacy_repair_repeat_corruption_and_restore(source, wheels):
     assert batch(source, "--launch").returncode == 0
     assert runs.read_text() == "mounted\n" * 5
     assert snapshot(backups[0]) == old and snapshot(data) == research
-    for args, text in (((), "2\nS\nYES\n4\n"), (("--restore",), None)):
+    for args, text in (((), "2\nS\nY\n4\n"), (("--restore",), None)):
         result = batch(source, *args, input_text=text)
         assert result.returncode == 0, result.stdout + result.stderr
     assert snapshot(root / ".venv") == old
-    assert len(list(root.glob(".venv-dev-recovery-backup-*"))) == 1
+    assert len(list(root.glob(".venv-dev-recovery-backup-*"))) == 3
     assert snapshot(data) == research
     # Every environment, backup, log and local preference is excluded by shared rules.
     untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard"], cwd=root, text=True)
@@ -367,18 +367,38 @@ def test_native_menu_survives_missing_python_and_returns_after_failed_launch(sou
     root, _, _, env = source
     before = snapshot(root / ".venv")
     env["PSYCOLAB_BOOTSTRAP_PYTHON"] = str(root.parent / "no Python.exe")
-    result = batch(source, launcher="PsyCoLab.bat", input_text="1\n2\nB\n4\n", timeout=15)
+    result = batch(source, launcher="PsyCoLab.bat", input_text="1\n2\n4\n", timeout=15)
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.count("\nPsyCoLab\n1 - Launch PsyCoLab") == 3
     assert "3 - Python Workspace" in result.stdout and "Python 3.11" in result.stdout
+    assert "py install" not in result.stdout and "[Y/N]" not in result.stdout
     assert snapshot(root / ".venv") == before and not list(root.glob(".venv-recovery-backup-*"))
+
+
+def test_failed_development_replacement_returns_previous_environment(source):
+    root, data, _, _ = source
+    (root / ".venv").rename(root.parent / "unrelated legacy fixture")
+    development = root / ".venv-dev"
+    (development / "Scripts").mkdir(parents=True)
+    (development / "Scripts/python.exe").write_bytes(b"damaged fixture interpreter")
+    (development / ".psycolab-development.json").write_text(json.dumps({
+        "schema_version": 1, "mode": "development", "source_root": str(root),
+    }), encoding="utf-8")
+    (root / "scripts/developer_setup.py").write_text("raise SystemExit(17)\n", encoding="utf-8")
+    before, research = snapshot(development), snapshot(data)
+
+    result = batch(source, input_text="2\nY\n4\n")
+
+    assert result.returncode == 0 and "exit code 17" in result.stdout
+    assert "returned to its original location" in result.stdout
+    assert snapshot(development) == before and snapshot(data) == research
 
 
 def test_menu_initial_install_tui_return_and_python_workspace(source, wheels):
     root, _, runs, env = source
     (root / ".venv").rename(root.parent / "unrelated legacy fixture")
     env["PSYCOLAB_WHEELHOUSE"] = str(wheels)
-    result = batch(source, launcher="PsyCoLab.bat", input_text="2\nI\nYES\n1\n1\n4\n")
+    result = batch(source, launcher="PsyCoLab.bat", input_text="2\nY\n1\n1\n4\n")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "\x1b[?1049h" not in result.stdout and "██████" not in result.stdout
     assert result.stdout.count("\nPsyCoLab\n1 - Launch PsyCoLab") == 4
@@ -400,3 +420,116 @@ def test_menu_initial_install_tui_return_and_python_workspace(source, wheels):
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.count("\nPsyCoLab\n1 - Launch PsyCoLab") >= 2
     assert (root / ".psycolab-recovery/repair.log").read_bytes() == log_before
+
+
+@pytest.fixture
+def locked_mismatch(source):
+    """Native menu fixture with an injected Python installer and check.
+
+    Hosted CI uses python.org CPython. The actual locked profile and installer
+    are tested separately, with exact interpreter and wheel evidence.
+    """
+    root, _, _, env = source
+    profile = root / "requirements/windows-cp311/profile.json"
+    project = root / "pyproject.toml"
+    state = {
+        "schema_version": 2,
+        "source_root": str(root),
+        "pyproject_sha256": hashlib.sha256(project.read_bytes()).hexdigest(),
+        "qualification": {
+            "profile_sha256": hashlib.sha256(profile.read_bytes()).hexdigest(),
+            "artifacts": {},
+            "interpreter": {},
+        },
+    }
+    (root / ".venv/.psycolab-setup.json").write_text(json.dumps(state))
+    # The old base is discoverable without relying on PATH or a Python manager.
+    (root / ".venv/pyvenv.cfg").write_text(
+        f"home = {Path(sys._base_executable).parent}\n", encoding="utf-8")
+    env.pop("PSYCOLAB_BOOTSTRAP_PYTHON", None)
+    project.write_bytes(project.read_bytes() + b"\n# Reviewed source revision\n")
+    (root / "scripts/launcher_setup.py").write_text(
+        r"""import hashlib, json, sys, venv
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+args = sys.argv[1:]
+if args == ["--check-recovery-interpreter"]:
+    raise SystemExit(0)
+assert args[0] == "--recovery-env" and args[1].startswith(".venv-recovered-")
+target = root / args[1]
+if args[2:] == ["--check"]:
+    assert target == Path(sys.prefix)
+    assert (target / ".psycolab-setup.json").is_file()
+    raise SystemExit(0)
+assert not target.exists()
+target.mkdir()
+if (root / "fail-locked-fixture").exists():
+    print("Simulated wheel download failure")
+    raise SystemExit(17)
+venv.EnvBuilder(with_pip=False).create(target)
+site = target / "Lib/site-packages/psychophysics_lab"
+site.mkdir(parents=True)
+(site / "__init__.py").write_text("")
+(site / "__main__.py").write_text(
+    "import sys\nprint('Fixture using', sys.prefix)\n")
+record = json.loads((root / ".venv/.psycolab-setup.json").read_text())
+record["pyproject_sha256"] = hashlib.sha256((root / "pyproject.toml").read_bytes()).hexdigest()
+(target / ".psycolab-setup.json").write_text(json.dumps(record))
+""", encoding="utf-8")
+    return source
+
+
+def test_locked_requirements_change_decline_fail_repair_and_repeat(locked_mismatch):
+    root, data, _, env = locked_mismatch
+    old = snapshot(root / ".venv")
+    research = snapshot(data)
+    marker = root / ".psycolab-recovery/qualified.json"
+    check = batch(locked_mismatch, "--check", input_text="Y\n")
+    assert check.returncode == 1 and "Installation check: requirements_changed" in check.stdout
+    assert "[Y/N]" not in check.stdout and not marker.exists()
+    declined = batch(locked_mismatch, input_text="2\nN\n4\n")
+    assert declined.returncode == 0 and "[Y/N]" in declined.stdout
+    assert "Cancelled" in declined.stdout and not list(root.glob(".venv-recovered-*"))
+    failure = root / "fail-locked-fixture"
+    failure.touch()
+    failed = batch(locked_mismatch, input_text="2\nY\n4\n")
+    assert "exit code 17" in failed.stdout and not marker.exists(), failed.stdout + failed.stderr
+    assert snapshot(root / ".venv") == old
+    failure.unlink()
+    repaired = batch(locked_mismatch, input_text="2\nY\n4\n")
+    assert repaired.returncode == 0 and "PsyCoLab verified the new environment" in repaired.stdout, repaired.stdout + repaired.stderr
+    assert repaired.stdout.count("\nPsyCoLab\n1 - Launch PsyCoLab") == 2
+    selection = json.loads(marker.read_text())
+    target = root / selection["environment"]
+    assert (target / ".psycolab-setup.json").is_file()
+    assert len(list(root.glob(".venv-recovered-*"))) == 2
+    before = marker.read_bytes()
+    env["PSYCOLAB_BOOTSTRAP_PYTHON"] = str(root.parent / "missing Python.exe")
+    healthy = batch(locked_mismatch, input_text="2\n4\n")
+    assert "No repair is needed" in healthy.stdout and "[Y/N]" not in healthy.stdout
+    assert "could not be found" not in healthy.stdout
+    for _ in range(2):
+        launched = batch(locked_mismatch, "--launch")
+        assert launched.returncode == 0 and str(target) in launched.stdout
+    assert batch(locked_mismatch, "--workspace", input_text="exit\n").stdout.count(str(target)) >= 1
+    assert marker.read_bytes() == before and snapshot(root / ".venv") == old and snapshot(data) == research
+
+
+@pytest.mark.parametrize("restriction", ["different_profile", "managed", "missing_approved_python"])
+def test_locked_recovery_declines_unapproved_routes(locked_mismatch, restriction):
+    root, data, _, env = locked_mismatch
+    if restriction == "different_profile":
+        record = root / ".venv/.psycolab-setup.json"
+        state = json.loads(record.read_text())
+        state["qualification"]["profile_sha256"] = "0" * 64
+        record.write_text(json.dumps(state))
+    elif restriction == "managed":
+        (root.parent / "installation.json").write_text("{}")
+    else:
+        env["PSYCOLAB_BOOTSTRAP_PYTHON"] = str(root.parent / "missing Python.exe")
+    old, research = snapshot(root / ".venv"), snapshot(data)
+    refused = batch(locked_mismatch, input_text="2\n4\n")
+    assert refused.returncode == 0 and "[Y/N]" not in refused.stdout
+    assert "administrator" in refused.stdout and "py install" not in refused.stdout
+    assert not list(root.glob(".venv-recovered-*")) and snapshot(root / ".venv") == old and snapshot(data) == research
