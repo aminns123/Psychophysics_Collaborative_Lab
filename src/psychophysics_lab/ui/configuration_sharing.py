@@ -174,7 +174,12 @@ class ConfigurationSharingScreen(Screen):
                                                          saved_only=name == "configuration-saved"), self._chosen)
             return
         if name in {"configuration-export", "configuration-preview", "configuration-approve"}:
-            self.app.loading.run(self, self._share, name)
+            label = {
+                "configuration-export": "Exporting configuration",
+                "configuration-preview": "Checking import",
+                "configuration-approve": "Saving imported settings",
+            }[name]
+            self.app.loading.run(self, self._share, name, label=label)
 
     def _prepare_operation(self, name, path, profile, preview):
         self.app.verify_settings_current(self.original)

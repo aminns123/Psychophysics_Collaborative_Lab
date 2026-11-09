@@ -160,7 +160,10 @@ def test_tui_receives_and_displays_last_simulation_report(tmp_path):
 
 
 @pytest.mark.parametrize("show_response_instructions", [True, False])
-def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeypatch, show_response_instructions):
+def test_outer_app_runs_simulation_only_after_tui_has_returned(
+    tmp_path, monkeypatch, capsys, show_response_instructions
+):
+    from threading import enumerate as active_threads
     from psychophysics_lab import app as app_module
     from psychophysics_lab.ui import setup as tui_module
     from simulations import scenarios
@@ -182,6 +185,8 @@ def test_outer_app_runs_simulation_only_after_tui_has_returned(tmp_path, monkeyp
         return results.pop(0)
 
     def fake_simulate(**kwargs):
+        assert capsys.readouterr().out == "Testing contrast_sensitivity / teaching_demo (1 virtual run(s))\n"
+        assert all(thread.name != "psycolab-synthetic-progress" for thread in active_threads())
         calls.append(("simulate", kwargs))
         return SimpleNamespace(experiment_id=kwargs["experiment_id"],
                                scenario_id=kwargs["scenario_id"], passed=True,

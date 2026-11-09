@@ -597,7 +597,10 @@ public static class SourceRecovery
         try{SourceOnly(root);return ReadJournal(root)==null&&!Directory.Exists(Path.Combine(root,".venv"))&&!File.Exists(Path.Combine(root,".venv"))&&!Directory.Exists(Path.Combine(root,".venv-dev"))&&!File.Exists(Path.Combine(root,".venv-dev"));}
         catch{return false;}
     }
-    public static string AvailablePython(string root) {return Python(root);}
+    public static string AvailablePython(string root) {
+        using(var activity=ConsoleActivity.Start("Checking for compatible Python"))
+            return Python(root);
+    }
     public static bool CanRestore(string root) {
         try{SourceOnly(root);var j=ReadJournal(root);return j!=null&&j.backup!=null&&j.phase!="restored";}
         catch{return false;}
@@ -778,13 +781,16 @@ public static class SourceMenu
     }
     public static int Launch(string root,string[] args,bool splash=false) {
         using(var lease=SourceRecovery.Acquire(root)) {
-            var d=StartupRecovery.Diagnose(root);
+            StartupRecovery.Diagnosis d;
+            using(var activity=args.Length==0?ConsoleActivity.Start("Checking installation before launch"):null)
+                d=StartupRecovery.Diagnose(root);
             if(!d.healthy){Console.WriteLine(d.message+"\nChoose 2 - Check / Repair PsyCoLab. No installation was changed.");return 1;}
             return StartupRecovery.LaunchChecked(root,args,d,splash);
         }
     }
     public static int Check(string root) {
         StartupRecovery.Diagnosis d;
+        using(var activity=ConsoleActivity.Start("Checking installation records and dependencies"))
         using(var lease=SourceRecovery.Acquire(root))d=StartupRecovery.Diagnose(root);
         Console.WriteLine("\nInstallation check: "+d.category+"\n"+d.message);
         try{Console.WriteLine("Source setup Python: "+SourceRecovery.AvailablePython(root));}
@@ -807,7 +813,9 @@ public static class SourceMenu
     }
     public static int Workspace(string root) {
         using(var lease=SourceRecovery.Acquire(root)) {
-            var d=StartupRecovery.Diagnose(root);
+            StartupRecovery.Diagnosis d;
+            using(var activity=ConsoleActivity.Start("Checking Python Workspace"))
+                d=StartupRecovery.Diagnose(root);
             if(!d.healthy){Console.WriteLine(d.message+"\nChoose 2 - Check / Repair PsyCoLab first.");return 1;}
             string environment=Path.Combine(root,d.development?".venv-dev":".venv"),python=Path.Combine(environment,"Scripts","python.exe");
             Console.WriteLine("\nPython Workspace\nActive Python: "+python+"\n"+(d.development?"Source development environment; laboratory qualification is not granted.":"Existing qualified environment; changing packages may invalidate its checks.")+"\nRun python your_script.py, python -m pip list, or other commands. Type exit to return to the launcher.");
@@ -819,6 +827,44 @@ public static class SourceMenu
             start.EnvironmentVariables["PSYCOLAB_LAUNCH_ROLE"]=d.development?"development":"locked";
             using(var child=Process.Start(start)){child.WaitForExit();return child.ExitCode;}
         }
+    }
+}
+
+// Scoped to launcher preflight. Dispose waits for the final frame before a
+// prompt, pip output, or the application can take ownership of the console.
+sealed class ConsoleActivity : IDisposable
+{
+    readonly System.Threading.ManualResetEventSlim stop = new System.Threading.ManualResetEventSlim();
+    readonly Task drawing;
+
+    public static ConsoleActivity Start(string label) {
+        try {
+            if(!Console.IsOutputRedirected && Console.WindowWidth > label.Length + 4)
+                return new ConsoleActivity(label);
+            Console.WriteLine(label+"...");
+        }catch(IOException) { /* No usable console; the operation can still proceed. */ }
+        return null;
+    }
+
+    ConsoleActivity(string label) {
+        drawing=Task.Run(()=>{
+            if(stop.Wait(180))return;
+            string[] frames={".  ",".. ","..."};
+            try {
+                int frame=0;
+                do {
+                    Console.Write("\r"+label+frames[frame]);
+                    frame=(frame+1)%frames.Length;
+                }while(!stop.Wait(300));
+                Console.Write("\r"+new string(' ',label.Length+3)+"\r");
+            }catch(IOException) { /* The console may be closing. */ }
+        });
+    }
+
+    public void Dispose() {
+        stop.Set();
+        try{drawing.GetAwaiter().GetResult();}
+        finally{stop.Dispose();}
     }
 }
 

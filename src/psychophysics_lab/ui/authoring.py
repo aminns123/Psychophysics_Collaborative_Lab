@@ -1,4 +1,5 @@
 """Draft testing and Ready controls embedded in the normal authoring pages."""
+import asyncio
 from pathlib import Path
 import subprocess
 import os
@@ -79,25 +80,35 @@ class AuthoringPanel(Vertical):
         self.refresh_inventory()
 
     def refresh_inventory(self):
+        self._apply_inventory(*self._collect_inventory())
+
+    async def _refresh_inventory(self):
+        self._apply_inventory(*await asyncio.to_thread(self._collect_inventory))
+
+    def _collect_inventory(self):
         records = [i for i in inventory(self.app.repo_root) if i.kind == self.kind]
         from .. import extensions
         from ..authoring import Component
         try:
-            self._external = {row['id']:row for row in extensions.inventory(self.app.repo_root) if row['kind'] == self.kind}
+            external = {row['id']: row for row in extensions.inventory(self.app.repo_root) if row['kind'] == self.kind}
         except (ValueError, OSError):
-            self._external = {}
-        records.extend(Component(self.kind, row['id'], row['status']) for row in self._external.values())
-        selected = self.query_one("#author-component", Select)
-        previous = selected.value
+            external = {}
+        records.extend(Component(self.kind, row['id'], row['status']) for row in external.values())
         options = []
         for item in records:
             try:
                 tested = bool(item.tested_fingerprint and item.tested_fingerprint == fingerprint(self.app.repo_root, item))
             except (OSError, ValueError):
                 tested = False
-            if item.name in self._external:
-                tested = self._external[item.name]["status"] in {"tested", "ready"}
+            if item.name in external:
+                tested = external[item.name]["status"] in {"tested", "ready"}
             options.append((f"{item.name} — {item.status}, {'tested' if tested else 'needs testing'}", item.name))
+        return external, records, options
+
+    def _apply_inventory(self, external, records, options):
+        self._external = external
+        selected = self.query_one("#author-component", Select)
+        previous = selected.value
         self._status_by_name = {item.name: item.status for item in records}
         selected.set_options(options)
         if records:
@@ -178,7 +189,7 @@ class AuthoringPanel(Vertical):
             )
             return
         if identity == "author-refresh":
-            self.refresh_inventory()
+            self.app.loading.run(self.screen, self._refresh_inventory, label="Checking lab components")
             return
         name = self.query_one("#author-component", Select).value
         if name is Select.BLANK:
@@ -264,7 +275,12 @@ class AuthoringPanel(Vertical):
                 return
             self.app.inspect_source(path)
             return
-        self.perform(identity, str(name))
+        worker = self.perform(identity, str(name))
+        if identity == "author-ready" or self.kind == "stimulus":
+            # Experiment authoring tests run a virtual acquisition in the child
+            # process. Keep the existing static status during that execution.
+            self.app.loading.watch(worker, "Checking tested revision" if identity == "author-ready"
+                                   else "Preparing stimulus preview")
 
     @work(thread=True, exclusive=True, group="authoring")
     def perform(self, operation, name):
