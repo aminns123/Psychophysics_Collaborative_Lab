@@ -8,6 +8,14 @@ To develop a study, start with the three
 They use ordinary Python and the approved [A1/A2/B narrative](EXPERIMENT_AUTHORING_STANDARD.md).
 Develop new science in your own trusted laboratory folder.
 
+The Windows launcher shows activity while it checks the installation and
+reports setup progress in the same console. In the researcher interface, a
+short status appears at the upper right for slower operations such as
+validating settings, refreshing saved files, or importing a configuration.
+The status clears when the operation finishes or fails. Feedback stops before
+fullscreen presentation. A virtual experiment has a plain start message and a
+result when it returns.
+
 Configure supplies universal run controls. **Review → Edit inputs / stimuli**
 edits the declared scientific inputs and stimulus values for this run. Review's
 table explains effective values, units, authority, selected method, events and

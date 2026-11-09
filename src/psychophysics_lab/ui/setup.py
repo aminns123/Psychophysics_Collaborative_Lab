@@ -1604,7 +1604,8 @@ class DataScreen(HubPage):
                 event.stop(); self._inspect("adaptive_session.json", "Saved staircase/adaptive state")
             elif event.button.id in {"analyse-threshold", "preview-figures"}:
                 event.stop()
-                self.app.loading.run(self, self._generate_figures, event.button.id == "preview-figures")
+                self.app.loading.run(self, self._generate_figures, event.button.id == "preview-figures",
+                                     label="Generating figures")
             elif event.button.id in {"open-staircase-image", "open-threshold-image"}:
                 event.stop()
                 from ..analysis.previews import latest_staircase_plot, latest_threshold_plot
@@ -2254,7 +2255,7 @@ class _ExperimentInputsScreen(Screen):
             self.app.review_parameter_files[self.app.settings_key(request)] = self._parameter_files()
             self.app.push_screen(ReviewScreen(request=request, draft_error=draft_error))
             return
-        self.app.loading.run(self, self._apply_to_review)
+        self.app.loading.run(self, self._apply_to_review, label="Validating configuration")
 
     def _validate_review_settings(self, request, profile):
         from .settings_review import describe_settings
@@ -2720,17 +2721,16 @@ class ReviewScreen(Screen):
         except (ValueError,OSError,TypeError) as exc:
             self.query_one("#review-status",Static).update(str(exc))
 
-    def _reload_review_files(self):
+    def _read_review_files(self):
         from dataclasses import replace
         from .parameter_files import load_experiment_json,file_hash
         from ..config.stimulus_parameters import load_parameters,snapshot
         from ..stimuli.registry import get_stimulus
-        from .stimulus_parameters import StimulusParametersPanel, retain_configuration_origin
+        from .stimulus_parameters import retain_configuration_origin
         spec=get_experiment(self.request.experiment_id)
         self.app.verify_loaded_sources(spec,self.request.stimulus_snapshots)
         sources=self._file_sources
         tracked = self.app.review_parameter_files.get(self.app.settings_key(self.request), {})
-        from .parameter_files import ensure_unchanged
         files={str(path):file_hash(path) for path in [sources["experiment"],*sources["stimuli"].values()] if path is not None}
         values=load_experiment_json(sources["experiment"],spec) if sources["experiment"] else dict(self.request.experiment_values)
         snapshots=dict(self.request.stimulus_snapshots)
@@ -2751,6 +2751,13 @@ class ReviewScreen(Screen):
                 document, file_identity=selected["file_identity"], file_sha256=selected.get("file_sha256"))
         candidate=validate_setup(replace(self.request,experiment_values=values,stimulus_snapshots=snapshots,monitor_profile_hash=None),
             spec,self.app.monitor_profiles[self.request.monitor_profile_id],mode="configuration")
+        return candidate, values, sources, files
+
+    async def _reload_review_files(self):
+        from .parameter_files import ensure_unchanged
+        from .stimulus_parameters import StimulusParametersPanel
+        from ..stimuli.registry import get_stimulus
+        candidate, values, sources, files = await asyncio.to_thread(self._read_review_files)
         ensure_unchanged(files)
         # Commit the UI draft only after every loaded document has validated.
         self.request=candidate
@@ -2992,7 +2999,8 @@ class ReviewScreen(Screen):
         button_id = event.button.id
         if button_id in {"review-save-configuration", "review-export-configuration", "review-import-configuration"}:
             event.stop()
-            self.app.loading.run(self, self._share_configuration, button_id)
+            label = "Saving configuration" if button_id == "review-save-configuration" else "Checking configuration"
+            self.app.loading.run(self, self._share_configuration, button_id, label=label)
             return
         if button_id == "review-edit-inputs":
             event.stop()
@@ -3015,15 +3023,16 @@ class ReviewScreen(Screen):
             from .review_fullscreen import ReviewTableFullscreen
             self.app.push_screen(ReviewTableFullscreen(self))
             return
-        if button_id in {"review-open-file","review-reload-files"}:
+        if button_id == "review-open-file":
             event.stop()
             try:
-                if button_id=="review-open-file":
-                    self._open_review_file()
-                else:
-                    self._reload_review_files()
-            except (ValueError,OSError,KeyError,TypeError) as exc:
-                self.query_one("#review-status",Static).update(str(exc))
+                self._open_review_file()
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                self.query_one("#review-status", Static).update(str(exc))
+            return
+        if button_id == "review-reload-files":
+            event.stop()
+            self.app.loading.run(self, self._reload_from_review, label="Refreshing Review")
             return
         if button_id == "review-next-action":
             event.stop()
@@ -3034,9 +3043,15 @@ class ReviewScreen(Screen):
             return
         event.stop()
         if button_id in {"run", "run-simulation", "run-presentation-test", "run-researcher-override"}:
-            self.app.loading.run(self, self._prepare_run, button_id)
+            self.app.loading.run(self, self._prepare_run, button_id, label="Checking run settings")
         else:
             self._navigate_from_review(button_id)
+
+    async def _reload_from_review(self):
+        try:
+            await self._reload_review_files()
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            self.query_one("#review-status", Static).update(str(exc))
 
     def _save_configuration(self, request, profile):
         from ..config.sharing import make_document, save_local
@@ -3430,7 +3445,6 @@ class PsyCoLabSetupApp(App):
     async def on_mount(self) -> None:
         from .console import install_console
         await install_console(self.screen)
-        self.set_interval(self.loading.POLL_INTERVAL, self.loading.update)
         self._refresh_experiment_context()
         self._refresh_run_intent()
         if self.session_state:
@@ -3461,6 +3475,7 @@ class PsyCoLabSetupApp(App):
                 ("f6", "focus_navigation", "Sidebar")]
 
     def exit(self, result=None, **kwargs):
+        self.loading.close()
         if self.session_state is not None and self.is_running:
             from .session import capture_session
             capture_session(self, self.session_state)
@@ -3474,12 +3489,13 @@ class PsyCoLabSetupApp(App):
 
     @work(exclusive=True, group="refresh-files")
     async def action_refresh_files(self):
-        import asyncio
+        from textual.worker import get_current_worker
         from .refresh import capture_state, check_refresh, RefreshRequest
         # Never replace the interface during an active validation operation.
         if any(worker.group != "refresh-files" and worker.is_running for worker in self.workers):
             self.notify("Wait for the current operation to finish, then Refresh.", severity="warning")
             return
+        self.loading.watch(get_current_worker(), "Checking saved files")
         buttons = list(self.query("#refresh-psycolab"))
         for button in buttons:
             button.disabled = True
@@ -3708,6 +3724,10 @@ class PsyCoLabSetupApp(App):
                 status.update(f"[red]{exc}[/red]")
             return
 
+        self.loading.run(self.screen, self._configure_experiment, label="Loading experiment")
+
+    async def _configure_experiment(self):
+        status = self.screen_stack[0].query_one("#setup-status", Static)
         try:
             data_root = self._selected_data_root(create=True)
             self.local_config_root = config_root(self.repo_root, data_root)
@@ -3736,7 +3756,8 @@ class PsyCoLabSetupApp(App):
 
             defaults = experiment.field_defaults()
             if session_mode == "reuse":
-                previous = request_from_workspace_state(load_workspace_state(data_root))
+                state = await asyncio.to_thread(load_workspace_state, data_root)
+                previous = request_from_workspace_state(state)
                 if previous is None:
                     raise ValueError(
                         "No previous PsyCoLab setup exists in this data workspace. "
@@ -3763,7 +3784,7 @@ class PsyCoLabSetupApp(App):
             status.update(f"[red]{exc}[/red]")
             self.notify(str(exc), title="Experiment setup blocked", severity="error", timeout=8)
             if not isinstance(exc, (ValueError, KeyError)):
-                _report_ui_exception(self, exc, phase=f"tui_setup_{button_id}")
+                _report_ui_exception(self, exc, phase="tui_setup_configure")
 
 
 def run_setup_tui(*, repo_root: Path, data_root: Path,
@@ -3779,4 +3800,7 @@ def run_setup_tui(*, repo_root: Path, data_root: Path,
                            session_state=session_state, run_outcome=run_outcome,
                            driver_class=driver_class, reveal_startup=reveal,
                            include_historical=bool((refresh_state or session_state or {}).get("include_historical")))
-    return app.run()
+    try:
+        return app.run()
+    finally:
+        app.loading.close()

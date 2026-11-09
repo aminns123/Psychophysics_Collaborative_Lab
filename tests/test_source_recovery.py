@@ -381,6 +381,12 @@ def test_menu_initial_install_tui_return_and_python_workspace(source, wheels):
     result = batch(source, launcher="PsyCoLab.bat", input_text="2\nI\nYES\n1\n1\n4\n")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "\x1b[?1049h" not in result.stdout and "██████" not in result.stdout
+    output = result.stdout.replace("\r\n", "\n")
+    assert "\r" not in output
+    assert "Checking installation records and dependencies...\n" in output
+    assert "Checking for compatible Python...\n" in output
+    assert "Preparing source environment. Progress and report:" in output
+    assert output.count("Checking installation before launch...\n") == 2
     assert result.stdout.count("\nPsyCoLab\n1 - Launch PsyCoLab") == 4
     assert runs.read_text() == "mounted\n" * 2
     log_before = (root / ".psycolab-recovery/repair.log").read_bytes()

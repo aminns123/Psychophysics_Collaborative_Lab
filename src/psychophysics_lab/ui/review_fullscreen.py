@@ -177,12 +177,15 @@ class ReviewTableFullscreen(Screen):
             self._open()
         elif identity == "expanded-review-reload":
             event.stop()
-            try:
-                self.review._reload_review_files()
-                self.refresh_table()
-                self._show_location(self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row)
-            except (ValueError, OSError, TypeError, KeyError) as exc:
-                self.query_one("#expanded-review-location", Static).update(str(exc))
+            self.app.loading.run(self, self._reload, label="Refreshing Review")
+
+    async def _reload(self):
+        try:
+            await self.review._reload_review_files()
+            self.refresh_table()
+            self._show_location(self.query_one("#expanded-settings-table", ReviewSettingsTable).cursor_row)
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            self.query_one("#expanded-review-location", Static).update(str(exc))
 
     def action_close_table(self):
         table = self.query_one("#expanded-settings-table", ReviewSettingsTable)
