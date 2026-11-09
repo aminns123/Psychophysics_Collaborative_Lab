@@ -1704,6 +1704,8 @@ class HelpScreen(HubPage):
 
 class _ExperimentInputsScreen(Screen):
     scientific_editor = False
+    _constraint_inputs = None
+    _stimulus_summary = None
 
     @property
     def visible_fields(self):
@@ -1862,6 +1864,10 @@ class _ExperimentInputsScreen(Screen):
                 yield Button("Update selected preset", id="update-preset")
 
     def on_mount(self):
+        from .stimulus_parameters import StimulusParametersPanel
+        # All slots have restored their selections by the time the form mounts.
+        for panel in self.query(StimulusParametersPanel):
+            panel.refresh_summary()
         self._refresh_contrast_help()
         self._refresh_constraints()
         self._sync_contrast_method()
@@ -1882,12 +1888,16 @@ class _ExperimentInputsScreen(Screen):
             self.call_after_refresh(widget.scroll_visible)
             self.call_after_refresh(widget.focus)
 
-    def _refresh_constraints(self):
+    def _refresh_constraints(self, raw=None):
         if not self.is_mounted: return
         from ..config.input_constraints import experiment_constraints
         from .full_text import field_description
-        raw=self._raw_values()
         profile=self.app.monitor_profiles[self.monitor_profile_id]
+        if raw is None:
+            raw = self._raw_values()
+        elif (profile, raw) == self._constraint_inputs:
+            # Multiple field events can describe the same mounted or loaded form.
+            return
         reports,errors=experiment_constraints(self.experiment,profile,raw)
         for field in self.visible_fields:
             report=reports[field.key]; widget=self.query_one("#"+_field_widget_id(field))
@@ -1902,6 +1912,7 @@ class _ExperimentInputsScreen(Screen):
             if any(report['error'] for key, report in reports.items() if key not in visible):
                 errors.append("Scientific inputs need attention. Open Review → Edit inputs / stimuli.")
         self.query_one('#constraint-summary',Static).update("\n".join(errors))
+        self._constraint_inputs = (profile, raw)
         # Shader range affects human/test launch, but does not block numerical simulation Review.
         # Submission runs the same validator again; retaining an enabled button
         # avoids stale disabled state between the last keystroke and its event.
@@ -1909,8 +1920,6 @@ class _ExperimentInputsScreen(Screen):
 
     def _refresh_contrast_help(self):
         """Validate inputs in Setup; explain derived probe science in Review."""
-        if not self.is_mounted:
-            return
         if self.scientific_editor and {"starting_probe_intensity", "background_intensity"} <= {
             field.key for field in self.experiment.fields
         }:
@@ -1927,7 +1936,6 @@ class _ExperimentInputsScreen(Screen):
         if applied is not None:
             self.applied_review_values = None
             self._apply_values(applied)
-            self._refresh_contrast_help()
         current = self.app.monitor_profiles.get(self.monitor_profile_id)
         if current is not None:
             self.query_one("#experiment-description", Static).update(
@@ -2004,8 +2012,9 @@ class _ExperimentInputsScreen(Screen):
         self.remember_draft()
         return f"Calculated {direction} = {result:.8g} log10 units. Review this opt-in setting before starting."
 
-    def remember_draft(self) -> None:
-        raw = self._raw_values()
+    def remember_draft(self, raw=None) -> None:
+        if raw is None:
+            raw = self._raw_values()
         self.app.config_drafts[self.draft_key] = raw
         self.app.mapping_drafts[self.draft_key] = {
             "pending": bool(getattr(self, "_mapping_requires_confirmation", False)),
@@ -2014,10 +2023,13 @@ class _ExperimentInputsScreen(Screen):
         }
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        self._refresh_contrast_help()
-        self._refresh_constraints()
+        self._refresh_input_draft()
+
+    def _refresh_input_draft(self):
         if hasattr(self, "draft_key"):
-            self.remember_draft()
+            raw = self._raw_values()
+            self._refresh_constraints(raw)
+            self.remember_draft(raw)
 
     def _sync_contrast_method(self):
         if not any(f.key == "contrast_method" for f in self.experiment.fields):
@@ -2033,9 +2045,7 @@ class _ExperimentInputsScreen(Screen):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "field-contrast-method":
             self._sync_contrast_method()
-        if hasattr(self, "draft_key"):
-            self.remember_draft()
-            self._refresh_constraints()
+        self._refresh_input_draft()
 
     def _field_values(self, *, allow_incomplete=False):
         values = {}
@@ -2050,12 +2060,20 @@ class _ExperimentInputsScreen(Screen):
                 values[field.key] = raw
         return values
 
-    def describe_current_settings(self):
+    def describe_current_settings(self, *, for_summary=False):
         from .settings_review import describe_settings
-        from .stimulus_parameters import StimulusParametersPanel
         values = self.experiment.normalise_values(self._field_values())
         snapshots = self._selected_stimuli(values)
-        return describe_settings(self.experiment, values, snapshots, profile=self.app.monitor_profiles[self.monitor_profile_id])
+        profile = self.app.monitor_profiles[self.monitor_profile_id]
+        # Adjacent panels describe the same trial. Read and check their inputs
+        # before reusing the display-only result. Apply still plans afresh.
+        inputs = (values, snapshots, profile)
+        if for_summary and self._stimulus_summary is not None and self._stimulus_summary[0] == inputs:
+            return self._stimulus_summary[1]
+        description = describe_settings(self.experiment, values, snapshots, profile=profile)
+        if for_summary:
+            self._stimulus_summary = (inputs, description)
+        return description
 
     def _open_experiment_json(self):
         from .parameter_files import working_path, ensure_json, parameter_info
@@ -2664,7 +2682,6 @@ class ReviewScreen(Screen):
             self.app.push_screen(review)
         else:
             self.request = request
-            self._refresh_parameter_table()
             self._refresh_readiness()
             self.query_one("#review-status", Static).update(f"Saved new local configuration: {path}. Existing saves are preserved.")
 
@@ -2785,13 +2802,9 @@ class ReviewScreen(Screen):
                         panel.load(sources["stimuli"][panel.slot],
                                    derived_from=candidate.stimulus_snapshots[panel.slot])
         self._refresh_readiness()
-        self._apply_run_intent()
         self.query_one("#review-status",Static).update("Reloaded saved JSON. The table and next run now use these values. For Python edits, use Refresh (F5).")
 
     def on_mount(self):
-        self._refresh_parameter_table()
-        self._refresh_readiness()
-        self._apply_run_intent()
         self.query_one("#resolved-settings-table",DataTable).focus()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:

@@ -93,11 +93,8 @@ class StimulusParametersPanel(Vertical):
             if self.path:
                 with self.prevent(Input.Changed):
                     self.query_one('#stimulus-path-' + self.slot, Input).value = str(self.path)
-            self.refresh_summary()
         elif not self.configuration.experiment.stimulus_field_bindings.get(self.slot):
             self.load_default()
-        else:
-            self.refresh_summary()
 
     def refresh_presets(self):
         paths = [source_path(self.app.repo_root, self.stimulus, self.stimulus.default_config)] if self.stimulus.default_config else []
@@ -203,6 +200,9 @@ class StimulusParametersPanel(Vertical):
             self.query_one("#stimulus-summary-" + self.slot, Static).update("BLOCKED: " + self.error)
 
     def refresh_summary(self):
+        # The form refreshes the initial summaries after every slot is mounted.
+        if not self.is_mounted:
+            return
         try:
             current = self.current()
             units = {item.key: item.units for item in self.stimulus.parameters}
@@ -210,7 +210,7 @@ class StimulusParametersPanel(Vertical):
             controlled = set()
             try:
                 from .settings_review import parameter_sources
-                description = self.configuration.describe_current_settings()
+                description = self.configuration.describe_current_settings(for_summary=True)
                 values = description["stimuli"].get(self.slot, values)
                 controlled = parameter_sources(description, self.slot)
             except (ValueError, KeyError, TypeError):

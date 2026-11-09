@@ -43,6 +43,40 @@ def find_row(table,label,group=None):
         if str(table.get_row_at(index)[1]).startswith(label) and (group is None or str(table.get_row_at(index)[0])==group))
 
 
+def test_review_targets_read_each_source_once_and_reread_on_refresh(tmp_path, monkeypatch):
+    from collections import Counter
+    from psychophysics_lab.ui import review_files
+
+    spec = get_experiment('line_position_baseline')
+    definition = tmp_path / 'experiment.py'
+    definition.write_text('def make_trial():\n    pass\n', encoding='utf-8')
+    parameters = tmp_path / 'experiment.json'
+    parameters.write_text(json.dumps({'values': {'max_trials': 3, 'positions_deg': '0'}}, indent=2), encoding='utf-8')
+    monkeypatch.setattr(review_files, 'experiment_source', lambda spec, root: definition)
+    original_read = Path.read_text
+    reads = Counter()
+
+    def count_reads(path, *args, **kwargs):
+        reads[path] += 1
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', count_reads)
+    rows = [('Trial', label, '', '') for label in ('first action', 'second action')]
+    fields = {field.key: field for field in spec.fields}
+    rows += [('Experiment', fields[key].display_label, '', '') for key in ('max_trials', 'positions_deg')]
+    sources = {'experiment': parameters, 'stimuli': {}}
+
+    targets = targets_for_rows(spec, {}, {}, rows, sources, ROOT)
+    assert [target['line'] for target in targets] == [1, 1, 3, 4]
+    assert reads == {definition: 1, parameters: 1}
+
+    for path in (definition, parameters):
+        path.write_text('\n' + original_read(path, encoding='utf-8'), encoding='utf-8')
+    refreshed = targets_for_rows(spec, {}, {}, rows, sources, ROOT)
+    assert [target['line'] for target in refreshed] == [2, 2, 4, 5]
+    assert reads == {definition: 2, parameters: 2}
+
+
 async def click_cell(pilot,table,row,column,times=1):
     table.move_cursor(row=row,column=column)
     await pilot.pause()
