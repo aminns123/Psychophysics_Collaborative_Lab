@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -199,13 +200,12 @@ def _validate_environment(python: Path) -> None:
 
 
 def select_environment(name: str) -> None:
-    """Target one of the two supported local environments, never arbitrary paths.
-
-    The default .venv setup is unchanged. USER_env uses the same dependency
-    version tracking and validation but has its own interpreter and setup state.
-    """
-    if name not in {".venv", "USER_env"}:
+    """Select an owned local environment name, never an arbitrary path."""
+    recovery = re.fullmatch(r"\.venv-recovered-[0-9a-f]{32}", name)
+    if name not in {".venv", "USER_env"} and not recovery:
         raise ValueError("Unsupported PsyCoLab environment name.")
+    if recovery and any((folder / "installation.json").exists() for folder in (ROOT, ROOT.parent)):
+        raise ValueError("Managed installations require their approved setup package.")
     global VENV, STATE
     VENV = ROOT / name
     STATE = VENV / ".psycolab-setup.json"
@@ -368,7 +368,7 @@ def _install_editable(python: Path) -> None:
 def check_only() -> int:
     """Read-only launch gate. Never provision, repair metadata, or write state."""
     try:
-        if (VENV.is_symlink() or STATE.is_symlink() or VENV.resolve().parent != ROOT.resolve()
+        if (VENV.is_symlink() or STATE.is_symlink() or VENV.resolve() != ROOT.resolve() / VENV.name
                 or Path(sys.prefix).resolve() != VENV.resolve()):
             raise ValueError("Use this installation's own environment; it was not changed.")
         profile, digest = _profile()
@@ -403,7 +403,7 @@ def main() -> int:
         return 2
     pending = VENV / ".psycolab-setup.pending.json"
     try:
-        if (VENV.is_symlink() or VENV.resolve().parent != ROOT.resolve()
+        if (VENV.is_symlink() or VENV.resolve() != ROOT.resolve() / VENV.name
                 or STATE.is_symlink() or pending.is_symlink()):
             raise ValueError("Setup paths must belong to this checkout, not links to another installation.")
         profile, digest = _profile()
@@ -474,12 +474,37 @@ def main() -> int:
         return 1
 
 
-if __name__ == "__main__":
-    if sys.argv[1:] == ["--check"]:
-        raise SystemExit(check_only())
-    elif sys.argv[1:] == ["--user-env"]:
+def _check_recovery_interpreter() -> int:
+    try:
+        _validate_interpreter(_inspect_interpreter(Path(sys.executable)))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+        print(f"The interpreter does not match the approved profile: {error}")
+        return 1
+    print("Approved recovery interpreter verified.")
+    return 0
+
+
+def _entry(args: list[str]) -> int:
+    if args[:1] == ["--recovery-env"] and len(args) >= 2:
+        name = args[1]
+        if not re.fullmatch(r"\.venv-recovered-[0-9a-f]{32}", name):
+            print("Recovery requires a separate environment.")
+            return 2
+        select_environment(name)
+        args = args[2:]
+        if args not in ([], ["--check"]):
+            return 2
+    if args == ["--check"]:
+        return check_only()
+    if args == ["--check-recovery-interpreter"]:
+        return _check_recovery_interpreter()
+    if args == ["--user-env"]:
         select_environment("USER_env")
-    elif sys.argv[1:]:
-        print("Usage: launcher_setup.py [--user-env | --check]")
-        raise SystemExit(2)
-    raise SystemExit(main())
+    elif args:
+        print("Usage: launcher_setup.py [--user-env | --check | --recovery-env NAME [--check]]")
+        return 2
+    return main()
+
+
+if __name__ == "__main__":
+    raise SystemExit(_entry(sys.argv[1:]))

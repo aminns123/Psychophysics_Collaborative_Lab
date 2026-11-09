@@ -47,7 +47,7 @@ class PresentationTestScreen(ModalScreen):
         if event.button.id == "presentation-cancel":
             self.app.pop_screen()
         elif event.button.id == "presentation-launch":
-            self.app.loading.run(self, self._prepare_presentation)
+            self.app.loading.run(self, self._prepare_presentation, label="Checking test settings")
 
     async def _prepare_presentation(self):
         try:

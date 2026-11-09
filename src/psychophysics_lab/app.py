@@ -383,26 +383,23 @@ def _main(
             # Scenario execution uses the real pipeline with a reserved
             # synthetic participant, after the Textual window has closed.
             from simulations.scenarios import run_scenario
-            from simulations.progress import simulation_heartbeat
+            print(f"Testing {action.experiment_id} / {action.scenario_id} "
+                  f"({len(action.seeds)} virtual run(s))", flush=True)
             try:
-                with simulation_heartbeat(
-                    f"Testing {action.experiment_id} / {action.scenario_id} "
-                    f"({len(action.seeds)} virtual run(s))"
-                ):
-                    result = run_scenario(
-                        experiment_id=action.experiment_id,
-                        scenario_id=action.scenario_id,
-                        data_root=selected_data_root,
-                        repo_root=repo_root,
-                        seeds=action.seeds,
-                        observer_parameters=action.observer_parameters,
-                        experiment_values=action.experiment_values,
-                        monitor_profile_id=action.monitor_profile_id,
-                        monitor_profile_hash=action.monitor_profile_hash,
-                        stimulus_snapshots=action.stimulus_snapshots,
-                        **({"show_response_instructions": action.show_response_instructions}
-                           if not action.show_response_instructions else {}),
-                    )
+                result = run_scenario(
+                    experiment_id=action.experiment_id,
+                    scenario_id=action.scenario_id,
+                    data_root=selected_data_root,
+                    repo_root=repo_root,
+                    seeds=action.seeds,
+                    observer_parameters=action.observer_parameters,
+                    experiment_values=action.experiment_values,
+                    monitor_profile_id=action.monitor_profile_id,
+                    monitor_profile_hash=action.monitor_profile_hash,
+                    stimulus_snapshots=action.stimulus_snapshots,
+                    **({"show_response_instructions": action.show_response_instructions}
+                       if not action.show_response_instructions else {}),
+                )
             except Exception as exc:
                 recoverable_failures += 1
                 # Full trace is preserved once in the diagnostic file.

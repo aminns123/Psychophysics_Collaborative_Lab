@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -17,6 +18,10 @@ def environment_evidence(repo_root):
         return result
     folder, script, record = (('.venv-dev', 'developer_setup.py', '.psycolab-development.json')
         if role == 'development' else ('.venv', 'launcher_setup.py', '.psycolab-setup.json'))
+    recovery = []
+    if role == 'locked' and re.fullmatch(r'\.venv-recovered-[0-9a-f]{32}', Path(sys.prefix).name):
+        folder = Path(sys.prefix).name
+        recovery = ['--recovery-env', folder]
     env = root / folder
     executable = env / 'Scripts/python.exe'
     if (Path(sys.executable).resolve() != executable.resolve()
@@ -29,7 +34,7 @@ def environment_evidence(repo_root):
         # The launcher hint selects a route, not qualification. Independently
         # rerun that route's existing checks against the actual interpreter.
         result['evidence_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
-        check = subprocess.run([str(executable), '-I', '-B', str(files[0]), '--check'],
+        check = subprocess.run([str(executable), '-I', '-B', str(files[0]), *recovery, '--check'],
             cwd=root, capture_output=True, timeout=90, check=False)
         result.update(check='passed' if check.returncode == 0 else 'failed',
                       exit_code=check.returncode,
