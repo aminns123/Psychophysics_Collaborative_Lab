@@ -4,6 +4,21 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+## 0.4.0 — Windows 11 source release candidate
+
+See the [v0.4.0 release notes](docs/releases/v0.4.0.md) for installation,
+compatibility, scientific scope and remaining release acceptance.
+
+- **Save new preset preserves existing files ([#243](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/243)).**
+  Saving refuses an occupied filename, including case-only collisions on
+  Windows. Explicit updates retain their preset history.
+- **Original PsyCoLab wordmark ([#247](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/247),
+  [#249](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/249)).**
+  The README and startup splash share the same original pixel lettering.
+- **BSD-3-Clause and attribution ([#250](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/250)).**
+  The project records its creator and contributors and retains applicable
+  third-party notices. Version 0.4.0 also declares the licence in Python
+  distribution metadata.
 - **Generic Review for independent studies ([#235](https://github.com/aminns123/Psychophysics_Collaborative_Lab/pull/235)).**
   The specialised bright-probe explanation now requires the study's declared
   contrast convention, log-step controls and planning hooks. The four official

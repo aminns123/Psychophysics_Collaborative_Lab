@@ -7,3 +7,4 @@ authors:
     given-names: Alexander A.
 repository-code: "https://github.com/aminns123/Psychophysics_Collaborative_Lab"
 license: BSD-3-Clause
+version: "0.4.0"

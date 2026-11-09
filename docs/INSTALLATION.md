@@ -18,6 +18,10 @@ and physical-display configuration. Scientific records live in an external data
 workspace. Never copy another computer's `.venv` or treat its calibration as valid
 for a different display.
 
+For a source ZIP or tar archive, extract the complete tree to a fresh
+folder and follow the [qualified laboratory software installation](#qualified-laboratory-software-installation)
+below. The ordinary development setup menu applies to Git checkouts.
+
 ## First installation from Git (ordinary Python 3.11)
 
 1. Clone the complete repository into a writable folder under your ordinary Windows account.

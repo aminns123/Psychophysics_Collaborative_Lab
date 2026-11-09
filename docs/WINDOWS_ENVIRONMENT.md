@@ -72,8 +72,8 @@ For the administrator/source provisioning route above, explicitly run
 first launch. `PSYCOLAB_BOOTSTRAP_PYTHON` in that example is a shell variable used
 by the explicit command, not an environment selector honored by ordinary launch.
 The setup script checks exact implementation, patch, x64, Python executable/DLL
-hashes and required conda artifact identities before installation. Students use
-the separate guided package rather than these administrator commands.
+hashes and required conda artifact identities before installation. Use these
+commands with a complete source archive extracted into a new folder.
 
 First setup creates an owned .venv, records an incomplete-attempt marker, installs
 hash-pinned binary build/runtime wheels, and installs the checkout editably using
@@ -109,9 +109,9 @@ facility, not a new downloader, service or #124 diagnostics system.
 ## USER_env and development
 
 `PsyCoLab.bat`, option **3 — Python Workspace**, uses the application's already
-verified environment for a normal command prompt and external scripts. The old
-Python batch names remain temporary compatibility wrappers. This does not create a second environment or
-install `user_requirements.txt`. Existing USER_env directories and custom files
+verified environment for a normal command prompt and external scripts. Retarget
+old shortcuts using the [launcher migration table](../outdated_code/windows_launchers/README.md#migrate-existing-shortcuts-and-automation).
+Python Workspace reuses the verified environment. Existing USER_env directories and custom files
 are preserved. The explicit historical `launcher_setup.py --user-env` facility
 remains available for existing workflows, with its original constraints and
 qualification limits; it is not part of normal startup.

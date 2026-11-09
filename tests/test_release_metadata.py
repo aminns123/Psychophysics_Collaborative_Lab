@@ -16,7 +16,12 @@ def test_declared_package_version_matches_release_notes_and_changelog():
     assert package["tool"]["setuptools"]["dynamic"]["version"]["attr"] == (
         "psychophysics_lab.__version__"
     )
-    assert __version__ == "0.3.0"
+    assert __version__ == "0.4.0"
+    assert package["project"]["license"] == "BSD-3-Clause"
+    assert package["project"]["license-files"] == ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+    citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8").splitlines()
+    assert f'version: "{__version__}"' in citation
+    assert f'license: {package["project"]["license"]}' in citation
     assert (ROOT / "docs" / "releases" / f"v{__version__}.md").is_file()
     notes = (ROOT / "docs" / "releases" / f"v{__version__}.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
