@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 from uuid import uuid4
 
+from ..operational_compatibility import portable_engine_inventory
 from .stimulus_parameters import digest, resolve_stimuli, snapshot, validate_document, load_parameters
 from .preflight import validate_setup
 
@@ -66,7 +67,7 @@ def software_identity(root, spec, snapshots):
     except PackageNotFoundError as exc:
         raise ValueError("A required installed scientific dependency is missing; repair the local installation first.") from exc
     return {"psycolab_version": __version__, "source_sha256": digest(sources),
-            "engine_sha256": digest(inventory), "dependencies": dependencies}
+            "engine_sha256": digest(portable_engine_inventory(inventory)), "dependencies": dependencies}
 
 
 def _normalized_source_hash(path, expected):

@@ -25,12 +25,10 @@ below. The ordinary development setup menu applies to Git checkouts.
 ## First installation from Git (ordinary Python 3.11)
 
 1. Clone the complete repository into a writable folder under your ordinary Windows account.
-2. Double-click **PsyCoLab.bat** and choose **2 — Check / Repair**. If it reports missing Python, install **64-bit
-   Python 3.11**; with the Python install manager the command is `py install 3.11`.
-   Reopen the launcher afterwards. An explicit interpreter path can be selected
-   with `PSYCOLAB_BOOTSTRAP_PYTHON`. PsyCoLab does not edit global PATH.
-3. With no existing `.venv` or `.venv-dev`, choose **I — Install source environment**
-   and type **YES**. Setup runs in the same terminal and returns to the menu.
+2. Double-click **PsyCoLab.bat** and choose **2 — Check / Repair**. If it reports missing Python, use
+   the [official 64-bit Windows Python 3.11 installer](https://www.python.org/downloads/windows/)
+   or ask your administrator to install it. Then reopen the launcher.
+3. At the prompt, type **Y**. Setup runs in the same terminal and returns to the menu.
    Choose **1 — Launch PsyCoLab**. Initial package installation
    requires internet/package-index access; subsequent matching launches do not.
 4. Choose the external data folder, configure the experiment and display, and Review.
