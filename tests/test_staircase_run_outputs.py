@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 from pathlib import Path
+import time
 
 import pytest
 
@@ -103,6 +104,15 @@ def test_reanalysis_stays_in_the_run_and_never_changes_raw_trials(tmp_path):
         else:
             assert summary.output_directory.is_relative_to(run/"analysis/thresholds")
     assert (run/"trials.tsv").read_bytes()==before
+
+
+def test_terminal_simulation_heartbeat_prints_activity_dots(capsys):
+    from simulations.progress import simulation_heartbeat
+    with simulation_heartbeat("Testing simulated participant",interval=.001):
+        time.sleep(.03)
+    content=capsys.readouterr().out
+    assert "Testing simulated participant" in content
+    assert "." in content and "finished" in content
 
 
 def test_data_browser_can_open_ordinary_saved_adaptive_run_without_hardware(tmp_path,monkeypatch):

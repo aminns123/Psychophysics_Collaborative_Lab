@@ -24,7 +24,7 @@ class LoadingFeedback:
     def busy(self):
         return self.foreground is not None and not self.foreground.is_finished
 
-    def run(self, screen, operation, *args, label):
+    def run(self, screen, operation, *args, label="Loading"):
         if not self.closed and not self.busy:
             self.foreground = screen.run_worker(partial(operation, *args), group=self.GROUP)
             self.watch(self.foreground, label)
