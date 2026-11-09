@@ -512,7 +512,11 @@ def test_locked_requirements_change_decline_fail_repair_and_repeat(locked_mismat
     for _ in range(2):
         launched = batch(locked_mismatch, "--launch")
         assert launched.returncode == 0 and str(target) in launched.stdout
-    assert batch(locked_mismatch, "--workspace", input_text="exit\n").stdout.count(str(target)) >= 1
+    workspace = batch(locked_mismatch, "--workspace", input_text=(
+        'python -c "import sys; from pathlib import Path; print(Path(sys.prefix).name)"\nexit\n'
+    ))
+    assert workspace.returncode == 0
+    assert target.name in workspace.stdout.splitlines()
     assert marker.read_bytes() == before and snapshot(root / ".venv") == old and snapshot(data) == research
 
 
