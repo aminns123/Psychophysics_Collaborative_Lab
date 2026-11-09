@@ -843,6 +843,7 @@ sealed class ConsoleActivity : IDisposable
                 return new ConsoleActivity(label);
             Console.WriteLine(label+"...");
         }catch(IOException) { /* No usable console; the operation can still proceed. */ }
+        catch(InvalidOperationException) { /* The console may be closing. */ }
         return null;
     }
 
@@ -858,6 +859,7 @@ sealed class ConsoleActivity : IDisposable
                 }while(!stop.Wait(300));
                 Console.Write("\r"+new string(' ',label.Length+3)+"\r");
             }catch(IOException) { /* The console may be closing. */ }
+            catch(InvalidOperationException) { /* The output stream may be disposed. */ }
         });
     }
 

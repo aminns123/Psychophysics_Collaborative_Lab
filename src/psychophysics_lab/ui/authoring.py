@@ -189,7 +189,11 @@ class AuthoringPanel(Vertical):
             )
             return
         if identity == "author-refresh":
-            self.app.loading.run(self.screen, self._refresh_inventory, label="Checking lab components")
+            loading = getattr(self.app, "loading", None)
+            if loading is None:
+                self.refresh_inventory()
+            else:
+                loading.run(self.screen, self._refresh_inventory, label="Checking lab components")
             return
         name = self.query_one("#author-component", Select).value
         if name is Select.BLANK:
@@ -276,11 +280,12 @@ class AuthoringPanel(Vertical):
             self.app.inspect_source(path)
             return
         worker = self.perform(identity, str(name))
-        if identity == "author-ready" or self.kind == "stimulus":
+        loading = getattr(self.app, "loading", None)
+        if loading is not None and (identity == "author-ready" or self.kind == "stimulus"):
             # Experiment authoring tests run a virtual acquisition in the child
             # process. Keep the existing static status during that execution.
-            self.app.loading.watch(worker, "Checking tested revision" if identity == "author-ready"
-                                   else "Preparing stimulus preview")
+            label = "Checking tested revision" if identity == "author-ready" else "Preparing stimulus preview"
+            loading.watch(worker, label)
 
     @work(thread=True, exclusive=True, group="authoring")
     def perform(self, operation, name):
