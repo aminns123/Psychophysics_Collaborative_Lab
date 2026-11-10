@@ -4,6 +4,12 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **Recover settings as draft.** Review can propose values from older or
+  partially incompatible portable configurations. Researchers confirm or
+  replace each proposed setting before PsyCoLab validates and saves a new
+  local configuration with the original bytes and decision history. Strict
+  fingerprint-verified import and laboratory readiness checks still apply.
+
 ## 0.4.0 — Windows 11 source release candidate
 
 See the [v0.4.0 release notes](docs/releases/v0.4.0.md) for installation,

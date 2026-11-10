@@ -173,7 +173,7 @@ def validate_portable(document, root, current, profile):
     return candidate, warnings
 
 
-def read_document(path):
+def read_document(path, *, include_bytes=False):
     path = Path(path).expanduser()
     if path.suffix.lower() != ".json" or not path.is_file():
         raise ValueError("Select an existing JSON configuration file.")
@@ -195,7 +195,7 @@ def read_document(path):
         digest(document)  # Reject numeric overflows such as 1e999 as well.
     except (UnicodeError, RecursionError, ValueError) as exc:
         raise ValueError(f"Cannot read configuration JSON: {exc}") from exc
-    return document
+    return (document, raw) if include_bytes else document
 
 
 def write_export(path, document):
@@ -216,7 +216,7 @@ def write_export(path, document):
     return path
 
 
-def save_local(root, repo, document, current, profile, *, preserve_origin=False):
+def save_local(root, repo, document, current, profile, *, preserve_origin=False, recovery=None):
     """Stage existing JSON files, validate them, then publish one new directory."""
     from ..data.session import atomic_write_json
     from ..data.identifiers import validate_path_component
@@ -234,6 +234,17 @@ def save_local(root, repo, document, current, profile, *, preserve_origin=False)
     try:
         atomic_write_json(staging/"experiment.json", document["experiment"])
         atomic_write_json(staging/"configuration.json", document)
+        if recovery is not None:
+            original_bytes, report = recovery
+            evidence = staging/"recovery"
+            evidence.mkdir()
+            with (evidence/"original.json").open("xb") as stream:
+                stream.write(original_bytes)
+                stream.flush()
+                os.fsync(stream.fileno())
+            atomic_write_json(evidence/"decisions.json", report)
+            recovery_origin = {"original_sha256": report["original_sha256"],
+                               "decisions_sha256": file_hash(evidence/"decisions.json")}
         snapshots = {}
         for slot, data in document["stimuli"].items():
             name = validate_path_component(slot, label="slot") + "_" + token + ".json"
@@ -243,6 +254,8 @@ def save_local(root, repo, document, current, profile, *, preserve_origin=False)
             if (preserve_origin and current.experiment_id == candidate.experiment_id and previous
                     and previous["document"]["stimulus_id"] == data["stimulus_id"]):
                 origin = previous.get("configuration_origin", origin)
+            if recovery is not None:
+                origin = origin | {"recovered_from": recovery_origin}
             snapshots[slot] = load_parameters(staging/name, get_stimulus(data["stimulus_id"])) | {
                 "configuration_origin": deepcopy(origin)}
         candidate = validate_setup(replace(candidate, stimulus_snapshots=snapshots),

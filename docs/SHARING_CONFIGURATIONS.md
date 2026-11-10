@@ -23,7 +23,8 @@ source code, transfer participant data or qualify another laboratory's apparatus
    does not need to select the same experiment beforehand.
 5. **Preview import** shows every selected scientific setting, its current and
    imported values, and which values differ. The current configuration stays
-   active. Resolve any compatibility/validation errors, or Cancel.
+   active. Resolve any compatibility or validation errors, start a recovery
+   draft if offered, or Cancel.
 6. **Approve import** validates again and saves a new local copy before opening
    Review. Review shows the imported values and their scientific meanings, using
    the existing editors for subsequent changes. Back returns to the preceding
@@ -75,17 +76,18 @@ retained JSON-library route uses its existing exact-byte Ready digest.
 A different PsyCoLab version label alone produces a warning if the checked
 fingerprints and dependency versions match.
 
-**Older portable exports.** Import rejects version 1 because its fingerprints
+**Older portable exports.** Verified import rejects version 1 because its fingerprints
 omitted scientific dependencies. Ask the sender to open the verified original
 settings in Review on an installation that supports schema 2, then choose
-**Export JSON…** and save a new file. If the original settings or required
-software cannot be verified, retain the old transfer as a reference. Open
+**Export JSON…** and save a new file. A recovery draft can instead help you
+carry forward individual values whose scientific meaning you can verify. Open
 ordinary local experiment and stimulus files through their existing editors.
 Those files and historical run records retain their existing formats.
 
 The preset safety correction changes a configuration file included in the
 engine fingerprint. Schema 2 exports and complete local saves from the
-earlier candidate (`53b8cacf`) need a fresh export or save. Keep the originals.
+earlier candidate (`53b8cacf`) need a fresh export or save for verified import.
+Keep the originals. The recovery preview can assist with rebuilding a current save.
 Review the verified settings in a matching installation, or load the saved
 `experiment.json` and per-slot stimulus JSON through the current parameter
 editors and compare the effective values before exporting again. Preserve
@@ -98,6 +100,85 @@ the installed catalogue, rejects unsupported sections and duplicate keys, and
 bounds file size at 1 MiB. Malformed/invalid files and cancelled previews do not
 change the working configuration. A failed staged save does not publish partial
 parameter files or overwrite earlier saves.
+
+## Recover settings as draft
+
+1. In Review, choose **Import JSON…** and **Preview import**. PsyCoLab tries
+   verified import first. When a known portable schema cannot pass it, a
+   read-only recovery preview can show the historical values and reasons.
+2. Choose **Recover settings as draft**. The draft has its own Review table.
+   Select a row and press Enter to inspect the current field, units, range,
+   original value and any suggestion. Accept, replace or reject the value.
+   Missing fields remain incomplete until resolved. **Use declared default**
+   is an explicit choice where a valid default is available.
+3. **Compatible** rows have matching complete scientific fingerprints and
+   unchanged values. They can be accepted together. **Check meaning** rows
+   have matching keys and locally valid values, but their original meaning
+   still needs review. Check them against the original protocol, individually
+   or using **Review same-key values**. Pay particular attention to intensity
+   and contrast conventions, geometry, response alternatives, and adaptive
+   method and estimator definitions. **Declared migration** rows show a
+   specific author-provided rule and require individual approval. Ambiguous,
+   invalid and out-of-range values require a decision. **Unmapped & source**
+   shows the original and current fingerprints and the unmapped entries.
+4. Resolve every row and confirm your review of the original meanings and
+   installed protocol. **Validate and save new configuration** uses the
+   installed experiment, stimulus, geometry and planning validators. It
+   opens normal Review only on success. The saved configuration describes
+   the current implementation. It does not establish scientific equivalence
+   with the original protocol or qualify the display.
+
+An unresolved draft exists only while its screen is open. It has no Test, Run
+or Export action. Cancel discards the draft and leaves the active configuration
+and imported file untouched. Unknown portable schemas require software that
+understands them. Missing or unready experiment and stimulus implementations
+must be installed and verified through the ordinary authoring workflow first.
+
+A completed recovery includes private `recovery/original.json` and
+`recovery/decisions.json` files in the new local save directory. They contain
+the exact original bytes, source identities, unmapped values, and the decisions
+for each row. Share the new schema 2 export if appropriate. Keep the original
+and report as local scientific provenance.
+
+### Declare a migration in an installed laboratory component
+
+The module defining the experiment procedure or stimulus renderer can publish
+a `CONFIGURATION_RECOVERY_RULES` mapping. Its keys are
+`("experiment", experiment_id)` or `("stimulus", stimulus_id)`, and its values
+are tuples of `RecoveryRule` declarations. The experiment or stimulus must
+already be enabled and Ready through the normal laboratory workflow.
+
+```python
+from psychophysics_lab.configuration_recovery import RecoveryRule
+
+# Set these to the actual reviewed hashes from the historical export.
+CONFIGURATION_RECOVERY_RULES = {
+    ("stimulus", "mylab__line"): (
+        RecoveryRule(
+            schema_version=1,
+            source_sha256=HISTORICAL_SOURCE_SHA256,
+            engine_sha256=HISTORICAL_ENGINE_SHA256,
+            old_key="line_length_arcmin",
+            new_key="line_length_deg",
+            old_kind="float",
+            old_units="arcmin",
+            new_units="degrees",
+            meaning="Full visible line length.",
+            reason="The renderer now takes degrees. There are 60 arcminutes per degree.",
+            scale=1 / 60,
+        ),
+    ),
+}
+```
+
+Use the historical outer schema and both exact lowercase SHA-256 fingerprints.
+A rename without `scale` requires the same declared type and units. A positive
+numeric `scale` is an explicit conversion and must pass the current bounds and
+validation. The destination key and unit must be present in the current
+declarations. Competing mappings remain ambiguous. Scientific changes that
+cannot be expressed safely as a rename or numeric scale require manual review.
+The downloaded file supplies values and historical metadata only. The
+application does not import modules or execute migration instructions from it.
 
 ## Local files and run provenance
 

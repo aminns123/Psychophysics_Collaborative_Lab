@@ -54,10 +54,12 @@ parameter defaults or affects saved trial observations.
 ## Portable experiment configuration
 
 Portable schema 2 embeds the existing local experiment and stimulus documents
-and adds verified scientific source and dependency identity. For an older
-version 1 portable export, open the verified original settings in Review and
-export a fresh file with the current software. Ordinary local JSON and
-historical run readers retain their existing formats. See the
+and adds verified scientific source and dependency identity. Verified import
+requires schema 2. For an older portable export, either export again from
+verified original settings or use the separate **Recover settings as draft**
+preview. Recovery supports known portable schemas 1 and 2 and saves a new
+configuration only after researcher review and current validation. Ordinary
+local JSON and historical run readers retain their existing formats. See the
 [configuration sharing guide](SHARING_CONFIGURATIONS.md).
 
 ## Read-only archived extension and workspace compatibility (Issue #81 Stage 3)
