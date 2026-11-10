@@ -56,7 +56,8 @@ def test_reveal_restores_normal_layout(tmp_path, monkeypatch, skip):
 def test_loading_animates_during_json_io_and_clears_after_failure(tmp_path, monkeypatch):
     released = Event()
 
-    def slow_invalid_json(path):
+    def slow_invalid_json(path, *, include_bytes=False):
+        assert include_bytes
         assert released.wait(5)
         raise ValueError("Invalid JSON for this test")
 
@@ -84,6 +85,8 @@ def test_loading_animates_during_json_io_and_clears_after_failure(tmp_path, monk
             await wait_until(lambda: loading.status is None and not loading.busy)
             assert "Invalid JSON" in str(importer.query_one("#configuration-feedback", Static).renderable)
             assert importer.preview is None
+            assert importer.recovery is None
+            assert importer.query_one("#configuration-recover", Button).disabled
 
     asyncio.run(scenario())
 
