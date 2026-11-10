@@ -1964,6 +1964,7 @@ class _ExperimentInputsScreen(Screen):
 
     def _compose_field(self, field):
         from .full_text import field_description
+        from .parameter_editor import parameter_value_widget
         help_text = field_description(field)
         label = Label(field.display_label)
         label.tooltip = help_text
@@ -1979,13 +1980,13 @@ class _ExperimentInputsScreen(Screen):
                 if field.key == "contrast_method" and {"adaptive", "constant_stimuli"} <= set(field.choices)
                 else [(str(choice), choice) for choice in field.choices]
             )
-            kwargs = {"id": widget_id, "allow_blank": field.default is None}
-            if value is not None:
-                kwargs["value"] = value
-            yield Select(options, disabled=not field.editable, tooltip=help_text, **kwargs)
+            yield parameter_value_widget(field, value, widget_id=widget_id, help_text=help_text,
+                                         options=options, allow_blank=field.default is None,
+                                         disabled=not field.editable)
         else:
             with Horizontal(classes="field-row"):
-                yield Input(value="" if value is None else str(value), id=widget_id, disabled=not field.editable, tooltip=help_text)
+                yield parameter_value_widget(field, value, widget_id=widget_id,
+                                             help_text=help_text, disabled=not field.editable)
                 if self.experiment.adaptive and self.experiment.adaptive.step_calculator:
                     if field.key == "logUNIT_UP":
                         yield Button("From down", id="calculate-up", disabled=not field.editable)

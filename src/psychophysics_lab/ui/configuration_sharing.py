@@ -9,6 +9,8 @@ from textual.widgets import Button, DirectoryTree, Footer, Input, Label, Static,
 
 from ..config.sharing import (CALIBRATION_NOTICE, digest, make_document, read_document,
                               save_local, validate_portable, write_export)
+from ..configuration_recovery import RecoveryDraft, prepare_recovery
+from .configuration_recovery import ConfigurationRecoveryScreen, show_value
 
 
 class JSONTree(DirectoryTree):
@@ -88,6 +90,7 @@ class ConfigurationSharingScreen(Screen):
         super().__init__()
         self.review, self.importing = review, importing
         self.preview = None
+        self.recovery = None
         self.original = review.request
 
     def compose(self):
@@ -112,14 +115,21 @@ class ConfigurationSharingScreen(Screen):
                          id="configuration-feedback", markup=False)
             if self.importing:
                 yield DataTable(id="configuration-differences", cursor_type="row", zebra_stripes=True)
-                yield Button("Approve import", id="configuration-approve", disabled=True, variant="success")
+                with Horizontal(classes="buttons"):
+                    yield Button("Approve import", id="configuration-approve", disabled=True, variant="success")
+                    yield Button("Recover settings as draft", id="configuration-recover", disabled=True)
             yield Button("Cancel", id="configuration-cancel")
         yield Footer()
 
     def on_input_changed(self, event):
         if event.input.id == "configuration-path" and self.importing:
-            self.preview = None
-            self.query_one("#configuration-approve", Button).disabled = True
+            self._clear_preview()
+
+    def _clear_preview(self):
+        self.preview = self.recovery = None
+        self.query_one("#configuration-approve", Button).disabled = True
+        self.query_one("#configuration-recover", Button).disabled = True
+        self.query_one("#configuration-differences", DataTable).clear(columns=True)
 
     def _chosen(self, path):
         if path is not None:
@@ -127,8 +137,16 @@ class ConfigurationSharingScreen(Screen):
                 path = Path(path)/(self.original.experiment_id + "_configuration.json")
             self.query_one("#configuration-path", Input).value = str(path)
 
-    def _prepare_preview(self, document, profile):
-        candidate, warnings = validate_portable(document, self.app.repo_root, self.original, profile)
+    def _prepare_preview(self, document, raw, profile):
+        try:
+            candidate, warnings = validate_portable(document, self.app.repo_root, self.original, profile)
+        except (ValueError, KeyError, TypeError, OverflowError) as strict_error:
+            try:
+                draft = prepare_recovery(document, raw, self.app.repo_root,
+                                         verify_sources=self.app.verify_loaded_sources)
+            except (ValueError, KeyError, TypeError, OverflowError) as recovery_error:
+                raise ValueError(f"{strict_error}\nRecovery unavailable: {recovery_error}") from recovery_error
+            return draft, str(strict_error)
         from ..experiments._internal.registry import get_experiment
         from ..stimuli.registry import get_stimulus
         spec = get_experiment(candidate.experiment_id)
@@ -160,6 +178,23 @@ class ConfigurationSharingScreen(Screen):
         self.preview = preview
         self.query_one("#configuration-approve", Button).disabled = False
 
+    def _show_recovery_preview(self, draft, reason):
+        table = self.query_one("#configuration-differences", DataTable)
+        table.clear(columns=True)
+        for label, width in (("Setting", 28), ("Historical", 20), ("Suggestion", 18), ("Status", 17)):
+            table.add_column(label, width=width)
+        for row in draft.rows:
+            table.add_row(Text(row.label), Text(show_value(next(iter(row.historical.values()), None))),
+                          Text(show_value(row.suggestion)), row.status, height=None)
+        self.query_one("#configuration-feedback", Static).update(
+            f"Verified import unavailable. {reason}\n"
+            f"Recovery preview · {draft.spec.display_name} · schema {draft.schema} · "
+            f"PsyCoLab {show_value(draft.software.get('psycolab_version'), 40)} · "
+            f"{len(draft.unmapped)} unmapped entries. "
+            "Open a separate draft to review each suggestion. No settings have been applied.")
+        self.recovery = draft
+        self.query_one("#configuration-recover", Button).disabled = False
+
     def on_button_pressed(self, event):
         event.stop()
         name = event.button.id
@@ -173,22 +208,29 @@ class ConfigurationSharingScreen(Screen):
             self.app.push_screen(ConfigurationFilePicker(start, folders=not self.importing,
                                                          saved_only=name == "configuration-saved"), self._chosen)
             return
-        if name in {"configuration-export", "configuration-preview", "configuration-approve"}:
+        if name in {"configuration-export", "configuration-preview", "configuration-approve", "configuration-recover"}:
             label = {
                 "configuration-export": "Exporting configuration",
                 "configuration-preview": "Checking import",
                 "configuration-approve": "Saving imported settings",
+                "configuration-recover": "Opening recovery draft",
             }[name]
             self.app.loading.run(self, self._share, name, label=label)
 
-    def _prepare_operation(self, name, path, profile, preview):
+    def _prepare_operation(self, name, path, profile, preview, recovery):
         self.app.verify_settings_current(self.original)
         if name == "configuration-export":
             write_export(path, make_document(self.app.repo_root, self.original, profile))
             return
-        document = read_document(path)
         if name == "configuration-preview":
-            return self._prepare_preview(document, profile)
+            document, raw = read_document(path, include_bytes=True)
+            return self._prepare_preview(document, raw, profile)
+        if name == "configuration-recover":
+            _, raw = read_document(path, include_bytes=True)
+            if recovery is None or raw != recovery.original_bytes:
+                raise ValueError("Original file changed or has no recovery preview. Preview it again.")
+            return recovery
+        document = read_document(path)
         if preview is None or digest(document) != preview[1]:
             raise ValueError("Import file changed or no preview is available. Preview it again; nothing was applied.")
         candidate, _ = validate_portable(preview[0], self.app.repo_root, self.original, profile)
@@ -202,21 +244,31 @@ class ConfigurationSharingScreen(Screen):
                 raise ValueError("Current settings changed; cancel and preview again.")
             profile = self.app.monitor_profiles[self.original.monitor_profile_id]
             path = Path(self.query_one("#configuration-path", Input).value).expanduser()
+            preview, recovery = self.preview, self.recovery
             if name == "configuration-preview":
-                self.preview = None
-                self.query_one("#configuration-approve", Button).disabled = True
-            result = await asyncio.to_thread(self._prepare_operation, name, path, profile, self.preview)
+                self._clear_preview()
+            result = await asyncio.to_thread(self._prepare_operation, name, path, profile, preview, recovery)
+            if name in {"configuration-preview", "configuration-recover"} and path != Path(
+                    self.query_one("#configuration-path", Input).value).expanduser():
+                raise ValueError("Selected path changed during import. Preview it again.")
             if name == "configuration-export":
                 self.query_one("#configuration-feedback", Static).update(f"Exported {path}. Share this JSON file; local calibration is not included.")
             elif name == "configuration-preview":
-                self._show_preview(*result)
+                if isinstance(result[0], RecoveryDraft):
+                    self._show_recovery_preview(*result)
+                else:
+                    self._show_preview(*result)
+            elif name == "configuration-recover":
+                self._clear_preview()
+                self.query_one("#configuration-feedback", Static).update(
+                    "Preview the original again to start another recovery draft.")
+                self.app.push_screen(ConfigurationRecoveryScreen(self, result))
             else:
                 self.app.pop_screen()
                 self.review.apply_shared_configuration(result, imported=True)
-        except (ValueError, OSError, KeyError, TypeError) as exc:
+        except (ValueError, OSError, KeyError, TypeError, OverflowError, RecursionError) as exc:
             if self.importing:
-                self.preview = None
-                self.query_one("#configuration-approve", Button).disabled = True
+                self._clear_preview()
             self.query_one("#configuration-feedback", Static).update(str(exc) + " Previous configuration was not changed.")
 
     def action_cancel(self):

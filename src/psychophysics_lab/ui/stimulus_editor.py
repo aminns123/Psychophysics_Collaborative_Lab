@@ -2,7 +2,8 @@
 
 from .console import ConsoleScreen as Screen
 from textual.containers import VerticalScroll, Horizontal, Vertical
-from textual.widgets import Label, Input, Select, Button, Static
+from textual.widgets import Label, Input, Button, Static
+from .parameter_editor import parameter_value_widget
 
 
 class StimulusValueEditor(Screen):
@@ -50,22 +51,11 @@ class StimulusValueEditor(Screen):
                     key = parameter_controller(self.panel.configuration.experiment, self.panel.slot, field.key)
                     yield Static(f"Experiment-controlled: change {key} in Review's input editor; this is a resolved value."
                                  if key else "Trial-controlled: change the experiment's conditions or strength method through Review.")
-                if field.kind == "choice":
-                    yield Select(
-                        [(str(v), v) for v in field.choices],
-                        value=value,
-                        allow_blank=False,
-                        id=f"stimulus-value-{index}",
-                        disabled=not field.editable or field.key in self.controlled,
-                        tooltip=help_text,
-                    )
-                else:
-                    yield Input(
-                        value=str(value),
-                        id=f"stimulus-value-{index}",
-                        disabled=not field.editable or field.key in self.controlled,
-                        tooltip=help_text,
-                    )
+                yield parameter_value_widget(
+                    field, value if field.kind == "choice" else str(value),
+                    widget_id=f"stimulus-value-{index}", help_text=help_text,
+                    disabled=not field.editable or field.key in self.controlled,
+                )
                 if field.help_text:
                     yield Static(field.help_text)
             yield Label("Save as a new preset")

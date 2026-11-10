@@ -38,8 +38,8 @@ checkout and first-time setup.
 4. Use **Save configuration** to keep your setup locally. Use **Export JSON…**
    to share it in portable schema 2, or **Import JSON…** to preview differences
    and approve a new local copy. Compatible experiment and stimulus source
-   must already be installed. For a version 1 transfer, ask for a fresh export
-   from the verified original settings. See the
+   must already be installed. If verified import fails, **Recover settings
+   as draft** can help you review and carry forward individual settings. See the
    [sharing guide and ellipse example](docs/SHARING_CONFIGURATIONS.md).
 
 Use **Python Workspace** from the launcher to run your own scripts in the
