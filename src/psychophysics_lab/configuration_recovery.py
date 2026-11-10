@@ -42,6 +42,7 @@ class RecoveryRow:
     rule: RecoveryRule | None = None
     value: object = None
     decisions: list = field(default_factory=list)
+    locked: bool = False
 
     @property
     def resolved(self):
@@ -53,6 +54,8 @@ class RecoveryRow:
         return f"{group}: {self.field.display_label}"
 
     def decide(self, action, value=None):
+        if self.locked:
+            raise ValueError(self.explanation)
         if action == "reject":
             value = None
         elif action == "accept" and self.suggestion is not None:
@@ -212,12 +215,18 @@ def _row(path, field, entries, rules, exact):
 class RecoveryDraft:
     spec: object
     stimuli: dict
-    schema: int
+    schema: int | None
     software: dict
     local_software: dict
     original_bytes: bytes
     rows: list
     unmapped: dict
+    source_kind: str = "portable configuration"
+    scope_note: str = ""
+
+    @property
+    def review_rows(self):
+        return [row for row in self.rows if row.status != "Retained from Review"]
 
     @property
     def unresolved(self):
@@ -239,6 +248,10 @@ class RecoveryDraft:
         if not reviewed:
             raise ValueError("Confirm you reviewed the scientific meanings and installed protocol.")
         chosen = {row.path: row.value for row in self.rows}
+        if self.source_kind == "experiment settings":
+            for slot, bindings in self.spec.stimulus_field_bindings.items():
+                for parameter, key in bindings.items():
+                    chosen[("stimuli", slot, "parameters", parameter)] = chosen[("experiment", "values", key)]
         values = {field.key: chosen[("experiment", "values", field.key)] for field in self.spec.fields}
         documents = {
             slot: {"schema_version": 1, "stimulus_id": chosen[("stimuli", slot, "stimulus_id")],
@@ -263,6 +276,7 @@ class RecoveryDraft:
             self.spec.monitor_validator(values, profile)
         report = {
             "schema_version": 1, "experiment_id": self.spec.id, "original_schema": self.schema,
+            "original_kind": self.source_kind,
             "original_sha256": hashlib.sha256(self.original_bytes).hexdigest(),
             "original_software": self.software, "local_software": self.local_software,
             "researcher_reviewed": True,
@@ -271,7 +285,10 @@ class RecoveryDraft:
                             "historical": [{"path": path, "value": value} for path, value in row.historical.items()],
                             "suggestion": row.suggestion, "declared_default": row.default,
                             "rule": asdict(row.rule) if row.rule else None,
-                            "decisions": row.decisions, "value": row.value} for row in self.rows],
+                            "decisions": row.decisions + (
+                                [{"action": "resolve experiment binding", "value": chosen[row.path]}]
+                                if chosen[row.path] != row.value else []),
+                            "value": chosen[row.path]} for row in self.rows],
         }
         return save_local(root, repo, document, current, profile, recovery=(self.original_bytes, report))
 
@@ -338,3 +355,75 @@ def prepare_recovery(document, raw, repo, *, verify_sources):
     mapped = {key for row in rows if row.suggestion is not None for key in row.historical}
     unmapped = {key: value for key, value in entries.items() if key not in mapped}
     return RecoveryDraft(spec, stimuli, schema, deepcopy(software), local, raw, rows, unmapped)
+
+
+def prepare_component_recovery(document, raw, repo, current, profile, *, slot, verify_sources):
+    """Recover one local settings file against the already validated Review."""
+    is_stimulus = {"stimulus_id", "parameters"} <= document.keys()
+    schema = document.get("schema_version")
+    if is_stimulus or "schema_version" in document:
+        _schema(schema, {1}, "Local stimulus" if is_stimulus else "Local experiment settings")
+    identity_key, values_key = ("stimulus_id", "parameters") if is_stimulus else ("experiment_id", "values")
+    identity = document.get(identity_key)
+    if not isinstance(identity, str):
+        raise ValueError(f"The local file must identify its {identity_key}.")
+    values = _object(document[values_key], "Local settings values")
+    if is_stimulus:
+        slots = [key for key, selected in current.stimulus_snapshots.items()
+                 if selected["document"]["stimulus_id"] == identity]
+        if not slots:
+            raise ValueError(f"Required stimulus {identity!r} is not selected in this Review. "
+                             "Install and verify it if needed, then select it in the appropriate stimulus slot.")
+        if len(slots) > 1 and slot not in slots:
+            raise ValueError(f"{identity!r} is selected in more than one slot: {', '.join(slots)}. "
+                             "Return to Review, select a row in the intended slot, then preview this file again.")
+        slot = slots[0] if len(slots) == 1 else slot
+        prefix = ("stimuli", slot, "parameters")
+        scope = f"Recovering only the {slot} stimulus. Experiment inputs and other stimuli retain their current Review values."
+    else:
+        if identity != current.experiment_id:
+            raise ValueError(f"This file belongs to {identity!r}. Open Review for that experiment and preview it there. "
+                             "Install and verify its implementation separately if it is missing.")
+        prefix = ("experiment", "values")
+        scope = ("Recovering experiment inputs only. Other settings retain their current Review values. "
+                 "Stimulus fields bound to recovered experiment inputs follow those inputs.")
+
+    baseline = make_document(repo, current, profile)
+    draft = prepare_recovery(baseline, raw, repo, verify_sources=verify_sources)
+    current_values = _entries(baseline, baseline["experiment"], draft.stimuli)
+    historical = {(*prefix, key): value for key, value in values.items()}
+    bindings = draft.spec.stimulus_field_bindings.get(slot, {}) if is_stimulus else {}
+    metadata = document.get("parameter_info")
+    metadata = metadata if isinstance(metadata, dict) else {}
+    for index, row in enumerate(draft.rows):
+        current_value = current_values[row.path]
+        if row.path[:-1] != prefix or row.field.key in bindings:
+            controlled = row.path[:-1] == prefix
+            history = {row.path: historical[row.path]} if controlled and row.path in historical else {}
+            draft.rows[index] = RecoveryRow(
+                row.path, row.field, "Experiment-controlled" if controlled else "Retained from Review",
+                f"Controlled by experiment input {bindings[row.field.key]}. Edit that input in Review."
+                if controlled else "Retained from the already validated Review.",
+                historical=history, value=current_value, locked=True,
+                decisions=[{"action": "retain current Review", "value": current_value}],
+            )
+            continue
+        recovered = _row(row.path, row.field, historical, (), False)
+        info = metadata.get(row.field.key)
+        if recovered.suggestion is not None and isinstance(info, dict) and "units" in info:
+            if info["units"] != row.field.units:
+                recovered.status = "Different units"
+                recovered.suggestion = None
+                recovered.explanation = (f"File declares {info['units']!r}, current field uses {row.field.units!r}. "
+                                         "Verify the intended value in the current units before replacing it.")
+        draft.rows[index] = recovered
+    transferred = {row.path for row in draft.rows if row.suggestion is not None
+                   or (row.locked and row.historical.get(row.path) == row.value)}
+    draft.unmapped = {path: value for path, value in historical.items() if path not in transferred}
+    draft.unmapped.update({(key,): value for key, value in document.items()
+                           if key not in {identity_key, values_key, "schema_version", "saved_utc", "parameter_info"}})
+    draft.schema = schema
+    draft.software = {}
+    draft.source_kind = "stimulus parameters" if is_stimulus else "experiment settings"
+    draft.scope_note = scope
+    return draft

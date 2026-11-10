@@ -1858,7 +1858,8 @@ class _ExperimentInputsScreen(Screen):
                 yield Label("Saved local preset")
                 presets = load_presets(self.app.local_config_root, self.experiment.id)
                 yield Select([(name, name) for name in presets], id="config-preset")
-                yield Button("Load preset", id="load-preset")
+                yield Button("Load preset", id="load-preset",
+                             tooltip="For older or incomplete files, open Review → Import JSON to recover a separate copy.")
                 yield Input(placeholder="New preset name", id="preset-name")
                 yield Button("Save new preset", id="save-preset")
                 yield Button("Update selected preset", id="update-preset")
@@ -2195,6 +2196,7 @@ class _ExperimentInputsScreen(Screen):
             operation = event.button.id
             verb = {"save-preset": "saved", "load-preset": "loaded",
                     "update-preset": "updated"}[operation]
+            recovery_path = None
             try:
                 if operation != "save-preset":
                     all_presets = load_presets(self.app.local_config_root, self.experiment.id)
@@ -2226,7 +2228,17 @@ class _ExperimentInputsScreen(Screen):
                     name = str(raw)
                     if name not in all_presets:
                         raise ValueError("The selected preset no longer exists. Reload the screen.")
-                    values = self.experiment.normalise_values(all_presets[name])
+                    recovery_path = self.app.local_config_root/"presets"/self.experiment.id/(name + ".json")
+                    raw_values = all_presets[name]
+                    declared = {field.key: field for field in self.experiment.fields}
+                    missing = sorted(key for key, field in declared.items()
+                                     if raw_values.get(key) is None or (raw_values[key] == "" and field.default != ""))
+                    obsolete = sorted(set(raw_values) - declared.keys())
+                    if missing or obsolete:
+                        raise ValueError(
+                            f"Missing settings: {', '.join(missing) or 'none'}. "
+                            f"Obsolete or unrecognised settings: {', '.join(obsolete) or 'none'}.")
+                    values = self.experiment.normalise_values(raw_values)
                     values = validate_setup(SetupRequest(self.participant_id, self.session_mode,
                         self.experiment.id, self.monitor_profile_id, values), self.experiment,
                         self.app.monitor_profiles[self.monitor_profile_id], mode="configuration").experiment_values
@@ -2237,8 +2249,12 @@ class _ExperimentInputsScreen(Screen):
                 self.query_one("#config-status", Static).update(f"[green]{notice}[/green]")
                 self.app.notify(notice, title=f"Preset {verb}", timeout=6)
             except (ValueError, KeyError, OSError, RuntimeError, TypeError) as exc:
+                from rich.text import Text
                 message = f"Preset NOT {verb}: {exc}"
-                self.query_one("#config-status", Static).update(f"[red]{message}[/red]")
+                if recovery_path is not None:
+                    message += (f" Original preserved at {recovery_path}. Open Review with your current settings, "
+                                "then Import JSON → Preview import → Recover settings as draft.")
+                self.query_one("#config-status", Static).update(Text(message, style="red"))
                 self.app.notify(message, severity="error", timeout=8)
             return
         button_id = event.button.id
@@ -2619,6 +2635,13 @@ class ReviewScreen(Screen):
     def _visible_row(self, row=None):
         row = self.query_one("#resolved-settings-table",DataTable).cursor_row if row is None else row
         return self._visible_rows[row]
+
+    def selected_stimulus_slot(self):
+        if getattr(self, "_visible_rows", ()):
+            group = self._review_rows[self._visible_row()][0]
+            if group in self.request.stimulus_snapshots:
+                return group
+        return None
 
     def action_full_text(self):
         from .full_text import FullTextScreen

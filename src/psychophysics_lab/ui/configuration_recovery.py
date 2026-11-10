@@ -109,6 +109,8 @@ class ConfigurationRecoveryScreen(Screen):
             yield Static(f"RECOVERY DRAFT · {self.draft.spec.display_name}", classes="section-title", markup=False)
             yield Static("Select a row and press Enter to review the meaning, accept a value or enter a replacement.",
                          id="recovery-message", markup=False)
+            if self.draft.scope_note:
+                yield Static(self.draft.scope_note, markup=False)
             yield ReviewSettingsTable(id="recovery-settings", cursor_type="row", zebra_stripes=True)
             with Horizontal(classes="actions"):
                 yield Button("Accept compatible", id="recovery-accept-compatible")
@@ -131,11 +133,12 @@ class ConfigurationRecoveryScreen(Screen):
         index = table.cursor_row
         table.clear()
         details = []
-        for row in self.draft.rows:
+        for row in self.draft.review_rows:
             historical = show_value(next(iter(row.historical.values()), None))
             suggested = show_value(row.suggestion)
             table.add_row(Text(row.label), Text(historical if historical == suggested else f"{historical} → {suggested}"),
-                          "Resolved" if row.resolved else "Rejected" if row.decisions else row.status,
+                          "Resolved" if row.resolved and not row.locked else
+                          "Rejected" if not row.resolved and row.decisions else row.status,
                           Text(show_value(row.value)), height=None)
             details.append(row.explanation)
         table.row_details = details
@@ -180,8 +183,11 @@ class ConfigurationRecoveryScreen(Screen):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected):
         if not self.saving:
-            self.app.push_screen(RecoveryValueEditor(self.draft.rows[event.cursor_row]),
-                                 lambda changed: self.refresh_rows() if changed else None)
+            row = self.draft.review_rows[event.cursor_row]
+            if row.locked:
+                self.app.push_screen(FullTextScreen(row.label, row.explanation))
+            else:
+                self.app.push_screen(RecoveryValueEditor(row), lambda changed: self.refresh_rows() if changed else None)
 
     def on_button_pressed(self, event):
         event.stop()
@@ -197,7 +203,8 @@ class ConfigurationRecoveryScreen(Screen):
             else:
                 self.review_historical_suggestions(self.historical_suggestions())
         elif button == "recovery-details":
-            data = {"original_schema": self.draft.schema, "original_software": self.draft.software,
+            data = {"original_kind": self.draft.source_kind,
+                    "original_schema": self.draft.schema, "original_software": self.draft.software,
                     "installed_software": self.draft.local_software,
                     "unmapped": self.draft.unmapped_entries()}
             self.app.push_screen(FullTextScreen("Source identities and unmapped historical values",

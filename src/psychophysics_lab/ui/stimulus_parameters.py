@@ -197,6 +197,9 @@ class StimulusParametersPanel(Vertical):
             self.refresh_summary()
         except (OSError, ValueError, KeyError, TypeError) as exc:
             self.error = str(exc)
+            if isinstance(path, Path) and path.is_file():
+                self.error += (" For older or incomplete settings, return to a valid Review for this stimulus, "
+                               "then Import JSON → Preview import → Recover settings as draft.")
             self.query_one("#stimulus-summary-" + self.slot, Static).update("BLOCKED: " + self.error)
 
     def refresh_summary(self):
