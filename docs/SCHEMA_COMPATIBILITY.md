@@ -59,8 +59,11 @@ requires schema 2. For an older portable export, either export again from
 verified original settings or use the separate **Recover settings as draft**
 preview. Recovery supports known portable schemas 1 and 2 and saves a new
 configuration only after researcher review and current validation. Ordinary
-local JSON and historical run readers retain their existing formats. See the
-[configuration sharing guide](SHARING_CONFIGURATIONS.md).
+local JSON and historical run readers retain their existing formats. An
+incomplete or obsolete preset no longer loads through Configure by filling
+missing inputs from current defaults. Preview its original file in Review
+to recover it as a new copy. The same route covers standalone stimulus JSON.
+See the [configuration sharing guide](SHARING_CONFIGURATIONS.md#recover-a-single-settings-file).
 
 ## Read-only archived extension and workspace compatibility (Issue #81 Stage 3)
 
