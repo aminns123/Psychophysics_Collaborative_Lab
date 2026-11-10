@@ -4,6 +4,10 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **Recover individual settings files.** Review can recover incomplete local
+  presets and standalone stimulus JSON through the existing draft workflow.
+  Configure flags missing or obsolete preset fields before applying any values.
+
 - **Recover settings as draft.** Review can propose values from older or
   partially incompatible portable configurations. Researchers confirm or
   replace each proposed setting before PsyCoLab validates and saves a new

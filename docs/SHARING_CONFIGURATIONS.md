@@ -82,6 +82,7 @@ settings in Review on an installation that supports schema 2, then choose
 **Export JSON…** and save a new file. A recovery draft can instead help you
 carry forward individual values whose scientific meaning you can verify. Open
 ordinary local experiment and stimulus files through their existing editors.
+If fields are missing or obsolete, you can also [recover a single settings file](#recover-a-single-settings-file).
 Those files and historical run records retain their existing formats.
 
 The preset safety correction changes a configuration file included in the
@@ -139,6 +140,28 @@ A completed recovery includes private `recovery/original.json` and
 the exact original bytes, source identities, unmapped values, and the decisions
 for each row. Share the new schema 2 export if appropriate. Keep the original
 and report as local scientific provenance.
+
+### Recover a single settings file
+
+- For a local experiment JSON or named preset, open Review for its experiment.
+  For a standalone stimulus JSON, select its implementation in the intended
+  slot first. If more than one slot uses that implementation, highlight a row
+  from the intended slot in Review before opening **Import JSON…**.
+  If the edited file is already selected and blocks Review, return to the last
+  valid Review or use known valid settings to open a fresh one first.
+- Browse to the original file, choose **Preview import**, then **Recover
+  settings as draft**. The same editor shows only the relevant fields.
+  Other reviewed settings are retained. Stimulus values with an explicit
+  experiment binding follow their controlling experiment input.
+- Local experiment schema 1, known unversioned experiment presets and stimulus
+  schema 1 are supported. Standalone files lack complete portable fingerprints.
+  Check suggested values against their original scientific meaning. A field
+  marked **Different units** requires an explicit value in the current units.
+  Obsolete fields, including potential old names, stay in the recovery report.
+- Resolve and validate the draft to save a separate configuration. The normal
+  Review input editor and **Edit JSON in editor** remain available for the new
+  files. Keep the original as evidence. Use a matching reader for newer schemas
+  and install missing implementations separately through the trusted workflow.
 
 ### Declare a migration in an installed laboratory component
 

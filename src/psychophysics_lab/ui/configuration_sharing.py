@@ -9,7 +9,7 @@ from textual.widgets import Button, DirectoryTree, Footer, Input, Label, Static,
 
 from ..config.sharing import (CALIBRATION_NOTICE, digest, make_document, read_document,
                               save_local, validate_portable, write_export)
-from ..configuration_recovery import RecoveryDraft, prepare_recovery
+from ..configuration_recovery import RecoveryDraft, prepare_component_recovery, prepare_recovery
 from .configuration_recovery import ConfigurationRecoveryScreen, show_value
 
 
@@ -92,6 +92,7 @@ class ConfigurationSharingScreen(Screen):
         self.preview = None
         self.recovery = None
         self.original = review.request
+        self.recovery_slot = review.selected_stimulus_slot() if importing else None
 
     def compose(self):
         home = Path.home()/"Downloads"
@@ -110,7 +111,7 @@ class ConfigurationSharingScreen(Screen):
                     yield Button("Preview import", id="configuration-preview", variant="primary")
                 else:
                     yield Button("Export JSON", id="configuration-export", variant="primary")
-            yield Static("Preview the complete scientific settings and differences before approving. Nothing is applied during preview."
+            yield Static("Preview a portable configuration, experiment preset or stimulus JSON. Nothing is applied during preview."
                          if self.importing else "Exports all selected experiment values and complete stimulus documents. Existing files are never overwritten.",
                          id="configuration-feedback", markup=False)
             if self.importing:
@@ -138,6 +139,16 @@ class ConfigurationSharingScreen(Screen):
             self.query_one("#configuration-path", Input).value = str(path)
 
     def _prepare_preview(self, document, raw, profile):
+        if isinstance(document, dict) and "format" not in document:
+            experiment = {"experiment_id", "values"} <= document.keys()
+            stimulus = {"stimulus_id", "parameters"} <= document.keys()
+            if experiment and stimulus:
+                raise ValueError("This file mixes experiment and stimulus settings. Preview one known local file at a time.")
+            if experiment or stimulus:
+                draft = prepare_component_recovery(
+                    document, raw, self.app.repo_root, self.original, profile,
+                    slot=self.recovery_slot, verify_sources=self.app.verify_loaded_sources)
+                return draft, "This local file has no verified portable fingerprints."
         try:
             candidate, warnings = validate_portable(document, self.app.repo_root, self.original, profile)
         except (ValueError, KeyError, TypeError, OverflowError) as strict_error:
@@ -183,15 +194,18 @@ class ConfigurationSharingScreen(Screen):
         table.clear(columns=True)
         for label, width in (("Setting", 28), ("Historical", 20), ("Suggestion", 18), ("Status", 17)):
             table.add_column(label, width=width)
-        for row in draft.rows:
+        for row in draft.review_rows:
             table.add_row(Text(row.label), Text(show_value(next(iter(row.historical.values()), None))),
                           Text(show_value(row.suggestion)), row.status, height=None)
+        identity = (f"{draft.source_kind} · schema {draft.schema if draft.schema is not None else 'unversioned'}"
+                    if draft.scope_note else
+                    f"schema {draft.schema} · PsyCoLab {show_value(draft.software.get('psycolab_version'), 40)}")
         self.query_one("#configuration-feedback", Static).update(
             f"Verified import unavailable. {reason}\n"
-            f"Recovery preview · {draft.spec.display_name} · schema {draft.schema} · "
-            f"PsyCoLab {show_value(draft.software.get('psycolab_version'), 40)} · "
+            f"Recovery preview · {draft.spec.display_name} · {identity} · "
             f"{len(draft.unmapped)} unmapped entries. "
-            "Open a separate draft to review each suggestion. No settings have been applied.")
+            "Open a separate draft to review each suggestion. No settings have been applied."
+            + (f"\n{draft.scope_note}" if draft.scope_note else ""))
         self.recovery = draft
         self.query_one("#configuration-recover", Button).disabled = False
 
