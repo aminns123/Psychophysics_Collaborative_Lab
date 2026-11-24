@@ -2231,6 +2231,14 @@ class _ExperimentInputsScreen(Screen):
                     recovery_path = self.app.local_config_root/"presets"/self.experiment.id/(name + ".json")
                     raw_values = all_presets[name]
                     declared = {field.key: field for field in self.experiment.fields}
+                    if (not set(raw_values) - declared.keys()
+                            and any(field.allow_legacy_default and key not in raw_values
+                                    for key, field in declared.items())):
+                        migrated = self.experiment.normalise_input_keys(raw_values)
+                        raw_values = raw_values | {
+                            key: migrated[key] for key, field in declared.items()
+                            if field.allow_legacy_default and key not in raw_values and key in migrated
+                        }
                     missing = sorted(key for key, field in declared.items()
                                      if raw_values.get(key) is None or (raw_values[key] == "" and field.default != ""))
                     obsolete = sorted(set(raw_values) - declared.keys())

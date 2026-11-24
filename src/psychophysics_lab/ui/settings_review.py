@@ -475,12 +475,11 @@ def probe_intensity_rows(spec, values, *, conditions=None):
     Read the experiment's own maximum and shared update arithmetic. No separate
     scientific bounds, adaptation rule or participant-response prediction.
     """
-    from ..experiments._internal.parameter_compatibility import migrate_probe_intensity
-
     steps = {"logUNIT_DW", "logUNIT_UP", "n_down", "n_up", "initial_one_down_limit"}
     required = steps | {"starting_probe_intensity", "background_intensity"}
     selection = spec.adaptive
-    if (spec.migrate_values is not migrate_probe_intensity or selection is None
+    presented = spec.trial_column_overrides.get("presented_display_contrast", {})
+    if (presented.get("units_or_encoding") != "digital_probe_increment" or selection is None
             or selection.step_parameterization != "log10_display_contrast"
             or not steps.issubset(selection.controls)
             or not required <= values.keys()
