@@ -2,6 +2,27 @@
 import hashlib
 import json
 
+
+def expected_fields(identity, saved):
+    """Apply only the approved interval cue declaration change to the old contract."""
+    if identity != "ellipse_centre":
+        return saved
+    fields = list(saved)
+    index = next(i for i, field in enumerate(fields) if field["key"] == "cue_hz")
+    first = fields[index] | {
+        "label": "First interval cue frequency",
+        "help_text": "Pitch of the tone at the start of the first interval, regardless of the probe location.",
+    }
+    second = first | {
+        "key": "cue_two_hz",
+        "label": "Second interval cue frequency",
+        "help_text": "Pitch of the tone at the start of the second interval, regardless of the probe location.",
+        "allow_legacy_default": True,
+    }
+    fields[index:index + 1] = [first, second]
+    return fields
+
+
 def historical_one_map_source(root, identity, raw):
     """Undo only frozen registration-map edits before historical source SHA checks.
 
