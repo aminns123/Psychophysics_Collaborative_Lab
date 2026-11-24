@@ -117,7 +117,7 @@ def assert_archived_study(identity):
 def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(saved):
     spec = registry.get_experiment(saved["id"])
     expected = WAVE2_SOURCE_SHA256_LF.get(saved["id"], WAVE1_SOURCE_SHA256_LF.get(saved["id"], saved["source_sha256_lf"]))
-    from _scientist_first_migrations import migration_reference
+    from _scientist_first_migrations import expected_fields, migration_reference
     if saved["id"] in ATOMIC_STUDIES:
         assert_archived_study(saved["id"])
         import importlib
@@ -135,7 +135,7 @@ def test_all_ten_official_sources_and_contracts_remain_the_accepted_revisions(sa
     if saved["id"] in WAVE2_SOURCE_SHA256_LF:
         historical = ROOT / "tests/fixtures/issue165_wave2" / (saved["id"] + ".py")
         assert source_hash(historical) == saved["source_sha256_lf"]
-    assert json.loads(json.dumps([asdict(field) for field in spec.fields])) == saved["fields"]
+    assert json.loads(json.dumps([asdict(field) for field in spec.fields])) == expected_fields(saved["id"], saved["fields"])
     assert json.loads(json.dumps(asdict(spec.response_paradigm))) == saved["responses"]
     assert list(spec.calibration_requirements) == saved["calibration"]
     assert list(spec.monitor_capabilities) == saved["monitor_capabilities"]

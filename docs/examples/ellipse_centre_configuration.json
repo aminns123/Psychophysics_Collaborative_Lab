@@ -25,6 +25,7 @@
       "ring_radius_deg": 0.5,
       "auditory_cues": true,
       "cue_hz": 550,
+      "cue_two_hz": 550,
       "cue_ms": 35,
       "contrast_method": "adaptive",
       "fixed_contrasts": "0.005,0.01,0.02",
@@ -83,8 +84,8 @@
   },
   "software": {
     "psycolab_version": "0.4.0",
-    "source_sha256": "9217ed350f6cf05d80fcc7f76794168a228760b73026037c1451b8b7080652ee",
-    "engine_sha256": "1aed3629d9f843615a25bbf924d94c7e6f043bed130e3b48f309dd062b34b19d",
+    "source_sha256": "b6128e85dc13bd9712cd777a5cdeb6b22d55543c3ededd08b15d393f5e2a4368",
+    "engine_sha256": "1f381c04c862c6d5ac08e04e1a394e49c0b23f397a578c8ebec17c8780c2caa8",
     "dependencies": {
       "numpy": "1.26.4",
       "pyglet": "1.5.27"

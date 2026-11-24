@@ -4,6 +4,10 @@ Notable changes to PsyCoLab. For a reproducible laboratory analysis or acquisiti
 
 ## Unreleased
 
+- **Ellipse Centre interval cues.** Review now lets researchers set the
+  first and second interval cue frequencies independently. Existing local
+  settings with one frequency use it for both intervals.
+
 - **Recover individual settings files.** Review can recover incomplete local
   presets and standalone stimulus JSON through the existing draft workflow.
   Configure flags missing or obsolete preset fields before applying any values.

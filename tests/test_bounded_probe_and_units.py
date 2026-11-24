@@ -108,6 +108,31 @@ def test_line_cues_are_optional_explicit_and_do_not_encode_answer(name):
                 assert (phase.beep.frequency_hz, phase.beep.duration_ms) == (880, 70)
 
 
+def test_ellipse_centre_cues_follow_interval_and_keep_old_single_tone():
+    from psychophysics_lab.experiments import ellipse_centre
+    from psychophysics_lab.ui.parameter_files import validate_experiment_json
+
+    spec = ellipse_centre.SPEC
+    values = spec.field_defaults()
+    del values["cue_two_hz"]
+    values.update(cue_hz=660, cue_ms=40, ring_increment=.03)
+    historical = {"schema_version": 1, "experiment_id": spec.id, "values": values}
+    recovered = validate_experiment_json(historical, spec)
+    assert recovered["cue_hz"] == recovered["cue_two_hz"] == 660
+
+    for settings, frequencies in ((values, [660, 660]),
+                                  (recovered | {"cue_two_hz": 880}, [660, 880]),
+                                  (recovered | {"auditory_cues": False}, [])):
+        for target in (0, 1):
+            phases = ellipse_centre.trial_events(settings, {"ring": True, "target": target, "x_deg": 0.})
+            assert [phase.beep.frequency_hz for phase in phases if phase.beep] == frequencies
+            assert [phase.name for phase in phases if phase.beep] == (
+                ["interval_one", "interval_two"] if frequencies else [])
+            assert all(phase.beep.duration_ms == 40 for phase in phases if phase.beep)
+    with pytest.raises(ValueError, match="outside its permitted range"):
+        spec.normalise_values(recovered | {"cue_two_hz": 36})
+
+
 def test_baseline_uses_full_physical_intensity_headroom_and_does_not_restrict_overlap():
     from psychophysics_lab.experiments import line_position_baseline as baseline
 

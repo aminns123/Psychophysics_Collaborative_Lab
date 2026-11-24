@@ -149,9 +149,14 @@ FIELDS += (
         help_text='Enable the experiment-declared auditory interval cues. This does not establish measured audio/display synchronization.',
     ),
     ConfigField(
-        "cue_hz", "Cue frequency (study choice)", "int", 550, minimum=37, maximum=32767,
+        "cue_hz", "First interval cue frequency", "int", 550, minimum=37, maximum=32767,
         units='Hz',
-        help_text='Requested tone frequency of the auditory cue, in hertz; it changes the cue pitch.',
+        help_text="Pitch of the tone at the start of the first interval, regardless of the probe location.",
+    ),
+    ConfigField(
+        "cue_two_hz", "Second interval cue frequency", "int", 550, minimum=37, maximum=32767,
+        units="Hz", allow_legacy_default=True,
+        help_text="Pitch of the tone at the start of the second interval, regardless of the probe location.",
     ),
     ConfigField(
         "cue_ms",
@@ -209,17 +214,16 @@ def interval_stimuli(settings, condition, interval):
 
 def trial_events(settings, condition):
     """Fixation -> first interval -> ISI -> second interval -> first/second answer."""
-    cue = (
-        Beep(settings["cue_hz"], settings["cue_ms"])
-        if settings["auditory_cues"]
-        else None
-    )
+    first_cue = second_cue = None
+    if settings["auditory_cues"]:
+        first_cue = Beep(settings["cue_hz"], settings["cue_ms"])
+        second_cue = Beep(settings.get("cue_two_hz", settings["cue_hz"]), settings["cue_ms"])
     return [
         Show("fixation", slot="fixation", duration="fixation_ms"),
-        Show('interval_one', duration='stimulus_ms', beep=cue,
+        Show('interval_one', duration='stimulus_ms', beep=first_cue,
              stimuli=interval_stimuli(settings, condition, 0)),
         Show("inter_interval", slot="fixation", duration="isi_ms"),
-        Show('interval_two', duration='stimulus_ms', beep=cue,
+        Show('interval_two', duration='stimulus_ms', beep=second_cue,
              stimuli=interval_stimuli(settings, condition, 1)),
         CollectResponse(actions=("first", "second"), slot="fixation"),
     ]
@@ -598,6 +602,14 @@ def procedure(run):
 make_trial = legacy_trial_factory(trial_events)
 
 
+def migrate_settings(values):
+    values = migrate_probe_intensity(values)
+    if "cue_hz" in values:
+        # Earlier settings specified one tone for both intervals.
+        values.setdefault("cue_two_hz", values["cue_hz"])
+    return values
+
+
 def definition(identity="ellipse_centre"):
     return experiment(
         id=identity,
@@ -622,7 +634,7 @@ def definition(identity="ellipse_centre"):
         },
         # End Review-only control links.
         validator=validate_settings,
-        migrate_values=migrate_probe_intensity,
+        migrate_values=migrate_settings,
         supports_simulation=True,
         stimuli=STIMULI,
         calibration_requirements=CALIBRATION_REQUIREMENTS,

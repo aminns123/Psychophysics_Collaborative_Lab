@@ -50,6 +50,43 @@ async def enter_review(app, pilot, identity, values):
     return app.screen
 
 
+def test_ellipse_centre_review_edits_interval_cues_and_loads_single_tone_preset(tmp_path):
+    from psychophysics_lab.config.local import save_preset
+    from psychophysics_lab.ui.setup import ExperimentParametersScreen
+
+    async def scenario():
+        spec = get_experiment("ellipse_centre")
+        app = PsyCoLabSetupApp(repo_root=ROOT, data_root=tmp_path / "data")
+        old_values = selected_values(spec)
+        del old_values["cue_two_hz"]
+        old_values["cue_hz"] = 640
+        path = save_preset(app.local_config_root, "one_tone", spec.id, old_values)
+        original = path.read_bytes()
+        async with app.run_test(size=(100, 32)) as pilot:
+            review = await enter_review(app, pilot, spec.id, selected_values(spec))
+            review._edit_experiment_inputs()
+            await pilot.pause()
+            editor = app.screen
+            assert isinstance(editor, ExperimentParametersScreen)
+            editor.query_one("#config-preset", Select).value = "one_tone"
+            editor.query_one("#load-preset", Button).press()
+            await pilot.pause()
+            first = editor.query_one("#field-cue-hz", Input)
+            second = editor.query_one("#field-cue-two-hz", Input)
+            assert first.value == second.value == "640"
+            assert path.read_bytes() == original
+            second.value = "920"
+            editor.query_one("#review", Button).press()
+            await pilot.pause()
+            assert app.screen is review and not review.configuration_error
+            assert review.request.experiment_values["cue_hz"] == 640
+            assert review.request.experiment_values["cue_two_hz"] == 920
+            assert any(row[1:3] == ("First interval cue frequency (Hz)", "640") for row in review._review_rows)
+            assert any(row[1:3] == ("Second interval cue frequency (Hz)", "920") for row in review._review_rows)
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("identity", OFFICIAL)
 def test_every_declared_scientific_input_visible_in_actual_review(tmp_path, identity):
     async def scenario():

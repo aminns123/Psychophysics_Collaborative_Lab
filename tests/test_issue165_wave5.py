@@ -1,8 +1,10 @@
 """Family source migration against exact accepted develop reference."""
 import json
+from dataclasses import asdict
 from pathlib import Path
 import pytest
 from _remaining_wave_equivalence import compare, reference, ROOT
+from _scientist_first_migrations import expected_fields
 from psychophysics_lab.config.stimulus_parameters import resolve_stimuli
 from psychophysics_lab.ui.settings_review import describe_settings
 WAVE = 5
@@ -80,7 +82,9 @@ def test_effective_review_plans_and_all_declared_contracts(monkeypatch,case):
     ]
     for key in ('trial_selection_method','planned_trials'):
         assert results[0]['resolution'].get(key)==results[1]['resolution'].get(key),key
-    for attr in ('fields','response_paradigm','calibration_requirements',
+    assert [asdict(field) for field in specs[1].fields] == expected_fields(
+        case['identity'], [asdict(field) for field in specs[0].fields])
+    for attr in ('response_paradigm','calibration_requirements',
                  'monitor_capabilities','trial_column_overrides'):
         assert getattr(specs[0],attr)==getattr(specs[1],attr),attr
     assert {k:v for k,v in specs[0].scientific_spec.items() if k!='geometry'} == {

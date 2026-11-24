@@ -160,8 +160,10 @@ def test_comparison_rejects_incorrect_raw_preset_hash(tmp_path):
 
 @pytest.mark.parametrize('saved',BASELINE['inventory'],ids=lambda c:c['id'])
 def test_defaults_response_meanings_and_safeguards_do_not_drift(saved):
+    from _scientist_first_migrations import expected_fields
+
     spec=registry.get_experiment(saved['id'])
-    assert digest([dict(f.__dict__) for f in spec.fields])==digest(saved['fields'])
+    assert digest([dict(f.__dict__) for f in spec.fields])==digest(expected_fields(saved['id'], saved['fields']))
     assert list(spec.calibration_requirements)==saved['calibration']
     assert list(spec.monitor_capabilities)==saved['capabilities']
     assert list(spec.response_paradigm.alternatives)==saved['responses']['alternatives']
